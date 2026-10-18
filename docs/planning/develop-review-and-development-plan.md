@@ -62,8 +62,9 @@ Remaining acceptance has independent prerequisites:
 | Demo material/artwork QA | Complete shader-pair failure/recovery and available artwork observations in [TR19](../testing-requests.md#tr19-qa-indexed-demo-materials-and-recovered-graphics). Missing images/showcase fixtures remain explicit blockers. |
 
 Sampling/TGUI and indexed shader/material loading have selected Linux CPU/backend
-and native pixel acceptance. Only main text/image materials migrated; both UI
-adapters retain [manual builders](../rendering/pipelines-and-materials.md#manual-material-construction).
+and native pixel acceptance. Main text/image materials use indexed recipes;
+UI adapters use [provider-owned defaults](../rendering/pipelines-and-materials.md#default-ui-materials)
+and accept optional custom material handles.
 The reusable [graphics procedure](../development/architecture-validation.md#sampling-and-positioned-text)
 preserves coverage limits. Completed implementation plans are retired after their
 contracts and unresolved acceptance have moved to the subject guides/testing queue.

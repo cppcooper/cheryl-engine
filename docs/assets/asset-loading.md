@@ -155,7 +155,9 @@ replacements succeed; failed reload preserves its previous application pair even
 if the shared catalogue has published an earlier candidate. Fonts remain outside
 the graphics manifest contract. Manual material builders remain supported; the
 [rendering guide](../rendering/pipelines-and-materials.md#manual-material-construction)
-shows the UI example that deliberately retains this path.
+shows direct typed construction. TGUI and RmlUi use
+[automatic provider-owned defaults](../rendering/pipelines-and-materials.md#default-ui-materials)
+and accept compatible material handles from indexed recipes as optional overrides.
 
 `CE::Rendering::Resources::Provider::create_image()` accepts
 `CE::Assets::Images::Decoded` RGBA pixels.

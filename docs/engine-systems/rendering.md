@@ -24,6 +24,7 @@ Types below are in `CE::Rendering` unless another namespace is shown.
 
 | Type | Choices and details |
 | --- | --- |
+| {cpp:enum}`Materials::Builtin2D <CE::Rendering::Materials::Builtin2D>` | Backend-owned solid/textured colored-triangle profiles used by automatic UI defaults. [Default UI materials](../rendering/pipelines-and-materials.md#default-ui-materials). |
 | {cpp:enum}`Pipelines::Blend <CE::Rendering::Pipelines::Blend>` | `Opaque`, `StraightAlpha`, `PremultipliedAlpha`, `Additive`; match source color/alpha convention. [Pipeline and material state](../rendering/pipelines-and-materials.md#parameters-and-ownership). |
 | {cpp:enum}`Pipelines::Depth <CE::Rendering::Pipelines::Depth>`, {cpp:enum}`Pipelines::Cull <CE::Rendering::Pipelines::Cull>` | Depth comparison and face culling; camera dimensionality does not select these policies. [Fixed state and pass constraints](../rendering/pipelines-and-materials.md#parameters-and-ownership). |
 | {cpp:enum}`Geometry::Layout2D <CE::Rendering::Geometry::Layout2D>`, {cpp:enum}`Geometry::Topology <CE::Rendering::Geometry::Topology>` | Match position/UV or colored vertices and triangles/triangle strips to the pipeline. [Geometry and independent binding](../rendering/pipelines-and-materials.md#independent-binding). |

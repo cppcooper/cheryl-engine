@@ -45,8 +45,13 @@ namespace CE::UI::RmlUi {
 
     public:
         CE_UI_RMLUI_API explicit SceneUploader(const CE::Rendering::Resources::Provider& provider);
+        // Defaults are built lazily on the provider owner from backend-owned
+        // resources. Explicit Materials select application overrides instead.
+        [[nodiscard]] CE_UI_RMLUI_API Scene upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording) const;
         [[nodiscard]] CE_UI_RMLUI_API Scene
         upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording, const Materials& materials) const;
+        [[nodiscard]] CE_UI_RMLUI_API std::future<Scene>
+        submit(const CE::Runtime::PlatformDispatcher::Submission& platform, RecordedScene recording) const;
         [[nodiscard]] CE_UI_RMLUI_API std::future<Scene>
         submit(const CE::Runtime::PlatformDispatcher::Submission& platform, RecordedScene recording, Materials materials) const;
     };

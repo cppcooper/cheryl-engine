@@ -196,7 +196,7 @@ public:
         (void)bindings.bind_button({input.gamepad_id(), CE::Input::GamepadControl::A}, DemoActions::GamepadA);
         events_ = input.capture(CE::Input::Capture::Channel::Events);
 #ifdef CHERYL_DEMO_TGUI
-        ui_ = std::make_unique<DemoUi>(engine_, asset_root_);
+        ui_ = std::make_unique<DemoUi>(engine_);
 #endif
 #ifdef CHERYL_DEMO_RMLUI
         // RmlUi retains its separate file-based font service.

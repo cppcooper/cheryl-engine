@@ -22,6 +22,7 @@ class NoticeTests(unittest.TestCase):
         self.destination = self.root / "sdk/share/licenses/native"
         self.prefix = self.root / "provider"
         self.owners = {}
+        self.licenses = {}
         self.calls = []
 
     def file(self, name, contents="notice\n"):
@@ -38,6 +39,11 @@ class NoticeTests(unittest.TestCase):
 
     def query(self, command, **kwargs):
         self.calls.append(command)
+        if command[:2] == ["pacman", "-Qi"]:
+            self.assertEqual(kwargs["env"]["LC_ALL"], "C")
+            licenses = self.licenses.get(command[-1])
+            stdout = f"Name : {command[-1]}\nLicenses : {licenses}\nGroups : None\n" if licenses else ""
+            return subprocess.CompletedProcess(command, 0 if licenses else 1, stdout=stdout)
         package = self.owners.get((command[0], command[-1]))
         stdout = f"{package}: {command[-1]}\n" if command[0] == "dpkg-query" else f"{package}\n"
         return subprocess.CompletedProcess(command, 0 if package else 1, stdout=stdout if package else "")
@@ -63,6 +69,49 @@ class NoticeTests(unittest.TestCase):
         result = self.collect([library])
         self.assertEqual(result["libraries"][0]["notices"], ["sample/licenses/LICENSE", "sample/licenses/extra/NOTICE"])
         self.assertTrue(any(command[0] == "pacman" for command in self.calls))
+        self.assertFalse(any(command[:2] == ["pacman", "-Qi"] for command in self.calls))
+
+    def test_arch_common(self):
+        libraries = [self.library("libdw.so.1", package="libelf", manager="pacman"),
+                     self.library("libelf.so.1", package="libelf", manager="pacman"),
+                     self.library("libglib-2.0.so.0", package="glib2", manager="pacman")]
+        self.licenses = {"libelf": "GPL-2.0-or-later OR LGPL-3.0-or-later", "glib2": "LGPL-2.1-or-later"}
+        for name in ("GPL-2.0-or-later", "LGPL-3.0-or-later", "LGPL-2.1-or-later", "AGPL-3.0-only"):
+            self.file(f"system/usr/share/licenses/spdx/{name}.txt", name + " license\n")
+        result = self.collect(libraries)
+        records = {record["library"]: record for record in result["libraries"]}
+        for library in ("libdw.so.1", "libelf.so.1"):
+            self.assertEqual(records[library]["notices"],
+                             ["libelf/licenses/GPL-2.0-or-later.txt", "libelf/licenses/LGPL-3.0-or-later.txt"])
+            self.assertEqual(records[library]["package"], "libelf")
+            self.assertEqual(records[library]["origin"], "installed-package")
+        self.assertEqual(records["libglib-2.0.so.0"]["notices"], ["glib2/licenses/LGPL-2.1-or-later.txt"])
+        self.assertEqual((self.destination / "glib2/licenses/LGPL-2.1-or-later.txt").read_text(),
+                         "LGPL-2.1-or-later license\n")
+        self.assertEqual(len(list(self.destination.rglob("*.txt"))), 3)
+        self.assertNotIn(str(self.root), json.dumps(result))
+
+    def test_arch_expression(self):
+        library = self.library(manager="pacman")
+        self.licenses["sample"] = "(GPL-3.0-or-later WITH GCC-exception-3.1)\n                  AND LGPL-2.1-or-later"
+        names = ("GPL-3.0-or-later", "exceptions/GCC-exception-3.1", "LGPL-2.1-or-later")
+        for name in names:
+            self.file(f"system/usr/share/licenses/spdx/{name}.txt", name + " text\n")
+        result = self.collect([library])
+        self.assertEqual(result["libraries"][0]["notices"], sorted(f"sample/licenses/{name}.txt" for name in names))
+        self.assertEqual((self.destination / "sample/licenses/exceptions/GCC-exception-3.1.txt").read_text(),
+                         "exceptions/GCC-exception-3.1 text\n")
+
+    def test_arch_incomplete(self):
+        library = self.library(manager="pacman")
+        self.file("system/usr/share/licenses/spdx/GPL-3.0-or-later.txt")
+        for expression in ("GPL-3.0-or-later OR LicenseRef-Missing", "GPL-3.0-or-later WITH Missing-exception",
+                           "GPL-3.0-or-later OR ../GPL-3.0-or-later"):
+            with self.subTest(expression=expression):
+                self.licenses["sample"] = expression
+                with self.assertRaisesRegex(ValueError, "No native notices"):
+                    self.collect([library])
+                self.assertFalse(self.destination.exists())
 
     def test_relative(self):
         library = self.library()

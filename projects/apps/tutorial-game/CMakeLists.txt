@@ -45,7 +45,4 @@ target_sources(tutorial-game PRIVATE
     assets/graphics/shaders/materials.json
     assets/graphics/shaders/first-game.vert
     assets/graphics/shaders/first-game.frag
-    assets/graphics/shaders/tgui.vert
-    assets/graphics/shaders/tgui-solid.frag
-    assets/graphics/shaders/tgui-textured.frag
     assets/graphics/textures/actor.png)

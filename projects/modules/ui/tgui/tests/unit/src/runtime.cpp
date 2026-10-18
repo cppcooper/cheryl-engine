@@ -7,6 +7,7 @@
 #include <core/game-framework/game-runtime.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
+#include <testing/material-builder.h>
 
 #include <TGUI/Backend/Window/Backend.hpp>
 #include <TGUI/Widgets/Label.hpp>
@@ -136,12 +137,22 @@ namespace {
         void bind(std::uint32_t) const override {}
     };
 
+    Materials materials();
+
     class Resources final : public CE::Rendering::Resources::Provider {
         RuntimeState& state_;
+        CE::Testing::MaterialBuilder builder_;
 
     public:
         explicit Resources(RuntimeState& state)
-        : state_(state) {}
+        : state_(state) {
+            const auto supplied = materials();
+            builder_.values = {
+                {CE::Rendering::Materials::Builtin2D::SolidColor, supplied.solid},
+                {CE::Rendering::Materials::Builtin2D::TexturedColor, supplied.textured}
+            };
+        }
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return &builder_; }
         std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& data) override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             auto image = std::make_shared<MemoryImage>(data);
@@ -282,7 +293,6 @@ namespace {
         CE::Runtime::Context& engine_;
         RuntimeState& state_;
         SceneUploader uploader_;
-        Materials materials_;
         std::unique_ptr<Session> session_;
         tgui::Picture::Ptr picture_;
         Scene current_;
@@ -294,14 +304,13 @@ namespace {
 
         Game(CE::Runtime::Context& engine, RuntimeState& state)
         : engine_(engine), state_(state), uploader_(engine.resources()) {}
-        void init() override { materials_ = materials(); }
+        void init() override {}
         void deinit() override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             picture_.reset();
             session_.reset(); // The runtime has joined simulation before this hook.
             current_ = {};
             pending_ = {};
-            materials_ = {};
             state_.game_stopped = true;
         }
         void update(const CE::Game::TickContext& tick) override {
@@ -320,12 +329,12 @@ namespace {
                 auto recording = session_->record();
                 // Mutate the widget before the queued upload sees its old recording.
                 picture_->getRenderer()->setTexture(texture(true));
-                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording), materials_);
+                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording));
             } else {
                 EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
                 (void)adopt_scene(pending_, current_);
                 if (state_.red_seen.load() && !blue_submitted_) {
-                    pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record(), materials_);
+                    pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record());
                     blue_submitted_ = true;
                 }
                 if (state_.blue_seen.load())
@@ -352,6 +361,11 @@ namespace {
             CE::Runtime::GameRuntime runtime(engine, game, mode);
             game.runtime = &runtime;
             runtime.run();
+            const auto* builder = dynamic_cast<const CE::Testing::MaterialBuilder*>(engine.resources().shader_asset_builder());
+            ASSERT_NE(builder, nullptr);
+            EXPECT_EQ(builder->requests.size(), 2u);
+            for (const auto owner : builder->owners)
+                EXPECT_EQ(owner, state.platform);
             EXPECT_TRUE(state.red_seen.load());
             EXPECT_TRUE(state.blue_seen.load());
             EXPECT_TRUE(state.game_stopped);

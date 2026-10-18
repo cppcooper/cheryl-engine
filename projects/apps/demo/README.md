@@ -55,8 +55,10 @@ The builtin HUD selects fonts by name from the asset root, then system directori
 and always retains an embedded fallback; it can start without an installed system
 font. An asset font overrides a system font with the same name. RmlUi keeps its
 separate file-based service, using a selected file or the checked-in DejaVu Sans
-fallback. TGUI uses its own embedded default font. Shaders and the small RmlUi proof document/images are checked in under the
-asset root. The tile/sprite showcase attempts to load three optional package images
+fallback. TGUI uses its own embedded default font. Main text/image shaders and the
+small RmlUi proof document/images are checked in under the asset root. UI shaders
+are embedded in the OpenGL library and selected automatically. The tile/sprite
+showcase attempts to load three optional package images
 on every launch. Missing or broken package metadata/images skip the affected samples
 and report once to stderr; the HUD, input and selected UI views continue running.
 `--full-assets` also attempts the whole manifest/image tree and reports a failed
@@ -236,7 +238,7 @@ example exercises replacement rather than Chinese-language coverage.
 ## UI ownership and uploads
 
 `Game` passes the neutral `DemoUiStatus` model to its selected views and receives
-camera-reset actions. Each view keeps manual OpenGL material construction on platform during
+camera-reset actions. Each view prepares its uploader on platform during
 initialization, then creates its session/native objects lazily on the first
 simulation update. It supplies copied logical/framebuffer dimensions and simulation
 time. Complete CPU recordings go through the platform dispatcher/uploader, with
@@ -245,12 +247,13 @@ scene and appears in the HUD. Frame preparation appends TGUI, then RmlUi, after
 the world/HUD pass; it never traverses live widgets. Teardown follows simulation
 join and releases application-held widgets/elements/listeners before their toolkit
 globals. Both adapters remain independent; their app views share only the status
-model and generic shader assets, with distinct alpha pipelines. The
-[manual recipe example](../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
-explains definition/binding wiring. A future indexed UI migration targets TGUI
-first; RmlUi retains a separate manual example if it later migrates too. Each view delivers
-the complete input batch once through its session's control callback, retaining
-the entry keyboard epoch while visibility controls select pointer delivery per record.
+model. Uploads select [automatic materials](../../../docs/rendering/pipelines-and-materials.md#default-ui-materials)
+through the generic provider contract. OpenGL owns embedded shaders and reuses
+their programs across the distinct straight/premultiplied alpha pipelines.
+Custom materials can be loaded from JSON and passed as explicit handles.
+Each view delivers the complete input batch once through its session's control
+callback, retaining the entry keyboard epoch while visibility controls select
+pointer delivery per record.
 
 The demo uses the adapter's [typed layout](../../modules/ui/tgui/README.md#typed-layout).
 The panel anchors to the window's top-right with a 24-unit inset. Its width follows

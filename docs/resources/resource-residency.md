@@ -60,6 +60,10 @@ the table are relative to `CE`.
 | Pipeline/material | `Rendering::OpenGL::Pipeline` retains its program, contract defaults and backend missing-value bindings; `Rendering::Resources::Material` retains its pipeline, default parameter bindings and FX sampler overrides. Resolved values retain image/sampler handles; frames retain immutable material generations. | Native handles retire through the same program/image/sampler owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
 | Indexed shader catalogue | `Assets::Shaders::Manager` retains CPU recipes paired with executable programs/materials; material entries retain their selected program generation | Catalogue replacement/clear drops its owners; native resources retire through their underlying handles. |
 
+UI uploaders retain their lazily created default material pair. OpenGL's built-in
+program/material caches are weak; they do not add catalogue entries or prolong
+residency after uploader, scene and frame handles release those resources.
+
 `CE::Rendering::OpenGL::Handle` registration is move-only. Destruction from any thread marks its
 registration pending; it never calls GL. Duplicate pending retirement is ignored,
 and collected registration slots can be reused only after deletion. Renderer

@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace CE::Rendering::OpenGL {
@@ -23,6 +24,11 @@ namespace CE::Rendering::OpenGL {
                                    private CE::Assets::Shaders::Builder {
         Renderer& renderer_;
         std::map<CE::Rendering::Sampling::Options, std::weak_ptr<const CE::Rendering::Sampling::Sampler>> samplers_;
+        std::map<CE::Rendering::Materials::Builtin2D, std::weak_ptr<CE::Rendering::Resources::Program>> builtin_programs_;
+        std::map<
+            std::pair<CE::Rendering::Materials::Builtin2D, CE::Rendering::Pipelines::Blend>,
+            std::weak_ptr<const CE::Rendering::Resources::Material>>
+            builtin_materials_;
 
     public:
         explicit ResourceProvider(Renderer& renderer)
@@ -50,6 +56,8 @@ namespace CE::Rendering::OpenGL {
         build_material(CE::Rendering::Materials::Definition definition);
 
     private:
+        [[nodiscard]] CE_OPENGL_API std::shared_ptr<const CE::Rendering::Resources::Material>
+        build_builtin_material(CE::Rendering::Materials::Builtin2D kind, CE::Rendering::Pipelines::Blend blend) override;
         CE_OPENGL_API void validate_program(const CE::Assets::Shaders::ProgramRecipe& recipe) const override;
         CE_OPENGL_API void validate_material(
             const CE::Assets::Shaders::MaterialRecipe& recipe,

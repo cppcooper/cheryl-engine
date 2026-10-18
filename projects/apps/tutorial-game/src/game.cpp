@@ -50,7 +50,7 @@ namespace Tutorial {
         selection.asset_directories = {asset_root_};
         selection.automatic_system_fonts = false;
         hud_.emplace(engine_, CE::Text::FontCollection::load(selection), text_);
-        controls_.emplace(engine_, asset_root_);
+        controls_.emplace(engine_);
     }
 
     // [update]

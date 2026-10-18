@@ -22,7 +22,8 @@ retained scenes; Engine headers do not import either toolkit.
 Create the session before toolkit objects, on the thread that will own its UI
 updates. In concurrent runtime mode that is the simulation thread, so create it
 on the first update rather than during platform-owned game initialization.
-Construct platform-owned materials/upload helpers during `init()` instead.
+Construct the scene uploader from the resource provider during platform-owned
+`init()`. It obtains default rendering materials automatically during upload.
 
 For TGUI, a session is constructed with the input system and a distinct nonzero
 focus target. A native button and edit field are ordinary toolkit objects:
@@ -46,7 +47,7 @@ callback's target state. Include the toolkit's Button/EditBox headers and link
 the selected UI target. It creates an interactive interface; upload/publication
 is still required before it appears on screen. The maintained
 [TGUI demo](../../projects/apps/demo/src/tgui-demo.cpp) supplies the complete
-material, widget and scene wiring.
+widget and scene wiring.
 
 ## Route input and focus explicitly
 
@@ -77,9 +78,13 @@ a toolkit's independent main loop over Cheryl's runtime.
 
 Recording creates owned CPU scene data. Send upload work to the platform through
 its dispatcher, consume completed results without blocking simulation, and
-append the latest uploaded scene to a prepared frame. The TGUI and RmlUi owner
-guides specify their material and scene interfaces. Each frame retains its own
-published resources; later UI edits must not mutate an earlier frame's data.
+append the latest uploaded scene to a prepared frame. Both integrations support
+`uploader.submit(platform, session.record())`; their default materials are created
+lazily on the provider owner. OpenGL embeds the shaders, so the UI needs no
+application material builder or additional shader assets. The optional third
+argument accepts [custom material handles](../rendering/pipelines-and-materials.md#custom-ui-materials).
+Each frame retains its published resources; later UI edits must not mutate an
+earlier frame's data.
 
 After simulation joins, release application-held widget, document, font and
 texture references before session teardown. `close_after_quiescence()` permits

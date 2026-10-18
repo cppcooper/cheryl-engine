@@ -10,7 +10,9 @@ can retain resources without keeping a closed graphics backend usable.
 | --- | --- |
 | Draw a sprite with the maintained assets/materials | [Load and draw a sprite](../getting-started/how-to/draw-sprite.md), then the CPU submission contract below. |
 | Load authored shader/material recipes | [Shader/material manifests](../assets/asset-manifests.md#shadermaterial-definitions) through the asset loader. |
-| Construct application-specific UI materials | [Manual material construction](#manual-material-construction), on the graphics owner. |
+| Render a toolkit UI | [Default UI materials](#default-ui-materials), selected automatically by its uploader. |
+| Customize UI rendering | [Custom UI materials](#custom-ui-materials), using loaded material handles. |
+| Construct a material directly | [Manual material construction](#manual-material-construction), on the graphics owner. |
 | Change filtering for one image binding | [Nearest-sampling example](#choose-nearest-sampling-for-pixel-art), retaining a sampler separately from image pixels. |
 
 ## CPU submission
@@ -352,13 +354,85 @@ reflection/type/storage failures, invalid attributes/unlinked programs, and samp
 domain/unit failures before any bind. These sources use synthetic IDs and restore
 all replaced entry points; they do not replace real-context acceptance.
 
+## Default UI materials
+
+TGUI and RmlUi uploaders select compatible materials when called without a
+`Materials` argument:
+
+```cpp
+pending = uploader.submit(platform, session.record());
+```
+
+Construct the uploader on the provider owner during initialization. The first
+nonempty upload requests defaults on that owner, and subsequent uploads retain
+and reuse them. Empty recordings need no material capability. TGUI selects
+`StraightAlpha`; RmlUi selects `PremultipliedAlpha`. Applications need no material
+factory or additional shader files for these defaults with OpenGL.
+
+The generic contract is `CE::Assets::Shaders::Builder::build_builtin_material(kind, blend)`,
+accessed through `provider.shader_asset_builder()`. Engine defines
+`CE::Rendering::Materials::Builtin2D`; the graphics backend owns its realization:
+
+| Profile | Contract |
+| --- | --- |
+| `SolidColor` | Output vertex RGBA from `Position3UV2Color4` triangles. |
+| `TexturedColor` | Multiply sampled RGBA by vertex RGBA, with a required custom `Sampler2D` named `image`. Preserve the caller's alpha convention. |
+
+Both use the required `Mat4` projection semantic named `projection`, disabled
+depth/write/culling and the requested blend state. OpenGL embeds its shader
+sources and uniform mappings and constructs them through its existing validated
+recipe path. Its provider weakly caches programs by profile and materials by
+profile/blend. Different alpha variants share the live program without changing
+each other's state; uploader handles and published frames keep resources alive.
+The cache adds no global resource owner or catalogue entries.
+
+Construction requires the provider's live domain, platform owner and current
+graphics context, including a warm cache lookup. A provider without a shader
+builder, or a builder without built-in support, rejects the default request.
+UI modules depend on the generic Engine contract; they do not link OpenGL.
+
+### Custom UI materials
+
+To customize rendering, author and load
+[shader/material JSON recipes](../assets/asset-manifests.md#shadermaterial-definitions),
+then pass their material handles to the uploader. No application material factory
+is needed. For example, after loading `game:ui-solid` and `game:ui-textured`, select
+them during initialization:
+
+```cpp
+CE::UI::TGUI::Materials custom;
+auto& catalogue = CE::Assets::Shaders::Manager::get();
+custom.solid = catalogue.find_material("game:ui-solid");
+custom.textured = catalogue.find_material("game:ui-textured");
+if (!custom.solid || !custom.textured)
+    throw std::runtime_error("Custom UI materials are required");
+custom.image_parameter = "image";
+```
+
+Include `<cheryl/core/resources/asset-management/shader-asset-mgr.h>`,
+`<cheryl/ui/tgui/scene.h>` and `<stdexcept>`. Retain `custom` with the view and
+pass it when publishing a recording:
+
+```cpp
+pending = uploader.submit(platform, session.record(), custom);
+```
+
+RmlUi uses its own `CE::UI::RmlUi::Materials` with the same handle-selection
+pattern. Overrides must match the adapter's colored triangles, projection
+semantic, image parameter and alpha/depth/culling contract. Choose the toolkit's
+blend state in the JSON; RmlUi's sampled/vertex RGBA must stay premultiplied.
+`image_parameter` and `image_unit` select the custom sampler key and binding unit.
+Other custom values come from material defaults or `Materials::pass_parameters`.
+The third argument bypasses default construction; explicitly passing empty or
+incompatible handles fails for draws that use them. It does not trigger fallback.
+Published packets retain the chosen generations through later catalogue changes.
+
 ## Manual material construction
 
-TGUI and RmlUi deliberately keep manual recipes. The demo's
-[TGUI builder](../../projects/apps/demo/src/tgui-demo.cpp) and
-[RmlUi builder](../../projects/apps/demo/src/rmlui-demo.cpp) show adding typed
-definitions and wiring their bindings explicitly. On the OpenGL loading owner,
-with its context current, a textured TGUI material can be built as follows
+Direct typed construction remains available independently of UI defaults and
+indexed loading. Use it when code must construct a recipe explicitly; the normal
+custom UI path above can use JSON. On the OpenGL loading owner, with its context
+current, a textured TGUI material can be built as follows
 (`native` is a `CE::Rendering::OpenGL::ResourceProvider&`, `root` is the asset root):
 
 ```cpp
@@ -385,7 +459,6 @@ the same construction pattern with premultiplied-alpha blending. Required parame
 keys belong in the typed definition, and their uniform mappings belong in bindings;
 adding one requires both and a matching shader uniform.
 
-A future indexed UI migration targets TGUI first. If RmlUi also migrates, retain
-this manual example and an independently usable manual consumer. Other shader
-files are not indexed merely because they exist; their purposes and native behavior
-remain unverified.
+Keep this manual API, example and its consumer coverage usable independently of
+automatic UI defaults. Other shader files are not indexed merely because they
+exist; their purposes and native behavior remain unverified.

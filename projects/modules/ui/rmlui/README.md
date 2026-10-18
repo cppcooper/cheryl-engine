@@ -2,7 +2,7 @@
 
 Use `Cheryl::UI::RmlUi` to author native RML documents and RCSS styles, receive
 Engine input and publish retained scenes. The application owns its session and
-chooses the materials and pass order. RmlUi owns document layout and editing;
+chooses the pass order. RmlUi owns document layout and editing;
 Engine does not acquire a common widget API or a toolkit dependency.
 
 ## Selection and dependency
@@ -19,8 +19,8 @@ target_link_libraries(game PRIVATE Cheryl::UI::RmlUi)
 ## Create an editable document
 
 [Create an interactive GUI with RmlUi](../../../../docs/getting-started/how-to/create-gui.md)
-provides the full First Game extension: module selection, font/shader assets,
-RML and RCSS files, compatible premultiplied materials, native event listeners,
+provides the full First Game extension: module selection, font assets,
+RML and RCSS files, native event listeners,
 focus routing, retained scene publication and partial-safe cleanup.
 
 The [maintained RmlUi demo](../../../apps/demo/src/rmlui-demo.cpp) also
@@ -93,13 +93,13 @@ Session texture bounds are at least 1024, matching the retained font atlas's
 maximum dimension; the default bound is 4096. File/generated images must fit the
 configured bound. Standalone CPU `RenderTarget` checks can use smaller bounds.
 
-The application supplies `Materials` with colored triangle pipelines,
-`PremultipliedAlpha`, disabled depth/write/culling, a projection semantic and a
-custom image sampler for textured draws. Shaders multiply image RGBA by vertex
-RGBA without an additional premultiplication. `SceneUploader` belongs to one
-provider/domain and platform owner; `submit` transfers owned recording data through
-Cheryl's dispatcher. `adopt_scene` never waits and replaces the retained scene only
-after a complete successful upload. Failure or cancellation preserves its predecessor.
+Construct `SceneUploader(provider)` on the platform owner during initialization.
+`submit(platform_submission, recording)` transfers owned recording data through
+Cheryl's dispatcher and selects automatic materials. `upload(provider, recording)`
+uses the same defaults when already on that owner. The uploader belongs to one
+provider/domain and platform owner. `adopt_scene` never waits and replaces the
+retained scene only after a complete successful upload. Failure or cancellation
+preserves its predecessor.
 
 ## Input identities
 
@@ -108,15 +108,22 @@ keys remain `KI_UNKNOWN`. Committed characters come from `TextEvent`, not from
 this mapping. `modifiers` preserves Control, Shift, Alt, Super, Caps Lock and Num
 Lock flags in RmlUi's modifier representation.
 
-## Material construction
+## Default and custom materials
 
-The demo retains manual pipeline/material construction on the graphics owner;
-the adapter receives compatible premultiplied materials from its caller. The
-[manual example](../../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
-shows typed definitions and explicit uniform wiring. Indexed loading migrates
-only main text/image materials. A later UI migration targets TGUI first; migrating
-RmlUi also requires preserving a separately usable manual example. Core support
-and planned effects remain independently scoped.
+The first nonempty upload creates defaults through the provider's generic shader
+builder on the platform owner. OpenGL embeds the required shaders and reuses live
+matching materials; applications need no UI shader files or native builder.
+Unsupported providers reject the default request.
+
+The optional third argument to `submit` or `upload` supplies explicit `Materials`
+handles, including materials loaded from JSON. They require colored triangles,
+`PremultipliedAlpha`, disabled depth/write/culling, a projection semantic and a
+custom image sampler for textured draws. Shaders multiply image RGBA by vertex
+RGBA without an additional premultiplication. Other custom values can come from
+material defaults or `Materials::pass_parameters`. Passing `Materials{}` explicitly
+selects an empty override; it does not request defaults for nonempty draws.
+See [custom UI materials](../../../../docs/rendering/pipelines-and-materials.md#custom-ui-materials)
+for handle selection and the separate manual construction API.
 
 ## Dependency configuration
 

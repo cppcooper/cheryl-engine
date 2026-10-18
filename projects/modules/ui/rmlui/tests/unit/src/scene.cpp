@@ -2,10 +2,12 @@
 
 #include <ui/rmlui/scene.h>
 #include <internals/exceptions.h>
+#include <testing/material-builder.h>
 
 #include <array>
 #include <exception>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -36,6 +38,8 @@ namespace {
     };
 
     struct MemoryProvider final : CE::Rendering::Resources::Provider {
+        CE::Assets::Shaders::Builder* builder = nullptr;
+
         int image_uploads = 0;
         int geometry_uploads = 0;
         int fail_geometry = 0;
@@ -44,6 +48,7 @@ namespace {
         std::vector<std::weak_ptr<MemoryImage>> images;
         std::vector<std::weak_ptr<MemoryGeometry>> geometry;
 
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return builder; }
         std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& data) override {
             ++image_uploads;
             if (missing_image)
@@ -84,7 +89,7 @@ namespace {
         : CE::Rendering::Resources::Pipeline(std::move(definition)) {}
     };
 
-    Materials materials(const bool compatible = true) {
+    Materials materials(const bool compatible = true, const std::string& image_parameter = "pixels") {
         CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {"test-only-ui"};
         definition.vertex_layout =
@@ -99,11 +104,11 @@ namespace {
         result.solid = std::make_shared<CE::Rendering::Resources::Material>(
             CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(definition), {}}
         );
-        definition.parameters.push_back({"pixels", CE::Rendering::Parameters::Type::Sampler2D});
+        definition.parameters.push_back({image_parameter, CE::Rendering::Parameters::Type::Sampler2D});
         result.textured = std::make_shared<CE::Rendering::Resources::Material>(
             CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(std::move(definition)), {}}
         );
-        result.image_parameter = "pixels";
+        result.image_parameter = image_parameter;
         result.image_unit = 3;
         return result;
     }
@@ -330,4 +335,98 @@ TEST(ui_rmlui_scene, empty_scene) {
     EXPECT_TRUE(frame.passes().empty());
     EXPECT_EQ(provider.image_uploads, 0);
     EXPECT_EQ(provider.geometry_uploads, 0);
+}
+
+TEST(ui_rmlui_scene, defaults) {
+    const auto supplied = materials(true, "image");
+    CE::Testing::MaterialBuilder builder;
+    builder.values = {
+        {CE::Rendering::Materials::Builtin2D::SolidColor, supplied.solid},
+        {CE::Rendering::Materials::Builtin2D::TexturedColor, supplied.textured}
+    };
+    MemoryProvider provider;
+    provider.builder = &builder;
+    SceneUploader uploader(provider);
+    EXPECT_TRUE(builder.requests.empty());
+    const auto solid = uploader.upload(provider, recording());
+    const auto textured = uploader.upload(provider, recording(texture()));
+    ASSERT_EQ(builder.requests.size(), 2u);
+    EXPECT_EQ(
+        builder.requests[0],
+        (std::pair{CE::Rendering::Materials::Builtin2D::SolidColor, CE::Rendering::Pipelines::Blend::PremultipliedAlpha})
+    );
+    EXPECT_EQ(
+        builder.requests[1],
+        (std::pair{CE::Rendering::Materials::Builtin2D::TexturedColor, CE::Rendering::Pipelines::Blend::PremultipliedAlpha})
+    );
+    ASSERT_EQ(solid.draws().size(), 1u);
+    ASSERT_EQ(textured.draws().size(), 1u);
+    EXPECT_EQ(solid.draws()[0].material, supplied.solid);
+    EXPECT_EQ(textured.draws()[0].material, supplied.textured);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(textured.draws()[0].parameters.at("image")).unit, 0u);
+    const auto custom = materials();
+    const auto overridden = uploader.upload(provider, recording(texture()), custom);
+    EXPECT_EQ(overridden.draws()[0].material, custom.textured);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(overridden.draws()[0].parameters.at("pixels")).unit, 3u);
+    const auto restored = uploader.upload(provider, recording());
+    EXPECT_EQ(restored.draws()[0].material, supplied.solid);
+    EXPECT_EQ(builder.requests.size(), 2u);
+}
+
+TEST(ui_rmlui_scene, unsupported_defaults) {
+    MemoryProvider provider;
+    SceneUploader uploader(provider);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording())), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(uploader.upload(provider, RecordedScene{}).draws().empty());
+    EXPECT_NO_THROW(static_cast<void>(uploader.upload(provider, recording(), materials())));
+}
+
+TEST(ui_rmlui_scene, failed_defaults) {
+    for (const bool missing : {false, true}) {
+        SCOPED_TRACE(missing);
+        const auto supplied = materials(true, "image");
+        CE::Testing::MaterialBuilder builder;
+        builder.values = {
+            {CE::Rendering::Materials::Builtin2D::SolidColor, supplied.solid},
+            {CE::Rendering::Materials::Builtin2D::TexturedColor, supplied.textured}
+        };
+        builder.missing = missing;
+        builder.fail_request = missing ? 0 : 2;
+        MemoryProvider provider;
+        provider.builder = &builder;
+        SceneUploader uploader(provider);
+        if (missing)
+            EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording())), CE::Exceptions::failed_operation);
+        else
+            EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording())), std::runtime_error);
+        EXPECT_EQ(provider.geometry_uploads, 0);
+        builder.fail_request = 0;
+        builder.missing = false;
+        const auto scene = uploader.upload(provider, recording());
+        EXPECT_EQ(scene.draws().size(), 1u);
+        EXPECT_EQ(builder.requests.size(), 4u);
+    }
+}
+
+TEST(ui_rmlui_scene, default_owner) {
+    CE::Testing::MaterialBuilder builder;
+    MemoryProvider provider;
+    provider.builder = &builder;
+    MemoryProvider other;
+    other.builder = &builder;
+    SceneUploader uploader(provider);
+    const auto recorded = recording();
+    EXPECT_THROW(static_cast<void>(uploader.upload(other, recorded)), CE::Exceptions::failed_operation);
+    std::exception_ptr error;
+    std::thread foreign([&] {
+        try {
+            static_cast<void>(uploader.upload(provider, recorded));
+        } catch (...) {
+            error = std::current_exception();
+        }
+    });
+    foreign.join();
+    ASSERT_TRUE(error);
+    EXPECT_THROW(std::rethrow_exception(error), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(builder.requests.empty());
 }

@@ -1,6 +1,5 @@
 #include "tgui-demo.h"
 
-#include <backends/opengl/resource-provider.h>
 #include <core/engine/engine-context.h>
 #include <internals/exceptions.h>
 #include <ui/tgui/input.h>
@@ -22,30 +21,6 @@
 #include <utility>
 
 namespace {
-    CE::UI::TGUI::Materials materials(CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root) {
-        auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
-        if (!native)
-            throw CE::Exceptions::invalid_args(CE_HERE, "The demo UI requires an OpenGL material provider");
-        CE::Rendering::Pipelines::Definition definition;
-        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
-        definition.topology = CE::Rendering::Geometry::Topology::Triangles;
-        definition.state = {
-            CE::Rendering::Pipelines::Blend::StraightAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
-            CE::Rendering::Pipelines::Cull::None
-        };
-        definition.parameters = {
-            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
-        };
-        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
-        const CE::Rendering::OpenGL::PipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
-        CE::UI::TGUI::Materials result;
-        result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
-        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
-        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
-        const CE::Rendering::OpenGL::PipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
-        result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
-        return result;
-    }
 
     tgui::Texture image(const bool alternate) {
         constexpr unsigned int extent = 16;
@@ -78,7 +53,6 @@ struct DemoUi::TguiState {
     CE::Input::System& input;
     CE::Runtime::PlatformDispatcher::Submission platform;
     CE::UI::TGUI::SceneUploader uploader;
-    CE::UI::TGUI::Materials materials;
     // External widget handles are declared after session and destroyed first.
     std::unique_ptr<CE::UI::TGUI::Session> session;
     tgui::Panel::Ptr panel;
@@ -93,11 +67,8 @@ struct DemoUi::TguiState {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    TguiState(CE::Runtime::Context& engine, const std::filesystem::path& root)
-    : input(engine.input()),
-      platform(engine.platform_dispatcher().submission()),
-      uploader(engine.resources()),
-      materials(::materials(engine.resources(), root)) {}
+    explicit TguiState(CE::Runtime::Context& engine)
+    : input(engine.input()), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()) {}
 
     void create_widgets(const CE::Game::TickContext& tick) {
         using CE::UI::TGUI::Scalable;
@@ -244,8 +215,8 @@ struct DemoUi::TguiState {
     }
 };
 
-DemoUi::DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root)
-: tgui_state_(std::make_unique<TguiState>(engine, asset_root)) {}
+DemoUi::DemoUi(CE::Runtime::Context& engine)
+: tgui_state_(std::make_unique<TguiState>(engine)) {}
 
 DemoUi::~DemoUi() = default;
 
@@ -268,7 +239,7 @@ bool DemoUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& statu
             tgui.upload_error.clear();
         // No queue growth: keep one complete scene while its replacement waits.
         if (!tgui.pending.valid())
-            tgui.pending = tgui.uploader.submit(tgui.platform, tgui.session->record(), tgui.materials);
+            tgui.pending = tgui.uploader.submit(tgui.platform, tgui.session->record());
     } catch (const std::exception& error) {
         tgui.upload_error = error.what(); // The last complete scene remains usable.
     }

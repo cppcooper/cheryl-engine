@@ -18,5 +18,10 @@ namespace CE::Assets::Shaders {
             const ProgramRecipe& program,
             const std::shared_ptr<CE::Rendering::Resources::Program>& executable
         ) = 0;
+        // Uses backend-owned shader sources and bindings, without application
+        // files or catalogue publication. Construction obeys provider affinity;
+        // unsupported implementations reject rather than choosing another backend.
+        [[nodiscard]] virtual std::shared_ptr<const CE::Rendering::Resources::Material>
+        build_builtin_material(CE::Rendering::Materials::Builtin2D kind, CE::Rendering::Pipelines::Blend blend);
     };
 }

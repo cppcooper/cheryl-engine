@@ -96,6 +96,12 @@ and private helpers live together under `src/backends/opengl/`.
 The provider also implements optional `CE::Assets::Shaders::Builder` construction for
 [indexed recipes](../../../../docs/assets/asset-manifests.md#shadermaterial-definitions),
 linking prepared owned source bytes and interpreting only `bindings.opengl`.
+The same builder realizes Engine's `Builtin2D` solid/textured colored-triangle
+profiles from embedded GLSL and bindings. TGUI and RmlUi request their own alpha
+state through that generic contract, without linking this module. Programs are
+weakly reused by profile and materials by profile/blend within one provider;
+requests still require its live owner/current context on cache hits. See
+[default UI materials](../../../../docs/rendering/pipelines-and-materials.md#default-ui-materials).
 Manual pipeline/material builders remain available. Engine image defaults request
 maximum-supported anisotropy; explicit samplers preserve independent immutable
 sampling for shared textures. See the

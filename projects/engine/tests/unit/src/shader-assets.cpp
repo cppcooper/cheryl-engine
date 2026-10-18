@@ -204,6 +204,18 @@ namespace {
     };
 }
 
+TEST(shader_assets, unsupported_builtin) {
+    RecordingProvider provider;
+    EXPECT_THROW(
+        static_cast<void>(provider.shader_asset_builder()->build_builtin_material(
+            CE::Rendering::Materials::Builtin2D::SolidColor, CE::Rendering::Pipelines::Blend::StraightAlpha
+        )),
+        CE::Exceptions::failed_operation
+    );
+    EXPECT_EQ(provider.program_builds, 0u);
+    EXPECT_EQ(provider.material_builds, 0u);
+}
+
 TEST(shader_assets, selected_sources) {
     TemporaryShaders files;
     files.write("unlisted.json", "malformed JSON");

@@ -3,8 +3,8 @@
 `Cheryl::UI::TGUI` is an optional UI owner. It translates selected Cheryl input
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, Engine-backed fonts and input leases. The
-[selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials.
+[selected demo](../../../apps/demo/README.md) supplies a representative panel using
+automatic rendering defaults.
 
 The module uses a shared TGUI 1.13.0 runtime configured with the custom backend.
 Its Cheryl adapter supplies Engine font rasterization and image decoding, so TGUI
@@ -44,12 +44,12 @@ before selecting the module.
 ## Use it in a game
 
 [Create a HUD with TGUI](../../../../docs/getting-started/create-a/hud.md)
-provides the complete score-label/health-bar workflow, including materials,
-layout and game-state updates. The
+provides the complete score-label/health-bar workflow, including layout,
+game-state updates and scene publication. The
 [maintained TGUI demo](../../../apps/demo/src/tgui-demo.cpp) also supplies
 interactive buttons, editing and application focus controls. The lifecycle is:
 
-1. During platform-owned `init()`, construct application materials and a scene uploader.
+1. During platform-owned `init()`, construct a scene uploader from the resource provider.
 2. On the first simulation update, create a session and native widgets.
 3. Supply copied sizes, simulation time and the complete input batch each update.
 4. Record CPU scene data and keep one upload pending while retaining the previous scene.
@@ -227,15 +227,24 @@ clearing remains with the application; TGUI's `mainLoop`/clear functions are not
 part of this bridge.
 
 Construct `SceneUploader(provider)` on the platform owner during initialization,
-then copy its handle to simulation. The application supplies `Materials` with
-colored-triangle pipelines, straight alpha, disabled depth/write/culling and
-Cheryl's projection semantic. A textured material declares the named custom
-`Sampler2D`; its shader multiplies sampled RGBA by vertex RGBA. Other custom values
-come from material defaults or a copied pass layer accepted by each used pipeline.
-Backend-specific pipeline construction stays in the application/graphics module.
+then copy its handle to simulation. Use `submit(platform_submission, recording)`
+for automatic materials, or `upload(provider, recording)` when already on the
+platform owner. Defaults are created lazily for the first nonempty recording
+through the provider's generic shader builder. OpenGL embeds their shaders and
+reuses live matching materials; the application needs no UI shader files or
+native graphics builder. An unsupported provider rejects the default request.
 
-`submit(platform_submission, recording, materials)` transfers owned data through
-the existing dispatcher and returns a future. Uploads require the original provider
+The optional third argument supplies explicit `Materials` handles, including
+materials loaded from [JSON recipes](../../../../docs/rendering/pipelines-and-materials.md#custom-ui-materials).
+Those overrides require colored triangles, straight alpha, disabled
+depth/write/culling and Cheryl's projection semantic. A textured material
+declares the named custom `Sampler2D`; its shader multiplies sampled RGBA by
+vertex RGBA. Other custom values come from material defaults or a copied pass
+layer accepted by each used pipeline. Passing `Materials{}` explicitly selects
+an empty override; it does not request defaults for nonempty draws.
+
+`submit` transfers owned data through the existing dispatcher and returns a
+future. Uploads require the original provider
 domain and platform thread. The uploader reuses a live uploaded image for the same
 CPU generation; its weak cache does not retain abandoned CPU images or GPU handles.
 Changed pixels always produce another image. Geometry remains separately uploaded

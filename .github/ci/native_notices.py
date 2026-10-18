@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -85,7 +86,37 @@ def _references(source, system_root):
     return [path for path in references if path.is_file()]
 
 
-def _notices(library, package, native_prefix, system_root):
+def _arch_license_files(package, system_root, *, run):
+    try:
+        result = run(["pacman", "-Qi", "--", package], capture_output=True, text=True, check=False,
+                     env={**os.environ, "LC_ALL": "C"})
+    except FileNotFoundError:
+        return []
+    if result.returncode:
+        return []
+    match = re.search(r"^Licenses\s*:[ \t]*([^\n]*(?:\n[ \t]+[^\n]*)*)", result.stdout, re.MULTILINE)
+    if not match or not re.fullmatch(r"[A-Za-z0-9.+_()\s-]+", match[1]):
+        return []
+    files = []
+    exception = False
+    for name in re.findall(r"[A-Za-z0-9][A-Za-z0-9.+_-]*", match[1]):
+        if name in {"AND", "OR"}:
+            continue
+        if name == "WITH":
+            exception = True
+            continue
+        directory = system_root / "usr/share/licenses/spdx"
+        if exception:
+            directory /= "exceptions"
+        path = directory / (name + ".txt")
+        if not path.is_file():
+            return []
+        files.append(path)
+        exception = False
+    return files if not exception else []
+
+
+def _notices(library, package, native_prefix, system_root, *, run=subprocess.run):
     provider = _provider(library, package, native_prefix)
     if provider:
         return package or provider.name, provider, _override_files(provider), "native-prefix"
@@ -95,6 +126,10 @@ def _notices(library, package, native_prefix, system_root):
         licenses = system_root / "usr/share/licenses" / name
         files = ([doc] if doc.is_file() else [])
         files.extend(sorted(path for path in licenses.rglob("*") if path.is_file()) if licenses.is_dir() else [])
+        # Arch keeps standard license texts centrally instead of duplicating
+        # them for each package. Include every declared alternative and exception.
+        if not files:
+            files = _arch_license_files(package, system_root, run=run)
         if files:
             return package, None, files, "installed-package"
     owner = package or "unknown package"
@@ -122,7 +157,7 @@ def collect_notices(libraries, destination, *, native_prefix=None, system_root=P
             continue
         provider = _provider(library, None, native_prefix)
         package = provider.name if provider else package_owner(library, run=run) if query_packages else None
-        package, provider, seeds, origin = _notices(library, package, native_prefix, system_root)
+        package, provider, seeds, origin = _notices(library, package, native_prefix, system_root, run=run)
         directory = package.split(":")[0]
         pending = [(path, None) for path in seeds]
         seen, notice_names = set(), []
@@ -137,6 +172,8 @@ def collect_notices(libraries, destination, *, native_prefix=None, system_root=P
                 relative = Path(directory) / path.relative_to(provider)
             elif path.name == "copyright" and path.parent.parent.name == "doc":
                 relative = Path(directory) / "copyright"
+            elif path.is_relative_to(system_root / "usr/share/licenses/spdx"):
+                relative = Path(directory) / "licenses" / path.relative_to(system_root / "usr/share/licenses/spdx")
             else:
                 relative = Path(directory) / "licenses" / path.relative_to(system_root / "usr/share/licenses" / directory)
             data = path.read_bytes()

@@ -6,7 +6,6 @@
 
 #include <TGUI/Widgets/EditBox.hpp>
 
-#include <filesystem>
 #include <future>
 #include <memory>
 
@@ -15,7 +14,6 @@ namespace Tutorial {
         CE::Input::System& input_;
         CE::Runtime::PlatformDispatcher::Submission platform_;
         CE::UI::TGUI::SceneUploader uploader_;
-        CE::UI::TGUI::Materials materials_;
         CE::UI::TGUI::Scene scene_;
         std::future<CE::UI::TGUI::Scene> pending_;
         std::unique_ptr<CE::UI::TGUI::Session> session_;
@@ -24,7 +22,7 @@ namespace Tutorial {
         bool ignore_quit_until_release_ = false;
 
     public:
-        Controls(CE::Runtime::Context& engine, const std::filesystem::path& assets);
+        explicit Controls(CE::Runtime::Context& engine);
         [[nodiscard]] bool permits_quit() const { return !ignore_quit_until_release_; }
         bool update(const CE::Game::TickContext& tick);
         void write(CE::Rendering::FrameWriter& frame) const;

@@ -1,49 +1,15 @@
 #include "controls.h"
 
-#include <cheryl/backends/opengl/resource-provider.h>
 #include <cheryl/core/engine/engine-context.h>
 
 #include <TGUI/Widgets/Button.hpp>
 
-#include <stdexcept>
 #include <utility>
 #include <variant>
 
-namespace {
-    // [materials]
-    CE::UI::TGUI::Materials materials(CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root) {
-        auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
-        if (!native)
-            throw std::invalid_argument("Tutorial UI requires the selected OpenGL resource provider");
-        CE::Rendering::Pipelines::Definition definition;
-        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
-        definition.topology = CE::Rendering::Geometry::Topology::Triangles;
-        definition.state = {
-            CE::Rendering::Pipelines::Blend::StraightAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
-            CE::Rendering::Pipelines::Cull::None
-        };
-        definition.parameters = {
-            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
-        };
-        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
-        const CE::Rendering::OpenGL::PipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
-        CE::UI::TGUI::Materials result;
-        result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
-        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
-        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
-        const CE::Rendering::OpenGL::PipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
-        result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
-        return result;
-    }
-    // [/materials]
-}
-
 namespace Tutorial {
-    Controls::Controls(CE::Runtime::Context& engine, const std::filesystem::path& assets)
-    : input_(engine.input()),
-      platform_(engine.platform_dispatcher().submission()),
-      uploader_(engine.resources()),
-      materials_(::materials(engine.resources(), assets)) {}
+    Controls::Controls(CE::Runtime::Context& engine)
+    : input_(engine.input()), platform_(engine.platform_dispatcher().submission()), uploader_(engine.resources()) {}
 
     // [widgets]
     void Controls::create_widgets(const CE::Game::TickContext& tick) {
@@ -96,7 +62,7 @@ namespace Tutorial {
 
         static_cast<void>(CE::UI::TGUI::adopt_scene(pending_, scene_));
         if (!pending_.valid())
-            pending_ = uploader_.submit(platform_, session_->record(), materials_);
+            pending_ = uploader_.submit(platform_, session_->record());
         return applied;
     }
     // [/update]

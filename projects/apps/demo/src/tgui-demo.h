@@ -6,7 +6,6 @@
 #include <core/rendering/render-frame.h>
 
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <string_view>
 
@@ -20,8 +19,8 @@ class DemoUi final {
     std::unique_ptr<TguiState> tgui_state_;
 
 public:
-    // Build application materials on platform, without creating toolkit objects.
-    DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root);
+    // Prepare upload dependencies on platform, without creating toolkit objects.
+    explicit DemoUi(CE::Runtime::Context& engine);
     // Runtime calls deinit after joining simulation; all widget refs die first.
     ~DemoUi();
     DemoUi(const DemoUi&) = delete;

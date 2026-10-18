@@ -47,13 +47,20 @@ resolve the smallest demonstrated seam first.
 | Time, size and OS services | [Runtime ticks](../runtime/runtime-frame-boundary.md) and capability reporting | Use copied window/framebuffer dimensions and explicit simulation time; report unavailable clipboard, cursor and IME services. |
 | Queued upload and retained playback | [Thread dispatch](../runtime/thread-dispatch.md) and [native retirement](../resources/resource-residency.md#native-retirement-and-maintenance) | Send owned preparation through platform submission and retain complete published scenes through replacement and teardown. |
 
-The application supplies backend-appropriate pipelines and materials. Both demo
-UI integrations retain [manual construction](../rendering/pipelines-and-materials.md#manual-material-construction);
-indexed loading currently migrates only main text/image materials. An adapter
-validates their vertex layout, topology, alpha/depth/culling state, projection
-semantic and texture parameters. It does not create OpenGL pipelines or query a
-native context. Font rasterization may belong to the toolkit; its resulting atlas
-still follows the same CPU-copy and resource-publication boundary.
+Adapters request [built-in 2D materials](../rendering/pipelines-and-materials.md#default-ui-materials)
+through the provider-owned `CE::Assets::Shaders::Builder`, selecting the toolkit's
+alpha convention. Engine owns the generic profiles; each graphics backend owns
+its shader sources, bindings and construction. OpenGL embeds those sources, so
+applications need no UI shader files or native material builder. This uses the
+existing provider capability without a dependency from the adapter to OpenGL.
+
+Applications may pass compatible material handles loaded from JSON or constructed
+manually as explicit overrides. The adapter validates vertex layout, topology,
+alpha/depth/culling state, projection semantic and texture parameters. It does not
+create OpenGL pipelines or query a native context. Unsupported providers reject
+default construction while explicit compatible overrides remain usable. Font
+rasterization may belong to the toolkit; its resulting atlas still follows the
+same CPU-copy and resource-publication boundary.
 
 Expanded triangles suffice for the current adapters. Indexing, batching and draw
 sorting require their own consumer need; preserve authored world/HUD/overlay order.
@@ -76,8 +83,8 @@ The independent implementations differ where their toolkits differ:
 
 Existing Engine contracts cover both initial scopes. Their CPU recordings and
 uploaders remain toolkit-owned implementations; matching names do not justify a
-common widget or session API. The application chooses compatible materials and
-presentation order for each view.
+common widget or session API. The application chooses presentation order and may
+override default materials for each view.
 
 Unsupported renderer features need an explicit scope and failure/capability
 contract. Rectangular clipping does not establish arbitrary masks, filters,
@@ -86,15 +93,16 @@ when an implemented consumer demonstrates the requirement.
 
 ## Update, publication and shutdown
 
-1. On platform, prepare application materials and the resource upload endpoint.
+1. On platform, prepare the resource upload endpoint. Default materials are
+   created lazily on that owner during the first nonempty upload.
 2. On simulation/UI, create the toolkit session and native presentation objects.
    Keep all toolkit calls on that owner, including font and layout changes.
 3. Each update supplies copied logical/framebuffer sizes, simulation time and the
    immutable input stream. Logical UI coordinates and framebuffer pixels remain
    distinct; zero drawable dimensions produce an empty recording.
-4. Record owned CPU draw data, then submit it and retained materials for platform
-   upload. Toolkit vertices, pixel pointers, widgets and documents do not cross
-   that queue boundary.
+4. Record owned CPU draw data, then submit it for platform upload, optionally
+   supplying retained custom material handles. Borrowed toolkit vertices, pixel
+   pointers, widgets and documents do not cross that queue boundary.
 5. Adopt a replacement only when complete. A pending or failed replacement leaves
    the current scene usable. Bound outstanding replacements instead of queuing a
    new upload every tick.

@@ -227,7 +227,9 @@ The [loading guide](asset-loading.md) defines preparation, publication and expli
 replacement. [Pipelines and materials](../rendering/pipelines-and-materials.md)
 defines manual builders, sampling and retained generation behavior. Only the main
 text/image materials are indexed; the other shaders remain manual, unverified
-examples. TGUI and RmlUi still construct their materials explicitly.
+examples. TGUI and RmlUi select
+[provider-owned default materials](../rendering/pipelines-and-materials.md#default-ui-materials)
+automatically; custom UI materials can use the same indexed recipes described here.
 
 ## Recovered college definitions
 

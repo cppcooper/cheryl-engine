@@ -11,7 +11,7 @@ This tutorial replaces that score display with toolkit widgets. For document
 authoring, styling and interactive input through the other UI integration, see
 [Create an interactive GUI with RmlUi](../how-to/create-gui.md).
 
-## Select TGUI and prepare its materials
+## Select TGUI
 
 Enable `CHERYL_BUILD_UI_TGUI=ON` in First Game's source configuration, or use an
 SDK containing that module. Add the UI target to your game's existing links:
@@ -24,25 +24,9 @@ Use your executable's target name in place of `game`. Prepare the pinned toolkit
 through [Project setup](../project-setup.md); enabling an option does not download
 the dependency.
 
-Copy these application shaders into your asset root's `graphics/shaders/`:
-[tgui.vert](../../../assets/graphics/shaders/tgui.vert),
-[tgui-solid.frag](../../../assets/graphics/shaders/tgui-solid.frag) and
-[tgui-textured.frag](../../../assets/graphics/shaders/tgui-textured.frag).
-The existing indexed asset loader does not construct UI materials.
-
-In your game's `.cpp` file, include
-`<cheryl/backends/opengl/resource-provider.h>`, `<filesystem>`, `<stdexcept>` and
-`<utility>`, then place this helper before the game's method definitions:
-
-```{literalinclude} ../../../projects/apps/tutorial-game/src/controls.cpp
-:language: cpp
-:start-after: // [materials]
-:end-before: // [/materials]
-```
-
-This helper creates compatible colored-triangle materials on the graphics
-owner. TGUI uses straight alpha blending. Another graphics backend needs its
-own compatible builder; the TGUI session has no OpenGL dependency.
+The uploader obtains compatible rendering materials from the selected graphics
+provider automatically. With OpenGL, their shaders are embedded in the library;
+this HUD needs no additional shader files or material setup.
 
 ## Give the HUD its own class
 
@@ -65,14 +49,12 @@ their simulation owner.
 #include <format>
 #include <future>
 #include <memory>
-#include <utility>
 
 namespace Tutorial {
     class Hud final {
         CE::Input::System& input_;
         CE::Runtime::PlatformDispatcher::Submission platform_;
         CE::UI::TGUI::SceneUploader uploader_;
-        CE::UI::TGUI::Materials materials_;
         CE::UI::TGUI::Scene scene_;
         std::future<CE::UI::TGUI::Scene> pending_;
         std::unique_ptr<CE::UI::TGUI::Session> session_;
@@ -82,11 +64,10 @@ namespace Tutorial {
         unsigned int health_value_ = 100;
 
     public:
-        Hud(CE::Runtime::Context& engine, CE::UI::TGUI::Materials materials)
+        explicit Hud(CE::Runtime::Context& engine)
         : input_(engine.input()),
           platform_(engine.platform_dispatcher().submission()),
-          uploader_(engine.resources()),
-          materials_(std::move(materials)) {}
+          uploader_(engine.resources()) {}
 
         void set_score(int value) { score_value_ = value; }
         void set_health(unsigned int value) { health_value_ = std::min(value, 100u); }
@@ -107,7 +88,7 @@ namespace Tutorial {
 
             static_cast<void>(CE::UI::TGUI::adopt_scene(pending_, scene_));
             if (!pending_.valid())
-                pending_ = uploader_.submit(platform_, session_->record(), materials_);
+                pending_ = uploader_.submit(platform_, session_->record());
         }
 
         void append(CE::Rendering::FrameWriter& frame) const { scene_.write(frame); }
@@ -186,7 +167,7 @@ unsigned int health_ = 100;
 During platform-owned `init()`, after graphics initialization:
 
 ```cpp
-hud_.emplace(engine_, materials(engine_.resources(), asset_root_));
+hud_.emplace(engine_);
 ```
 
 After quit handling and gameplay updates, publish current game values to the
@@ -220,8 +201,10 @@ are recorded when that request finishes. Ready upload failures propagate through
 the runtime's normal failure handling.
 
 Record and mutate widgets only on simulation. The upload captures owned scene
-data and materials; published frames retain their selected graphics resources
-without accessing the live widgets.
+data and creates the default materials lazily on the platform owner. Published
+frames retain their selected graphics resources without accessing live widgets.
+To use custom shaders, pass loaded material handles through the optional
+[`Materials` override](../../rendering/pipelines-and-materials.md#custom-ui-materials).
 
 ## Release and observe
 
@@ -244,7 +227,7 @@ keys continue to work. Check both runtime modes for input and teardown behavior.
 
 The current [tutorial-game executable](../../../projects/apps/tutorial-game/README.md)
 uses a direct text score and a separate TGUI controls panel; it does not implement
-this widget HUD. Its controls source supplies the material helper above.
+this widget HUD. Its controls use the same automatic material defaults.
 The [TGUI demo](../../../projects/apps/demo/src/tgui-demo.cpp) also demonstrates
 interactive widgets. Read [TGUI contracts](../../modules/tgui.md) and
 [GUI ownership](../../gui/index.md) for the integration boundaries.

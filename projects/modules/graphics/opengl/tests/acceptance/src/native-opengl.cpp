@@ -7,6 +7,7 @@
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/pipeline.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <assets/submission/draw2d.h>
 #include <assets/types/2d/unicode-text.h>
 #include <assets/types/2d/ffont.h>
@@ -46,6 +47,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
+#include <exception>
 #include <fstream>
 #include <functional>
 #include <future>
@@ -470,6 +472,107 @@ void main() {
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
         }
     };
+}
+
+TEST(native_opengl, builtin_materials) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = engine->resources();
+    renderer.initialize();
+    auto* builder = resources.shader_asset_builder();
+    ASSERT_NE(builder, nullptr);
+    using Kind = CE::Rendering::Materials::Builtin2D;
+    using Blend = CE::Rendering::Pipelines::Blend;
+    std::vector<std::shared_ptr<const CE::Rendering::Resources::Material>> retained;
+    std::array<GLuint, 2> programs{};
+    renderer.set_viewport({64, 64});
+    renderer.set_clear_colour(0, 0, 0, 1);
+    for (const auto blend : {Blend::StraightAlpha, Blend::PremultipliedAlpha}) {
+        for (const auto kind : {Kind::SolidColor, Kind::TexturedColor}) {
+            const auto material = builder->build_builtin_material(kind, blend);
+            ASSERT_TRUE(material);
+            EXPECT_EQ(builder->build_builtin_material(kind, blend), material);
+            EXPECT_EQ(material->definition().pipeline->definition().state.blend, blend);
+            retained.push_back(material);
+            const bool textured = kind == Kind::TexturedColor;
+            const bool premultiplied = blend == Blend::PremultipliedAlpha;
+            const glm::vec4 color = textured ? (premultiplied ? glm::vec4{0.25f, 0.5f, 0.125f, 0.5f} : glm::vec4{0.5f, 1, 0.25f, 0.5f})
+                                             : glm::vec4{premultiplied ? 0.5f : 1.0f, 0, 0, 0.5f};
+            const std::array<CE::Rendering::Geometry::Vertex2DColor, 3> vertices{
+                {{0, 0, 0, 0, 0, color.r, color.g, color.b, color.a},
+                 {128, 0, 0, 0, 0, color.r, color.g, color.b, color.a},
+                 {0, 128, 0, 0, 0, color.r, color.g, color.b, color.a}}
+            };
+            const auto geometry = resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
+            CE::Rendering::DrawStyle2D style;
+            style.material = material;
+            if (textured) {
+                CE::Assets::Images::Decoded image{
+                    {1, 1}, premultiplied ? std::vector<unsigned char>{64, 32, 128, 128} : std::vector<unsigned char>{128, 64, 255, 128}
+                };
+                style.parameters.emplace("image", CE::Rendering::Parameters::ImageBinding{resources.create_image(image), 0});
+            }
+            CE::Rendering::Frame frame;
+            {
+                CE::Rendering::FrameWriter writer(frame);
+                auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 64.0f, 0.0f), glm::mat4{1});
+                pass.add(CE::Rendering::resolve_draw_packet(geometry, 0, 3, style, pass.semantics(), {}, pass.constraints()));
+            }
+            renderer.clear();
+            renderer.render(frame);
+            std::array<unsigned char, 4> pixel{};
+            glReadBuffer(GL_BACK);
+            glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+            EXPECT_NEAR(pixel[0], textured ? 16 : 128, 1);
+            EXPECT_NEAR(pixel[1], textured ? 16 : 0, 1);
+            EXPECT_NEAR(pixel[2], textured ? 16 : 0, 1);
+            EXPECT_EQ(pixel[3], 255);
+            GLint program = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+            if (blend == Blend::StraightAlpha)
+                programs[textured ? 1 : 0] = static_cast<GLuint>(program);
+            else
+                EXPECT_EQ(static_cast<GLuint>(program), programs[textured ? 1 : 0]);
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        }
+    }
+    EXPECT_NE(programs[0], programs[1]);
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(static_cast<Kind>(99), Blend::StraightAlpha)), CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(Kind::SolidColor, static_cast<Blend>(99))), CE::Exceptions::invalid_args
+    );
+    std::exception_ptr foreign_error;
+    std::thread foreign([&] {
+        try {
+            static_cast<void>(builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha));
+        } catch (...) {
+            foreign_error = std::current_exception();
+        }
+    });
+    foreign.join();
+    ASSERT_TRUE(foreign_error);
+    EXPECT_THROW(std::rethrow_exception(foreign_error), CE::Exceptions::failed_operation);
+    {
+        CE::Rendering::OpenGL::ResourceProvider other(renderer);
+        EXPECT_NE(other.shader_asset_builder()->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha), retained.front());
+    }
+    const std::weak_ptr<const CE::Rendering::Resources::Material> lifetime = retained.front();
+    retained.clear();
+    EXPECT_TRUE(lifetime.expired());
+    glUseProgram(0);
+    renderer.maintain_resources();
+    EXPECT_EQ(glIsProgram(programs[0]), GL_FALSE);
+    EXPECT_EQ(glIsProgram(programs[1]), GL_FALSE);
+    const auto warm = builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha);
+    ASSERT_TRUE(warm);
+    renderer.deinitialize();
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha)), CE::Exceptions::failed_operation
+    );
 }
 
 TEST(native_opengl, ui_clipping_color) {

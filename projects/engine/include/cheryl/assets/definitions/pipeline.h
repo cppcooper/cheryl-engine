@@ -50,6 +50,11 @@ namespace CE::Rendering::Pipelines {
 }
 
 namespace CE::Rendering::Materials {
+    // Colored triangles with projection semantic "projection" and disabled depth/
+    // culling. TexturedColor requires a custom Sampler2D named "image" and
+    // multiplies sampled RGBA by vertex RGBA without changing alpha convention.
+    enum class Builtin2D { SolidColor, TexturedColor };
+
     // Retains a pipeline generation; defaults own image handles/unit requests.
     // Material construction validates this partial custom layer, not a complete draw.
     struct Definition {

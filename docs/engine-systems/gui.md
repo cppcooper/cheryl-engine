@@ -29,7 +29,7 @@ their session, native authoring API and recording/publication types.
 | {cpp:struct}`TGUI::SessionOptions <CE::UI::TGUI::SessionOptions>`, {cpp:struct}`RmlUi::SessionOptions <CE::UI::RmlUi::SessionOptions>` | Set maximum texture size; TGUI also supplies explicit font scale. RmlUi uses native document styling. [Adapter ownership](../development/ui-adapters.md#module-and-application-ownership); [TGUI](../modules/tgui.md), [RmlUi](../modules/rmlui.md). |
 | {cpp:struct}`TGUI::Capabilities <CE::UI::TGUI::Capabilities>`, {cpp:struct}`RmlUi::Capabilities <CE::UI::RmlUi::Capabilities>` | Report keyboard focus, committed text, clipboard, cursor and IME availability; RmlUi also reports clipping/effects support. [Unavailable services](../development/ui-adapters.md#routing-and-unavailable-services). |
 | {cpp:enum}`CE::Input::Routing::KeyboardPolicy` and pointer selection | `Exclusive`/`PassThrough` controls keyboard gameplay. The application separately selects pointer recipients. [GUI routing](../gui/index.md#route-input-and-focus-explicitly). |
-| {cpp:struct}`TGUI::Materials <CE::UI::TGUI::Materials>`, {cpp:struct}`RmlUi::Materials <CE::UI::RmlUi::Materials>` | Supply compatible layout, alpha, texture and projection contracts. [Bridge responsibilities](../development/ui-adapters.md#bridge-responsibilities). |
+| {cpp:struct}`TGUI::Materials <CE::UI::TGUI::Materials>`, {cpp:struct}`RmlUi::Materials <CE::UI::RmlUi::Materials>` | Optionally override automatic defaults with compatible loaded material handles. [Custom UI materials](../rendering/pipelines-and-materials.md#custom-ui-materials). |
 | {cpp:struct}`TGUI::WidgetLayout <CE::UI::TGUI::WidgetLayout>` | Typed placement/resizing for native TGUI widgets; RmlUi uses native RML/RCSS layout. [Choose an interface](../gui/index.md#choose-an-interface); [TGUI layout declarations](../../projects/modules/ui/tgui/include/cheryl/ui/tgui/layout.h). |
 
 ## Usage
@@ -69,7 +69,8 @@ generations already retained by frames.
 
 ## Lifecycle
 
-Prepare materials/upload helpers during platform-owned initialization. Create
+Prepare the scene uploader during platform-owned initialization. It creates
+default materials lazily through the selected resource provider. Create
 the toolkit session on its UI/simulation owner, then native objects. Update input,
 time and layout there, record CPU state, dispatch upload and retain the latest
 complete scene. During shutdown, stop UI calls and release application-held

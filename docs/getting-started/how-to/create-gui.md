@@ -27,22 +27,15 @@ assets/
 │   ├── DejaVuSans.ttf
 │   └── DejaVuSansLicense.txt
 └── graphics/
-    ├── shaders/
-    │   ├── tgui.vert
-    │   ├── tgui-solid.frag
-    │   └── tgui-textured.frag
     └── ui/
         ├── tutorial.rml
         └── tutorial.rcss
 ```
 
 Copy the [font](../../../assets/fonts/DejaVuSans.ttf) and
-[its license](../../../assets/fonts/DejaVuSansLicense.txt), and the
-[vertex](../../../assets/graphics/shaders/tgui.vert),
-[solid](../../../assets/graphics/shaders/tgui-solid.frag) and
-[textured](../../../assets/graphics/shaders/tgui-textured.frag) shaders from the
-checkout. The shader filenames are shared with the TGUI integration; RmlUi uses
-its own materials and premultiplied blending.
+[its license](../../../assets/fonts/DejaVuSansLicense.txt) from the checkout.
+The uploader obtains compatible rendering materials automatically. OpenGL embeds
+their shaders in the library, so this interface needs no additional shader files.
 
 The existing First Game assets are still used. RmlUi loads its documents, styles
 and fonts explicitly, outside the graphics manifest loader.
@@ -105,12 +98,11 @@ This example uses rectangular drawing and clipping. Check the
 [RmlUi capability contract](../../modules/rmlui.md#recording-and-publication)
 before adding transforms, masks or effects.
 
-## Prepare compatible materials on platform
+## Include the UI interfaces
 
 Add these includes to the appropriate game header/source files:
 
 ```cpp
-#include <cheryl/backends/opengl/resource-provider.h>
 #include <cheryl/core/controls/button-codes.h>
 #include <cheryl/core/engine/engine-context.h>
 #include <cheryl/core/game-framework/tick-context.h>
@@ -131,42 +123,6 @@ Add these includes to the appropriate game header/source files:
 #include <variant>
 ```
 
-Place this helper in your game's `.cpp` file before its method definitions:
-
-```cpp
-CE::UI::RmlUi::Materials make_rmlui_materials(
-    CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root
-) {
-    auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
-    if (!native)
-        throw std::runtime_error("This UI material builder requires OpenGL");
-    CE::Rendering::Pipelines::Definition definition;
-    definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
-    definition.topology = CE::Rendering::Geometry::Topology::Triangles;
-    definition.state = {
-        CE::Rendering::Pipelines::Blend::PremultipliedAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
-        CE::Rendering::Pipelines::Cull::None
-    };
-    definition.parameters = {
-        {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
-    };
-    definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
-    const CE::Rendering::OpenGL::PipelineBindings solid{{{"projection", "projectionMatrix"}}};
-    CE::UI::RmlUi::Materials result;
-    result.solid = native->build_material({native->build_pipeline(definition, solid), {}});
-    definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
-    definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
-    const CE::Rendering::OpenGL::PipelineBindings textured{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
-    result.textured = native->build_material({native->build_pipeline(std::move(definition), textured), {}});
-    return result;
-}
-```
-
-RmlUi supplies premultiplied pixels and vertex colors. These shaders multiply
-image RGBA by vertex RGBA, and the material blends with `PremultipliedAlpha`.
-Using the TGUI helper's straight alpha state would violate this contract.
-Another renderer needs an equivalent builder on its graphics owner.
-
 ## Retain application state and an event listener
 
 Define this small listener before the game class in its header. It records an
@@ -182,12 +138,11 @@ public:
 };
 ```
 
-Add these game members, alongside First Game's `engine_` and `asset_root_`:
+Add these game members after First Game's `engine_` and `asset_root_` members:
 
 ```cpp
-CE::Runtime::PlatformDispatcher::Submission ui_platform_;
+CE::Runtime::PlatformDispatcher::Submission ui_platform_{engine_.platform_dispatcher().submission()};
 std::optional<CE::UI::RmlUi::SceneUploader> ui_uploader_;
-CE::UI::RmlUi::Materials ui_materials_;
 CE::UI::RmlUi::Scene ui_scene_;
 std::future<CE::UI::RmlUi::Scene> ui_pending_;
 std::unique_ptr<CE::UI::RmlUi::Session> ui_;
@@ -207,13 +162,12 @@ Keep native objects after the session in member declaration order.
 During platform-owned `init()`, after graphics initialization:
 
 ```cpp
-ui_platform_ = engine_.platform_dispatcher().submission();
 ui_uploader_.emplace(engine_.resources());
-ui_materials_ = make_rmlui_materials(engine_.resources(), asset_root_);
 ```
 
 The uploader belongs to the resource provider's platform owner. Upload work
-uses owned recordings; live document operations stay on the UI owner.
+uses owned recordings and creates defaults lazily on that platform owner; live
+document operations stay on the UI owner.
 
 ## Load the document on the first update
 
@@ -320,14 +274,18 @@ At the end of update:
 ```cpp
 static_cast<void>(CE::UI::RmlUi::adopt_scene(ui_pending_, ui_scene_));
 if (!ui_pending_.valid())
-    ui_pending_ = ui_uploader_->submit(ui_platform_, ui_->record(), ui_materials_);
+    ui_pending_ = ui_uploader_->submit(ui_platform_, ui_->record());
 ```
 
 Adoption does not wait on pending work. Keep the previous complete scene while
-one replacement waits; only owned recording/material data crosses to graphics.
+one replacement waits; only owned recording data crosses to graphics.
 Ready upload errors propagate here through runtime's normal failure cleanup.
 The maintained demo instead catches them to report the error and keep its last
 complete scene.
+
+The defaults preserve RmlUi's premultiplied alpha convention. To use custom
+shaders, load compatible materials from JSON and pass their handles through the
+optional [`Materials` override](../../rendering/pipelines-and-materials.md#custom-ui-materials).
 
 After your world/HUD passes in `prepare_render_frame()`:
 
@@ -356,7 +314,6 @@ if (ui_) {
 }
 ui_scene_ = CE::UI::RmlUi::Scene{};
 ui_uploader_.reset();
-ui_materials_ = CE::UI::RmlUi::Materials{};
 ```
 
 Keep the game's other partial-safe cleanup. The listener must detach and die
