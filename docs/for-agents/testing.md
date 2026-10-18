@@ -25,11 +25,16 @@ boundaries.
 
 ## Select relevant coverage
 
-Choose cases from the changed contract and its failure/ownership boundaries,
-then inspect existing owner and aggregate runners before selecting targets.
-Prefer an existing case or fixture when it exercises the required behavior.
-Trace the operation far enough to identify what it actually checks; an aggregate
-name alone does not establish which cases run.
+Choose cases from the assumptions the change could invalidate, including its
+failure and ownership boundaries. Search existing callers and shared fixtures,
+including default construction, omitted arguments and custom overrides, even when
+their files are unchanged. Prefer an existing case when it exercises the risk;
+add coverage when a material gap remains.
+
+Inspect owner and aggregate registration before selecting targets. Follow each
+case to the runner that actually includes it; a source directory or aggregate
+name alone does not establish which cases run. Tie each selected check to a
+specific risk, using the least costly evidence that can distinguish it.
 
 For build, tooling, SDK and CI work, use the producer-to-consumer analysis and
 [affected execution contexts](implementation.md#select-the-affected-execution-contexts)
@@ -41,16 +46,52 @@ that the generated command succeeds or its output can be consumed. Select
 artifact, relocation, runtime or device evidence when that is the claim being
 verified, subject to the authorization rules below.
 
+### Check that tests reach the intended behavior
+
+Complete valid setup outside a negative assertion, then assert around the specific
+operation expected to fail. An exception type alone can hide an earlier failure
+in argument evaluation or fixture setup. Check relevant state or failure identity
+when needed to establish that the intended boundary was reached.
+
+For asynchronous cases, prefer controlled coordination over assumptions about
+completion speed. Keep hang watchdogs separate from behavioral expectations and
+allow for scheduling, Debug diagnostics and instrumentation. A test deadline is
+not a performance requirement unless the contract defines one. Select the relevant
+configuration when such costs can invalidate a new wait assumption.
+
+For example, enabling automatic image insertion in `Context2D` also affects a
+CPU frame fixture with no texture and a custom pipeline with no image parameter.
+That fixture needs an explicit opt-out; select its existing `render_frame` cases
+alongside automatic/manual binding checks. Construct a valid packet before
+asserting that adding it violates pass constraints, so image validation cannot
+make the assertion pass before the frame operation runs.
+
 ## Verification and resource use
 
 - Run the smallest relevant permitted checks before handing off an implementation. Update affected tests with the behavior they cover, and add focused regression coverage when existing checks do not adequately exercise a material change.
 - Static analysis and focused script or tooling tests using mocks or disposable fixtures are permitted without separate authorization when they do not compile project or dependency code, run native project executables, install or download tools or dependencies, generate full documentation, or access devices or external services. CMake script and configuration probes that enable no compiled languages may qualify.
 - Inspect an unfamiliar check before executing it, including the subprocesses it launches. A Python filename or a description such as "tooling check" does not establish that a check is lightweight. Configuration that invokes compiler or linker probes requires build authorization.
 - Project or dependency builds, native test execution, full documentation generation, dependency or tool downloads or installation, and tests using devices or external services require explicit authorization. Existing authorization persists for relevant fixes and reruns within its scope. When additional authorization is necessary to establish the requested outcome, identify the missing verification and request it together rather than waiting for an unrelated blocker.
-- Batch related checks and reuse compatible builds and caches. After fixing a failed check, rerun the affected checks when permitted. Broaden or repeat successful checks only when changed inputs, failures, or unresolved concerns justify it.
+- Batch related checks using [existing builds and caches](#reuse-existing-builds). After fixing a failed check, rerun the affected checks when permitted. Broaden or repeat successful checks only when changed inputs, failures, or unresolved concerns justify it.
 - Share machine resources during authorized heavy work by bounding agent-run parallelism or reducing process priority as needed. Commands supplied for the user run at normal priority with available parallelism; do not add low-priority wrappers or single-job limits to user-run commands.
 - Test behavior and contracts rather than mirroring implementation details. Use mocks to check orchestration, and distinguish that coverage from executing the generated commands or consuming the resulting artifacts.
 - Report what actually ran and what remains unverified. Static checks, mocked tests, and successful configuration do not establish native build, link, relocation, or runtime success. Distinguish confirmed failures, inferred causes, and fixes awaiting executable acceptance.
+
+### Reuse existing builds
+
+Inspect existing configurations first. Prefer an established comprehensive build
+when it can exercise the selected behavior. Compatibility depends on the affected
+source, compiler, ABI and behavior under test; extra enabled modules are acceptable
+unless they mask the boundary being checked. Incrementally build the necessary
+targets and filter test cases within that build. Enabling many options does not
+require building every target or running every discovered case.
+
+Create another configuration only when existing builds cannot exercise a material
+risk. Explain the specific coverage gap first: for example, Debug versus Release,
+static versus shared linkage, a disabled dependency or standalone consumption.
+A focused selection alone does not justify another build directory. Preserve
+active runs, build settings, outputs and caches under the shared-work rules;
+build/configuration operations retain their authorization requirements above.
 
 ### Local Windows tooling
 
@@ -66,6 +107,10 @@ State what changed, which checks actually ran, and what remains unverified.
 Include the tested revision and relevant configuration/selection when they affect
 the conclusion. Separate an unexecuted case, a skipped case, a confirmed failure,
 an inferred cause and a fix awaiting executable acceptance.
+
+Relate that evidence to the material regression risks and identify any outstanding
+checks needed to resolve them. Passing a selected case establishes only the
+behavior and configuration it actually exercised.
 
 For deferred requirements and queue maintenance, follow
 [testing-request maintenance](testing-requests.md). Use the

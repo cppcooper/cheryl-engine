@@ -29,6 +29,13 @@ configuration rather than treating a public declaration as its complete behavior
 Use the [architecture guide](architecture.md#specify-the-boundary-precisely) when
 ownership, execution, failure or compatibility needs a new decision.
 
+Before nontrivial behavior changes, identify existing assumptions the change
+could invalidate. Keep a short map in the working plan: changed behavior →
+previous assumption → affected consumer or fixture → smallest useful evidence.
+Include unchanged callers affected by defaults, validation, ownership or scheduling.
+Use [coverage selection](testing.md#select-relevant-coverage) to resolve those risks
+with focused checks and [existing builds](testing.md#reuse-existing-builds).
+
 ## Implement the complete behavior
 
 Make the approved design concrete through its relevant lifecycle: construction,
@@ -127,6 +134,10 @@ Check that a local repair has not shifted ownership, changed unrelated guarantee
 or introduced a second policy authority. Use the smallest relevant permitted
 checks and maintain the directly affected coverage through the
 [testing guide](testing.md).
+
+Account for each material regression risk with observed evidence or an explicit
+verification gap. If new evidence invalidates an assumption, revise the selection
+before treating the unit as verified.
 
 Complete and commit coherent development units independently after appropriate
 permitted checks, following the [Git guide](git.md). State outstanding executable
