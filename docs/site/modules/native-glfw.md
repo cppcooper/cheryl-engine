@@ -146,6 +146,13 @@ committed implementation and need neither the generator nor upstream headers.
 `InputSystem::device()` returns a copied
 device snapshot and `backend_time_ms()` observes the backend clock. These APIs
 replace public Gainput inheritance, manager members and SDK object access.
+The inherited `gamepad_availability()` snapshot and
+`CE::Input::gamepad_availability_changed_event` observe the single convenience
+slot after complete poll publication. Runtime selects its Context bus; standalone
+hosts call `input.publish_events_to(events.publisher())` before polling. See
+[gamepad subscription and seed](../runtime/input-state-model.md#gamepad-availability)
+for identity, closure and delivery rules.
+
 Window/context-current, procedure lookup, swap interval and buffer swapping are
 exported native operations used by OpenGL, so OpenGL uses Native GLFW's integration
 with the shared GLFW runtime.

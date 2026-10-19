@@ -2,17 +2,37 @@
 
 Replace repeated application forwarding with documented engine/module event
 contracts, and publish useful committed state and outcomes from their actual
-owners. Begin with coherent window observation, renderer viewport integration and
-automatic UI sizing. Extend the established pattern to runtime lifecycle,
+owners. Window/view work combines coherent window observation, renderer viewport
+integration and automatic UI sizing. Extend that pattern to runtime lifecycle,
 shutdown negotiation, module service phases and independent service observations.
 
 **Planning baseline:** `ccf514018faa9a5c5f0750c21c0da321c0f82e96`, 2026-10-18.
-Implementation has not started. This plan owns execution order, development units
-and acceptance checkpoints. The [design assessment](../../../reports/event-coverage/design.md)
+This plan owns remaining execution order, development units and acceptance
+checkpoints. The [design assessment](../../../reports/event-coverage/design.md)
 owns the architectural rationale and proposed semantics; its
 [event catalogue](../../../reports/event-coverage/event-catalogue.csv) supplies the
 stable event IDs used below. Current bus contracts remain in the
 [event-delivery guide](../../site/runtime/event-delivery.md).
+
+## Current readiness
+
+At source baseline `7811e01`, isolated typed `notify()`, the Context-owned bus and
+weak `EventBus::Publisher` routes are implemented. V1 is complete; V2 still needs
+the selected-window and simulation-view sources. Current application-facing
+contracts live in the subject guides rather than this plan.
+
+| Unit | Implemented boundary | Remaining acceptance or scope |
+| --- | --- | --- |
+| D1 / DEV03 | [Gamepad availability](../../site/runtime/input-state-model.md#gamepad-availability): completed-poll staging, current seed, slot/source identity, reconnect epoch, closure and automatic Context routing. | Portable timing/failure/reentrancy and both runtime modes are verified. Native GLFW build/consumer checks await authorization; physical-controller behavior is not established by those portable cases. |
+| O1 / SYS10 | Internal runtime-pressure snapshots stage lag/backpressure for platform-owned publication. | Remains an internal API; the other runtime/lifecycle families are separate work. |
+| R2 / RES02 | [Upload settlement](../../site/assets/asset-loading.md#upload-settlement-notifications): one owned outcome per executed attempt, explicit effect knowledge, bounded publication and application loader routing. | Aggregate/failure/reentrancy and pre-execution cancellation checks pass. Application builds and native/provider execution remain unverified. R1 catalogue notifications are still separate work. |
+
+The shared Release `build/testing-engine` integration passed 62 selected engine
+cases, 80 acceptance cases and the linked public consumer. This includes a batch
+of 10,000 assets with one event, source lifetime, listener isolation, input commit
+timing and cancellation in both runtime modes. It does not establish native
+window/controller or GPU acceptance. Window/view integration, automatic UI sizing
+and the remaining event families below are still planned.
 
 ## Selected scope and compatibility
 
@@ -59,14 +79,15 @@ Host shutdown commands remain independent of input capacity.
 
 ## Dependency order
 
-The first integrated result is one active macro task with small sequential
-checkpoints. Later rows are roadmap units, activated individually. The recommended
-runtime order avoids overlapping edits to the central run/teardown loops; service
-lanes need only the common facilities they actually use.
+V groups window/view integration into one macro task with small sequential
+checkpoints. Other rows are independent service units or later runtime work,
+activated individually as their prerequisites allow. The recommended runtime
+order avoids overlapping edits to the central run/teardown loops; service lanes
+need only the common facilities they actually use.
 
 | Unit | Event IDs | Prerequisite and independently reviewable result |
 | --- | --- | --- |
-| V — window and simulation view | DEV01, SYS07; retain COMP01 | Establish thin notification/attachment facilities, then replace viewport and application UI sizing forwarding. Detailed active work below. |
+| V — window and simulation view | DEV01, SYS07; retain COMP01 | Reuse isolated notification, establish source/attachment facilities, then replace viewport and application UI sizing forwarding. Detailed work below. |
 | L1 — lifecycle observation | SYS01, SYS04, SYS05, SYS06 | V's owner/lifetime pattern and reliability gate; add milestones, concurrent Ready gate and terminal finalizer around existing stop/close behavior. |
 | L2 — negotiable shutdown | SYS02, SYS03, DEV02 | L1 lifecycle authority/finalizer; add one-policy controller, consumable native close and required main-window bridge. Reuse SYS04 for committed shutdown. |
 | M1 — platform maintenance | SYS09 | Required-binding reliability; schedule after L1 so teardown boundaries are stable. Replace recurring renderer forwarding while preserving final collection. |
@@ -96,7 +117,7 @@ only when producer, required renderer consumer, simulation projection and both U
 consumers work together. Do not remove a direct integration before its replacement
 and failure protection exist.
 
-- [ ] V1: Add isolated typed notification with independent error reporting; retain existing dispatch semantics.
+- [x] V1: Add isolated typed notification with independent error reporting; retain existing dispatch semantics.
 - [ ] V2: Establish Context notification lifetime, checked identities and the two view sources with ordered watch/seed.
 - [ ] V3: Establish required Seed/Change binding reliability and acknowledged attachment lifetime.
 - [ ] V4: Implement coherent window observation and migrate renderer viewport seed/changes to its required binding.
@@ -106,13 +127,13 @@ and failure protection exist.
 
 ### V1 and V2 notification and source ownership
 
-Extend the [bus owner](../../../projects/engine/include/cheryl/core/subsystems/event-bus.h)
+Reuse the [bus owner](../../../projects/engine/include/cheryl/core/subsystems/event-bus.h)
 and [implementation](../../../projects/engine/src/core/subsystems/event-bus.cpp)
-with a distinct isolated typed notification operation. Attempt subsequent valid
-listeners after an optional immediate listener throws. Keep existing queued error
-sinks, invalidation and old dispatch behavior. Notification errors must not change
-a committed mutation's result. Reporting must not recursively publish through the
-same bus.
+with their isolated typed `notify()` operation and weak publisher route. They
+attempt subsequent valid listeners after an optional immediate listener throws,
+preserving queued error sinks, invalidation and old dispatch behavior.
+Notification errors must not change a committed mutation's result. Reporting
+must not recursively publish through the same bus.
 
 Extend [Context](../../../projects/engine/include/cheryl/core/engine/engine-context.h)
 and its [implementation](../../../projects/engine/src/core/engine/engine-context.cpp)
@@ -408,10 +429,11 @@ New tests belong in the selected suite's own source directory.
 | Changed boundary | Existing coverage to extend | Concrete runner |
 | --- | --- | --- |
 | Bus/source/binding | New narrow tests under Engine tests/unit/src; existing immediate typed identity/nested/errors and event_bus/queued delivery cases. | New focused and immediate typed cases: tests-engine. Legacy bus and queued typed delivery: acceptance-engine. |
+| Gamepad observation | gamepad_availability and runtime_contract cases; preserve input capture/routing and native input lifetime/mapping cases. | Portable cases: tests-engine. Native library/consumer and deterministic input cases: tests-native-glfw and consumer-module-native-glfw, separately authorized. |
 | Runtime view/lifecycle/shutdown | Controlled window/input/renderer and execution_shutdown cases in core/runtime-adapter.cpp; portable display/runtime-contract sources. | Runtime adapters: acceptance-engine. Small display/runtime contracts: tests-engine. |
 | UI attachment/time | Each module's tests/unit/src/session.cpp and runtime.cpp; extend existing shared-input/toolkit lifetime in projects/tests/ui-coexist/src/coexist.cpp with shared view-source attachment. | tests-ui-tgui; tests-ui-rmlui; tests-ui-coexist where both enabled. |
 | Native resize/close | Existing native_opengl resize/nested/failure/runtime cases plus new consume/reset observations. | acceptance-opengl, executable tests-acceptance-opengl; not tests-native-glfw. |
-| Catalogue/upload | asset_cache/material_cache/asset_preparation/execution_shutdown fixtures, plus shader_assets. | Cache/runtime/resource legacy fixtures: acceptance-engine. Shader assets: tests-engine. |
+| Catalogue/upload | asset_upload_event aggregate/failure/reentrancy and cancelled_platform_request cases; asset_cache/material_cache/asset_preparation/execution_shutdown fixtures, plus shader_assets. | New upload cases and shader assets: tests-engine. Cancellation and cache/runtime/resource legacy fixtures: acceptance-engine. |
 | Font catalogue | font_service embedded/snapshot/invalid/concurrent and existing UI font_catalogue cases. | tests-engine; selected tests-ui-tgui/tests-ui-rmlui checks preserve static adoption. |
 | Audio terminal source | audio_mix and audio_stream in miniaudio tests/unit/src/audio.cpp; deterministic offline mixing. | tests-audio-miniaudio; no device needed for logical outcomes. |
 | Graphics token | Controlled opengl-lifetime.cpp startup/context/deletion recorder fixtures; native retained/shutdown cases. | tests-opengl first; acceptance-opengl separately for actual native behavior. |

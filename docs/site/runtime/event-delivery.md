@@ -94,6 +94,53 @@ sink must not recursively notify through the same bus. An empty or throwing sink
 uses independent emergency reporting. Queued listeners retain their own
 registration-owned error sinks and delivery lifetimes.
 
+### Weak publishing handles
+
+Give a service `bus.publisher()` when it needs to publish observations without
+retaining the bus or Context. `CE::Events::EventBus::Publisher` is a copyable
+route to that same registry. The payload and channel remain plain data; the
+producer stores the route and calls `notify()`.
+
+Using `local_bus`, `loaded` and `last_level` from the typed-channel example:
+
+```cpp
+const auto publisher = local_bus.publisher();
+const auto route_id = local_bus.register_listener(loaded, [&](const LevelLoaded& event) {
+    last_level = event.level;
+});
+publisher.notify(loaded, LevelLoaded{4});
+local_bus.unregister_and_wait(route_id);
+```
+
+`last_level` becomes `4` before `notify()` returns. A service may retain a copy
+of `publisher` after the bus dies. An empty or expired handle silently discards
+observations without copying the payload. A live handle uses the same failure
+isolation, optional error handler and listener-selected delivery as bus `notify()`.
+A closed bus can still have live state: `expired()` is a lifetime observation,
+not a test that publication will be accepted. Closed-state notification failures
+follow the usual error path.
+
+Obtain the handle while its bus is alive. It retains neither the Context nor
+objects borrowed by callbacks, so listener cleanup still requires the
+[removal barrier](#removal-and-shutdown). It does not select a thread; immediate
+callbacks run on the service's publishing owner.
+
+## Engine input and asset notifications
+
+These producers use plain typed payloads and weak publication routes:
+
+| Channel and payload | Producer setup and detailed contract |
+| --- | --- |
+| `CE::Input::gamepad_availability_changed_event` / `CE::Input::GamepadAvailabilityChanged` | Runtime routes its input adapter to `engine.events()` at session start. Standalone adapters select their route explicitly. [Subscribe and read the current gamepad seed](input-state-model.md#gamepad-availability). |
+| `CE::Assets::Loading::asset_upload_settled_event` / `CE::Assets::Loading::AssetUploadSettled` | Call `loader.publish_events_to(engine.events().publisher())` before loading. Each executed attempt produces one aggregate observation, including a batch of 10,000 assets. [Observe upload settlement](../assets/asset-loading.md#upload-settlement-notifications). |
+
+Register on the producer's chosen bus. Input state has a current snapshot for
+late subscribers; upload outcomes describe individual executed attempts and have
+no event replay. Both publish on their platform/loading owner outside producer
+locks. Select [simulation delivery](#optional-queued-delivery) when a callback
+changes simulation-owned gameplay or UI state. Notifications do not establish
+that simulation has consumed a poll or that a request future is ready.
+
 ## Removal and shutdown
 
 `unregister_listener(id)` invalidates invocation entry before it returns. A

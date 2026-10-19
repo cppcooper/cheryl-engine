@@ -31,6 +31,7 @@ During platform-owned game initialization, load the root with its provider:
 
 ```cpp
 CE::Assets::Loading::Loader loader(asset_root);
+loader.publish_events_to(engine.events().publisher());
 loader.load_assets(engine.resources());
 auto actor = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
 if (!actor)
@@ -50,6 +51,10 @@ tileset managers expose `load()` for definitions; the image manager exposes
 and `clear_assets()` retain the shared cache contract. The loader's
 `load_assets()` remains the complete-root preparation/upload convenience path.
 The [value guide](asset-values-and-playback.md#api-domains) maps the family names.
+
+The example routes optional [upload settlement notifications](#upload-settlement-notifications)
+to the Context bus. The First Game, tutorial and demo loaders use this setup.
+Standalone loaders select their own route, or leave notification routing empty.
 
 Each preparation scans again. Only exact `graphics-manifests.json` indexes select
 documents; schemas and unlisted JSON are not parsed. Index, texture and shader
@@ -81,6 +86,7 @@ futures, and never blocks on CPU preparation or GPU upload:
 auto workers = engine.make_worker_group();
 auto platform = engine.platform_dispatcher().submission();
 auto loader = std::make_shared<CE::Assets::Loading::Loader>("assets");
+loader->publish_events_to(engine.events().publisher());
 auto preparing = workers.submit([loader, platform] {
     auto prepared = loader->prepare();
     return platform.submit(
@@ -167,6 +173,113 @@ whole-batch rollback.
 Construct separate loaders for separate roots. Legacy `Loader::get(root)` remains
 available but rejects a different root after its first initialization; `get()` only
 retrieves an already-initialized singleton.
+
+## Upload settlement notifications
+
+Subscribe to `CE::Assets::Loading::asset_upload_settled_event` to observe an
+executed upload attempt. Its `CE::Assets::Loading::AssetUploadSettled` payload is
+one owned aggregate: uploading a batch of 10,000 assets has one attempt outcome.
+Use the existing loader header and `<optional>` for this platform-owned example,
+with an initialized `engine` Context and the `asset_root` above:
+
+```cpp
+CE::Assets::Loading::Loader loader(asset_root);
+loader.publish_events_to(engine.events().publisher());
+std::optional<CE::Assets::Loading::AssetUploadSettled> latest_upload;
+const auto upload_listener = engine.events().register_listener(
+    CE::Assets::Loading::asset_upload_settled_event,
+    [source = loader.source_id(), &latest_upload](const CE::Assets::Loading::AssetUploadSettled& event) {
+        if (event.source == source)
+            latest_upload = event;
+    }
+);
+try {
+    loader.load_assets(engine.resources());
+} catch (...) {
+    engine.events().unregister_and_wait(upload_listener);
+    throw;
+}
+engine.events().unregister_and_wait(upload_listener);
+```
+
+The source filter selects this loader when others share the bus. After successful
+loading, `latest_upload` records `UploadOutcome::Succeeded` and its counts.
+Both paths remove the listener before the borrowed variable goes away. Retain a
+registration for longer-lived monitoring and remove it before its target dies.
+Register before the attempts of interest; upload events have no replay.
+
+```mermaid
+sequenceDiagram
+    accTitle: One notification follows an executed upload attempt
+    accDescr: Loader performs one upload attempt and finishes its counts. It notifies the selected bus once, then returns or rethrows the original upload failure. Listeners run immediately by default.
+    participant Caller
+    participant Loader
+    participant Bus as Selected EventBus
+    participant Listener
+    Caller->>Loader: upload(prepared, provider)
+    Loader->>Loader: Validate and attempt registry / cache publication
+    Loader->>Loader: Finish counts and retain outcome
+    Loader->>Bus: notify(channel, outcome)
+    Bus->>Listener: callback(outcome)
+    Listener-->>Bus: return
+    Bus-->>Loader: Notification attempts return
+    Loader-->>Caller: Return or original upload exception
+```
+
+Notification follows completion bookkeeping, outside loader/cache locks, on the
+loading owner. Direct return, the original exception, or a platform request's
+future remains authoritative. The enclosing request future may still be unready
+inside this callback; inspect it later from update rather than waiting here.
+For simulation-owned game/UI state, choose
+[simulation delivery](../runtime/event-delivery.md#optional-queued-delivery) and
+keep that target alive through listener removal.
+
+### Attempt identity and failed effects
+
+`source` is the loader's unique nonzero identity. `attempt` is a distinct nonzero
+execution identity for every admitted `upload()` call; retrying a preserved
+`Prepared` batch creates another attempt while keeping `counts.batch` as its
+diagnostic correlation. `counts.provider` identifies the selected provider.
+`observed_at` is the loading owner's steady-clock completion observation.
+The payload owns its counts and original `std::exception_ptr failure`, which is
+empty on success and can be rethrown to inspect a failed attempt.
+
+`UploadOutcome` describes the available knowledge of effects:
+
+| Outcome | Meaning |
+| --- | --- |
+| `Succeeded` | Upload and retained metadata publication completed. |
+| `FailedBeforeEffects` | Failure preceded every operation that could publish registry/cache effects. |
+| `Partial` | Valid publication/replacement counters prove that at least one cache effect committed before failure. |
+| `EffectsUnknown` | A mutating operation was entered, but the observations cannot establish all committed effects. |
+
+`counts.images_completed` includes cache hits. `counts.publications` and
+`counts.replacements` cover typed caches only, and their deltas require
+`counts.publication_count_available`. File registration can change before an
+image fails while these counts remain zero; that failure is `EffectsUnknown`.
+None of the failed outcomes promises rollback or an unchanged file registry.
+The [publication and retry contract](#publication-and-retry) still applies.
+
+Preparation, validation in `load_assets()` before it reaches `upload()`, and
+requests cancelled before execution emit no settlement event. Rejected attempts
+that cannot start also emit none. Observer failures use isolated `notify()`
+reporting and do not turn successful uploads into failures or replace an original
+upload exception.
+
+### Routing and reentrant publication
+
+Configure `publish_events_to()` on the loading owner while the loader is idle
+and its pending outcomes are drained. Its
+[weak publisher](../runtime/event-delivery.md#weak-publishing-handles) allows the
+loader to outlive the bus; an empty or expired route discards observations.
+
+`upload()` automatically attempts `publish_pending_events()` after settling.
+Each drain selects the outcomes pending at entry. If a listener performs another
+upload on this owner, that new outcome waits for the next upload or explicit
+drain, preserving fanout order without recursive notification. At most 64
+outcomes may be pending. Staging/overflow failures are independently reported
+and preserve the direct upload result. Drain any wanted pending observations
+before destroying the loader; destruction never invokes listeners.
 
 ## Resources and application bootstrap
 

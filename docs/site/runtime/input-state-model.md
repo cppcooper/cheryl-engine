@@ -10,6 +10,7 @@ behind that sequence; custom adapters use the same action and publication model.
 | Create independent controllers during play | [Action contexts](#action-contexts), [acceptance/poll installation](#request-and-polling-boundaries) and [view lifetime](#views-and-shutdown). |
 | Interpret taps, axes or a slow update | [Tick input](#tick-input) and [polling backlog](#polling-backlog-and-scheduling). |
 | Receive physical events and committed text | [Ordered records and capture](#ordered-events-and-os-text). |
+| Observe gamepad presence and reconnection | [Gamepad availability](#gamepad-availability). |
 | Focus an editor without rerouting old records | [Focus and routing](#focus-routing-and-editing-controls). |
 | Implement or host a backend | [Ownership and validation](#ownership-and-validation) and [adapter publication](#adapter-publication). |
 
@@ -72,10 +73,11 @@ then retain the returned lease for that consumer's lifetime. The
 shows independent consumers; [Create a PlayerController](../getting-started/create-a/controller.md)
 puts the lease and local IDs inside an application class.
 
-Device discovery and availability remain backend responsibilities. The current
-Native GLFW adapter exposes one gamepad; action contexts support independent
-consumers of supplied device IDs and separate controls on a shared keyboard.
-They do not add multiple-gamepad discovery to that adapter.
+Device discovery remains a backend responsibility. The current Native GLFW
+adapter exposes one convenience gamepad slot and
+[availability observations](#gamepad-availability) for it. Action contexts support
+independent consumers of supplied device IDs and separate controls on a shared
+keyboard; they do not add multiple-gamepad discovery to that adapter.
 
 ### Request and polling boundaries
 
@@ -228,6 +230,113 @@ flowchart LR
 ```
 
 Each adapter processes its physical changes and publishes one complete poll. The GLFW adapter feeds State from key/mouse callbacks in their shared observation order, then updates Gainput and publishes the State/record pair through `publish_input()`. It mirrors key/mouse state into private Gainput devices, but ignores their notifications to prevent replay and cross-device reordering. Gamepad notifications are normalized to Engine control IDs before reaching Cheryl bindings; the adapter also reconciles the gamepad's current state for reattachment/disconnection when no delta was delivered. Readers receive a `std::shared_ptr<const CE::Input::Actions::Snapshot>` through `CE::Input::System::action_snapshot()`. The published pointer is replaced atomically; an earlier handle keeps its complete sample while later polls proceed.
+
+## Gamepad availability
+
+Use `CE::Input::gamepad_availability_changed_event` to observe the convenience
+gamepad slot. Its `CE::Input::GamepadAvailabilityChanged` payload owns `current`
+and `previous` snapshots. Native GLFW establishes initial presence on the first
+complete poll and publishes subsequent availability changes; unchanged polls
+stay silent. Runtime supplies its Context bus to the input adapter at session
+start. Include `<cheryl/core/controls/input-interface.h>`; the payload also has its
+own `<cheryl/core/controls/gamepad-availability.h>` header.
+
+```mermaid
+sequenceDiagram
+    accTitle: Gamepad availability follows a complete poll
+    accDescr: The platform polls input. Input reconciles controls and publishes the complete semantic state and records before committing availability and notifying listeners.
+    participant Platform
+    participant Input
+    participant Bus as Context EventBus
+    participant Listener
+    Platform->>Input: poll()
+    Input->>Input: Reconcile controls and publish State / records
+    Input->>Input: Commit sampled availability
+    opt First sample or changed availability
+        Input->>Bus: notify(channel, change)
+        Bus->>Listener: callback(change)
+        Listener-->>Bus: return
+        Bus-->>Input: return
+    end
+    Input-->>Platform: Complete poll
+```
+
+Callbacks run on the platform owner by default, after the complete poll is
+available. A failed poll emits no premature availability change. `current.poll`
+and `current.observed_at` identify the completed semantic poll associated with
+that change. Publication does not mean simulation has consumed that poll.
+
+### Subscribe and read the current seed
+
+For a platform-owned observation in a game, retain these members:
+
+```cpp
+CE::Input::GamepadAvailability pad_;
+CE::Events::EventBus::Registration pad_listener_;
+```
+
+During platform-owned `init()`, with the game's borrowed `engine_` Context,
+register first, then copy the current state. These owner operations cannot
+interleave with a poll:
+
+```cpp
+pad_listener_ = engine_.events().register_listener(
+    CE::Input::gamepad_availability_changed_event,
+    [this](const CE::Input::GamepadAvailabilityChanged& change) {
+        if (change.current.slot == pad_.slot)
+            pad_ = change.current;
+    }
+);
+pad_ = engine_.input().gamepad_availability();
+```
+
+The slot filter selects this adapter when several producers share a bus. The
+seed may be unknown before the first complete poll. Remove the listener during
+`deinit()`, before its borrowed target is destroyed:
+
+```cpp
+engine_.events().unregister_and_wait(pad_listener_);
+```
+
+Keep this example's `pad_` on the platform owner. To update simulation-owned game
+or UI state, select [simulation delivery](event-delivery.md#optional-queued-delivery)
+and deliver the initial seed to that owner too. Registration and seed capture
+must still run together on the platform owner; post that setup there for a late
+subscriber. Reading `gamepad_availability()` alone is synchronized and returns
+an independent copy, but does not attach a listener or make a cross-thread
+register/read sequence coherent. Queued consumers compare revisions within the
+selected source, reject older/equal revisions, and discard an old attachment's
+queued observations after adopting a newer attachment's seed.
+
+### Identity, closure and standalone adapters
+
+| Snapshot fields | Meaning |
+| --- | --- |
+| `source`, `slot`, `device` | `source` identifies one attachment; `slot` stays with the adapter across reattachments. Both are nonzero once opened. `device` is the adapter-local convenience ID once `known`, not physical hardware identity. |
+| `revision`, `epoch` | Revision zero is the unknown initial baseline for a source. Committed changes and explicit closure advance it. Presence after unknown/unavailable state, or a changed available device ID, advances the reconnect epoch; the epoch survives reattachment. |
+| `known`, `available` | Distinguish an unobserved slot from a sampled absent/present slot. |
+| `closed` | The observation source ended. Closure preserves sampled presence; it does not report a physical disconnect. |
+| `poll`, `observed_at` | Correlate the last availability change to a complete poll. Explicit closure retains that poll ID and records its own close time. |
+
+Explicit deinitialization closes the Native GLFW observation source. Destruction
+does not publish callbacks. Reinitialization opens a new `source` with unknown
+presence while retaining its `slot` and epoch. Reentrant changes coalesce until
+the next poll publication; `previous` is the last snapshot selected for
+publication, so revisions may skip. A closure requested during fanout is
+published after that fanout completes.
+
+For a standalone adapter and an application-owned `events` bus, call
+`input.publish_events_to(events.publisher())` on the platform owner before
+polling. Custom adapters opt in by opening the source before native effects,
+staging availability before `publish_input()`, and closing it during explicit
+detachment. The protected `open_gamepad_availability()`,
+`stage_gamepad_availability()` and `close_gamepad_availability()` hooks provide
+those steps; `discard_captured_input()` also closes it. Adapters that do not
+open a source leave the default zero-source, closed snapshot.
+
+This observes one sampled slot. [Native controller limits](../modules/native-glfw.md#controller-backend-limits)
+still determine what the backend can report. Input backlog can delay sampling;
+the event does not enumerate devices or recover physical transitions between polls.
 
 ## Tick input
 

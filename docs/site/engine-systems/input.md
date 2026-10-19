@@ -20,6 +20,7 @@ Types below are in `CE::Input` unless another namespace is shown.
 | {cpp:struct}`Actions::Id <CE::Input::Actions::Id>`, {cpp:type}`Actions::BindingId <CE::Input::Actions::BindingId>`, {cpp:struct}`Control <CE::Input::Control>`<br>Distinguish game meaning, one registration and a physical device/control pair. [Control identities and tokens](../runtime/input-state-model.md#control-identities-and-binding-tokens). |
 | {cpp:class}`Tick <CE::Input::Tick>`, {cpp:class}`Actions::View <CE::Input::Actions::View>`<br>Read direct or context-local button/axis state, observed duration and ordered records during update. [Tick input](../runtime/input-state-model.md#tick-input); [context views](../runtime/input-state-model.md#views-and-shutdown). |
 | {cpp:struct}`PollSnapshot <CE::Input::PollSnapshot>`, {cpp:class}`Actions::Snapshot <CE::Input::Actions::Snapshot>`<br>Retain complete immutable poll results across later polling. [Poll snapshots](../runtime/input-state-model.md#poll-snapshots); [ordered records](../runtime/input-state-model.md#ordered-events-and-os-text). |
+| {cpp:struct}`GamepadAvailability <CE::Input::GamepadAvailability>`, {cpp:struct}`GamepadAvailabilityChanged <CE::Input::GamepadAvailabilityChanged>`<br>Read the current convenience-slot state and subscribe to changes after complete polls. [Gamepad availability and seed](../runtime/input-state-model.md#gamepad-availability). |
 | {cpp:class}`Capture::Lease <CE::Input::Capture::Lease>`, {cpp:class}`Routing::Lease <CE::Input::Routing::Lease>`<br>Keep a record channel requested or a particular keyboard-focus request alive. [Capture](../runtime/input-state-model.md#ordered-events-and-os-text); [routing](../runtime/input-state-model.md#focus-routing-and-editing-controls). |
 
 ### Controls for bindings
@@ -65,11 +66,12 @@ flowchart LR
 ### Uses
 
 A concrete adapter borrows a live window and translates device observations into
-complete input polls.
+complete input polls. Optional gamepad notifications use a weak bus publisher;
+Runtime supplies its Context route.
 
 | Types | Systems |
 | --- | --- |
-| {cpp:class}`CE::Platform::Window`<br>{cpp:class}`CE::Input::Actions::Bindings`<br>{cpp:class}`CE::Input::Capture::Collector`<br>{cpp:class}`CE::Input::Routing::Manager` | [Display](display.md) |
+| {cpp:class}`CE::Platform::Window`<br>{cpp:class}`CE::Input::Actions::Bindings`<br>{cpp:class}`CE::Input::Capture::Collector`<br>{cpp:class}`CE::Input::Routing::Manager`<br>{cpp:class}`CE::Events::EventBus::Publisher` | [Display](display.md)<br>[Events](events.md) |
 
 ### Used by
 

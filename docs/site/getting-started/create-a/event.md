@@ -23,8 +23,9 @@ use the default bus through `CE::Events::EventSystem::get()`.
 ```mermaid
 flowchart LR
     accTitle: Choosing an event bus
-    accDescr: Context access returns its bus, a scene can own a separate bus, and EventSystem forwards calls to its default bus. These are independent registries.
+    accDescr: Context access returns its bus, a scene can own a separate bus, and EventSystem forwards calls to its default bus. A service can keep a weak Publisher route to the Context bus. These buses have independent registries.
     context["engine.events()"] -->|returns| context_bus["Context EventBus"]
+    service["Service with a Publisher handle"] -->|"notify through weak route"| context_bus
     scene["Scene owner"] -->|owns| scene_bus["Separate EventBus"]
     system["EventSystem::get()"] -->|forwards calls| default_bus["Default EventBus"]
 ```
@@ -151,6 +152,26 @@ callback to simulation. For cross-thread listeners, choose an explicit
 [queued delivery adapter](../../runtime/event-delivery.md#optional-queued-delivery).
 See [event delivery](../../runtime/event-delivery.md) for channel identity,
 failure handling and listener lifetime details.
+
+## Give a service a publishing route
+
+A service can keep a copy of `EventBus::Publisher` instead of borrowing the
+Context. In `demonstrate_damage_event()` above, the publication line can use:
+
+```cpp
+const auto publisher = engine.events().publisher();
+publisher.notify(GameEvents::damage_taken, damage);
+```
+
+The HUD registers on the same Context bus and receives the same payload.
+The service chooses its route during setup; `DamageTaken` still holds only the
+damage facts. A publisher does not keep the bus alive, and an empty or expired
+route discards observations. See [weak publishing handles](../../runtime/event-delivery.md#weak-publishing-handles)
+for closure and delivery rules.
+
+The engine already defines [gamepad availability](../../runtime/input-state-model.md#gamepad-availability)
+and [upload settlement](../../assets/asset-loading.md#upload-settlement-notifications)
+channels. Subscribe to those shared definitions when observing input or loading.
 
 ## Call a consumer directly
 

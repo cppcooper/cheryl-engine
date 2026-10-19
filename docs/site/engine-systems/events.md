@@ -17,6 +17,7 @@ Types below are in `CE::Events` unless another namespace is shown.
 | {cpp:class}`EventBus <CE::Events::EventBus>`<br>Own listener registrations, dispatch, remove/wait and close acceptance. [Registrations](../runtime/event-delivery.md#registrations); [removal and shutdown](../runtime/event-delivery.md#removal-and-shutdown). |
 | {cpp:class}`EventChannel <CE::Events::EventChannel>`<br>Give a copy-constructible payload exact name/type identity. [Typed channels](../runtime/event-delivery.md#typed-channels). |
 | {cpp:class}`EventBus::Registration <CE::Events::EventBus::Registration>`<br>Retain an explicit removal identity; dropping it does not unregister. [Registration lifetime](../runtime/event-delivery.md#registrations). |
+| {cpp:class}`EventBus::Publisher <CE::Events::EventBus::Publisher>`<br>Retain a weak notification route without retaining the bus or Context. [Publishing handles](../runtime/event-delivery.md#weak-publishing-handles). |
 | {cpp:type}`EventBus::Delivery <CE::Events::EventBus::Delivery>`, {cpp:type}`EventBus::ErrorHandler <CE::Events::EventBus::ErrorHandler>`<br>Select queued execution and an independent failure sink. [Queued delivery](../runtime/event-delivery.md#optional-queued-delivery); [adapter catalogue](../architecture/interfaces-adapters.md#integrations-alongside-the-runtime). |
 | {cpp:struct}`EventSystem <CE::Events::EventSystem>`<br>Access the default bus when an isolated application-owned bus is unnecessary. [Bus ownership](../runtime/event-delivery.md). |
 
@@ -34,8 +35,9 @@ Types below are in `CE::Events` unless another namespace is shown.
 ```mermaid
 flowchart LR
     accTitle: Events integration
-    accDescr: Publishers notify listeners through Events, synchronously by default or through optional owner or worker delivery.
+    accDescr: Producers publish directly or through a weak Publisher handle to the same event bus. Listener delivery is synchronous by default or uses optional owner or worker delivery.
     Publishers[Display, game and services] -->|publish notifications| Events
+    Services[Input and asset loaders] -->|weak Publisher handle| Events
     Events -->|default synchronous delivery| Listeners[Listener callbacks]
     Events -. optional owner delivery .-> Dispatch
     Events -. optional serial delivery .-> Workers
@@ -53,13 +55,16 @@ Diagnostics observes activity without owning queued failure handling.
 
 ### Used by
 
-Display publishes the typed resize channel. Games and services publish domain
-events; queued subscriptions can deliver them to the selected owner without
-native callbacks mutating game state directly.
+Display publishes the typed resize channel. Input publishes completed-poll
+gamepad availability, and configured asset loaders publish aggregate upload
+settlement. Games also publish their own domain events. See
+[engine input and asset notifications](../runtime/event-delivery.md#engine-input-and-asset-notifications)
+for producer wiring and subscription examples. Queued subscriptions deliver
+observations to the selected owner.
 
 | Types | Systems |
 | --- | --- |
-| {cpp:struct}`CE::Events::EventSystem`<br>{cpp:class}`CE::Platform::GLFW::Window`<br>[Application-owned listeners](../runtime/event-delivery.md#typed-channels) | [Display](display.md) |
+| {cpp:struct}`CE::Events::EventSystem`<br>{cpp:class}`CE::Platform::GLFW::Window`<br>{cpp:class}`CE::Input::System`<br>[Asset loaders](../assets/asset-loading.md#upload-settlement-notifications)<br>[Application-owned listeners](../runtime/event-delivery.md#typed-channels) | [Display](display.md)<br>[Input](input.md)<br>[Assets](assets.md) |
 
 ## Contracts
 
@@ -87,8 +92,9 @@ Immediate delivery is synchronous on dispatch's caller. Queued delivery owns
 the work without invoking it inline, preserving each listener's FIFO stream.
 Platform/simulation adapters follow those owners; copies of one worker-delivery
 adapter share a serial stream. Independent listeners/targets have no global
-completion order. Exceptions propagate immediately or reach the queued error
-sink according to the selected delivery mode.
+completion order. Immediate `dispatch()` failures propagate and stop its remaining
+listeners; `notify()` isolates failures and attempts later listeners. Queued
+failures reach the registration-owned error sink.
 
 ## Integration
 

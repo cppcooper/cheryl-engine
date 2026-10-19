@@ -4,6 +4,8 @@ Bind physical controls to game actions, consume ordered records, and route
 keyboard/text focus. [Bind input actions](../getting-started/how-to/bind-input.md)
 provides direct binding and reusable consumer-context sequences;
 [Input](../engine-systems/input.md) lists the controls and public types.
+Use [gamepad availability](../runtime/input-state-model.md#gamepad-availability)
+to subscribe to sampled connection changes and obtain an initial state.
 
 ```{toctree}
 :maxdepth: 1
