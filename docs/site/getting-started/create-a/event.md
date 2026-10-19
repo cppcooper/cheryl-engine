@@ -8,12 +8,18 @@ Start with [Project setup](../project-setup.md) and the `CE::Runtime::Context`
 borrowed by your game in [First Game](../first-game.md). This example applies
 damage, then updates a value a HUD could display.
 
-![Gameplay applies damage, then sends a DamageTaken payload through the context's event bus to matching HUD and optional sound listeners.](event-flow.svg)
+```{graphviz}
+:alt: Game code publishes DamageTaken through the event bus to HUD and sound listeners.
 
-The arrows show notification flow. The HUD and sound listeners are examples of
-game-owned consumers. This lesson implements the HUD observation; a sound listener
-could subscribe independently. The {download}`Graphviz source <event-flow.dot>`
-keeps the diagram editable as text.
+digraph {
+    rankdir=LR;
+    "Game code" -> "Event bus" [label="DamageTaken"];
+    "Event bus" -> { "HUD listener" "Sound listener" };
+}
+```
+
+The listeners belong to your game. This lesson models the HUD observation; a
+sound listener could subscribe independently.
 
 ## Define the payload and channel
 
