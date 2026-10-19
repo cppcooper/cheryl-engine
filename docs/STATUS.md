@@ -30,9 +30,14 @@ deferred review order. The [planning catalogue](planning/README.md) routes to
 subject prerequisites and unfinished checklists. This consolidation does not
 extend implementation or executable acceptance.
 
+**Event integration planning:** 2026-10-18 — Adds the
+[engine/module event plan](planning/short-term/engine-events.md), beginning with
+coherent window/view integration. Additional native capabilities remain deferred;
+this selection does not change the implementation review baseline.
+
 **Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = selected work awaiting investigation, design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work, including capabilities with no complete implementation; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
-The following **four classification sections** comprise 146 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
+The following **four classification sections** comprise 147 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
 
 ## 1. Partial
 
@@ -57,8 +62,9 @@ executable acceptance. Subject plans own the prerequisites and design checkpoint
 | Color emoji glyphs | Planned | Specify accepted color-font formats, RGBA page handling, material semantics and multi-codepoint fallback beyond the accepted initial grayscale scope. | [emoji scope](planning/mid-term/README.md#color-emoji) |
 | Alternative audio SDK (e.g., FMOD) | Planned · SDK selection pending | Select and assess an alternative SDK/module against the existing audio contracts, including licensing, deployment, coexistence and any additional authoring requirements. | [plan](planning/long-term/README.md#alternative-audio-sdk) |
 | In-game developer console | Planned | Define and implement an engine-owned graphical command/output panel with history, scrolling and input routing, independently of the optional native terminal. | [plan](planning/long-term/README.md#graphical-developer-console) |
+| Engine and module event integration | Planned | Implement 18 justified event contract families, beginning with committed window/view integration and explicit automatic UI sizing; follow with lifecycle/shutdown, module phases and resource/media observations. Preserve legacy resize and defer new native capabilities. | [event plan](planning/short-term/engine-events.md) |
 
-*8 entries.*
+*9 entries.*
 
 ## 3. Deferred
 

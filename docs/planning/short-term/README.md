@@ -7,6 +7,10 @@ guides own current contracts, and the [testing queue](../../testing-requests.md)
 owns ready acceptance requests. Each task needs its own authorized testing or
 investigation phase before execution.
 
+Selected [engine and module event integration](engine-events.md) has its own plan.
+Its first unit establishes notification/binding reliability and coherent window/view
+integration before subsequent lifecycle, shutdown and service observations.
+
 ## Font-selection regressions
 
 The [font-selection contract](../../site/assets/text-layout.md#font-selection)
