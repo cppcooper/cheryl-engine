@@ -227,8 +227,67 @@ namespace CE::Assets::Loading {
         return last_upload_;
     }
 
+    std::uint64_t Loader::next_event_identity() {
+        const auto identity = Diagnostics::next_domain_id();
+        if (!identity)
+            throw Exceptions::failed_operation(CE_HERE, "Upload observation identities exhausted");
+        return identity;
+    }
+
+    void Loader::publish_events_to(CE::Events::EventBus::Publisher publisher) {
+        if (uploading_ || publishing_events_ || !pending_events_.empty())
+            throw Exceptions::failed_operation(CE_HERE, "Upload notification routing requires an idle, drained loader");
+        publisher_ = std::move(publisher);
+    }
+
+    void Loader::settle_upload(
+        const std::uint64_t attempt,
+        const UploadStats& counts,
+        const bool effects_possible,
+        std::exception_ptr failure
+    ) noexcept {
+        if (publisher_.expired())
+            return;
+        try {
+            auto outcome = UploadOutcome::Succeeded;
+            if (failure) {
+                if (counts.publication_count_available && (counts.publications || counts.replacements))
+                    outcome = UploadOutcome::Partial;
+                else if (!effects_possible)
+                    outcome = UploadOutcome::FailedBeforeEffects;
+                else
+                    outcome = UploadOutcome::EffectsUnknown;
+            }
+            // One record per attempt. A slow/reentrant observer cannot grow an
+            // unbounded history or change the direct upload result on overflow.
+            if (pending_events_.size() == 64)
+                throw Exceptions::failed_operation(CE_HERE, "Pending upload observations exhausted");
+            pending_events_.push_back({source_, attempt, std::chrono::steady_clock::now(), outcome, counts, std::move(failure)});
+        } catch (...) {
+            Diagnostics::report_failure("upload outcome staging", std::current_exception());
+        }
+        publish_pending_events();
+    }
+
+    void Loader::publish_pending_events() noexcept {
+        if (publishing_events_ || uploading_)
+            return;
+        publishing_events_ = true;
+        const auto cutoff = pending_events_.size();
+        for (std::size_t index = 0; index < cutoff; ++index) {
+            auto event = std::move(pending_events_.front());
+            pending_events_.erase(pending_events_.begin());
+            publisher_.notify(asset_upload_settled_event, event);
+        }
+        publishing_events_ = false;
+    }
+
     void Loader::upload(Prepared prepared, CE::Rendering::Resources::Provider& provider, const bool replace_shaders) {
+        if (uploading_)
+            throw Exceptions::failed_operation(CE_HERE, "Upload attempts require serialized execution on the loading owner");
+        const auto attempt = next_event_identity();
         UploadStats observed{prepared.batch, provider.diagnostic_id()};
+        bool effects_possible = false;
         const auto started = std::chrono::steady_clock::now();
         const auto publications = []() noexcept -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
             try {
@@ -293,21 +352,28 @@ namespace CE::Assets::Loading {
             CE::Logging::Categories::assets, "subsystem=assets domain={} provider={} operation=upload_begin images={} manifests={}",
             observed.batch, observed.provider, prepared.images.size(), prepared.manifests.size()
         );
+        uploading_ = true;
         try {
             CE::Assets::Cache::Context::verify_provider(provider);
             before = publications();
             verified = true;
             validate_shader_definitions(prepared);
             CE::Assets::Shaders::Manager::get().validate(prepared.shaders, provider, replace_shaders);
-            if (prepared.files)
+            if (prepared.files) {
+                effects_possible = true;
                 FileRegistry::get().register_files(*prepared.files);
+            }
+            if (!prepared.shaders.empty())
+                effects_possible = true;
             CE::Assets::Shaders::Manager::get().load(prepared.shaders, provider, replace_shaders);
             observed.shader_manifests_completed = prepared.shaders.size();
             for (const auto& image : prepared.images) {
+                effects_possible = true;
                 CE::Assets::Images::Manager::get().upload(image.key, image.pixels, provider);
                 ++observed.images_completed;
             }
             for (const auto& manifest : prepared.manifests) {
+                effects_possible = true;
                 CE::Assets::Sprites::Manager::get().load(manifest.sprites, provider);
                 CE::Assets::Tilesets::Manager::get().load(manifest.tilesets, provider);
                 ++observed.manifests_completed;
@@ -318,10 +384,15 @@ namespace CE::Assets::Loading {
             manifests_.store(manifests, std::memory_order_release);
             shaders_.store(shaders, std::memory_order_release);
         } catch (...) {
+            const auto failure = std::current_exception();
             finish(false);
+            uploading_ = false;
+            settle_upload(attempt, observed, effects_possible, failure);
             throw;
         }
         finish(true);
+        uploading_ = false;
+        settle_upload(attempt, observed, effects_possible, {});
     }
 
     void Loader::load_assets(CE::Rendering::Resources::Provider& provider) {

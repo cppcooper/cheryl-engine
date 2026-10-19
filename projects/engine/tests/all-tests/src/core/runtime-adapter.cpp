@@ -1210,6 +1210,45 @@ TEST(platform_requests, shutdown_cancellation) {
     }
 }
 
+TEST(asset_upload_event, cancelled_platform_request) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        CE::Assets::Loading::Loader loader("cancelled-upload-root");
+        loader.publish_events_to(engine->events().publisher());
+        int settlements = 0;
+        const auto id = engine->events().register_listener(
+            CE::Assets::Loading::asset_upload_settled_event,
+            [&](const CE::Assets::Loading::AssetUploadSettled&) { ++settlements; }
+        );
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::future<void> request;
+        game.on_init = [&] { runtime.stop(); };
+        // Concurrent shutdown may service accepted requests until simulation
+        // exits. Queue after that join, with no CPU work left to require pumping.
+        game.on_quiesce = [&] {
+            request = engine->platform_dispatcher().submit([&](CE::Runtime::Context& platform) {
+                loader.upload({}, platform.resources());
+            });
+        };
+        runtime.run();
+        EXPECT_EQ(engine->platform_dispatcher().diagnostics().cancelled, 1u);
+        ASSERT_EQ(request.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        try {
+            request.get();
+            FAIL() << "The unexecuted upload must be cancelled";
+        } catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+        EXPECT_EQ(settlements, 0);
+        EXPECT_FALSE(loader.diagnostics().completed);
+        EXPECT_TRUE(engine->events().unregister_and_wait(id));
+    }
+}
+
 TEST(runtime_adapter, concurrent_frame) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;

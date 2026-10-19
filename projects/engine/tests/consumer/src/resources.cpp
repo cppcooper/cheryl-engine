@@ -1,4 +1,5 @@
 #include <cheryl/assets/resources/resource-provider.h>
+#include <cheryl/core/resources/asset-management/asset-loader.h>
 
 #include <memory>
 #include <stdexcept>
@@ -41,5 +42,18 @@ bool exercise_resources() {
     MemoryProvider provider;
     const CE::Assets::Images::Decoded pixels{{1, 1}, {255, 0, 0, 255}};
     const auto image = provider.create_image(pixels);
-    return image->pixel_size().width == 1 && image->pixel_size().height == 1;
+    CE::Events::EventBus events;
+    CE::Assets::Loading::Loader loader("consumer-upload");
+    loader.publish_events_to(events.publisher());
+    bool settled = false;
+    const auto registration = events.register_listener(
+        CE::Assets::Loading::asset_upload_settled_event,
+        [&](const CE::Assets::Loading::AssetUploadSettled& event) {
+            settled = event.source == loader.source_id() && event.attempt != 0 &&
+                      event.outcome == CE::Assets::Loading::UploadOutcome::Succeeded;
+        }
+    );
+    loader.upload({}, provider);
+    events.unregister_and_wait(registration);
+    return image->pixel_size().width == 1 && image->pixel_size().height == 1 && settled;
 }

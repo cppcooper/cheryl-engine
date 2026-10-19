@@ -36,6 +36,7 @@ namespace Tutorial {
 
         // [assets]
         CE::Assets::Loading::Loader loader(asset_root_);
+        loader.publish_events_to(engine_.events().publisher());
         loader.load_assets(engine_.resources());
         sprite_ = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
         if (!sprite_)

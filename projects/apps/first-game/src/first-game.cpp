@@ -35,6 +35,7 @@ namespace FirstGame {
         // [assets]
         auto& resources = engine_.resources();
         CE::Assets::Loading::Loader loader(asset_root_);
+        loader.publish_events_to(engine_.events().publisher());
         loader.load_assets(resources);
 
         auto sprite = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");

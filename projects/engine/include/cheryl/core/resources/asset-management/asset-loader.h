@@ -6,8 +6,11 @@
 #include <assets/resources/decoded-image.h>
 #include <templates/singleton.h>
 #include <core/diagnostics.h>
+#include <cheryl/core/subsystems/event-bus.h>
 
 #include <atomic>
+#include <chrono>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -51,6 +54,30 @@ namespace CE::Assets::Loading {
         std::uint64_t replacements = 0; ///< Shader catalogue replacements observed during this attempt.
     };
 
+    /** Committed-effect knowledge for one executed upload attempt; no rollback is implied. */
+    enum class UploadOutcome {
+        Succeeded, ///< Upload and retained metadata publication completed.
+        FailedBeforeEffects, ///< Failure preceded every operation that could publish registry/cache effects.
+        Partial, ///< Publication counters prove at least one cache entry/replacement committed before failure.
+        EffectsUnknown ///< A mutating operation was entered, but observations cannot establish all committed effects.
+    };
+
+    /** Aggregate executed-attempt observation; preparation and pre-execution cancellation are excluded.
+     * Direct return/exception/request future remains authoritative. Counts cover
+     * typed caches, not the file registry; zero counts cannot prove no effects.
+     */
+    struct AssetUploadSettled {
+        std::uint64_t source = 0; ///< Checked loader identity, independent of its diagnostic batch/provider IDs.
+        std::uint64_t attempt = 0; ///< Checked unique execution identity, even when the same Prepared batch is reused.
+        std::chrono::steady_clock::time_point observed_at{}; ///< Completion observation time on the loading owner.
+        UploadOutcome outcome = UploadOutcome::EffectsUnknown; ///< Success or explicit knowledge of failed effects.
+        UploadStats counts; ///< Owned attempt counts and their publication_count_available validity flag.
+        std::exception_ptr failure; ///< Owned original failure, empty on success; rethrow to inspect.
+    };
+
+    /** One aggregate observation per executed attempt; never one per asset. */
+    inline const CE::Events::EventChannel<AssetUploadSettled> asset_upload_settled_event{"asset-upload-settled"};
+
     /** One immutable root; owned loaders can share the one supported cache domain.
      * CPU preparation changes no caches and can run on workers. Upload/publication
      * must be serialized on the active provider's loading owner. Relative roots
@@ -61,6 +88,7 @@ namespace CE::Assets::Loading {
     struct Loader final : CE::State::Singleton<Loader> {
     private:
         const std::filesystem::path root_path_;
+        const std::uint64_t source_ = next_event_identity();
         std::atomic<std::shared_ptr<const std::vector<CE::Assets::Manifests::Graphics>>> manifests_{
             std::make_shared<const std::vector<CE::Assets::Manifests::Graphics>>()
         };
@@ -69,8 +97,14 @@ namespace CE::Assets::Loading {
         };
         mutable std::mutex observations_mutex_;
         UploadStats last_upload_;
+        CE::Events::EventBus::Publisher publisher_;
+        std::vector<AssetUploadSettled> pending_events_;
+        bool publishing_events_ = false;
+        bool uploading_ = false;
 
         [[nodiscard]] CE_API Prepared prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
+        [[nodiscard]] CE_API static std::uint64_t next_event_identity();
+        CE_API void settle_upload(std::uint64_t attempt, const UploadStats& counts, bool effects_possible, std::exception_ptr failure) noexcept;
 
     public:
         explicit Loader(const std::filesystem::path& root_path)
@@ -80,6 +114,19 @@ namespace CE::Assets::Loading {
         CE_API void upload(Prepared prepared, CE::Rendering::Resources::Provider& provider, bool replace_shaders = false);
         CE_API void load_assets(CE::Rendering::Resources::Provider& provider);
         CE_API void register_files() const;
+        /** Select a weak publication route on the loading owner while idle and with no pending outcomes.
+         * Standalone use remains independent of Context. Empty routing disables observations.
+         */
+        CE_API void publish_events_to(CE::Events::EventBus::Publisher publisher);
+        /** Drain a bounded snapshot on the loading owner, outside loader/cache locks.
+         * upload() invokes this automatically after settling. Callback-created
+         * outcomes wait for the next upload or explicit drain; destruction never drains.
+         * At most 64 outcomes are pending; staging/overflow failures use independent
+         * emergency reporting and preserve the direct upload result.
+         */
+        CE_API void publish_pending_events() noexcept;
+        /** Checked identity for filtering this loader's observations on a shared bus. */
+        [[nodiscard]] std::uint64_t source_id() const noexcept { return source_; }
         [[nodiscard]] CE_API UploadStats diagnostics() const;
         [[nodiscard]] std::shared_ptr<const std::vector<CE::Assets::Manifests::Graphics>> manifests() const {
             return manifests_.load(std::memory_order_acquire);

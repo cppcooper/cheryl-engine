@@ -140,6 +140,7 @@ public:
 
         auto& resources = engine_.resources();
         CE::Assets::Loading::Loader loader(asset_root_);
+        loader.publish_events_to(engine_.events().publisher());
         bool files_registered = false;
         if (load_all_assets_) {
             try {
@@ -156,7 +157,7 @@ public:
                 std::cerr << "Asset file discovery failed; continuing with manual demo samples: " << error.what() << '\n';
             }
         }
-        auto materials = load_materials(asset_root_, resources, false);
+        auto materials = load_materials(asset_root_, resources, false, engine_.events().publisher());
         font_shader_ = std::move(materials.text);
         image_shader_ = std::move(materials.images);
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
@@ -273,7 +274,7 @@ public:
                 button->key == CE::Input::KeyboardKey::F5 && button->phase == CE::Input::Events::ButtonPhase::Press &&
                 !pending_shader_.valid()) {
                 pending_shader_ = engine_.platform_dispatcher().submit([root = asset_root_](CE::Runtime::Context& platform) {
-                    return load_materials(root, platform.resources(), true);
+                    return load_materials(root, platform.resources(), true, platform.events().publisher());
                 });
             }
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
@@ -446,8 +447,14 @@ private:
         }
     }
 
-    static Materials load_materials(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider, const bool replace) {
+    static Materials load_materials(
+        const std::filesystem::path& root,
+        CE::Rendering::Resources::Provider& provider,
+        const bool replace,
+        CE::Events::EventBus::Publisher publisher
+    ) {
         CE::Assets::Loading::Loader loader(root);
+        loader.publish_events_to(std::move(publisher));
         auto prepared = loader.prepare_graphics({"graphics/shaders/graphics-manifests.json"});
         // Validate this selection before upload so removed definitions cannot be
         // hidden by an older catalogue entry during an explicit reload.
