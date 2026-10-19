@@ -103,14 +103,24 @@ namespace CE::Events {
         const std::any& payload,
         const ErrorHandler& errors
     ) noexcept {
+        notify_state(*state_, event, type, payload, errors);
+    }
+
+    void EventBus::notify_state(
+        State& state,
+        const std::string_view event,
+        const std::type_index type,
+        const std::any& payload,
+        const ErrorHandler& errors
+    ) noexcept {
         std::vector<std::shared_ptr<Listener>> snapshot;
         try {
-            std::lock_guard lock(state_->mutex);
-            if (state_->closed)
+            std::lock_guard lock(state.mutex);
+            if (state.closed)
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "EventBus is closed");
-            ++state_->dispatches;
-            const auto found = state_->channels.find(ChannelView{event, type});
-            if (found == state_->channels.end())
+            ++state.dispatches;
+            const auto found = state.channels.find(ChannelView{event, type});
+            if (found == state.channels.end())
                 return;
             snapshot = found->second;
         } catch (...) {

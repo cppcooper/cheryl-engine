@@ -42,6 +42,12 @@ int main() {
     if (health != 87)
         return 1;
 
+    const auto publisher = events.publisher();
+    typed_observed = 0;
+    const auto published_registration = events.register_listener(typed, [&](const int& value) { typed_observed = value; });
+    publisher.notify(typed, 9);
+    events.unregister_and_wait(published_registration);
+
     CE::Workers::Pool workers{1};
     const auto group = workers.make_group();
     auto value = group.submit([] { return 11; });

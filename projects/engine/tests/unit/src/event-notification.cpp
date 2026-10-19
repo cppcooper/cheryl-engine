@@ -124,3 +124,51 @@ TEST(event_notification, deferred) {
     EXPECT_EQ(queued_errors, 2); // Accepted work discarded by its target reports cancellation.
     EXPECT_EQ(immediate_errors, 0);
 }
+
+TEST(event_notification, publisher_lifetime) {
+    CE::Events::EventBus::Publisher publisher;
+    const CE::Events::EventChannel<int> channel{"publisher"};
+    int calls = 0;
+    {
+        CE::Events::EventBus bus;
+        publisher = bus.publisher();
+        bus.register_listener(channel, [](const int&) { throw std::runtime_error("observer"); });
+        const auto id = bus.register_listener(channel, [&](const int& value) { calls += value; });
+        int errors = 0;
+        publisher.notify(channel, 3, [&](std::exception_ptr) { ++errors; });
+        EXPECT_EQ(calls, 3);
+        EXPECT_EQ(errors, 1);
+        EXPECT_TRUE(bus.unregister_and_wait(id));
+        publisher.notify(channel, 7, [&](std::exception_ptr) { ++errors; });
+        EXPECT_EQ(calls, 3);
+        bus.close();
+        publisher.notify(channel, 9, [&](std::exception_ptr) { ++errors; });
+        EXPECT_EQ(errors, 3);
+    }
+    int errors = 0;
+    publisher.notify(channel, 11, [&](std::exception_ptr) { ++errors; });
+    EXPECT_EQ(errors, 0);
+    EXPECT_EQ(calls, 3);
+}
+
+TEST(event_notification, empty_publisher) {
+    const CE::Events::EventChannel<CopyFault> channel{"unrouted"};
+    const CopyFault payload{std::make_shared<int>(0), 1};
+    CE::Events::EventBus::Publisher publisher;
+    publisher.notify(channel, payload);
+    EXPECT_EQ(*payload.copies, 0);
+}
+
+TEST(event_notification, publisher_closes_during_fanout) {
+    auto bus = std::make_unique<CE::Events::EventBus>();
+    const auto publisher = bus->publisher();
+    const CE::Events::EventChannel<int> channel{"close-from-observer"};
+    int later = 0;
+    bus->register_listener(channel, [&](const int&) { bus.reset(); });
+    bus->register_listener(channel, [&](const int&) { ++later; });
+    publisher.notify(channel, 1);
+    EXPECT_FALSE(bus);
+    EXPECT_EQ(later, 0);
+    EXPECT_TRUE(publisher.expired());
+    EXPECT_NO_THROW(publisher.notify(channel, 2));
+}

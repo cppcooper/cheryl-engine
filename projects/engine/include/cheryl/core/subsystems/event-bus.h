@@ -141,6 +141,46 @@ namespace CE::Events {
             [[nodiscard]] ::CE::Diagnostics::DomainId bus_id() const { return bus_id_; }
         };
 
+        /** Copyable notification handle that does not retain the bus or Context.
+         * Empty/expired handles discard observations without copying payloads.
+         * Live handles use notify's failure isolation and producer-thread delivery.
+         */
+        class Publisher final {
+            std::weak_ptr<State> state_;
+            friend class EventBus;
+            explicit Publisher(const std::shared_ptr<State>& state) noexcept : state_(state) {}
+
+        public:
+            Publisher() = default;
+
+            /** True for an empty handle or one whose bus state has ended; closure may reject before expiration. */
+            [[nodiscard]] bool expired() const noexcept { return state_.expired(); }
+
+            /** Publish an exact-type observation; queued listeners retain their own error sinks.
+             * Optional errors run synchronously and must not recursively notify this bus.
+             * This handle never extends the lifetime of a callback's borrowed target.
+             */
+            template <::CE::Events::EventPayload Payload, typename Value>
+                requires std::same_as<std::remove_cvref_t<Value>, Payload> && std::is_constructible_v<Payload, Value&&>
+            void notify(
+                const ::CE::Events::EventChannel<Payload>& event,
+                Value&& payload,
+                const ErrorHandler& errors = ErrorHandler{}
+            ) const noexcept {
+                if (const auto state = state_.lock()) {
+                    try {
+                        auto owned = std::make_any<Payload>(std::forward<Value>(payload));
+                        notify_state(*state, event.name(), typeid(Payload), owned, errors);
+                    } catch (...) {
+                        report_notification_failure(errors, std::current_exception());
+                    }
+                }
+            }
+        };
+
+        /** Borrow notification access without retaining this bus; obtain while the bus is alive. */
+        [[nodiscard]] Publisher publisher() const noexcept { return Publisher{state_}; }
+
         EventBus() = default;
         CE_API ~EventBus();
         EventBus(const EventBus&) = delete;
@@ -218,6 +258,13 @@ namespace CE::Events {
         register_channel(const std::string& event, std::type_index payload, Callback callback, Delivery delivery, ErrorHandler errors);
         CE_API void dispatch_channel(std::string_view event, std::type_index type, const std::any& payload);
         CE_API void notify_channel(
+            std::string_view event,
+            std::type_index type,
+            const std::any& payload,
+            const ErrorHandler& errors
+        ) noexcept;
+        CE_API static void notify_state(
+            State& state,
             std::string_view event,
             std::type_index type,
             const std::any& payload,
