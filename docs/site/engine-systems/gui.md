@@ -35,26 +35,16 @@ their session, native authoring API and recording/publication types.
 
 ## Usage
 
-```{graphviz}
-:caption: GUI integration
-:alt: Application-owned menus and HUDs use GUI sessions. GUI reads Input and Text services, posts owned recordings through Dispatch, uploads through Resources and appends retained scenes to Rendering passes.
-
-digraph gui_usage {
-    rankdir=LR;
-    gui [label="GUI\nsessions + scene uploaders", penwidth=2];
-    application [label="Application menus / HUD"];
-    input [label="Input"];
-    text [label="Text"];
-    dispatch [label="Dispatch\nplatform owner"];
-    resources [label="Resources"];
-    rendering [label="Rendering"];
-    application -> gui [label="owns toolkit objects;\nfeeds tick dimensions / time"];
-    gui -> input [label="reads records;\nrequests capture / focus"];
-    gui -> text [label="uses shared fonts / rasterization"];
-    gui -> dispatch [label="submits owned CPU recordings"];
-    gui -> resources [label="uploads immutable scenes\non graphics owner"];
-    gui -> rendering [label="appends retained scene\nto frame passes"];
-}
+```mermaid
+flowchart LR
+    accTitle: GUI integration
+    accDescr: The application owns GUI sessions and widgets; GUI connects input, shared fonts, scene uploads and retained rendering.
+    Application -->|owns sessions and widgets| GUI
+    GUI -->|reads records and requests focus| Input
+    GUI -->|uses shared fonts| Text
+    GUI -->|submits owned recordings| Dispatch
+    GUI -->|uploads scenes| Resources
+    GUI -->|appends retained scenes to passes| Rendering
 ```
 
 ### Uses

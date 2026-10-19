@@ -30,15 +30,11 @@ version = release
 source_repository = "https://github.com/cppcooper/cheryl-engine"
 source_repository_root = str(REPO_ROOT)
 
-extensions = ["myst_parser", "sphinx.ext.graphviz", "breathe", "exhale", "api_rendering", "repository_links", "inline_api", "incremental_api"]
-# Render text-authored diagrams into local assets for both offline and hosted use.
-graphviz_output_format = "svg"
-graphviz_dot_args = [
-    "-Gbgcolor=#ffffff", "-Gpad=0.25", "-Gnodesep=0.3", "-Granksep=0.55",
-    "-Nshape=box", "-Nstyle=rounded,filled", "-Nfillcolor=#f3f6fa",
-    "-Ncolor=#526174", "-Nfontcolor=#253346", "-Nfontname=sans-serif", "-Nfontsize=12",
-    "-Ecolor=#526174", "-Efontcolor=#253346", "-Efontname=sans-serif", "-Efontsize=11",
-]
+extensions = ["myst_parser", "sphinxcontrib.mermaid", "breathe", "exhale", "api_rendering", "repository_links", "inline_api", "incremental_api"]
+# Render ordinary Mermaid fences in the browser using bundled, pinned assets.
+myst_fence_as_directive = ["mermaid"]
+mermaid_output_format = "raw"
+mermaid_use_local = "vendor/mermaid-11.12.1/mermaid.esm.min.mjs"
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 root_doc = "index"
 exclude_patterns = [

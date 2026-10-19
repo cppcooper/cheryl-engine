@@ -80,11 +80,10 @@ domains.
 Use this table as a topic lookup. The tutorials supply the learning sequence;
 each overview below introduces a system and routes to its detailed owner.
 
-Each system's Usage section starts with an integration diagram. The emphasized
-box names that system; arrows point from a caller or consumer to the system or
-value it uses, with labels explaining the interaction. Dashed arrows mark optional
-integration paths. These diagrams show the main connections; the Uses and Used by
-tables identify the types and detailed contracts.
+Each system's Usage section starts with a Mermaid diagram. Arrows point from a
+caller or consumer to the system or value it uses; labels explain the interaction.
+Dashed arrows mark optional integration paths. The Uses and Used by tables supply
+the precise types and detailed contracts.
 
 | System overview | Purpose and details |
 | --- | --- |

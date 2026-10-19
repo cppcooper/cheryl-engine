@@ -2,6 +2,7 @@
 
 import ast
 from fnmatch import fnmatchcase
+import json
 from pathlib import Path
 import re
 import shlex
@@ -144,6 +145,39 @@ class ThemeTests(unittest.TestCase):
         self.assertFalse(options["collapse_navigation"],
                          "Inactive branches need child HTML for their expand buttons")
         self.assertGreaterEqual(options["navigation_depth"], 4)
+
+
+class MermaidTests(unittest.TestCase):
+    def test_local_modules(self):
+        tree = ast.parse(CONFIGURATION.read_text(encoding="utf-8"))
+        settings = {
+            target.id: ast.literal_eval(statement.value)
+            for statement in tree.body if isinstance(statement, ast.Assign)
+            for target in statement.targets if isinstance(target, ast.Name)
+            and target.id in {"extensions", "myst_fence_as_directive",
+                              "mermaid_output_format", "mermaid_use_local"}
+        }
+        self.assertIn("sphinxcontrib.mermaid", settings["extensions"])
+        self.assertIn("mermaid", settings["myst_fence_as_directive"])
+        self.assertEqual(settings["mermaid_output_format"], "raw")
+        entry = CONFIGURATION.parent / "static" / settings["mermaid_use_local"]
+        self.assertTrue(entry.is_file())
+        bundle = entry.parent.resolve()
+        upstream = json.loads((bundle / "UPSTREAM.json").read_text(encoding="utf-8"))
+        self.assertEqual(bundle.name, "mermaid-" + upstream["version"])
+        imports = 0
+        for module in bundle.rglob("*.mjs"):
+            references = re.findall(
+                r"""\b(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}/[^"']+\.mjs)["']""",
+                module.read_text(encoding="utf-8"),
+            )
+            for reference in references:
+                with self.subTest(module=module.name, dependency=reference):
+                    target = (module.parent / reference).resolve()
+                    self.assertTrue(target.is_relative_to(bundle))
+                    self.assertTrue(target.is_file(), "Missing bundled JavaScript module")
+                imports += 1
+        self.assertGreater(imports, 0)
 
 
 if __name__ == "__main__":

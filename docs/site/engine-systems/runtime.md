@@ -39,26 +39,18 @@ instead of live adapter access from another thread. Both modes use the same
 
 ## Usage
 
-```{graphviz}
-:caption: Runtime integration
-:alt: The application supplies a context and game to Runtime. Runtime calls game hooks, polls input, observes display state, renders frames and coordinates dispatch and workers.
-
-digraph runtime_usage {
-    rankdir=LR;
-    runtime [label="Runtime\nContext + session", penwidth=2];
-    application [label="Application"];
-    game [label="Game hooks"];
-    input [label="Input"];
-    display [label="Display"];
-    graphics [label="Rendering / Resources"];
-    work [label="Dispatch / Workers"];
-    application -> runtime [label="supplies adapters + game;\nruns one session"];
-    runtime -> game [label="calls init / update /\nprepare / cleanup"];
-    runtime -> input [label="polls; copies tick input"];
-    runtime -> display [label="observes window state"];
-    runtime -> graphics [label="plays / presents frames;\nkeeps backend live"];
-    runtime -> work [label="drains requests;\nsettles accepted jobs"];
-}
+```mermaid
+flowchart LR
+    accTitle: Runtime integration
+    accDescr: The application provides a game and context; Runtime coordinates game hooks and engine services.
+    Application -->|provides game and context| Runtime
+    Runtime -->|calls lifecycle hooks| Game
+    Runtime -->|polls| Input
+    Runtime -->|observes window| Display
+    Runtime -->|plays and presents frames| Rendering
+    Runtime -->|coordinates backend lifetime| Resources
+    Runtime -->|services requests| Dispatch
+    Runtime -->|settles accepted jobs| Workers
 ```
 
 ### Uses

@@ -32,6 +32,7 @@ MINIMUM_PACKAGES = {
     "exhale": "0.3.7",
     "myst-parser": "5.1.0",
     "sphinx-rtd-theme": "3.1.0",
+    "sphinxcontrib-mermaid": "2.1.1",
 }
 
 
@@ -179,7 +180,7 @@ try:
             if requirement.specifier and not requirement.specifier.contains(dependency, prereleases=True):
                 raise RuntimeError(f"{name} requires {requirement}, found {dependency}")
             pending.append((requirement.name, frozenset(getattr(requirement, "extras", ()))))
-    for name in ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme"):
+    for name in ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid"):
         importlib.import_module(name)
     print(json.dumps({"versions": versions}))
 except Exception as error:

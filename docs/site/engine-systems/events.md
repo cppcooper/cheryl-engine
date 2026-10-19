@@ -31,22 +31,14 @@ Types below are in `CE::Events` unless another namespace is shown.
 
 ## Usage
 
-```{graphviz}
-:caption: Events integration
-:alt: Display, games and services dispatch notifications through Events. The bus calls listeners immediately by default; optional adapters queue delivery through Dispatch or Workers.
-
-digraph events_usage {
-    rankdir=LR;
-    events [label="Events", penwidth=2];
-    publishers [label="Display / game / services"];
-    listeners [label="Listener callbacks"];
-    dispatch [label="Dispatch\nplatform / simulation owner"];
-    workers [label="Workers\nserial listener stream"];
-    publishers -> events [label="dispatches typed notifications"];
-    events -> listeners [label="calls on dispatch caller\nby default"];
-    events -> dispatch [label="optional: queues owner delivery", style=dashed];
-    events -> workers [label="optional: queues worker delivery", style=dashed];
-}
+```mermaid
+flowchart LR
+    accTitle: Events integration
+    accDescr: Publishers notify listeners through Events, synchronously by default or through optional owner or worker delivery.
+    Publishers[Display, game and services] -->|publish notifications| Events
+    Events -->|default synchronous delivery| Listeners[Listener callbacks]
+    Events -. optional owner delivery .-> Dispatch
+    Events -. optional serial delivery .-> Workers
 ```
 
 ### Uses

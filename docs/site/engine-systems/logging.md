@@ -30,24 +30,15 @@ Types below are in `CE::Logging` unless another namespace is shown.
 
 ## Usage
 
-```{graphviz}
-:caption: Logging integration
-:alt: Application startup configures Logging and closes it after producers settle. Engine subsystems emit to named categories and Diagnostics writes ordinary summaries. Logging uses configured sinks, optionally through its own asynchronous queue.
-
-digraph logging_usage {
-    rankdir=LR;
-    logging [label="Logging", penwidth=2];
-    application [label="Application / Startup"];
-    systems [label="Engine subsystem producers"];
-    diagnostics [label="Diagnostics"];
-    sinks [label="Configured console / file sinks"];
-    queue [label="Private logging queue\nand backend threads"];
-    application -> logging [label="configures categories;\nflushes / closes after producers"];
-    systems -> logging [label="emits named records"];
-    diagnostics -> logging [label="writes ordinary summaries"];
-    logging -> sinks [label="filters / writes / rotates"];
-    logging -> queue [label="optional: async emission", style=dashed];
-}
+```mermaid
+flowchart LR
+    accTitle: Logging integration
+    accDescr: Startup configures Logging before producers; named records reach configured sinks, optionally through a private queue.
+    Startup -->|configures and closes after producers| Logging
+    Systems[Engine subsystems] -->|emit named records| Logging
+    Diagnostics -->|writes ordinary summaries| Logging
+    Logging -->|filters and writes| Sinks[Console and file sinks]
+    Logging -. optional async emission .-> Queue[Private logging queue]
 ```
 
 ### Uses

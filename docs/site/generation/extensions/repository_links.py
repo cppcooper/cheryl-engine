@@ -14,7 +14,6 @@ from docutils import nodes
 from sphinx import addnodes
 from sphinx.errors import ConfigError
 from sphinx.util.nodes import make_refnode
-from pygments.lexers.special import TextLexer
 from api_rendering import namespace_identity
 from cpp_references import CppReferences
 from source_revision import source_url_at_revision
@@ -353,7 +352,4 @@ def setup(app) -> dict[str, object]:
     app.connect("doctree-read", rewrite_links, priority=100)
     app.connect("doctree-resolved", refresh_links, priority=100)
     app.connect("html-page-context", page_context)
-    # Existing Mermaid fences remain readable source until a diagram renderer is
-    # selected. Treat them as text explicitly instead of suppressing warnings.
-    app.add_lexer("mermaid", TextLexer)
     return {"version": "1", "parallel_read_safe": True, "parallel_write_safe": True}

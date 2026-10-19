@@ -156,7 +156,7 @@ class PythonCacheTests(TemporaryCase):
 class ProbeTests(TemporaryCase):
     """Use real dist-info discovery; stub only the external packaging parser."""
 
-    imports = ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme")
+    imports = ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid")
 
     def setUp(self):
         super().setUp()
@@ -303,8 +303,12 @@ class ProbeTests(TemporaryCase):
 
     def test_missing_import(self):
         self.distribution("Fixture-Doc", "1.0.0")
-        (self.site / "breathe.py").unlink()
-        self.assertIsNone(self.probe({"Fixture-Doc": "1.0.0"}))
+        for name in ("breathe", "sphinxcontrib.mermaid"):
+            with self.subTest(module=name):
+                module = self.site / f"{name}.py"
+                module.unlink()
+                self.assertIsNone(self.probe({"Fixture-Doc": "1.0.0"}))
+                module.write_text("", encoding="utf-8")
 
     def test_requires_python(self):
         self.requirement("Fixture-Dep>=1", "Fixture-Dep", (1, 0, 0))

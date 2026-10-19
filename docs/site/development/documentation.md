@@ -28,8 +28,7 @@ Publishing documentation <publishing-documentation>
 
 ## Generate locally
 
-Use a Git checkout, Python 3.11 or newer with the standard `venv` module, and
-[Graphviz](https://graphviz.org/download/) with its `dot` command on `PATH`. You
+Use a Git checkout and Python 3.11 or newer with the standard `venv` module. You
 do not need to install Sphinx, Doxygen or pip manually. The first fallback setup
 needs network access to PyPI and the official Doxygen release assets, and a writable
 user cache. The shell entry point requires Bash and selects `python3`, falling
@@ -45,8 +44,18 @@ directory:
 )
 ```
 
-Open `docs/site/generation/generated/html/index.html`. The output directory also
-contains Doxygen XML, Sphinx doctrees and `sphinx-warnings.log`.
+The HTML entry point is `docs/site/generation/generated/html/index.html`. To view
+Mermaid diagrams, serve the generated directory over HTTP so the browser can load
+its JavaScript modules. From the checkout root, run:
+
+```sh
+python3 -m http.server 8080 --bind 127.0.0.1 --directory docs/site/generation/generated/html
+```
+
+Open [the local site](http://127.0.0.1:8080/). On Windows, use `python` instead of
+`python3`. Opening an HTML file directly still shows the diagram source as text;
+use HTTP for rendered diagrams. The output directory also contains Doxygen XML,
+Sphinx doctrees and `sphinx-warnings.log`.
 `--output /path/to/output` selects another
 output root outside the authored documentation, or another directory beneath
 `docs/site/generation/generated/`; its `api/`, `pycache/`, `.api-previous/` and
@@ -117,35 +126,32 @@ declaration.
 
 ### Diagrams
 
-Author diagrams as Graphviz DOT text inside a MyST `graphviz` directive. Sphinx's
-built-in [Graphviz extension](https://www.sphinx-doc.org/en/master/usage/extensions/graphviz.html)
-renders them to SVG assets during generation, so local and hosted readers need
-no diagram service or browser script. Supply a caption, descriptive alternative
-text and labeled relationships:
+Write Mermaid directly in an ordinary Markdown code fence:
 
 ````markdown
-```{graphviz}
-:caption: Example system integration
-:alt: An application uses a system, which requests work from another system.
-
-digraph integration {
-    rankdir=LR;
-    system [label="System", penwidth=2];
-    "Application" -> system [label="uses"];
-    system -> "Other system" [label="requests work"];
-}
+```mermaid
+flowchart LR
+    Game -->|reads actions| Input
+    Game -->|prepares frames| Rendering
 ```
 ````
 
-Engine-system Usage diagrams put callers before the emphasized system and its
-dependencies after it. Arrows run from consumer to dependency; dashed arrows
-mark optional paths. Keep the main connections readable and retain precise types
-and ownership rules in the surrounding text and tables.
+State and sequence diagrams use the same fence with `stateDiagram-v2` or
+`sequenceDiagram` as the first line. Use labeled arrows and keep the main
+relationships simple; the surrounding prose owns precise contracts. Add
+`accTitle:` and `accDescr:` for an accessible title and description.
 
-Graphviz is a system prerequisite, separate from bootstrap's Python/Doxygen
-cache. Check it with `dot -V`; the documentation CI and Read the Docs configuration
-install it for hosted generation. A plain `mermaid` code fence still displays
-source text; use the supported directive for a rendered diagram.
+MyST passes these fences to `sphinxcontrib-mermaid`, installed through the normal
+locked Python documentation requirements. The extension leaves diagram text in
+the HTML and Mermaid renders it in the browser. Its pinned JavaScript modules
+ship with the site, including the module chunks and upstream license under
+`generation/static/vendor/mermaid-11.12.1/`. `UPSTREAM.json` records the source and
+archive integrity for updates; preserve the corresponding chunks and license.
+Readers need JavaScript, but no CDN or rendering service.
+
+Generation uses the extension's `raw` output mode. It needs no Graphviz, Node,
+Mermaid CLI or diagram-specific CI step. Preview changed diagrams in a browser:
+successful Sphinx generation alone does not validate Mermaid syntax.
 
 ### Incremental rebuilds and full regeneration
 

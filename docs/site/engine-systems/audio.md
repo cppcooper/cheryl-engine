@@ -36,22 +36,15 @@ shows both entry points.
 
 ## Usage
 
-```{graphviz}
-:caption: Audio integration
-:alt: Application sound controllers own Audio and manage playback. Audio uses retained clips or live stream files and a device or offline output backend. Applications may use Workers for preparation.
-
-digraph audio_usage {
-    rankdir=LR;
-    audio [label="Audio", penwidth=2];
-    application [label="Application\nsound / music controllers"];
-    sources [label="Shared PCM clips /\nstream files"];
-    backend [label="Audio backend\ndevice or offline output"];
-    workers [label="Workers"];
-    application -> audio [label="owns output; plays / controls;\nmaintains / closes explicitly"];
-    audio -> sources [label="retains clip samples /\nreads available stream file"];
-    audio -> backend [label="mixes on output clock"];
-    application -> workers [label="optional: prepares audio\nbefore playback", style=dashed];
-}
+```mermaid
+flowchart LR
+    accTitle: Audio integration
+    accDescr: The application owns Audio, which plays clips or streamed files on its own output clock; preparation can use Workers.
+    Application -->|owns and controls playback| Audio
+    Audio -->|retains samples| Clips
+    Audio -->|reads| StreamFiles[Stream files]
+    Audio -->|uses output clock| Backend[Device or offline backend]
+    Application -. optional preparation .-> Workers
 ```
 
 ### Uses

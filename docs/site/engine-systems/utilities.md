@@ -31,24 +31,15 @@ Types below are in `CE` unless another namespace is shown.
 
 ## Usage
 
-```{graphviz}
-:caption: Utilities integration
-:alt: Applications use Utilities for local timing, bits and parsing. Assets uses file discovery, Memory uses address and fit operations, and text or rendering preparation uses CPU geometry. Utilities relies on standard clocks, filesystem operations and containers.
-
-digraph utilities_usage {
-    rankdir=LR;
-    utilities [label="Utilities", penwidth=2];
-    application [label="Application tools"];
-    assets [label="Assets"];
-    memory [label="Memory"];
-    visuals [label="Text / Rendering\nCPU preparation"];
-    standard [label="Standard clocks /\nfilesystem / containers"];
-    application -> utilities [label="measures local time;\nuses bits / numeric parsing"];
-    assets -> utilities [label="discovers indexed files"];
-    memory -> utilities [label="computes addresses / fit"];
-    visuals -> utilities [label="builds CPU geometry"];
-    utilities -> standard [label="uses local value operations"];
-}
+```mermaid
+flowchart LR
+    accTitle: Utilities integration
+    accDescr: Applications and engine systems use local timing, parsing, file discovery and geometry helpers.
+    Application -->|uses time, bits and parsing| Utilities
+    Assets -->|discovers indexed files| Utilities
+    Memory -->|computes addresses and fit| Utilities
+    Visuals[Text and rendering preparation] -->|builds CPU geometry| Utilities
+    Utilities -->|uses| Standard[Standard clocks, filesystem and containers]
 ```
 
 ### Uses

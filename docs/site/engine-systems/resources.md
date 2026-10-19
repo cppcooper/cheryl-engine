@@ -34,22 +34,14 @@ Types below are in `CE::Rendering` unless another namespace is shown.
 
 ## Usage
 
-```{graphviz}
-:caption: Resources integration
-:alt: Asset, text and GUI uploaders create retained resources. Rendering keeps resource generations in frames. Runtime owns the provider, which needs its original live graphics backend.
-
-digraph resources_usage {
-    rankdir=LR;
-    resources [label="Resources", penwidth=2];
-    preparation [label="Assets / Text / GUI\nuploaders"];
-    rendering [label="Rendering"];
-    runtime [label="Runtime\nContext + session"];
-    backend [label="Graphics backend\nand context"];
-    preparation -> resources [label="uploads images / glyphs /\ngeometry / materials"];
-    rendering -> resources [label="retains exact generations\nin draw packets"];
-    runtime -> resources [label="owns provider;\ncoordinates shutdown"];
-    resources -> backend [label="requires live native domain\nfor creation / retirement"];
-}
+```mermaid
+flowchart LR
+    accTitle: Resources integration
+    accDescr: Uploaders create resources, frames retain their generations, and the provider requires a live graphics backend.
+    Uploaders[Assets, Text and GUI] -->|upload CPU data| Resources
+    Rendering -->|retains exact generations| Resources
+    Context -->|owns provider| Resources
+    Resources -->|requires live graphics domain| Backend
 ```
 
 ### Uses

@@ -52,22 +52,14 @@ explains this distinction and lists the headers without repeating every key here
 
 ## Usage
 
-```{graphviz}
-:caption: Input integration
-:alt: Runtime polls Input, game controllers read actions through tick views, and GUI sessions request records and focus. Input borrows a Display window.
-
-digraph input_usage {
-    rankdir=LR;
-    input [label="Input", penwidth=2];
-    runtime [label="Runtime"];
-    game [label="Game / controllers"];
-    gui [label="GUI sessions"];
-    display [label="Display"];
-    runtime -> input [label="polls; transfers immutable\nsnapshots into ticks"];
-    game -> input [label="reads actions through\nthe runtime tick"];
-    gui -> input [label="requests capture / focus;\nreads tick records", style=dashed];
-    input -> display [label="borrows live window"];
-}
+```mermaid
+flowchart LR
+    accTitle: Input integration
+    accDescr: Runtime polls Input, game controllers read tick actions, and GUI sessions can request records and focus.
+    Runtime -->|polls and copies snapshots into ticks| Input
+    Game -->|reads actions through the tick| Input
+    GUI -. requests records and focus .-> Input
+    Input -->|borrows live window| Display
 ```
 
 ### Uses

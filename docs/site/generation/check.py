@@ -36,9 +36,7 @@ class Page(HTMLParser):
                 continue
             if name == "id" or (tag == "a" and name == "name"):
                 self.anchors.add(value)
-            elif (name in {"href", "src", "poster"}
-                  or (tag == "form" and name == "action")
-                  or (tag == "object" and name == "data")):
+            elif name in {"href", "src", "poster"} or (tag == "form" and name == "action"):
                 self.references.append(value)
             elif name == "srcset" and not value.startswith("data:"):
                 self.references.extend(item.strip().split()[0] for item in value.split(",") if item.strip())

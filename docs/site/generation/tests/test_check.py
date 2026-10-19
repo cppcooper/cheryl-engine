@@ -169,18 +169,8 @@ class CheckTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing or prefix-dependent CSS asset"):
             checker.check(self.html, self.xml)
 
-    def test_diagram_asset(self):
-        diagram = self.html / "_static/diagram.svg"
-        diagram.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>', encoding="utf-8")
-        self.add_html('<object data="_static/diagram.svg" type="image/svg+xml"></object>')
-        checker.check(self.html, self.xml)
-        diagram.unlink()
-        with self.assertRaisesRegex(ValueError, "Missing local target: index.html -> _static/diagram.svg"):
-            checker.check(self.html, self.xml)
-
     def test_root_relative(self):
-        for markup in ('<a href="/guide/setup.html">Setup</a>', '<form action="/guide/setup.html"></form>',
-                       '<object data="/_static/icon.svg" type="image/svg+xml"></object>'):
+        for markup in ('<a href="/guide/setup.html">Setup</a>', '<form action="/guide/setup.html"></form>'):
             with self.subTest(markup=markup):
                 self.write_html()
                 self.add_html(markup)

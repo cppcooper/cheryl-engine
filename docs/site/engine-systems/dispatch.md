@@ -30,24 +30,15 @@ Types below are in `CE::Runtime` unless another namespace is shown.
 
 ## Usage
 
-```{graphviz}
-:caption: Dispatch integration
-:alt: Asset, text, GUI and worker producers submit owned requests to Dispatch. Runtime drains its queues. Platform callbacks use Resources or Display; simulation callbacks change application state. Events can opt into owner delivery.
-
-digraph dispatch_usage {
-    rankdir=LR;
-    dispatch [label="Dispatch", penwidth=2];
-    producers [label="Assets / Text / GUI\napplication producers / jobs"];
-    runtime [label="Runtime"];
-    events [label="Events"];
-    platform [label="Platform / graphics owner\nResources / Display"];
-    simulation [label="Simulation owner\napplication state"];
-    producers -> dispatch [label="submits owned requests;\nretains futures"];
-    runtime -> dispatch [label="opens / drains / closes\non selected owners"];
-    events -> dispatch [label="optional: owner delivery", style=dashed];
-    dispatch -> platform [label="executes platform callbacks\nwith live Context"];
-    dispatch -> simulation [label="executes simulation callbacks\nbefore updates"];
-}
+```mermaid
+flowchart LR
+    accTitle: Dispatch integration
+    accDescr: Producers submit owned requests; Runtime drains Dispatch on platform or simulation owners.
+    Producers[Assets, Text, GUI and jobs] -->|submit owned requests| Dispatch
+    Runtime -->|opens, drains and closes| Dispatch
+    Events -. optional owner delivery .-> Dispatch
+    Dispatch -->|runs with live Context| Platform[Platform and graphics callbacks]
+    Dispatch -->|runs before updates| Simulation[Simulation callbacks]
 ```
 
 ### Uses
