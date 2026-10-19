@@ -18,6 +18,7 @@
 #include <cheryl/assets/types/3d.h>
 #include <cheryl/core/engine/event-delivery.h>
 #include <cheryl/core/engine/view-state.h>
+#include <cheryl/core/game-framework/runtime-lifecycle.h>
 #include <cheryl/core/engine/worker-configuration.h>
 #include <cheryl/core/resources/asset-management/shader-asset-mgr.h>
 #include <cheryl/core/resources/memory/managed-block.hpp>

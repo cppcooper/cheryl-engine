@@ -1,4 +1,5 @@
 #include <core/engine/engine-context.h>
+#include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/game-framework/game-runtime-internal.h>
@@ -13,6 +14,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <future>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -233,6 +235,284 @@ namespace {
             ++observations_.frames;
         }
     };
+}
+
+namespace {
+    class LifecycleGame final : public CE::Game::AbstractGame {
+    public:
+        bool fail_init = false;
+        bool fail_update = false;
+        bool fail_quiesce = false;
+        bool fail_deinit = false;
+        int updates = 0;
+        int quiesces = 0;
+        int deinits = 0;
+        std::function<void()> on_update;
+        void init() override {
+            if (fail_init)
+                throw std::runtime_error("game init failure");
+        }
+        void quiesce() override {
+            ++quiesces;
+            if (fail_quiesce)
+                throw std::runtime_error("game quiesce failure");
+        }
+        void deinit() override {
+            ++deinits;
+            if (fail_deinit)
+                throw std::runtime_error("game deinit failure");
+        }
+        void update(const CE::Game::TickContext& tick) override {
+            ++updates;
+            if (on_update)
+                on_update();
+            if (fail_update)
+                throw std::runtime_error("game update failure");
+            tick.request_stop();
+        }
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+            static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
+        }
+    };
+}
+
+TEST(runtime_lifecycle, ready_and_owner_gate) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game, mode);
+        const auto platform = std::this_thread::get_id();
+        std::vector<RuntimeStage> stages;
+        std::uint64_t session = 0;
+        bool simulation_ready = false;
+        engine.events().register_listener(runtime_ready_event, [&](const auto& event) {
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            EXPECT_TRUE(event.current.initialized.renderer);
+            EXPECT_TRUE(event.current.initialized.input);
+            EXPECT_TRUE(event.current.initialized.game);
+            EXPECT_TRUE(event.current.initialized.simulation_owner);
+            EXPECT_TRUE(engine.simulation_view().snapshot().initialized);
+            EXPECT_EQ(game.updates, 0);
+            session = event.current.session;
+            stages.push_back(event.current.stage);
+            throw std::runtime_error("optional Ready observer");
+        });
+        engine.events().register_listener(runtime_ready_event, [&](const auto&) {
+            simulation_ready = true;
+            EXPECT_EQ(std::this_thread::get_id() == platform, mode == RunMode::Sequential);
+        }, CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()), [](std::exception_ptr) {});
+        game.on_update = [&] { EXPECT_TRUE(simulation_ready); };
+        engine.events().register_listener(shutdown_starting_event, [&](const auto& event) {
+            EXPECT_EQ(event.current.session, session);
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            EXPECT_EQ(event.current.cause, ShutdownCause::StopRequested);
+            stages.push_back(event.current.stage);
+        });
+        engine.events().register_listener(runtime_quiescing_event, [&](const auto& event) {
+            EXPECT_EQ(game.quiesces, 1);
+            EXPECT_EQ(game.deinits, 0);
+            stages.push_back(event.current.stage);
+        });
+        engine.events().register_listener(runtime_stopped_event, [&](const auto& event) {
+            EXPECT_EQ(game.deinits, 1);
+            EXPECT_EQ(observations.shutdowns, 1);
+            EXPECT_EQ(event.current.outcome, RuntimeOutcome::Completed);
+            EXPECT_EQ(event.current.stats.updates, 1u);
+            EXPECT_EQ(event.current.sequence, 4u);
+            stages.push_back(event.current.stage);
+            throw std::runtime_error("optional final observer");
+        });
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(stages, (std::vector{RuntimeStage::Ready, RuntimeStage::Stopping, RuntimeStage::Quiescing, RuntimeStage::Stopped}));
+        EXPECT_TRUE(runtime.lifecycle().snapshot().closed);
+        const auto events = stages.size();
+        GameRuntime rejected(engine, game, mode);
+        EXPECT_THROW(rejected.run(), CE::Exceptions::failed_operation);
+        EXPECT_EQ(stages.size(), events);
+        EXPECT_EQ(rejected.lifecycle().snapshot().stage, RuntimeStage::Unstarted);
+    }
+}
+
+TEST(runtime_lifecycle, partial_start_and_pre_stop) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        for (const bool pre_stop : {false, true}) {
+            Observations observations;
+            Context engine(
+                std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+                std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+                std::make_unique<ContractInput>(observations)
+            );
+            LifecycleGame game;
+            game.fail_init = !pre_stop;
+            GameRuntime runtime(engine, game, mode);
+            int ready = 0;
+            int starting = 0;
+            int quiescing = 0;
+            int stopped = 0;
+            engine.events().register_listener(runtime_ready_event, [&](const auto&) { ++ready; });
+            engine.events().register_listener(shutdown_starting_event, [&](const auto& event) {
+                ++starting;
+                EXPECT_FALSE(event.current.reached_ready);
+                EXPECT_FALSE(event.current.initialized.game);
+                EXPECT_EQ(event.current.initialized.renderer, !pre_stop);
+            });
+            engine.events().register_listener(runtime_quiescing_event, [&](const auto&) { ++quiescing; });
+            engine.events().register_listener(runtime_stopped_event, [&](const auto& event) {
+                ++stopped;
+                EXPECT_EQ(event.current.sequence, 3u);
+                EXPECT_NE(event.current.context, 0u);
+                EXPECT_NE(event.current.session, 0u);
+                EXPECT_EQ(event.current.outcome, pre_stop ? RuntimeOutcome::Completed : RuntimeOutcome::Failed);
+            });
+            if (pre_stop) {
+                runtime.stop();
+                EXPECT_NO_THROW(runtime.run());
+            } else {
+                EXPECT_THROW(runtime.run(), std::runtime_error);
+            }
+            EXPECT_EQ(ready, 0);
+            EXPECT_EQ(starting, 1);
+            EXPECT_EQ(quiescing, 1);
+            EXPECT_EQ(stopped, 1);
+            EXPECT_EQ(game.updates, 0);
+        }
+    }
+}
+
+TEST(runtime_lifecycle, preserved_failures) {
+    using namespace CE::Runtime;
+    std::optional<RuntimeLifecycle> retained;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        game.fail_update = game.fail_quiesce = game.fail_deinit = true;
+        GameRuntime runtime(engine, game, mode);
+        retained = runtime.lifecycle();
+        try {
+            runtime.run();
+            ADD_FAILURE() << "Update failure must escape";
+        } catch (const std::runtime_error& error) {
+            EXPECT_STREQ(error.what(), "game update failure");
+        }
+        const auto final = retained->snapshot();
+        EXPECT_EQ(final.outcome, RuntimeOutcome::Failed);
+        EXPECT_EQ(final.primary_failure.message_text(), "game update failure");
+        EXPECT_EQ(final.primary_failure.phase_text(), "game_update");
+        ASSERT_EQ(final.secondary_failure_count, 2u);
+        EXPECT_EQ(final.secondary_failures[0].message_text(), "game quiesce failure");
+        EXPECT_EQ(final.secondary_failures[1].message_text(), "game deinit failure");
+        EXPECT_EQ(observations.shutdowns, 1);
+    }
+    ASSERT_TRUE(retained);
+    EXPECT_EQ(retained->snapshot().primary_failure.message_text(), "game update failure");
+}
+
+TEST(runtime_lifecycle, stop_at_ready) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game, mode);
+        engine.events().register_listener(runtime_ready_event, [&](const auto&) { runtime.stop(); });
+        runtime.run();
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_TRUE(runtime.lifecycle().snapshot().reached_ready);
+    }
+}
+
+TEST(runtime_lifecycle, worker_start_failure) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    GameRuntime runtime(engine, game, RunMode::Concurrent);
+    Detail::GameRuntimeAccess::set_simulation_thread_factory(runtime, [](std::function<void()>) -> std::thread {
+        throw std::runtime_error("thread creation");
+    });
+    EXPECT_THROW(runtime.run(), std::runtime_error);
+    const auto final = runtime.lifecycle().snapshot();
+    EXPECT_FALSE(final.reached_ready);
+    EXPECT_FALSE(final.initialized.simulation_owner);
+    EXPECT_EQ(final.primary_failure.message_text(), "thread creation");
+    EXPECT_EQ(final.stage, RuntimeStage::Stopped);
+}
+
+TEST(runtime_lifecycle, bootstrap_platform_progress) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    GameRuntime runtime(engine, game, RunMode::Concurrent);
+    const auto platform = std::this_thread::get_id();
+    std::atomic<bool> serviced = false;
+    engine.events().register_listener(simulation_view_changed_event, [&](const auto&) {
+        auto result = engine.platform_dispatcher().submit([&](Context&) {
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            serviced = true;
+        });
+        ASSERT_EQ(result.wait_for(std::chrono::seconds{5}), std::future_status::ready);
+        result.get();
+    });
+    engine.events().register_listener(runtime_ready_event, [&](const auto&) { EXPECT_TRUE(serviced.load()); });
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
+}
+
+TEST(runtime_lifecycle, starting_before_hook_returns) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    GameRuntime runtime(engine, game, RunMode::Concurrent);
+    std::promise<void> starting;
+    auto started = starting.get_future();
+    std::atomic<bool> in_hook = false;
+    engine.events().register_listener(shutdown_starting_event, [&](const auto&) {
+        EXPECT_TRUE(in_hook.load());
+        starting.set_value();
+    });
+    engine.events().register_listener(runtime_quiescing_event, [&](const auto&) { EXPECT_FALSE(in_hook.load()); });
+    game.on_update = [&] {
+        in_hook = true;
+        auto stop = engine.platform_dispatcher().submit([&](Context&) { runtime.stop(); });
+        if (stop.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+            throw std::runtime_error("platform stop watchdog");
+        stop.get();
+        if (started.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+            throw std::runtime_error("Starting watchdog");
+        in_hook = false;
+    };
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
 }
 
 TEST(runtime_contract, frame) {

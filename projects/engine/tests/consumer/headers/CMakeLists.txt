@@ -25,6 +25,7 @@ set(consumer_headers
     cheryl/core/rendering/graphics-domain.h
     cheryl/core/rendering/clip-region.h
     cheryl/core/game-framework/game-runtime.h
+    cheryl/core/game-framework/runtime-lifecycle.h
     cheryl/core/logging/log-names.h
     cheryl/core/logging/logger.h
     cheryl/core/resources/asset-management/asset-loader.h

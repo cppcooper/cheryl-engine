@@ -8,6 +8,7 @@
 #include <core/diagnostics.h>
 
 #include "simulation-scheduler.h"
+#include "runtime-lifecycle.h"
 
 #include <atomic>
 #include <chrono>
@@ -38,24 +39,6 @@ namespace CE::Runtime {
     /** Placement of simulation relative to the calling platform owner. */
     enum class RunMode { Sequential, ///< Run update, frame preparation and native rendering on the caller.
         Concurrent ///< Run update/frame preparation on one simulation worker; native work remains on the caller.
-    };
-
-    /** Completed/unstarted session observations, copied after synchronization; never a live admission policy. */
-    struct RuntimeStats {
-        ::CE::Diagnostics::DomainId domain = 0; ///< Process-local runtime identity.
-        std::uint64_t updates = 0; ///< Actual game update invocations.
-        std::uint64_t polls = 0; ///< Completed platform input polls.
-        std::uint64_t published = 0; ///< Completed render frames published for consumption.
-        std::uint64_t rendered = 0; ///< Frames consumed by the renderer.
-        std::uint64_t superseded = 0; ///< Published frames replaced before rendering.
-        std::uint64_t skipped_publication = 0; ///< Frame preparations skipped because no publication slot was free.
-        std::uint64_t dropped_batches = 0; ///< Recovery batches with discarded simulation lag.
-        std::uint64_t dropped_nanoseconds = 0; ///< Total simulation lag discarded by scheduling policy, in nanoseconds.
-        std::uint64_t peak_polls = 0; ///< Maximum retained poll backlog observed.
-        std::uint64_t resizes = 0; ///< Observed framebuffer-size changes.
-        std::uint64_t input_records = 0; ///< Ordered input records observed across published polls.
-        std::uint64_t focus_changes = 0; ///< Observed focus-ownership epoch changes.
-        std::uint64_t backpressure = 0; ///< Observed cycles where bounded input admission prevented another poll.
     };
 
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
@@ -98,6 +81,9 @@ namespace CE::Runtime {
         std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
         std::shared_ptr<::CE::Runtime::Detail::RuntimePressureState> pressure_state_;
         bool publishing_pressure_ = false; // Platform-owned; nested diagnoses wait for the next safe pass.
+        RuntimeLifecycle lifecycle_;
+        InitializedCapabilities initialized_;
+        ShutdownCause shutdown_cause_ = ShutdownCause::None;
 
     public:
         CE_API GameRuntime(
@@ -118,9 +104,14 @@ namespace CE::Runtime {
         // Caller synchronizes with run start/return. Query before run or after
         // its return/throw; live sampling rejects. Counters publish after join.
         [[nodiscard]] CE_API ::CE::Runtime::RuntimeStats diagnostics() const;
+        [[nodiscard]] RuntimeLifecycle lifecycle() const noexcept { return lifecycle_; }
         [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
+        CE_API void publish_ready();
+        CE_API void publish_shutdown_starting(std::exception_ptr failure) noexcept;
+        CE_API void publish_quiescing() noexcept;
+        CE_API void finish_lifecycle(std::exception_ptr failure) noexcept;
         CE_API WindowState select_window();
         CE_API void select_simulation_view(const WindowState& selected);
         [[nodiscard]] CE_API bool window_selection_current(const WindowState& selected) const;

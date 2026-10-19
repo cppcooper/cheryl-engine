@@ -76,6 +76,7 @@ namespace CE::Runtime {
         std::lock_guard lock(execution_mutex_);
         if (session_started_.load(std::memory_order_acquire))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
+        const auto context = Detail::ViewSourceAccess::identity();
         const auto session = Detail::ViewSourceAccess::identity();
         const auto window_source = Detail::ViewSourceAccess::identity();
         const auto simulation_source = Detail::ViewSourceAccess::identity();
@@ -88,6 +89,7 @@ namespace CE::Runtime {
         renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
         Detail::ViewSourceAccess::reserve(window_state_, window_source, session);
         Detail::ViewSourceAccess::reserve(simulation_view_, simulation_source, session);
+        event_context_ = context;
         session_started_.store(true, std::memory_order_release);
     }
 

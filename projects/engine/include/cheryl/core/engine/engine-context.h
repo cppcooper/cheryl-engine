@@ -67,6 +67,7 @@ namespace CE::Runtime {
         std::unique_ptr<CE::Input::System> owned_input_;
         CE::Input::System* input_;
         std::atomic<bool> session_started_{false};
+        std::uint64_t event_context_ = 0;
         PlatformDispatcher platform_dispatcher_;
         ExecutionOptions execution_;
         mutable std::mutex execution_mutex_;

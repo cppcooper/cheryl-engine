@@ -26,6 +26,18 @@
 #include <vector>
 
 namespace CE::Runtime {
+    namespace {
+        const char* shutdown_cause_name(ShutdownCause cause) noexcept {
+            switch (cause) {
+                case ShutdownCause::None: return "none";
+                case ShutdownCause::StopRequested: return "stop_requested";
+                case ShutdownCause::WindowClose: return "window_close";
+                case ShutdownCause::Failure: return "failure";
+                case ShutdownCause::AcceptedRequest: return "accepted_request";
+            }
+            return "unknown";
+        }
+    }
     std::shared_ptr<Detail::RuntimePressureState> Detail::GameRuntimeAccess::pressure_state(GameRuntime& runtime) {
         return runtime.pressure_state_;
     }
@@ -70,6 +82,7 @@ namespace CE::Runtime {
 
     GameRuntime::~GameRuntime() {
         pressure_state_->close();
+        lifecycle_.close();
     }
 
     void GameRuntime::run() {
@@ -85,6 +98,7 @@ namespace CE::Runtime {
             pressure_state_->bind_owner();
             engine_.begin_session();
             admitted = true;
+            lifecycle_.begin(engine_.event_context_, engine_.window_state().snapshot().session);
             next_timing_report_ = next_platform_report_ = ::CE::Runtime::Simulation::Clock::now() + std::chrono::seconds{2};
             CE_LOG_INFO(
                 ::CE::Logging::Categories::engine,
@@ -101,18 +115,17 @@ namespace CE::Runtime {
             report_session(true);
             run_finished_.store(true, std::memory_order_release);
             pressure_state_->close();
-            if (admitted) {
-                Detail::ViewSourceAccess::close(engine_.simulation_view_);
-                Detail::ViewSourceAccess::close(engine_.window_state_);
-            }
+            if (admitted)
+                finish_lifecycle(std::current_exception());
+            else
+                lifecycle_.close();
             throw;
         }
         stop();
         report_session(false);
         run_finished_.store(true, std::memory_order_release);
         pressure_state_->close();
-        Detail::ViewSourceAccess::close(engine_.simulation_view_);
-        Detail::ViewSourceAccess::close(engine_.window_state_);
+        finish_lifecycle({});
     }
 
     RuntimeStats GameRuntime::diagnostics() const {
@@ -152,8 +165,10 @@ namespace CE::Runtime {
     void GameRuntime::preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next) {
         if (next && !first)
             phase_ = phase;
-        else if (next && first != next)
+        else if (next && first != next) {
+            lifecycle_.secondary(phase, next);
             ::CE::Diagnostics::report_outcome("runtime", diagnostics_.domain, phase, "secondary_failure");
+        }
         ::CE::Diagnostics::preserve_failure(first, phase, std::move(next));
     }
 
@@ -247,6 +262,78 @@ namespace CE::Runtime {
         );
     }
 
+    void GameRuntime::publish_ready() {
+        if (stop_source_.stop_requested())
+            return;
+        if (engine_.window().should_close()) {
+            shutdown_cause_ = ShutdownCause::WindowClose;
+            stop();
+            return;
+        }
+        if (const auto current = lifecycle_.ready(initialized_, stop_source_.stop_requested())) {
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine,
+                "subsystem=events event=runtime-ready operation=notification_attempt context={} session={} sequence={}", current->context,
+                current->session, current->sequence
+            );
+            engine_.events().notify(runtime_ready_event, RuntimeReady{*current});
+        }
+    }
+
+    void GameRuntime::publish_shutdown_starting(std::exception_ptr failure) noexcept {
+        auto cause = shutdown_cause_;
+        if (failure)
+            cause = ShutdownCause::Failure;
+        else if (cause == ShutdownCause::None)
+            cause = stop_source_.stop_requested() ? ShutdownCause::StopRequested : ShutdownCause::WindowClose;
+        stop();
+        try {
+            if (const auto current = lifecycle_.starting(initialized_, cause)) {
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::engine,
+                    "subsystem=events event=shutdown-starting operation=notification_attempt context={} session={} sequence={} cause={} reached_ready={} renderer_ready={} input_ready={} game_ready={} simulation_owner_ready={}",
+                    current->context, current->session, current->sequence, shutdown_cause_name(current->cause), current->reached_ready,
+                    current->initialized.renderer, current->initialized.input, current->initialized.game, current->initialized.simulation_owner
+                );
+                engine_.events().notify(shutdown_starting_event, ShutdownStarting{*current});
+            }
+        } catch (...) {
+            CE::Diagnostics::report_failure("shutdown starting observation", std::current_exception());
+        }
+    }
+
+    void GameRuntime::publish_quiescing() noexcept {
+        try {
+            if (const auto current = lifecycle_.quiescing()) {
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::engine,
+                    "subsystem=events event=runtime-quiescing operation=notification_attempt context={} session={} sequence={} reached_ready={}",
+                    current->context, current->session, current->sequence, current->reached_ready
+                );
+                engine_.events().notify(runtime_quiescing_event, RuntimeQuiescing{*current});
+            }
+        } catch (...) {
+            CE::Diagnostics::report_failure("runtime quiescing observation", std::current_exception());
+        }
+    }
+
+    void GameRuntime::finish_lifecycle(std::exception_ptr failure) noexcept {
+        Detail::ViewSourceAccess::close(engine_.simulation_view_);
+        Detail::ViewSourceAccess::close(engine_.window_state_);
+        try {
+            const auto current = lifecycle_.stopped(diagnostics_, phase_, failure);
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine,
+                "subsystem=events event=runtime-stopped operation=notification_attempt context={} session={} sequence={} outcome={} secondary_failures={}",
+                current.context, current.session, current.sequence, current.outcome == RuntimeOutcome::Failed ? "failed" : "completed",
+                current.secondary_failure_count
+            );
+            engine_.events().notify(runtime_stopped_event, RuntimeStopped{current});
+        } catch (...) {
+            CE::Diagnostics::report_failure("runtime stopped observation", std::current_exception());
+        }
+    }
+
     WindowState GameRuntime::select_window() {
         auto& window = engine_.window();
         window.check_native_failure();
@@ -298,6 +385,7 @@ namespace CE::Runtime {
             phase_ = "renderer_initialize";
             renderer.initialize();
             renderer_ready_ = true;
+            initialized_.renderer = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -307,9 +395,11 @@ namespace CE::Runtime {
                 scheduler->wake.notify_all();
             });
             simulation_dispatcher_.bind_owner();
+            initialized_.simulation_owner = true;
             input_started = true;
             phase_ = "input_initialize";
             input.initialize(window);
+            initialized_.input = true;
             CE_LOG_INFO(
                 ::CE::Logging::Categories::platform, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
                 diagnostics_.domain, input.supports(::CE::Input::Capture::Channel::State),
@@ -319,6 +409,7 @@ namespace CE::Runtime {
             game_started = true;
             phase_ = "game_init";
             game_.init();
+            initialized_.game = true;
             if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
@@ -338,6 +429,7 @@ namespace CE::Runtime {
                 }
             });
             select_simulation_view(selected_window);
+            publish_ready();
             const auto started_at = ::CE::Runtime::Simulation::Clock::now();
             ::CE::Input::Accumulator accumulator(previous_poll, started_at);
             Input::PollingBacklog backlog(polling_);
@@ -437,11 +529,12 @@ namespace CE::Runtime {
                 preserve_failure(failure, phase, std::current_exception());
             }
         };
-        stop();
+        publish_shutdown_starting(failure);
         finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
             finish("game quiesce", [this] { game_.quiesce(); });
+        publish_quiescing();
         finish_worker_shutdown(failure);
         finish("pending native window callback", [this] { engine_.window().check_native_failure(); });
         finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
@@ -520,6 +613,8 @@ namespace CE::Runtime {
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
             bool worker_done = false;
+            bool simulation_ready = false;
+            bool start_released = false;
             const char* worker_phase = "simulation_start";
         };
 
@@ -541,6 +636,7 @@ namespace CE::Runtime {
             phase_ = "renderer_initialize";
             renderer.initialize();
             renderer_ready_ = true;
+            initialized_.renderer = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -554,6 +650,7 @@ namespace CE::Runtime {
             input_started = true;
             phase_ = "input_initialize";
             input.initialize(window);
+            initialized_.input = true;
             CE_LOG_INFO(
                 ::CE::Logging::Categories::platform, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
                 diagnostics_.domain, input.supports(::CE::Input::Capture::Channel::State),
@@ -563,6 +660,7 @@ namespace CE::Runtime {
             game_started = true;
             phase_ = "game_init";
             game_.init();
+            initialized_.game = true;
             if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
@@ -587,7 +685,14 @@ namespace CE::Runtime {
                 const char* worker_phase = "simulation_bind";
                 try {
                     simulation_dispatcher_.bind_owner();
+                    worker_phase = "simulation_view_initialize";
                     select_simulation_view(baseline);
+                    {
+                        std::unique_lock lock(scheduler_->mutex);
+                        handoff.simulation_ready = true;
+                        scheduler_->wake.notify_all();
+                        scheduler_->wake.wait(lock, [&] { return handoff.start_released || stop_source_.stop_requested(); });
+                    }
                     const auto started_at = ::CE::Runtime::Simulation::Clock::now();
                     ::CE::Input::Accumulator accumulator(previous_poll, started_at);
                     ::CE::Runtime::Simulation::Scheduler timing(timing_, started_at);
@@ -696,8 +801,10 @@ namespace CE::Runtime {
                         } else
                             secondary = handoff.worker_failure != next;
                     }
-                    if (secondary)
+                    if (secondary) {
+                        lifecycle_.secondary("simulation_dispatcher_close", next);
                         ::CE::Diagnostics::report_failure("simulation owner dispatcher close", next);
+                    }
                 }
                 {
                     std::lock_guard lock(scheduler_->mutex);
@@ -709,6 +816,37 @@ namespace CE::Runtime {
             worker = simulation_thread_factory_ ? simulation_thread_factory_(std::move(simulate)) : std::thread(std::move(simulate));
             if (!worker.joinable())
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "Simulation thread factory returned no thread");
+
+            // Keep platform-dependent bootstrap requests moving while the worker
+            // establishes its baseline. Never publish or invoke under the lock.
+            for (;;) {
+                {
+                    std::lock_guard lock(scheduler_->mutex);
+                    if (handoff.simulation_ready || handoff.worker_done || stop_source_.stop_requested())
+                        break;
+                }
+                pump_shutdown_requests(failure);
+                if (failure) {
+                    stop();
+                    break;
+                }
+                std::unique_lock lock(scheduler_->mutex);
+                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [&] {
+                    return handoff.simulation_ready || handoff.worker_done || stop_source_.stop_requested() ||
+                        engine_.platform_dispatcher().has_pending();
+                });
+            }
+            {
+                std::lock_guard lock(scheduler_->mutex);
+                initialized_.simulation_owner = handoff.simulation_ready;
+            }
+            if (initialized_.simulation_owner)
+                publish_ready();
+            {
+                std::lock_guard lock(scheduler_->mutex);
+                handoff.start_released = true;
+            }
+            scheduler_->wake.notify_all();
 
             std::optional<std::size_t> current_frame;
             // Full batches pause only polling. Rendering and recycling remain
@@ -818,7 +956,15 @@ namespace CE::Runtime {
             failure = std::current_exception();
         }
 
-        stop();
+        std::exception_ptr early_worker_failure;
+        const char* early_worker_phase;
+        {
+            std::lock_guard lock(scheduler_->mutex);
+            early_worker_failure = handoff.worker_failure;
+            early_worker_phase = handoff.worker_phase;
+        }
+        preserve_failure(failure, early_worker_phase, early_worker_failure);
+        publish_shutdown_starting(failure);
         const auto finish = [this, &failure](const char* phase, auto&& operation) {
             try {
                 operation();
@@ -851,11 +997,13 @@ namespace CE::Runtime {
             worker_failure = handoff.worker_failure;
             worker_phase = handoff.worker_phase;
         }
-        preserve_failure(failure, worker_phase, std::move(worker_failure));
+        if (worker_failure != early_worker_failure)
+            preserve_failure(failure, worker_phase, std::move(worker_failure));
         // Also handles initialization/thread-start failure before owner binding.
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
             finish("game quiesce", [this] { game_.quiesce(); });
+        publish_quiescing();
         finish_worker_shutdown(failure);
         finish("pending native window callback", [this] { engine_.window().check_native_failure(); });
         finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
@@ -876,11 +1024,17 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::stop() {
+        try {
+            lifecycle_.request_stop();
+        } catch (...) {
+            CE::Diagnostics::report_failure("runtime stop observation", std::current_exception());
+        }
         (void)stop_source_.request_stop();
     }
 
     void GameRuntime::finish_unstarted_session() {
         std::exception_ptr failure;
+        publish_shutdown_starting({});
         const auto finish = [this, &failure](const char* phase, auto&& operation) {
             try {
                 operation();
@@ -890,6 +1044,7 @@ namespace CE::Runtime {
         };
         finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
+        publish_quiescing();
         finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
         // Neither mailbox has opened, so no accepted platform continuation can
         // require pumping; queued CPU jobs observe closed targets and settle.
