@@ -9,3 +9,4 @@
 #include "rendering/render-frame.h"
 #include "rendering/presentation-surface.h"
 #include "rendering/renderer.h"
+#include "rendering/graphics-domain.h"

@@ -4,6 +4,8 @@
 
 #include <core/display/framebuffer-size.h>
 #include <core/rendering/render-frame.h>
+#include <core/rendering/graphics-domain.h>
+#include <core/subsystems/event-bus.h>
 #include <glm.hpp>
 
 namespace CE::Rendering {
@@ -16,11 +18,28 @@ namespace CE::Rendering {
      * A backend failure may leave native state changed or part of a frame drawn.
      */
     class CE_API Renderer {
+        CE::Events::EventBus::Publisher event_publisher_;
+        CE::Events::EventBus::Delivery terminal_delivery_;
+        std::uint64_t published_sequence_ = 0;
+        bool publishing_domain_ = false;
+
     public:
         virtual ~Renderer() = default;
 
         virtual void initialize() = 0;
         virtual void deinitialize() = 0;
+        /** Optional portable domain token; custom adapters may return an empty token. */
+        [[nodiscard]] virtual GraphicsDomain graphics_domain() const noexcept { return {}; }
+        /** Select routing on the graphics owner before initialization. Runtime supplies
+         * its Context bus. Optional terminal_delivery must queue without invoking
+         * inline, as EventBus::Delivery requires, and retain its targets through
+         * execution/cancellation. Destructors only submit owned terminal records;
+         * without this transport, inspect the retained token after destruction.
+         */
+        void publish_events_to(
+            CE::Events::EventBus::Publisher publisher,
+            CE::Events::EventBus::Delivery terminal_delivery = CE::Events::EventBus::Delivery{}
+        ) noexcept;
         // Platform/context-owner maintenance, even without a new frame. Deferred
         // resource backends collect final-owner retirements here; others may do nothing.
         virtual void maintain_resources() = 0;
@@ -31,6 +50,11 @@ namespace CE::Rendering {
         virtual void set_clear_colour(float r, float g, float b, float a) = 0;
         // A view supplied for a render pass; camera dimensionality does not set depth policy.
         virtual void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) = 0;
+
+    protected:
+        // Backend operation-final publication. Never call from a native-resource
+        // lock; destructor paths defer rather than entering listeners.
+        void publish_graphics_domain_changes(bool destroying = false) noexcept;
     };
 }
 

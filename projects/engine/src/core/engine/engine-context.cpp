@@ -6,6 +6,8 @@
 #include <core/display/display-system-interface.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
+#include <core/engine/event-delivery.h>
+#include <templates/asset-mgr.h>
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
 #include <internals/compile-time-logging.hpp>
@@ -73,6 +75,12 @@ namespace CE::Runtime {
         if (session_started_.exchange(true, std::memory_order_acq_rel))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
         input_->publish_events_to(events_.publisher());
+        events_.register_listener(
+            CE::Rendering::graphics_domain_state_changed_event, [](const CE::Rendering::GraphicsDomainStateChanged& change) {
+                static_cast<void>(CE::Assets::Cache::Context::evict_graphics_domain(change));
+            }
+        );
+        renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
     }
 
     Context::~Context() {

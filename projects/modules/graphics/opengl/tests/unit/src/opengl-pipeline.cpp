@@ -8,6 +8,7 @@
 #include <backends/opengl/resource-provider.h>
 #include <core/rendering/render-frame.h>
 #include <core/resources/asset-management/material-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
 #include <testing/failing-memory-resource.h>
 
 #include <gtest/gtest.h>
@@ -427,6 +428,13 @@ namespace {
             else
                 replace(GLAD_GL_VERSION_4_6, 1);
         }
+        void enable_diagnostics() {
+            replace(GLAD_GL_VERSION_4_3, 1);
+            replace(GLAD_GL_KHR_debug, 0);
+            replace(glad_glDebugMessageCallback, +[](GLDEBUGPROC, const void*) {});
+            replace(glad_glGetPointerv, +[](GLenum, void** pointer) { *pointer = nullptr; });
+            replace(glad_glIsEnabled, +[](GLenum) -> GLboolean { return GL_FALSE; });
+        }
         void reject_registration(const int candidate) {
             entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
             lifetime_ = CE::Rendering::OpenGL::Detail::LifetimeAccess::create(
@@ -621,6 +629,14 @@ TEST(opengl_renderer, startup_failure) {
             RecordingContext context(native);
             context.fail_release = release_failure;
             CE::Rendering::OpenGL::Renderer renderer(context);
+            CE::Events::EventBus events;
+            unsigned int notifications = 0;
+            events.register_listener(
+                CE::Rendering::graphics_domain_state_changed_event,
+                [&](const CE::Rendering::GraphicsDomainStateChanged&) { ++notifications; }
+            );
+            renderer.publish_events_to(events.publisher());
+            const auto token = renderer.graphics_domain();
             CE::Rendering::OpenGL::Detail::RendererAccess::set_native_loader(renderer, [&](CE::Rendering::OpenGL::Context&) {
                 if (operation == "loader")
                     throw std::runtime_error("Original loader failure");
@@ -646,6 +662,8 @@ TEST(opengl_renderer, startup_failure) {
             }
             EXPECT_EQ(context.releases, 1);
             EXPECT_FALSE(context.is_current());
+            EXPECT_EQ(token.snapshot().sequence, 0u);
+            EXPECT_EQ(notifications, 0u);
             EXPECT_THROW((void)renderer.resources(), CE::Exceptions::failed_operation);
             EXPECT_NO_THROW(renderer.deinitialize());
             EXPECT_EQ(context.releases, 1);
@@ -654,6 +672,182 @@ TEST(opengl_renderer, startup_failure) {
                 EXPECT_EQ(native.state_changes, 0);
         }
     }
+}
+
+TEST(opengl_domain, shutdown_eviction) {
+    using namespace CE::Rendering;
+    for (const bool fail_release : {false, true}) {
+        NativeProgramRecorder native;
+        RecordingContext context(native);
+        CE::Events::EventBus events;
+        OpenGL::Renderer renderer(context);
+        OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
+        OpenGL::ResourceProvider provider(renderer);
+        const auto token = provider.graphics_domain();
+        std::vector<GraphicsDomainSnapshot> changes;
+        bool evicted = false;
+        events.register_listener(graphics_domain_state_changed_event, [](const GraphicsDomainStateChanged&) {
+            throw std::runtime_error("observer failure");
+        });
+        events.register_listener(graphics_domain_state_changed_event, [&](const GraphicsDomainStateChanged& change) {
+            changes.push_back(change.current);
+            if (change.current.sequence == 2) {
+                EXPECT_EQ(context.releases, 1);
+                EXPECT_EQ(native.deleted.size(), native.generated.size());
+                evicted = CE::Assets::Cache::Context::evict_graphics_domain(change);
+            }
+        });
+        renderer.publish_events_to(events.publisher());
+        renderer.initialize();
+        renderer.initialize();
+        ASSERT_EQ(changes.size(), 1u);
+        EXPECT_EQ(changes.front().reason, GraphicsDomainReason::Initialized);
+        EXPECT_EQ(token.snapshot(), changes.front());
+        const auto lifetime = renderer.resources();
+        EXPECT_EQ(lifetime->graphics_domain().snapshot(), token.snapshot());
+        auto& images = CE::Assets::Images::Manager::get();
+        images.upload("closing-domain.png", CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}}, provider);
+        const auto retained = images.get_asset("closing-domain.png");
+        ASSERT_TRUE(retained);
+        context.fail_release = fail_release;
+        if (fail_release) {
+            try {
+                renderer.deinitialize();
+                FAIL() << "Context release must fail";
+            } catch (const std::runtime_error& error) {
+                EXPECT_STREQ(error.what(), "Later context release failure");
+            }
+        } else
+            EXPECT_NO_THROW(renderer.deinitialize());
+        ASSERT_EQ(changes.size(), 2u);
+        EXPECT_EQ(changes.back().reason, GraphicsDomainReason::Shutdown);
+        EXPECT_EQ(changes.back(), token.snapshot());
+        EXPECT_TRUE(evicted);
+        EXPECT_EQ(images.size(), 0u);
+        EXPECT_EQ(retained->pixel_size().width, 1u);
+        const auto queries = context.queries;
+        EXPECT_THROW(retained->bind(0), CE::Exceptions::failed_operation);
+        EXPECT_EQ(context.queries, queries);
+        lifetime->abandon();
+        EXPECT_EQ(token.snapshot().reason, GraphicsDomainReason::Shutdown);
+        renderer.deinitialize();
+        EXPECT_EQ(changes.size(), 2u);
+        EXPECT_THROW(renderer.initialize(), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(opengl_domain, reentrant_shutdown) {
+    using namespace CE::Rendering;
+    NativeProgramRecorder native;
+    native.enable_diagnostics();
+    RecordingContext context(native);
+    CE::Events::EventBus events;
+    OpenGL::Renderer renderer(context);
+    OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
+    renderer.set_native_diagnostics(true);
+    renderer.publish_events_to(events.publisher());
+    unsigned int depth = 0;
+    events.register_listener(graphics_domain_state_changed_event, [&](const GraphicsDomainStateChanged& change) {
+        EXPECT_EQ(depth++, 0u);
+        if (change.current.status == GraphicsDomainStatus::Available) {
+            EXPECT_TRUE(native.enabled.at(GL_DEBUG_OUTPUT));
+            renderer.deinitialize();
+        }
+        --depth;
+    });
+    std::vector<GraphicsDomainSnapshot> changes;
+    events.register_listener(graphics_domain_state_changed_event, [&](const GraphicsDomainStateChanged& change) {
+        changes.push_back(change.current);
+        EXPECT_EQ(change.domain.snapshot().sequence, 2u);
+    });
+    EXPECT_NO_THROW(renderer.initialize());
+    ASSERT_EQ(changes.size(), 2u);
+    EXPECT_EQ(changes[0].sequence, 1u);
+    EXPECT_EQ(changes[1].sequence, 2u);
+    EXPECT_EQ(context.releases, 1);
+}
+
+TEST(opengl_domain, deferred_destruction) {
+    using namespace CE::Rendering;
+    for (const bool fail_acquisition : {false, true}) {
+        for (const bool fail_release : {false, true}) {
+            NativeProgramRecorder native;
+            RecordingContext context(native);
+            CE::Events::EventBus events;
+            std::vector<CE::Events::EventBus::Work> pending;
+            std::vector<GraphicsDomainSnapshot> changes;
+            events.register_listener(graphics_domain_state_changed_event, [&](const GraphicsDomainStateChanged& change) {
+                changes.push_back(change.current);
+            });
+            GraphicsDomain retained;
+            std::shared_ptr<OpenGL::ResourceLifetime> lifetime;
+            {
+                OpenGL::Renderer renderer(context);
+                OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
+                retained = renderer.graphics_domain();
+                renderer.publish_events_to(events.publisher(), [&](CE::Events::EventBus::Work work) {
+                    pending.push_back(std::move(work));
+                    return true;
+                });
+                renderer.initialize();
+                lifetime = renderer.resources();
+                context.fail_acquisition = fail_acquisition;
+                context.fail_release = fail_release;
+                if (fail_acquisition) {
+                    EXPECT_THROW(renderer.deinitialize(), CE::Exceptions::failed_operation);
+                    EXPECT_EQ(retained.snapshot().status, GraphicsDomainStatus::Available);
+                    EXPECT_EQ(changes.size(), 1u);
+                }
+            }
+            const auto terminal = retained.snapshot();
+            EXPECT_EQ(terminal.sequence, 2u);
+            EXPECT_EQ(terminal.reason, fail_acquisition ? GraphicsDomainReason::Abandoned : GraphicsDomainReason::Shutdown);
+            ASSERT_EQ(changes.size(), 1u); // No callback entered during destruction.
+            ASSERT_EQ(pending.size(), 1u);
+            const auto queries = context.queries;
+            EXPECT_THROW(lifetime->require_current(), CE::Exceptions::failed_operation);
+            EXPECT_EQ(context.queries, queries);
+            pending.front()();
+            ASSERT_EQ(changes.size(), 2u);
+            EXPECT_EQ(changes.back(), terminal);
+            OpenGL::Renderer replacement(context);
+            EXPECT_NE(replacement.graphics_domain().snapshot().id, terminal.id);
+        }
+    }
+}
+
+TEST(opengl_domain, terminal_rejection) {
+    using namespace CE::Rendering;
+    NativeProgramRecorder native;
+    RecordingContext context(native);
+    CE::Events::EventBus events;
+    unsigned int calls = 0;
+    events.register_listener(graphics_domain_state_changed_event, [&](const GraphicsDomainStateChanged&) { ++calls; });
+    GraphicsDomain retained;
+    {
+        OpenGL::Renderer renderer(context);
+        OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
+        renderer.publish_events_to(events.publisher(), [](CE::Events::EventBus::Work) { return false; });
+        retained = renderer.graphics_domain();
+        renderer.initialize();
+    }
+    EXPECT_EQ(calls, 1u);
+    EXPECT_EQ(retained.snapshot().reason, GraphicsDomainReason::Shutdown);
+}
+
+TEST(opengl_domain, expired_route) {
+    using namespace CE::Rendering;
+    NativeProgramRecorder native;
+    RecordingContext context(native);
+    OpenGL::Renderer renderer(context);
+    OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
+    {
+        CE::Events::EventBus events;
+        renderer.publish_events_to(events.publisher());
+        renderer.initialize();
+    }
+    EXPECT_NO_THROW(renderer.deinitialize());
+    EXPECT_EQ(renderer.graphics_domain().snapshot().reason, GraphicsDomainReason::Shutdown);
 }
 
 TEST(opengl_renderer, context_loss_ownership) {

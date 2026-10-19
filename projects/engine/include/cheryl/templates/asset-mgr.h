@@ -2,6 +2,7 @@
 
 #include <cheryl/export.h>
 #include <core/diagnostics.h>
+#include <core/rendering/graphics-domain.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>
@@ -47,49 +48,45 @@ namespace CE::Assets::Cache {
         static CE_API const CE::Rendering::Resources::Provider* bound_provider_;
         static CE_API std::thread::id owner_;
         static CE_API bool releasing_;
+        static CE_API CE::Rendering::GraphicsDomain bound_domain_;
 
     public:
-        static void verify_provider(const CE::Rendering::Resources::Provider& provider) {
-            std::lock_guard lock(provider_mutex_);
-            verify_locked(provider);
-        }
+        static CE_API void verify_provider(const CE::Rendering::Resources::Provider& provider);
+        /** Evict the bound provider's GPU-backed caches after matching native invalidation.
+         * Call on the loading/graphics owner. Stale, foreign and uncommitted records
+         * are ignored; CPU FontService catalogues and external handles survive.
+         * Runtime installs this consumer on its Context bus. Standalone hosts may
+         * register it themselves. Native cleanup never depends on this listener.
+         */
+        static CE_API bool evict_graphics_domain(const CE::Rendering::GraphicsDomainStateChanged& change) noexcept;
         [[nodiscard]] static bool is_bound_to(const CE::Rendering::Resources::Provider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             return bound_provider_ == &provider;
         }
 
     protected:
-        static void bind_provider(const CE::Rendering::Resources::Provider& provider) {
-            std::lock_guard lock(provider_mutex_);
-            verify_locked(provider);
-            if (!bound_provider_) {
-                bound_provider_ = &provider;
-                owner_ = std::this_thread::get_id();
-            }
-        }
+        static CE_API void bind_provider(const CE::Rendering::Resources::Provider& provider);
 
     private:
         static bool begin_provider_release(const CE::Rendering::Resources::Provider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
-            if (bound_provider_ != &provider)
+            if (bound_provider_ != &provider || releasing_)
                 return false;
             releasing_ = true;
             return true;
         }
-        static void release_provider(const CE::Rendering::Resources::Provider& provider) noexcept {
+        static void release_provider(const CE::Rendering::Resources::Provider* provider) noexcept {
             std::lock_guard lock(provider_mutex_);
-            if (bound_provider_ != &provider)
+            if (bound_provider_ != provider)
                 return;
             bound_provider_ = nullptr;
+            bound_domain_ = {};
             owner_ = {};
             releasing_ = false;
         }
-        static void verify_locked(const CE::Rendering::Resources::Provider& provider) {
-            if (bound_provider_ && bound_provider_ != &provider)
-                throw Exceptions::failed_operation(CE_HERE, "Asset caches are bound to another resource provider");
-            if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
-                throw Exceptions::failed_operation(CE_HERE, "Asset loading requires the active provider's owner thread");
-        }
+        static CE_API void
+        verify_locked(const CE::Rendering::Resources::Provider& provider, CE::Rendering::GraphicsDomainSnapshot snapshot);
+        static CE_API void clear_provider_assets() noexcept;
     };
 
     /**

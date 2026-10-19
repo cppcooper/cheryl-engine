@@ -4,6 +4,7 @@
 
 #include <backends/opengl/gl.h>
 #include <core/diagnostics.h>
+#include <core/rendering/graphics-domain.h>
 
 #include <cstddef>
 #include <functional>
@@ -57,6 +58,7 @@ namespace CE::Rendering::OpenGL {
         };
 
         mutable std::mutex mutex_;
+        std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain_;
         // Retain an injected allocator until the entry vector is destroyed.
         std::shared_ptr<std::pmr::memory_resource> entry_memory_;
         std::pmr::vector<Entry> entries_;
@@ -71,6 +73,14 @@ namespace CE::Rendering::OpenGL {
         // The predicate borrows a context that must outlive this active lifetime.
         // It is queried only on the owner thread, and must not reenter the lifetime.
         CE_OPENGL_API ResourceLifetime(std::thread::id owner, std::function<bool()> is_current);
+        CE_OPENGL_API ~ResourceLifetime();
+        // Renderer-owned identity is reserved before initialization touches native state.
+        CE_OPENGL_API ResourceLifetime(
+            std::thread::id owner,
+            std::function<bool()> is_current,
+            std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain
+        );
+        [[nodiscard]] ::CE::Rendering::GraphicsDomain graphics_domain() const noexcept { return domain_->token(); }
 
         [[nodiscard]] CE_OPENGL_API std::size_t track(::CE::Rendering::OpenGL::ResourceKind kind, NativeHandle id);
         CE_OPENGL_API void retire(std::size_t slot) noexcept;
@@ -89,7 +99,12 @@ namespace CE::Rendering::OpenGL {
 
     private:
         friend struct ::CE::Rendering::OpenGL::Detail::LifetimeAccess;
-        CE_OPENGL_API ResourceLifetime(std::thread::id owner, std::function<bool()> is_current, std::shared_ptr<std::pmr::memory_resource> entry_memory);
+        CE_OPENGL_API ResourceLifetime(
+            std::thread::id owner,
+            std::function<bool()> is_current,
+            std::shared_ptr<std::pmr::memory_resource> entry_memory,
+            std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain
+        );
         CE_OPENGL_API static void delete_handle(::CE::Rendering::OpenGL::ResourceKind kind, NativeHandle id) noexcept;
         CE_OPENGL_API void require_owner_locked() const;
         CE_OPENGL_API void require_current_locked() const;
@@ -133,6 +148,13 @@ namespace CE::Rendering::OpenGL {
  * @param is_current Nonempty predicate borrowing the context; it must outlive active tracking and not reenter this object.
  * @throws CE::Exceptions::invalid_args If owner/predicate is absent.
  * Construction allocates tracking state but adopts no native objects.
+ */
+
+/**
+ * @fn CE::Rendering::OpenGL::ResourceLifetime::~ResourceLifetime()
+ * @brief Abandon any still-active domain without native calls or listener invocation.
+ * Prefer explicit shutdown() while the context is usable. Retained portable tokens
+ * become unavailable even when a separate backend authority remains retained.
  */
 
 /**

@@ -10,6 +10,7 @@
 
 #include <assets/types/primitives/vertex.h>
 #include <core/diagnostics.h>
+#include <core/rendering/graphics-domain.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -46,6 +47,8 @@ namespace CE::Rendering::Resources {
         Provider& operator=(const Provider&) noexcept { return *this; }
         virtual ~Provider();
         [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
+        /** Forward the renderer's retained native domain, or an empty token when unsupported. */
+        [[nodiscard]] virtual CE::Rendering::GraphicsDomain graphics_domain() const noexcept { return {}; }
         // Borrowed optional adapter; it cannot outlive this provider.
         [[nodiscard]] virtual CE::Assets::Shaders::Builder* shader_asset_builder() noexcept { return nullptr; }
         // decode_image() is CPU-only; create_image() and other uploads obey backend thread affinity.

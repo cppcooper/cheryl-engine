@@ -23,6 +23,7 @@ namespace CE::Rendering::OpenGL {
     class CE_TYPE_API Renderer final : public ::CE::Rendering::Renderer {
         ::CE::Rendering::OpenGL::Context& context_;
         std::function<void(::CE::Rendering::OpenGL::Context&)> native_loader_;
+        const std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain_ = std::make_shared<::CE::Rendering::GraphicsDomainOwner>();
         std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime> resources_;
         glm::mat4 projection_{1.0f};
         glm::mat4 view_{1.0f};
@@ -34,6 +35,10 @@ namespace CE::Rendering::OpenGL {
         std::unique_ptr<::CE::Rendering::OpenGL::Detail::DebugOutput> debug_output_;
         int native_major_ = 0;
         int native_minor_ = 0;
+        struct DomainPublication {
+            Renderer& renderer;
+            ~DomainPublication() { renderer.publish_graphics_domain_changes(renderer.destroying_); }
+        };
 
     public:
         CE_OPENGL_API explicit Renderer(::CE::Rendering::OpenGL::Context& context);
@@ -44,6 +49,7 @@ namespace CE::Rendering::OpenGL {
 
         CE_OPENGL_API void initialize() override;
         CE_OPENGL_API void deinitialize() override;
+        [[nodiscard]] ::CE::Rendering::GraphicsDomain graphics_domain() const noexcept override { return domain_->token(); }
         CE_OPENGL_API void maintain_resources() override;
         CE_OPENGL_API void render(const ::CE::Rendering::Frame& frame) override;
         CE_OPENGL_API void clear() override;

@@ -11,8 +11,12 @@ using Factory = std::unique_ptr<CE::Runtime::Context> (*)(CE::Input::System&, co
 Factory volatile factory = &CE::Application::GLFWOpenGL::make_context;
 using VectorSetter = void (CE::Rendering::OpenGL::Program::*)(const char*, const glm::vec3&);
 VectorSetter volatile uniform_setter = &CE::Rendering::OpenGL::Program::set_uniform_vec;
+auto volatile domain_getter = &CE::Rendering::OpenGL::ResourceProvider::graphics_domain;
 
 int main() {
     CE::Logging::ProcessLifetime logging_lifetime;
-    return factory && uniform_setter ? 0 : 1;
+    CE::Rendering::GraphicsDomainOwner domain;
+    domain.make_available();
+    domain.shutdown();
+    return factory && uniform_setter && domain_getter && domain.token().snapshot().sequence == 2 ? 0 : 1;
 }

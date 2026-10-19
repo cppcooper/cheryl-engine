@@ -39,6 +39,15 @@ namespace {
 }
 
 bool exercise_resources() {
+    CE::Rendering::GraphicsDomain retained;
+    {
+        CE::Rendering::GraphicsDomainOwner owner;
+        retained = owner.token();
+        owner.make_available();
+        owner.shutdown();
+    }
+    if (retained.snapshot().reason != CE::Rendering::GraphicsDomainReason::Shutdown)
+        return false;
     MemoryProvider provider;
     const CE::Assets::Images::Decoded pixels{{1, 1}, {255, 0, 0, 255}};
     const auto image = provider.create_image(pixels);

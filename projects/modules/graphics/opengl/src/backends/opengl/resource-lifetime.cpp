@@ -9,19 +9,35 @@
 
 namespace CE::Rendering::OpenGL {
     ResourceLifetime::ResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
-    : ResourceLifetime(owner, std::move(is_current), {}) {}
+    : ResourceLifetime(owner, std::move(is_current), {}, {}) {}
+
+    ResourceLifetime::~ResourceLifetime() {
+        abandon();
+    }
 
     ResourceLifetime::ResourceLifetime(
         const std::thread::id owner,
         std::function<bool()> is_current,
-        std::shared_ptr<std::pmr::memory_resource> entry_memory
+        std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain
     )
-    : entry_memory_(std::move(entry_memory)),
+    : ResourceLifetime(owner, std::move(is_current), {}, std::move(domain)) {}
+
+    ResourceLifetime::ResourceLifetime(
+        const std::thread::id owner,
+        std::function<bool()> is_current,
+        std::shared_ptr<std::pmr::memory_resource> entry_memory,
+        std::shared_ptr<::CE::Rendering::GraphicsDomainOwner> domain
+    )
+    : domain_(domain ? std::move(domain) : std::make_shared<::CE::Rendering::GraphicsDomainOwner>()),
+      entry_memory_(std::move(entry_memory)),
       entries_(entry_memory_ ? entry_memory_.get() : std::pmr::new_delete_resource()),
       owner_(owner),
       is_current_(std::move(is_current)) {
         if (owner == std::thread::id{} || !is_current_)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
+        if (domain_->token().snapshot().sequence != 0)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL lifetime requires a fresh graphics domain");
+        domain_->make_available();
     }
 
     std::shared_ptr<ResourceLifetime> Detail::LifetimeAccess::create(
@@ -31,7 +47,7 @@ namespace CE::Rendering::OpenGL {
     ) {
         if (!entry_memory)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Private lifetime construction requires owned entry memory");
-        return std::shared_ptr<ResourceLifetime>(new ResourceLifetime(owner, std::move(is_current), std::move(entry_memory)));
+        return std::shared_ptr<ResourceLifetime>(new ResourceLifetime(owner, std::move(is_current), std::move(entry_memory), {}));
     }
 
     std::size_t Detail::LifetimeAccess::capacity(const ResourceLifetime& lifetime) {
@@ -179,6 +195,7 @@ namespace CE::Rendering::OpenGL {
             diagnostics_.live = diagnostics_.pending = 0;
             diagnostics_.active = false;
             active_ = false;
+            domain_->shutdown();
             entries_.clear();
             pending_ = free_ = none;
         }
@@ -194,6 +211,7 @@ namespace CE::Rendering::OpenGL {
                 diagnostics_.live = diagnostics_.pending = 0;
                 diagnostics_.active = false;
                 active_ = false;
+                domain_->abandon();
                 entries_.clear();
                 pending_ = free_ = none;
             }

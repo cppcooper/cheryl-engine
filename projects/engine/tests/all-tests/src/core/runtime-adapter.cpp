@@ -386,6 +386,7 @@ namespace {
     /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
     class MemoryProvider final : public CE::Rendering::Resources::Provider {
     public:
+        CE::Rendering::GraphicsDomain domain;
         std::uint32_t uploaded_vertices = 0;
         std::thread::id resource_thread;
         int atlas_uploads = 0;
@@ -401,6 +402,8 @@ namespace {
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
         CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
         bool builtin_support = true;
+
+        CE::Rendering::GraphicsDomain graphics_domain() const noexcept override { return domain; }
 
         CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return builtin_support ? &builder : nullptr; }
         [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image> load_image(const std::filesystem::path&) override {
@@ -640,6 +643,7 @@ namespace {
     /** Records frame handoff while the test supplies its own display and input. */
     class MemoryRenderer final : public CE::Rendering::Renderer {
     public:
+        std::shared_ptr<CE::Rendering::GraphicsDomainOwner> domain_owner;
         std::function<void()> on_render;
         std::function<void(const CE::Rendering::Frame&)> on_frame;
         std::function<void()> on_maintenance;
@@ -660,16 +664,26 @@ namespace {
         int clears = 0;
         int renders = 0;
 
+        CE::Rendering::GraphicsDomain graphics_domain() const noexcept override {
+            return domain_owner ? domain_owner->token() : CE::Rendering::GraphicsDomain{};
+        }
+
         void initialize() override {
             ++initializations;
             if (on_initialize)
                 on_initialize();
+            if (domain_owner)
+                domain_owner->make_available();
+            publish_graphics_domain_changes();
         }
 
         void deinitialize() override {
             ++shutdowns;
             if (on_deinitialize)
                 on_deinitialize();
+            if (domain_owner)
+                domain_owner->shutdown();
+            publish_graphics_domain_changes();
         }
         void maintain_resources() override {
             ++maintenance_calls;
@@ -2599,6 +2613,83 @@ TEST(asset_cache, strong_residency) {
     retained.reset();
     EXPECT_TRUE(destroyed);
     EXPECT_TRUE(observed.expired());
+}
+
+TEST(asset_cache, runtime_domain_eviction) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        renderer->domain_owner = std::make_shared<CE::Rendering::GraphicsDomainOwner>();
+        auto& provider = dynamic_cast<MemoryProvider&>(engine->resources());
+        provider.domain = renderer->graphics_domain();
+        auto& images = CE::Assets::Images::Manager::get();
+        std::shared_ptr<CE::Rendering::Resources::Image> retained;
+        const auto font = engine->fonts().default_font();
+        OneTickGame game(input);
+        game.on_init = [&] {
+            images.load({"runtime-domain.png"}, provider);
+            retained = images.get_asset("runtime-domain.png");
+        };
+        game.on_deinit = [&] { EXPECT_EQ(images.size(), 1u); };
+        engine->events().register_listener(
+            CE::Rendering::graphics_domain_state_changed_event,
+            [](const CE::Rendering::GraphicsDomainStateChanged&) { throw std::runtime_error("observer failure"); }
+        );
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        game.on_tick = [&] { runtime.stop(); };
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(images.size(), 0u);
+        EXPECT_FALSE(CE::Assets::Cache::Context::is_bound_to(provider));
+        ASSERT_TRUE(retained);
+        EXPECT_EQ(retained->pixel_size().width, 32u);
+        EXPECT_EQ(engine->fonts().default_font(), font);
+        EXPECT_EQ(provider.domain.snapshot().reason, CE::Rendering::GraphicsDomainReason::Shutdown);
+    }
+}
+
+TEST(asset_cache, domain_invalidation) {
+    using CE::Assets::Cache::Context;
+    using CE::Rendering::GraphicsDomainOwner;
+    using CE::Rendering::GraphicsDomainStateChanged;
+    auto& textures = CE::Assets::Images::Manager::get();
+    CE::Text::FontService fonts;
+    const auto font = fonts.default_font();
+    GraphicsDomainOwner first_domain;
+    first_domain.make_available();
+    auto first = std::make_unique<MemoryProvider>();
+    first->domain = first_domain.token();
+    textures.load({"old-domain.png"}, *first);
+    const auto retained = textures.get_asset("old-domain.png");
+    ASSERT_TRUE(retained);
+    EXPECT_FALSE(Context::evict_graphics_domain({first->domain.snapshot(), first->domain}));
+    GraphicsDomainOwner second_domain;
+    second_domain.make_available();
+    MemoryProvider second;
+    second.domain = second_domain.token();
+    second_domain.shutdown();
+    EXPECT_FALSE(Context::evict_graphics_domain({second.domain.snapshot(), second.domain}));
+    EXPECT_EQ(textures.size(), 1u);
+    first_domain.shutdown();
+    const GraphicsDomainStateChanged stopped{first->domain.snapshot(), first->domain};
+    EXPECT_FALSE(std::async(std::launch::async, [&] { return Context::evict_graphics_domain(stopped); }).get());
+    EXPECT_THROW(textures.load({"old-domain.png"}, *first), CE::Exceptions::failed_operation);
+    EXPECT_EQ(textures.size(), 1u);
+    EXPECT_TRUE(Context::evict_graphics_domain(stopped));
+    EXPECT_EQ(textures.size(), 0u);
+    EXPECT_FALSE(Context::is_bound_to(*first));
+    EXPECT_EQ(retained->pixel_size().width, 32u);
+    EXPECT_EQ(fonts.default_font(), font);
+
+    GraphicsDomainOwner replacement_domain;
+    replacement_domain.make_available();
+    second.domain = replacement_domain.token();
+    textures.load({"replacement.png"}, second);
+    EXPECT_FALSE(Context::evict_graphics_domain(stopped));
+    first.reset();
+    EXPECT_EQ(textures.size(), 1u);
+    EXPECT_TRUE(Context::is_bound_to(second));
 }
 
 TEST(material_cache, recipe_reload_generations) {

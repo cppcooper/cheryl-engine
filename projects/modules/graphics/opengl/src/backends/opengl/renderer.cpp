@@ -60,6 +60,7 @@ namespace CE::Rendering::OpenGL {
 
     Renderer::~Renderer() {
         destroying_ = true;
+        DomainPublication publication{*this};
         if (initialized_) {
             try {
                 deinitialize();
@@ -72,6 +73,7 @@ namespace CE::Rendering::OpenGL {
     }
 
     void Renderer::initialize() {
+        DomainPublication publication{*this};
         if (initialized_) {
             resources_->require_owner();
             context_.make_current();
@@ -101,8 +103,9 @@ namespace CE::Rendering::OpenGL {
             if (!context_.is_current())
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL context was lost during renderer startup");
             // Publish the domain only after loading and default state succeed.
-            resources_ =
-                std::make_shared<ResourceLifetime>(std::this_thread::get_id(), [&context = context_] { return context.is_current(); });
+            resources_ = std::make_shared<ResourceLifetime>(
+                std::this_thread::get_id(), [&context = context_] { return context.is_current(); }, domain_
+            );
         } catch (...) {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
@@ -140,6 +143,7 @@ namespace CE::Rendering::OpenGL {
     }
 
     void Renderer::deinitialize() {
+        DomainPublication publication{*this};
         Detail::DebugOutput::Scope observation(debug_output_.get());
         if (!initialized_)
             return;

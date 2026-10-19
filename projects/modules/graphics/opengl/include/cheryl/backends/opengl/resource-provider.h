@@ -34,6 +34,8 @@ namespace CE::Rendering::OpenGL {
         explicit ResourceProvider(Renderer& renderer)
         : renderer_(renderer) {}
 
+        [[nodiscard]] CE_OPENGL_API ::CE::Rendering::GraphicsDomain graphics_domain() const noexcept override;
+
         [[nodiscard]] CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return this; }
 
         [[nodiscard]] CE_OPENGL_API std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& image) override;
