@@ -86,7 +86,12 @@ namespace CE::Assets::Cache {
         }
         static CE_API void
         verify_locked(const CE::Rendering::Resources::Provider& provider, CE::Rendering::GraphicsDomainSnapshot snapshot);
-        static CE_API void clear_provider_assets() noexcept;
+        struct ClearStats {
+            std::uint64_t before = 0;
+            std::uint64_t after = 0;
+            bool known = false;
+        };
+        static CE_API ClearStats clear_provider_assets(bool observe = false) noexcept;
     };
 
     /**

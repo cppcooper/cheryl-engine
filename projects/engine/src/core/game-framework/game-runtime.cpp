@@ -426,6 +426,13 @@ namespace CE::Runtime {
         if (!change)
             return;
         publishing_pressure_ = true;
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine,
+            "subsystem=events event=runtime-pressure-changed operation=notification_attempt source={} revision={} simulation_lag={} input_backpressure={} dropped_batches={} dropped_ns={} backpressure_observations={}",
+            change->current.source, change->current.revision, change->current.conditions.simulation_lag,
+            change->current.conditions.input_backpressure, change->current.dropped_batches, change->current.dropped_nanoseconds,
+            change->current.backpressure_observations
+        );
         engine_.events().notify(Detail::runtime_pressure_changed_event, *change);
         publishing_pressure_ = false;
     }

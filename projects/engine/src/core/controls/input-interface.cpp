@@ -3,6 +3,7 @@
 #include <internals/exceptions.h>
 #include <core/diagnostics.h>
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <limits>
 #include <utility>
@@ -137,14 +138,24 @@ namespace CE::Input {
                 published_gamepad_ = gamepad_;
                 return result;
             };
+            const auto publish = [this](const GamepadAvailabilityChanged& change) {
+                const auto& current = change.current;
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::platform,
+                    "subsystem=events event=gamepad-availability-changed operation=notification_attempt source={} slot={} revision={} epoch={} poll={} known={} available={} closed={} publisher_expired={}",
+                    current.source, current.slot, current.revision, current.epoch, current.poll, current.known, current.available,
+                    current.closed, gamepad_publisher_.expired()
+                );
+                gamepad_publisher_.notify(gamepad_availability_changed_event, change);
+            };
             if (const auto change = take())
-                gamepad_publisher_.notify(gamepad_availability_changed_event, *change);
+                publish(*change);
             // Ordinary callback-created changes wait for the next poll. Explicit
             // closure may finish after the active fanout; reopening is disallowed
             // during this call, so this terminal flush cannot create a drain loop.
             if (gamepad_availability().closed) {
                 if (const auto closed = take())
-                    gamepad_publisher_.notify(gamepad_availability_changed_event, *closed);
+                    publish(*closed);
             }
         } catch (...) {
             Diagnostics::report_failure("gamepad availability publication", std::current_exception());

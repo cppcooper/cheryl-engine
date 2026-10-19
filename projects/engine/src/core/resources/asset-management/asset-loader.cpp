@@ -277,6 +277,17 @@ namespace CE::Assets::Loading {
         for (std::size_t index = 0; index < cutoff; ++index) {
             auto event = std::move(pending_events_.front());
             pending_events_.erase(pending_events_.begin());
+            const auto outcome = event.outcome == UploadOutcome::Succeeded             ? "succeeded"
+                                 : event.outcome == UploadOutcome::FailedBeforeEffects ? "failed_before_effects"
+                                 : event.outcome == UploadOutcome::Partial             ? "partial"
+                                                                                       : "effects_unknown";
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::assets,
+                "subsystem=events event=asset-upload-settled operation=notification_attempt source={} attempt={} batch={} provider={} outcome={} images={} manifests={} shader_manifests={} publications={} replacements={} counts_known={} publisher_expired={}",
+                event.source, event.attempt, event.counts.batch, event.counts.provider, outcome, event.counts.images_completed,
+                event.counts.manifests_completed, event.counts.shader_manifests_completed, event.counts.publications,
+                event.counts.replacements, event.counts.publication_count_available, publisher_.expired()
+            );
             publisher_.notify(asset_upload_settled_event, event);
         }
         publishing_events_ = false;

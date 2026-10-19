@@ -1,11 +1,25 @@
 #include <core/rendering/renderer.h>
 
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <utility>
 
 namespace CE::Rendering {
     namespace {
+        void report_publication(const GraphicsDomainStateChanged& change, const CE::Events::EventBus::Publisher& publisher) noexcept {
+            const auto& current = change.current;
+            const auto reason = current.reason == GraphicsDomainReason::Initialized ? "initialized"
+                                : current.reason == GraphicsDomainReason::Shutdown  ? "shutdown"
+                                                                                    : "abandoned";
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::rendering,
+                "subsystem=events event=graphics-domain-state-changed operation=notification_attempt source={} sequence={} state={} reason={} publisher_expired={}",
+                current.id, current.sequence, current.status == GraphicsDomainStatus::Available ? "available" : "unavailable", reason,
+                publisher.expired()
+            );
+        }
+
         struct TerminalObservation {
             CE::Events::EventBus::Publisher publisher;
             GraphicsDomainStateChanged change;
@@ -41,7 +55,9 @@ namespace CE::Rendering {
                 // A listener may replace routing. Keep the selected handle alive
                 // independently of reentrant member assignment.
                 const auto publisher = event_publisher_;
-                publisher.notify(graphics_domain_state_changed_event, GraphicsDomainStateChanged{snapshot, domain});
+                const GraphicsDomainStateChanged change{snapshot, domain};
+                report_publication(change, publisher);
+                publisher.notify(graphics_domain_state_changed_event, change);
             } else if (!event_publisher_.expired() && terminal_delivery_) {
                 try {
                     auto record = std::make_unique<TerminalObservation>();
@@ -49,6 +65,7 @@ namespace CE::Rendering {
                     record->change = {snapshot, domain};
                     if (!terminal_delivery_([record = std::move(record)] {
                             record->entered = true;
+                            report_publication(record->change, record->publisher);
                             record->publisher.notify(graphics_domain_state_changed_event, record->change);
                         }))
                         CE::Diagnostics::report_outcome("graphics_domain", snapshot.id, "terminal_notification", "rejected");

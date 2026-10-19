@@ -8,6 +8,7 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 
 namespace CE::Rendering::Resources {
     std::shared_ptr<Image> Provider::load_image(const std::filesystem::path& file) {
@@ -44,24 +45,38 @@ namespace CE::Rendering::Resources {
 }
 
 namespace CE::Assets::Cache {
-    void Context::clear_provider_assets() noexcept {
+    Context::ClearStats Context::clear_provider_assets(const bool observe) noexcept {
+        ClearStats counts{0, 0, observe};
+        const auto clear = [&](auto* manager) {
+            if (!manager)
+                return;
+            if (observe) {
+                try {
+                    counts.before += manager->size();
+                } catch (...) {
+                    counts.known = false;
+                }
+            }
+            manager->clear_assets();
+            if (observe) {
+                try {
+                    counts.after += manager->size();
+                } catch (...) {
+                    counts.known = false;
+                }
+            }
+        };
         // Drop assets which retain images and geometry before their image cache.
         // External shared owners can outlive the cache; their GPU handles still
         // belong to the renderer's shutdown sweep.
-        if (auto* manager = CE::Assets::Materials::Manager::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Assets::Sprites::Manager::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Assets::Tilesets::Manager::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Text::Legacy::Manager::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Assets::Shaders::Manager::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Assets::Shaders::ProgramCache::get_existing())
-            manager->clear_assets();
-        if (auto* manager = CE::Assets::Images::Manager::get_existing())
-            manager->clear_assets();
+        clear(CE::Assets::Materials::Manager::get_existing());
+        clear(CE::Assets::Sprites::Manager::get_existing());
+        clear(CE::Assets::Tilesets::Manager::get_existing());
+        clear(CE::Text::Legacy::Manager::get_existing());
+        clear(CE::Assets::Shaders::Manager::get_existing());
+        clear(CE::Assets::Shaders::ProgramCache::get_existing());
+        clear(CE::Assets::Images::Manager::get_existing());
+        return counts;
     }
 
     std::mutex Context::provider_mutex_;
@@ -98,6 +113,7 @@ namespace CE::Assets::Cache {
 
     bool Context::evict_graphics_domain(const CE::Rendering::GraphicsDomainStateChanged& change) noexcept {
         const CE::Rendering::Resources::Provider* provider;
+        CE::Diagnostics::DomainId provider_id;
         {
             std::lock_guard lock(provider_mutex_);
             const auto snapshot = bound_domain_.snapshot();
@@ -105,12 +121,18 @@ namespace CE::Assets::Cache {
                 snapshot != change.domain.snapshot() || snapshot.sequence != 2)
                 return false;
             provider = bound_provider_;
+            provider_id = provider->diagnostic_id();
             releasing_ = true;
         }
         // Quiescent loading is required. Never hold the context or cache map
         // locks while destroying final owners; their destructors can reenter.
-        clear_provider_assets();
+        const auto counts = clear_provider_assets(CE::Logging::Compile::enabled(CE::Logging::Compile::DEBUG_));
         release_provider(provider);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::assets,
+            "subsystem=asset_cache operation=graphics_domain_eviction outcome=completed source={} sequence={} provider={} entries_before={} entries_after={} counts_known={}",
+            change.current.id, change.current.sequence, provider_id, counts.before, counts.after, counts.known
+        );
         return true;
     }
 }

@@ -137,8 +137,8 @@ namespace CE::Rendering::OpenGL {
         }
         CE_LOG_INFO(
             ::CE::Logging::Categories::rendering,
-            "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
-            resources_->diagnostics().domain, native_major_, native_minor_
+            "subsystem=renderer domain={} graphics_domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
+            resources_->diagnostics().domain, graphics_domain().snapshot().id, native_major_, native_minor_
         );
     }
 
@@ -163,8 +163,9 @@ namespace CE::Rendering::OpenGL {
             if (debug_output_)
                 debug_output_->report(true);
             CE_LOG_INFO(
-                ::CE::Logging::Categories::rendering, "subsystem=renderer domain={} operation=shutdown outcome=completed",
-                resources_->diagnostics().domain
+                ::CE::Logging::Categories::rendering,
+                "subsystem=renderer domain={} graphics_domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain,
+                graphics_domain().snapshot().id
             );
             CE_LOG_DEBUG(
                 ::CE::Logging::Categories::rendering,
