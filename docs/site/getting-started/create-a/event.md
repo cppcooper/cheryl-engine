@@ -76,7 +76,6 @@ sequenceDiagram
     participant Game as Game code
     participant Bus as Chosen EventBus
     participant HUD as HUD listener
-    Note over Game,HUD: Define DamageTaken and the damage_taken channel in game-events.h
     HUD->>Bus: register_listener(damage_taken, callback)
     Bus-->>HUD: registration
     Note over Game: Apply damage and create DamageTaken{13, 87}
