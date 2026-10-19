@@ -9,6 +9,7 @@
 
 #include "simulation-scheduler.h"
 #include "runtime-lifecycle.h"
+#include "shutdown.h"
 
 #include <atomic>
 #include <chrono>
@@ -34,6 +35,7 @@ namespace CE::Runtime {
         class RuntimePressureState;
         struct RuntimePressureChanged;
         struct RuntimePressureWatch;
+        class ShutdownController;
     }
 
     /** Placement of simulation relative to the calling platform owner. */
@@ -83,7 +85,7 @@ namespace CE::Runtime {
         bool publishing_pressure_ = false; // Platform-owned; nested diagnoses wait for the next safe pass.
         RuntimeLifecycle lifecycle_;
         InitializedCapabilities initialized_;
-        ShutdownCause shutdown_cause_ = ShutdownCause::None;
+        std::unique_ptr<Detail::ShutdownController> shutdown_;
 
     public:
         CE_API GameRuntime(
@@ -105,9 +107,16 @@ namespace CE::Runtime {
         // its return/throw; live sampling rejects. Counters publish after join.
         [[nodiscard]] CE_API ::CE::Runtime::RuntimeStats diagnostics() const;
         [[nodiscard]] RuntimeLifecycle lifecycle() const noexcept { return lifecycle_; }
+        [[nodiscard]] CE_API ShutdownEndpoint shutdown() const;
+        /** Install one host authority before run. Negotiate requires a consumable
+         * native close; Force explicitly keeps native close unconditional.
+         */
+        [[nodiscard]] CE_API ShutdownPolicy set_shutdown_policy(
+            ShutdownPolicyCallback, ShutdownPolicyOptions = {}, CE::Events::EventBus::Delivery = {});
         [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
+        CE_API void process_shutdown();
         CE_API void publish_ready();
         CE_API void publish_shutdown_starting(std::exception_ptr failure) noexcept;
         CE_API void publish_quiescing() noexcept;

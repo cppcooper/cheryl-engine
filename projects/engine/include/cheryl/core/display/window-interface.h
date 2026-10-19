@@ -8,6 +8,8 @@
 
 #include <enums.h>
 #include <optional>
+#include <chrono>
+#include <cstdint>
 
 namespace CE::Platform {
     /** Display-owned window accessed on the platform owner. Logical dimensions use
@@ -22,6 +24,9 @@ namespace CE::Platform {
         [[nodiscard]] virtual ::CE::Platform::FramebufferSize framebuffer_size() const = 0;
         [[nodiscard]] virtual ::CE::Platform::WindowMode mode() const = 0;
         [[nodiscard]] virtual bool should_close() const = 0;
+        [[nodiscard]] virtual bool supports_close_intent() const noexcept { return false; }
+        /** Consume and acknowledge one native intent on the platform owner. */
+        [[nodiscard]] virtual bool consume_close_intent() { return false; }
         /** Optional native focus observation, sampled on the platform owner. */
         [[nodiscard]] virtual std::optional<bool> focused() const { return std::nullopt; }
         virtual void check_native_failure() const {}
@@ -43,6 +48,19 @@ namespace CE::Platform {
      * @see [Window events](cheryl-guide:runtime/display-and-window-contract)
      */
     inline const ::CE::Events::EventChannel<WindowResized> window_resized_event{"window-resized"};
+
+    /** One sampled intent from the Context's selected main window. This record
+     * carries no shutdown decision authority and retains no native window.
+     */
+    struct WindowCloseRequested {
+        std::uint64_t context = 0;
+        std::uint64_t session = 0;
+        std::uint64_t source = 0;
+        std::uint64_t intent = 0;
+        std::chrono::steady_clock::time_point observed_at{};
+        bool operator==(const WindowCloseRequested&) const = default;
+    };
+    inline const ::CE::Events::EventChannel<WindowCloseRequested> window_close_requested_event{"window-close-requested"};
 }
 
 /**

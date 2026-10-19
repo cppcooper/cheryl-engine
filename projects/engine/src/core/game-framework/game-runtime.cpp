@@ -1,5 +1,6 @@
 #include <core/game-framework/game-runtime.h>
 #include "game-runtime-internal.h"
+#include "shutdown-internal.h"
 
 #include <core/controls/input-accumulator.h>
 #include <core/controls/input-interface.h>
@@ -78,6 +79,12 @@ namespace CE::Runtime {
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
         pressure_state_ = std::make_shared<Detail::RuntimePressureState>();
+        shutdown_ = std::make_unique<Detail::ShutdownController>(stop_source_, [weak = std::weak_ptr(scheduler_)] {
+            if (const auto scheduler = weak.lock()) {
+                std::lock_guard lock(scheduler->mutex);
+                scheduler->wake.notify_all();
+            }
+        });
     }
 
     GameRuntime::~GameRuntime() {
@@ -96,6 +103,7 @@ namespace CE::Runtime {
         bool admitted = false;
         try {
             pressure_state_->bind_owner();
+            shutdown_->begin(engine_.events());
             engine_.begin_session();
             admitted = true;
             lifecycle_.begin(engine_.event_context_, engine_.window_state().snapshot().session);
@@ -111,14 +119,17 @@ namespace CE::Runtime {
             else
                 run_concurrent();
         } catch (...) {
+            if (!admitted)
+                shutdown_->close();
             stop();
             report_session(true);
             run_finished_.store(true, std::memory_order_release);
             pressure_state_->close();
             if (admitted)
                 finish_lifecycle(std::current_exception());
-            else
+            else {
                 lifecycle_.close();
+            }
             throw;
         }
         stop();
@@ -132,6 +143,52 @@ namespace CE::Runtime {
         if (run_started_.load(std::memory_order_acquire) && !run_finished_.load(std::memory_order_acquire))
             throw ::CE::Exceptions::failed_operation(CE_HERE, "Runtime diagnostics require a completed or unstarted session");
         return diagnostics_;
+    }
+
+    ShutdownEndpoint GameRuntime::shutdown() const {
+        return shutdown_->endpoint();
+    }
+
+    ShutdownPolicy GameRuntime::set_shutdown_policy(
+        ShutdownPolicyCallback callback,
+        ShutdownPolicyOptions options,
+        CE::Events::EventBus::Delivery delivery
+    ) {
+        if (run_started_.load(std::memory_order_acquire))
+            throw CE::Exceptions::failed_operation(CE_HERE, "Install shutdown policy before run");
+        if (options.native_close == NativeClosePolicy::Negotiate && !engine_.window().supports_close_intent())
+            throw CE::Exceptions::failed_operation(
+                CE_HERE, "This window cannot consume native close intent; choose Force for host-only negotiation"
+            );
+        return shutdown_->policy(std::move(callback), options, std::move(delivery));
+    }
+
+    void GameRuntime::process_shutdown() {
+        if (stop_source_.stop_requested()) {
+            shutdown_->force(ShutdownCause::StopRequested);
+            return;
+        }
+        auto& window = engine_.window();
+        window.check_native_failure();
+        const bool intent = window.supports_close_intent() ? window.consume_close_intent() : window.should_close();
+        if (intent) {
+            try {
+                const auto selected = engine_.window_state().snapshot();
+                const CE::Platform::WindowCloseRequested record{
+                    engine_.event_context_, selected.session, selected.source, Detail::ViewSourceAccess::identity(),
+                    std::chrono::steady_clock::now()
+                };
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::platform,
+                    "subsystem=events event=window-close-requested operation=notification_attempt context={} session={} source={} intent={}",
+                    record.context, record.session, record.source, record.intent
+                );
+                shutdown_->window_close(engine_.events(), record);
+            } catch (...) {
+                CE::Diagnostics::report_failure("native shutdown intent admission", std::current_exception());
+            }
+        }
+        shutdown_->process(engine_.events(), lifecycle_, initialized_);
     }
 
     void GameRuntime::report_session(const bool failed) const noexcept {
@@ -263,13 +320,9 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::publish_ready() {
+        process_shutdown();
         if (stop_source_.stop_requested())
             return;
-        if (engine_.window().should_close()) {
-            shutdown_cause_ = ShutdownCause::WindowClose;
-            stop();
-            return;
-        }
         if (const auto current = lifecycle_.ready(initialized_, stop_source_.stop_requested())) {
             CE_LOG_DEBUG(
                 CE::Logging::Categories::engine,
@@ -281,19 +334,23 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::publish_shutdown_starting(std::exception_ptr failure) noexcept {
-        auto cause = shutdown_cause_;
-        if (failure)
-            cause = ShutdownCause::Failure;
-        else if (cause == ShutdownCause::None)
-            cause = stop_source_.stop_requested() ? ShutdownCause::StopRequested : ShutdownCause::WindowClose;
+        shutdown_->force(
+            failure                         ? ShutdownCause::Failure
+            : stop_source_.stop_requested() ? ShutdownCause::StopRequested
+                                            : ShutdownCause::WindowClose
+        );
+        const auto cause = shutdown_->cause();
         stop();
         try {
             if (const auto current = lifecycle_.starting(initialized_, cause)) {
                 CE_LOG_DEBUG(
                     CE::Logging::Categories::engine,
-                    "subsystem=events event=shutdown-starting operation=notification_attempt context={} session={} sequence={} cause={} reached_ready={} renderer_ready={} input_ready={} game_ready={} simulation_owner_ready={}",
-                    current->context, current->session, current->sequence, shutdown_cause_name(current->cause), current->reached_ready,
-                    current->initialized.renderer, current->initialized.input, current->initialized.game, current->initialized.simulation_owner
+                    "subsystem=events event=shutdown-starting operation=notification_attempt context={} session={} sequence={} cause={} request={} superseded_request={} reached_ready={} renderer_ready={} input_ready={} game_ready={} simulation_owner_ready={}",
+                    current->context, current->session, current->sequence, shutdown_cause_name(current->cause),
+                    current->committed_request ? current->committed_request->id : 0,
+                    current->superseded_request ? current->superseded_request->id : 0, current->reached_ready,
+                    current->initialized.renderer, current->initialized.input, current->initialized.game,
+                    current->initialized.simulation_owner
                 );
                 engine_.events().notify(shutdown_starting_event, ShutdownStarting{*current});
             }
@@ -303,6 +360,7 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::publish_quiescing() noexcept {
+        shutdown_->quiescing();
         try {
             if (const auto current = lifecycle_.quiescing()) {
                 CE_LOG_DEBUG(
@@ -318,6 +376,7 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::finish_lifecycle(std::exception_ptr failure) noexcept {
+        shutdown_->close();
         Detail::ViewSourceAccess::close(engine_.simulation_view_);
         Detail::ViewSourceAccess::close(engine_.window_state_);
         try {
@@ -436,9 +495,12 @@ namespace CE::Runtime {
             ::CE::Runtime::Simulation::Scheduler timing(timing_, started_at);
             bool published = false;
 
-            while (!stop_source_.stop_requested() && !window.should_close()) {
+            while (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
+                process_shutdown();
+                if (stop_source_.stop_requested())
+                    break;
                 // Sequential execution cannot poll during update(), but spacing
                 // still applies. A delayed poll never delays simulation or rendering.
                 if (backlog.poll_due(::CE::Input::ObservationClock::now())) {
@@ -446,14 +508,15 @@ namespace CE::Runtime {
                     input.poll();
                     ++diagnostics_.polls;
                     window.check_native_failure();
-                    if (stop_source_.stop_requested() || window.should_close())
+                    process_shutdown();
+                    if (stop_source_.stop_requested())
                         break;
                     auto completed = input.poll_snapshot();
                     observe_input(completed);
                     backlog.complete(std::move(completed), ::CE::Input::ObservationClock::now());
                     diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, backlog.completed_polls());
                 }
-                if (stop_source_.stop_requested() || window.should_close())
+                if (stop_source_.stop_requested())
                     break;
                 selected_window = select_window();
                 const auto batch = timing.advance(::CE::Runtime::Simulation::Clock::now());
@@ -515,7 +578,7 @@ namespace CE::Runtime {
                      ::CE::Runtime::Simulation::Clock::now() + resource_maintenance_interval}
                 );
                 scheduler_->wake.wait_until(lock, deadline, [&] {
-                    return stop_source_.stop_requested() || engine_.platform_dispatcher().has_pending();
+                    return stop_source_.stop_requested() || engine_.platform_dispatcher().has_pending() || shutdown_->has_pending();
                 });
             }
         } catch (...) {
@@ -782,9 +845,12 @@ namespace CE::Runtime {
                         scheduler_->wake.notify_all();
                     }
                 } catch (...) {
-                    std::lock_guard lock(scheduler_->mutex);
-                    handoff.worker_failure = std::current_exception();
-                    handoff.worker_phase = worker_phase;
+                    {
+                        std::lock_guard lock(scheduler_->mutex);
+                        handoff.worker_failure = std::current_exception();
+                        handoff.worker_phase = worker_phase;
+                    }
+                    shutdown_->force(ShutdownCause::Failure);
                 }
                 // Release unexecuted simulation captures on their owner while
                 // game/resources still exist, before publishing worker_done.
@@ -851,9 +917,12 @@ namespace CE::Runtime {
             std::optional<std::size_t> current_frame;
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
-            while (!stop_source_.stop_requested() && !window.should_close()) {
+            while (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
+                process_shutdown();
+                if (stop_source_.stop_requested())
+                    break;
                 bool poll_due = false;
                 bool pressure = false;
                 {
@@ -872,7 +941,8 @@ namespace CE::Runtime {
                     input.poll();
                     ++diagnostics_.polls;
                     window.check_native_failure();
-                    if (stop_source_.stop_requested() || window.should_close())
+                    process_shutdown();
+                    if (stop_source_.stop_requested())
                         break;
                     completed_poll = input.poll_snapshot();
                     if (!completed_poll)
@@ -940,7 +1010,7 @@ namespace CE::Runtime {
                 const auto deadline = std::min(poll_deadline, ::CE::Runtime::Simulation::Clock::now() + resource_maintenance_interval);
                 scheduler_->wake.wait_until(lock, deadline, [&] {
                     if (stop_source_.stop_requested() || handoff.worker_done || handoff.ready ||
-                        engine_.platform_dispatcher().has_pending())
+                        engine_.platform_dispatcher().has_pending() || shutdown_->has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.
                     // Recompute the deadline instead of waiting on the old full batch.
@@ -1024,6 +1094,7 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::stop() {
+        shutdown_->force(ShutdownCause::StopRequested);
         try {
             lifecycle_.request_stop();
         } catch (...) {

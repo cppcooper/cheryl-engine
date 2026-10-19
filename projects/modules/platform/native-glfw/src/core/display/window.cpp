@@ -66,6 +66,13 @@ namespace CE::Platform::GLFW {
         return glfwGetWindowAttrib(glfw_window_, GLFW_FOCUSED) == GLFW_TRUE;
     }
 
+    bool Window::consume_close_intent() {
+        if (glfwWindowShouldClose(glfw_window_) != GLFW_TRUE)
+            return false;
+        glfwSetWindowShouldClose(glfw_window_, GLFW_FALSE);
+        return true;
+    }
+
     void Window::make_context_current(const int swap_interval) {
         if (swap_interval < 0)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");

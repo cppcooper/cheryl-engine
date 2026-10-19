@@ -1,4 +1,5 @@
 #include <core/game-framework/runtime-lifecycle.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <limits>
@@ -11,7 +12,7 @@ namespace CE::Runtime::Detail {
 
         void advance(RuntimeStage stage) noexcept {
             current.stage = stage;
-            ++current.sequence; // Only the four ordered milestones can advance.
+            ++current.sequence; // Requests reserve capacity for the remaining milestones.
             current.observed_at = std::chrono::steady_clock::now();
         }
     };
@@ -80,6 +81,11 @@ namespace CE::Runtime {
             return {};
         current.initialized = initialized;
         current.cause = cause;
+        if (cause == ShutdownCause::AcceptedRequest)
+            current.committed_request = current.pending_request;
+        else
+            current.superseded_request = current.pending_request;
+        current.pending_request.reset();
         current.stop_requested = true;
         state_->advance(RuntimeStage::Stopping);
         return current;
@@ -91,6 +97,18 @@ namespace CE::Runtime {
         state_->advance(RuntimeStage::Quiescing);
         return state_->current;
     }
+    RuntimeLifecycleSnapshot RuntimeLifecycle::pending(std::optional<ShutdownRequest> request, InitializedCapabilities initialized) {
+        std::lock_guard lock(state_->mutex);
+        // Reserve cancellation, a possible Ready, and all terminal milestones.
+        if (request && state_->current.sequence > std::numeric_limits<std::uint64_t>::max() - 6)
+            throw CE::Exceptions::failed_operation(CE_HERE, "Lifecycle request sequence exhausted");
+        state_->current.pending_request = request;
+        state_->current.initialized = initialized;
+        ++state_->current.sequence;
+        state_->current.observed_at = std::chrono::steady_clock::now();
+        return state_->current;
+    }
+
     RuntimeLifecycleSnapshot RuntimeLifecycle::stopped(const RuntimeStats& stats, const char* phase, std::exception_ptr error) {
         const auto primary = describe(phase, error);
         std::lock_guard lock(state_->mutex);

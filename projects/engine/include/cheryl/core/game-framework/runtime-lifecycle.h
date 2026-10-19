@@ -16,6 +16,7 @@ namespace CE::Runtime {
     class GameRuntime;
     namespace Detail {
         struct LifecycleState;
+        class ShutdownController;
     }
 
     /** Completed/unstarted session observations, copied after synchronization; never a live admission policy. */
@@ -38,6 +39,12 @@ namespace CE::Runtime {
 
     enum class RuntimeStage { Unstarted, Initializing, Ready, Stopping, Quiescing, Stopped };
     enum class ShutdownCause { None, StopRequested, WindowClose, Failure, AcceptedRequest };
+    enum class ShutdownReason { HostRequest, MainWindowClose };
+    struct ShutdownRequest {
+        std::uint64_t id = 0;
+        ShutdownReason reason = ShutdownReason::HostRequest;
+        std::chrono::steady_clock::time_point requested_at{};
+    };
     enum class RuntimeOutcome { Pending, Completed, Failed };
 
     /** Successfully established startup capabilities, including partial startup. */
@@ -73,6 +80,9 @@ namespace CE::Runtime {
         bool stop_requested = false;
         bool closed = false;
         InitializedCapabilities initialized;
+        std::optional<ShutdownRequest> pending_request;
+        std::optional<ShutdownRequest> committed_request;
+        std::optional<ShutdownRequest> superseded_request;
         RuntimeOutcome outcome = RuntimeOutcome::Pending;
         RuntimeFailure primary_failure;
         std::array<RuntimeFailure, 8> secondary_failures{};
@@ -104,12 +114,14 @@ namespace CE::Runtime {
     class RuntimeLifecycle final {
         std::shared_ptr<Detail::LifecycleState> state_;
         friend class GameRuntime;
+        friend class Detail::ShutdownController;
         CE_API RuntimeLifecycle();
         CE_API void begin(std::uint64_t context, std::uint64_t session);
         CE_API void request_stop();
         CE_API std::optional<RuntimeLifecycleSnapshot> ready(InitializedCapabilities, bool stopped);
         CE_API std::optional<RuntimeLifecycleSnapshot> starting(InitializedCapabilities, ShutdownCause);
         CE_API std::optional<RuntimeLifecycleSnapshot> quiescing();
+        CE_API RuntimeLifecycleSnapshot pending(std::optional<ShutdownRequest>, InitializedCapabilities);
         CE_API RuntimeLifecycleSnapshot stopped(const RuntimeStats&, const char* phase, std::exception_ptr);
         CE_API void secondary(const char* phase, std::exception_ptr) noexcept;
         CE_API void close() noexcept;

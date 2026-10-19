@@ -57,6 +57,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -2226,6 +2227,70 @@ namespace {
         CE::Events::EventSystem::Registration registration;
         ~ResizeRegistration() { events.unregister_listener(registration); }
     };
+}
+
+TEST(native_opengl, close_intent) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
+    ASSERT_TRUE(window.supports_close_intent());
+    EXPECT_FALSE(window.consume_close_intent());
+    for (int intent = 0; intent != 2; ++intent) {
+        glfwSetWindowShouldClose(window.native_handle(), GLFW_TRUE);
+        EXPECT_TRUE(window.should_close());
+        EXPECT_TRUE(window.consume_close_intent());
+        EXPECT_FALSE(window.should_close());
+        EXPECT_FALSE(window.consume_close_intent());
+    }
+}
+
+TEST(native_opengl, shutdown_negotiation) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+        auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
+        class CloseGame final : public CE::Game::AbstractGame {
+            GLFWwindow* window_;
+            const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        public:
+            explicit CloseGame(GLFWwindow* window) : window_(window) {}
+            void init() override { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
+            void quiesce() override {}
+            void deinit() override {}
+            void update(const CE::Game::TickContext&) override {
+                if (std::chrono::steady_clock::now() >= deadline_)
+                    throw std::runtime_error("Native shutdown negotiation watchdog");
+            }
+            void prepare_render_frame(CE::Rendering::FrameWriter&) const override {}
+        } game(window.native_handle());
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::vector<std::uint64_t> intents;
+        std::vector<std::uint64_t> requests;
+        auto policy = runtime.set_shutdown_policy([&](const auto& request, CE::Runtime::ShutdownDecision decision) {
+            requests.push_back(request.id);
+            if (requests.size() == 1)
+                EXPECT_TRUE(decision.cancel());
+            else
+                EXPECT_TRUE(decision.accept());
+        });
+        engine->events().register_listener(CE::Platform::window_close_requested_event, [&](const auto& event) {
+            intents.push_back(event.intent);
+            EXPECT_FALSE(window.should_close());
+        });
+        engine->events().register_listener(CE::Runtime::shutdown_request_cancelled_event, [&](const auto&) {
+            glfwSetWindowShouldClose(window.native_handle(), GLFW_TRUE);
+        });
+        EXPECT_NO_THROW(runtime.run());
+        ASSERT_EQ(intents.size(), 2u);
+        EXPECT_NE(intents[0], intents[1]);
+        ASSERT_EQ(requests.size(), 2u);
+        EXPECT_NE(requests[0], requests[1]);
+        EXPECT_FALSE(window.should_close());
+        EXPECT_EQ(runtime.lifecycle().snapshot().cause, CE::Runtime::ShutdownCause::AcceptedRequest);
+        EXPECT_EQ(runtime.lifecycle().snapshot().outcome, CE::Runtime::RuntimeOutcome::Completed);
+    }
 }
 
 TEST(native_opengl, resize_events) {

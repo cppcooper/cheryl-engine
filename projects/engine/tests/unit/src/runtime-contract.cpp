@@ -52,8 +52,11 @@ namespace {
         const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
         CE::Platform::Dimensions<int> logical_{16, 12};
         CE::Platform::FramebufferSize pixels_{32, 24};
+        bool close_ = false;
 
     public:
+        bool consumable = true;
+        void request_close() { close_ = true; }
         CE::Platform::Dimensions<int> logical_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
             return logical_;
@@ -63,7 +66,13 @@ namespace {
             return pixels_;
         }
         CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
-        bool should_close() const override { return std::chrono::steady_clock::now() >= deadline_; }
+        bool should_close() const override { return close_ || std::chrono::steady_clock::now() >= deadline_; }
+        bool supports_close_intent() const noexcept override { return consumable; }
+        bool consume_close_intent() override {
+            const bool requested = should_close();
+            close_ = false;
+            return requested;
+        }
         void resize(int width, int height) override {
             logical_ = {width, height};
             pixels_ = {2 * width, 2 * height};
@@ -244,11 +253,15 @@ namespace {
         bool fail_update = false;
         bool fail_quiesce = false;
         bool fail_deinit = false;
+        bool stop_after_update = true;
         int updates = 0;
         int quiesces = 0;
         int deinits = 0;
         std::function<void()> on_update;
+        std::function<void()> on_init;
         void init() override {
+            if (on_init)
+                on_init();
             if (fail_init)
                 throw std::runtime_error("game init failure");
         }
@@ -268,12 +281,402 @@ namespace {
                 on_update();
             if (fail_update)
                 throw std::runtime_error("game update failure");
-            tick.request_stop();
+            if (stop_after_update)
+                tick.request_stop();
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
             static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
         }
     };
+}
+
+TEST(shutdown, default_and_coalescing) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game, mode);
+        auto endpoint = runtime.shutdown();
+        const auto first = endpoint.request();
+        EXPECT_EQ(endpoint.request().request.id, first.request.id);
+        int requested = 0;
+        engine.events().register_listener(shutdown_requested_event, [&](const auto& event) {
+            ++requested;
+            EXPECT_EQ(event.request.id, first.request.id);
+            EXPECT_EQ(event.current.pending_request->id, first.request.id);
+            EXPECT_EQ(first.result.wait_for(std::chrono::seconds{0}), std::future_status::timeout);
+            throw std::runtime_error("ordinary observer cannot reject shutdown");
+        });
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(requested, 1);
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_EQ(first.result.get().disposition, ShutdownDisposition::Accepted);
+        const auto final = runtime.lifecycle().snapshot();
+        ASSERT_TRUE(final.committed_request);
+        EXPECT_EQ(final.committed_request->id, first.request.id);
+        EXPECT_EQ(final.cause, ShutdownCause::AcceptedRequest);
+        EXPECT_FALSE(final.reached_ready);
+        EXPECT_THROW(static_cast<void>(endpoint.request()), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(shutdown, cancel_then_accept) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        game.stop_after_update = false;
+        GameRuntime runtime(engine, game, mode);
+        auto endpoint = runtime.shutdown();
+        ShutdownDecision old_decision;
+        int policy_calls = 0;
+        std::optional<ShutdownTicket> second;
+        auto policy = runtime.set_shutdown_policy([&](const auto&, ShutdownDecision decision) {
+            if (++policy_calls == 1)
+                old_decision = decision;
+            else {
+                EXPECT_FALSE(old_decision.accept());
+                EXPECT_FALSE(old_decision.cancel());
+                EXPECT_TRUE(decision.accept());
+            }
+        });
+        const auto first = endpoint.request();
+        engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto& event) {
+            EXPECT_EQ(event.request.id, first.request.id);
+            EXPECT_EQ(event.reason, ShutdownCancellation::HostRejected);
+            second = endpoint.request();
+            EXPECT_NE(second->request.id, first.request.id);
+        });
+        game.on_update = [&] {
+            if (game.updates == 1) {
+                EXPECT_EQ(endpoint.snapshot().status, ShutdownStatus::Pending);
+                EXPECT_TRUE(old_decision.cancel());
+            }
+            if (game.updates > 20)
+                runtime.stop(); // Hang guard, not a required decision latency.
+        };
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_GE(game.updates, 1);
+        EXPECT_EQ(policy_calls, 2);
+        EXPECT_EQ(first.result.get().disposition, ShutdownDisposition::Cancelled);
+        ASSERT_TRUE(second);
+        EXPECT_EQ(second->result.get().disposition, ShutdownDisposition::Accepted);
+        EXPECT_FALSE(policy.active());
+    }
+}
+
+TEST(shutdown, policy_failure_and_withdrawal) {
+    using namespace CE::Runtime;
+    for (const int scenario : {0, 1, 2}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game);
+        ShutdownPolicy policy;
+        auto delivery = scenario == 1 ? CE::Events::EventBus::Delivery{[](CE::Events::EventBus::Work) { return false; }} :
+            CE::Events::EventBus::Delivery{};
+        policy = runtime.set_shutdown_policy([&](const auto&, ShutdownDecision decision) {
+            if (scenario == 2) {
+                policy.reset(); // Self-withdrawal must not wait for itself.
+                EXPECT_FALSE(decision.accept());
+            } else
+                throw std::runtime_error("host policy failure");
+        }, {}, std::move(delivery));
+        const auto ticket = runtime.shutdown().request();
+        int cancelled = 0;
+        engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto& event) {
+            ++cancelled;
+            EXPECT_EQ(event.reason, scenario == 2 ? ShutdownCancellation::PolicyDetached : ShutdownCancellation::PolicyFailed);
+            runtime.stop();
+        });
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(cancelled, 1);
+        EXPECT_EQ(ticket.result.get().disposition, ShutdownDisposition::Cancelled);
+        EXPECT_EQ(runtime.lifecycle().snapshot().outcome, RuntimeOutcome::Completed);
+    }
+}
+
+TEST(shutdown, late_policy_failure) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    game.stop_after_update = false;
+    GameRuntime runtime(engine, game, RunMode::Concurrent);
+    auto endpoint = runtime.shutdown();
+    std::promise<void> admitted_second;
+    auto admitted = admitted_second.get_future();
+    int calls = 0; // Only the simulation owner invokes this policy.
+    auto policy = runtime.set_shutdown_policy([&](const auto&, ShutdownDecision decision) {
+        if (++calls == 1) {
+            EXPECT_TRUE(decision.cancel());
+            if (admitted.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("second admission watchdog");
+            throw std::runtime_error("late old policy failure");
+        }
+        EXPECT_TRUE(decision.accept());
+    }, {}, CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()));
+    const auto first = endpoint.request();
+    std::optional<ShutdownTicket> second;
+    int cancellations = 0;
+    engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto&) {
+        ++cancellations;
+        second = endpoint.request();
+    });
+    engine.events().register_listener(shutdown_requested_event, [&](const auto& event) {
+        if (event.request.id != first.request.id)
+            admitted_second.set_value();
+    });
+    game.on_update = [&] {
+        if (calls == 1)
+            EXPECT_EQ(endpoint.snapshot().status, ShutdownStatus::Pending);
+        if (game.updates > 20)
+            runtime.stop();
+    };
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(cancellations, 1);
+    EXPECT_EQ(calls, 2);
+    ASSERT_TRUE(second);
+    EXPECT_EQ(first.result.get().disposition, ShutdownDisposition::Cancelled);
+    EXPECT_EQ(second->result.get().disposition, ShutdownDisposition::Accepted);
+}
+
+TEST(shutdown, native_cancel_and_fallback) {
+    using namespace CE::Runtime;
+    for (const bool close_bus : {false, true}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        auto& window = static_cast<ContractWindow&>(engine.window());
+        LifecycleGame game;
+        game.on_init = [&] { window.request_close(); };
+        GameRuntime runtime(engine, game);
+        std::vector<std::uint64_t> intents;
+        std::vector<std::uint64_t> requests;
+        engine.events().register_listener(CE::Platform::window_close_requested_event, [&](const auto& event) {
+            intents.push_back(event.intent);
+            if (close_bus)
+                engine.events().close(); // Invalidates the ordinary bridge snapshot.
+        });
+        ShutdownPolicy policy;
+        if (!close_bus) {
+            policy = runtime.set_shutdown_policy([&](const auto& request, ShutdownDecision decision) {
+                requests.push_back(request.id);
+                if (requests.size() == 1)
+                    EXPECT_TRUE(decision.cancel());
+                else
+                    EXPECT_TRUE(decision.accept());
+            });
+            engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto&) { window.request_close(); });
+        }
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_FALSE(window.should_close());
+        EXPECT_EQ(game.updates, 0);
+        if (close_bus) {
+            EXPECT_EQ(intents.size(), 1u);
+            EXPECT_EQ(runtime.lifecycle().snapshot().cause, ShutdownCause::AcceptedRequest);
+        } else {
+            ASSERT_EQ(intents.size(), 2u);
+            EXPECT_NE(intents[0], intents[1]);
+            ASSERT_EQ(requests.size(), 2u);
+            EXPECT_NE(requests[0], requests[1]);
+        }
+    }
+}
+
+TEST(shutdown, force_supersedes_pending) {
+    using namespace CE::Runtime;
+    for (const bool fail : {false, true}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        game.fail_update = fail;
+        GameRuntime runtime(engine, game, RunMode::Concurrent);
+        auto policy = runtime.set_shutdown_policy([](const auto&, ShutdownDecision) {});
+        const auto ticket = runtime.shutdown().request();
+        int cancelled = 0;
+        engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto&) { ++cancelled; });
+        if (fail)
+            EXPECT_THROW(runtime.run(), std::runtime_error);
+        else
+            EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(cancelled, 0);
+        EXPECT_EQ(ticket.result.get().disposition, ShutdownDisposition::Superseded);
+        const auto final = runtime.lifecycle().snapshot();
+        ASSERT_TRUE(final.superseded_request);
+        EXPECT_EQ(final.superseded_request->id, ticket.request.id);
+        EXPECT_EQ(final.cause, fail ? ShutdownCause::Failure : ShutdownCause::StopRequested);
+    }
+}
+
+TEST(shutdown, withdrawal_waits_for_entry) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    GameRuntime runtime(engine, game, RunMode::Concurrent);
+    std::promise<void> entered;
+    auto entry = entered.get_future();
+    std::promise<void> release;
+    auto released = release.get_future();
+    std::atomic<bool> in_callback = false;
+    auto policy = runtime.set_shutdown_policy([&](const auto&, ShutdownDecision) {
+        in_callback = true;
+        entered.set_value();
+        if (released.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+            throw std::runtime_error("policy withdrawal watchdog");
+        in_callback = false;
+    }, {}, CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()));
+    const auto ticket = runtime.shutdown().request();
+    auto detached = std::async(std::launch::async, [&] {
+        if (entry.wait_for(std::chrono::seconds{5}) != std::future_status::ready) {
+            ADD_FAILURE() << "Policy entry watchdog";
+            return;
+        }
+        policy.reset();
+        EXPECT_FALSE(in_callback.load());
+    });
+    engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto& event) {
+        EXPECT_EQ(event.reason, ShutdownCancellation::PolicyDetached);
+        EXPECT_TRUE(in_callback.load());
+        release.set_value();
+        runtime.stop();
+    });
+    EXPECT_NO_THROW(runtime.run());
+    detached.get();
+    EXPECT_EQ(ticket.result.get().disposition, ShutdownDisposition::Cancelled);
+}
+
+TEST(shutdown, failed_admission_keeps_running) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    game.on_init = [&] { static_cast<ContractWindow&>(engine.window()).request_close(); };
+    GameRuntime runtime(engine, game);
+    int policy_calls = 0;
+    auto policy = runtime.set_shutdown_policy([&](const auto&, ShutdownDecision) { ++policy_calls; });
+    engine.events().register_listener(CE::Platform::window_close_requested_event, [&](const auto&) { engine.events().close(); });
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
+    EXPECT_EQ(policy_calls, 0);
+    EXPECT_FALSE(runtime.lifecycle().snapshot().pending_request);
+    EXPECT_TRUE(runtime.lifecycle().snapshot().reached_ready);
+}
+
+TEST(shutdown, forged_close_is_observation) {
+    using namespace CE::Runtime;
+    Observations observations;
+    Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    GameRuntime runtime(engine, game);
+    game.on_init = [&] {
+        engine.events().notify(CE::Platform::window_close_requested_event, CE::Platform::WindowCloseRequested{});
+        EXPECT_EQ(runtime.shutdown().snapshot().status, ShutdownStatus::Running);
+    };
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
+    EXPECT_FALSE(runtime.lifecycle().snapshot().committed_request);
+}
+
+TEST(shutdown, native_force_supersedes_host_policy) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        static_cast<ContractWindow&>(engine.window()).consumable = false;
+        LifecycleGame game;
+        game.stop_after_update = false;
+        GameRuntime runtime(engine, game, mode);
+        auto policy = runtime.set_shutdown_policy([](const auto&, ShutdownDecision) {}, {.native_close = NativeClosePolicy::Force});
+        const auto ticket = runtime.shutdown().request();
+        std::future<void> intent;
+        game.on_update = [&] {
+            if (game.updates == 1)
+                intent = engine.platform_dispatcher().submit([](Context& context) {
+                    static_cast<ContractWindow&>(context.window()).request_close();
+                });
+            if (game.updates > 20)
+                runtime.stop();
+        };
+        int cancellations = 0;
+        engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto&) { ++cancellations; });
+        EXPECT_NO_THROW(runtime.run());
+        ASSERT_TRUE(intent.valid());
+        EXPECT_NO_THROW(intent.get());
+        EXPECT_EQ(cancellations, 0);
+        EXPECT_EQ(ticket.result.get().disposition, ShutdownDisposition::Superseded);
+        const auto final = runtime.lifecycle().snapshot();
+        EXPECT_EQ(final.cause, ShutdownCause::WindowClose);
+        ASSERT_TRUE(final.superseded_request);
+        EXPECT_EQ(final.superseded_request->id, ticket.request.id);
+    }
+}
+
+TEST(shutdown, unsupported_and_retained) {
+    using namespace CE::Runtime;
+    ShutdownEndpoint retained;
+    std::optional<ShutdownTicket> ticket;
+    {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        static_cast<ContractWindow&>(engine.window()).consumable = false;
+        LifecycleGame game;
+        GameRuntime runtime(engine, game);
+        EXPECT_THROW(static_cast<void>(runtime.set_shutdown_policy([](const auto&, ShutdownDecision) {})), CE::Exceptions::failed_operation);
+        auto host_only = runtime.set_shutdown_policy([](const auto&, ShutdownDecision) {}, {.native_close = NativeClosePolicy::Force});
+        retained = runtime.shutdown();
+        ticket = retained.request();
+    }
+    EXPECT_TRUE(retained.snapshot().closed);
+    ASSERT_TRUE(ticket);
+    EXPECT_EQ(ticket->result.get().disposition, ShutdownDisposition::Rejected);
+    EXPECT_THROW(static_cast<void>(retained.request()), CE::Exceptions::failed_operation);
 }
 
 TEST(runtime_lifecycle, ready_and_owner_gate) {
