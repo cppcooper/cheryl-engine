@@ -29,6 +29,7 @@ namespace CE::Game {
 namespace CE::Runtime {
     namespace Detail {
         struct GameRuntimeAccess;
+        class RuntimePressureSource;
     }
 
     /** Placement of simulation relative to the calling platform owner. */
@@ -92,6 +93,7 @@ namespace CE::Runtime {
         std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
         ::CE::Runtime::SimulationDispatcher simulation_dispatcher_;
         std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
+        std::shared_ptr<::CE::Runtime::Detail::RuntimePressureSource> pressure_source_;
 
     public:
         CE_API GameRuntime(
@@ -101,6 +103,7 @@ namespace CE::Runtime {
             Input::PollingOptions polling = Input::PollingOptions{},
             ::CE::Runtime::Simulation::TimingOptions timing = ::CE::Runtime::Simulation::TimingOptions{}
         );
+        CE_API ~GameRuntime();
 
         // One blocking session on the platform owner. Borrowed engine/game must remain
         // alive through return/throw; cleanup preserves the first failure. Do not destroy
@@ -125,8 +128,15 @@ namespace CE::Runtime {
         CE_API void observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept;
         CE_API void observe_timing(const ::CE::Runtime::Simulation::Batch& batch) noexcept;
         CE_API void observe_platform(bool pressure) noexcept;
+        CE_API void publish_runtime_pressure() noexcept;
     };
 }
+
+/**
+ * @fn CE::Runtime::GameRuntime::~GameRuntime()
+ * @brief Close internal observation state without invoking listeners.
+ * The caller must first stop and join an active run; destruction performs no runtime teardown.
+ */
 
 /**
  * @fn CE::Runtime::GameRuntime::GameRuntime(Context& engine, CE::Game::AbstractGame& game, RunMode mode, Input::PollingOptions polling, Simulation::TimingOptions timing)

@@ -4,6 +4,7 @@
 
 #include "platform-dispatcher.h"
 #include "worker-pool.h"
+#include <core/subsystems/event-bus.h>
 #include <cheryl/text/font-service.h>
 
 #include <atomic>
@@ -55,6 +56,7 @@ namespace CE::Runtime {
      * the display's live window before its destruction. Adapter use retains its affinity.
      */
     class Context final {
+        ::CE::Events::EventBus events_; // Outlives adapters and runtime-owned dispatch queues.
         std::unique_ptr<CE::Platform::DisplaySystem> display_;
         std::unique_ptr<CE::Rendering::PresentationSurface> surface_;
         std::unique_ptr<CE::Rendering::Renderer> renderer_;
@@ -105,6 +107,7 @@ namespace CE::Runtime {
         [[nodiscard]] CE_API CE::Input::System& input() const;
         [[nodiscard]] CE::Text::FontService& fonts() const noexcept { return fonts_; }
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
+        [[nodiscard]] ::CE::Events::EventBus& events() noexcept { return events_; }
         [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
@@ -121,6 +124,14 @@ namespace CE::Runtime {
         CE_API void finish_workers();
     };
 }
+
+/**
+ * @fn CE::Events::EventBus& CE::Runtime::Context::events() noexcept
+ * @brief Borrow this context's independent typed/named event bus.
+ * The bus remains alive through runtime teardown and closes after context-owned adapters are destroyed.
+ * Immediate callbacks run on the publishing owner; deferred listeners require an explicit delivery adapter and owned error sink.
+ * Unregister and settle borrowed callback targets before destroying them. A service must not close this shared bus.
+ */
 
 /**
  * @fn CE::Runtime::Context::Context(std::unique_ptr<CE::Platform::DisplaySystem> display, std::unique_ptr<CE::Rendering::PresentationSurface> surface, std::unique_ptr<CE::Rendering::Renderer> renderer, std::unique_ptr<CE::Rendering::Resources::Provider> resources, CE::Input::System& input, ExecutionOptions execution)

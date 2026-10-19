@@ -186,6 +186,20 @@ namespace CE::Events {
             auto owned = std::make_any<Payload>(std::forward<Value>(payload));
             dispatch_channel(event.name(), typeid(Payload), owned);
         }
+        template <::CE::Events::EventPayload Payload, typename Value>
+            requires std::same_as<std::remove_cvref_t<Value>, Payload> && std::is_constructible_v<Payload, Value&&>
+        void notify(
+            const ::CE::Events::EventChannel<Payload>& event,
+            Value&& payload,
+            const ErrorHandler& errors = ErrorHandler{}
+        ) noexcept {
+            try {
+                auto owned = std::make_any<Payload>(std::forward<Value>(payload));
+                notify_channel(event.name(), typeid(Payload), owned, errors);
+            } catch (...) {
+                report_notification_failure(errors, std::current_exception());
+            }
+        }
         // Invalidation prevents new invocation entry; already-running work finishes.
         CE_API bool unregister_listener(const Registration& registration);
         // Only wait after invalidation. Waiting on one's own invocation rejects.
@@ -203,12 +217,30 @@ namespace CE::Events {
         CE_API Registration
         register_channel(const std::string& event, std::type_index payload, Callback callback, Delivery delivery, ErrorHandler errors);
         CE_API void dispatch_channel(std::string_view event, std::type_index type, const std::any& payload);
+        CE_API void notify_channel(
+            std::string_view event,
+            std::type_index type,
+            const std::any& payload,
+            const ErrorHandler& errors
+        ) noexcept;
+        CE_API static void report_notification_failure(const ErrorHandler& errors, std::exception_ptr failure) noexcept;
         CE_API static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
         CE_API static void invalidate(const std::shared_ptr<Listener>& listener);
         CE_API static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);
         CE_API static void report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept;
     };
 }
+
+/**
+ * @fn template<CE::Events::EventPayload Payload, typename Value> void CE::Events::EventBus::notify(const CE::Events::EventChannel<Payload>& event, Value&& payload, const ErrorHandler& errors) noexcept
+ * @brief Attempt typed observation delivery without propagating notification failures.
+ * @param event Exact name/type channel; legacy named listeners are separate.
+ * @param payload Exact-type value copied/moved into owned delivery storage.
+ * @param errors Optional synchronous sink for payload preparation, closed-bus, snapshot and immediate-listener failures.
+ * The sink runs outside bus locks and must not recursively notify through this bus. An empty or throwing sink uses independent emergency reporting.
+ * Each immediate listener is attempted despite earlier failures. Queued listeners retain their registration-owned error sinks and delivery lifetimes.
+ * Invalidation still prevents invocation entry. Nested notification remains synchronous; source ordering/coalescing belongs to the producer.
+ */
 
 /**
  * @fn CE::Events::EventBus::EventBus()

@@ -30,6 +30,13 @@ int main() {
     events.dispatch(typed, 9);
     events.unregister_and_wait(typed_registration);
 
+    int notified = 0;
+    const auto notification_registration = events.register_listener(typed, [&](const int& result) { notified = result; });
+    events.notify(typed, 13);
+    events.unregister_and_wait(notification_registration);
+    if (notified != 13)
+        return 1;
+
     CE::Workers::Pool workers{1};
     const auto group = workers.make_group();
     auto value = group.submit([] { return 11; });

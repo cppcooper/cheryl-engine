@@ -1,6 +1,7 @@
 #include <core/subsystems/event-bus.h>
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
+#include <internals/failure-reporting.h>
 
 #include <limits>
 #include <algorithm>
@@ -83,6 +84,47 @@ namespace CE::Events {
 
     EventBus::DeliveryTicket::DeliveryTicket(std::shared_ptr<Listener> value)
     : listener(std::move(value)), failure(listener->cancellation) {}
+
+    void EventBus::report_notification_failure(const ErrorHandler& errors, std::exception_ptr failure) noexcept {
+        if (errors) {
+            try {
+                errors(failure);
+                return;
+            } catch (...) {
+                ::CE::Diagnostics::report_failure("event notification error sink", std::current_exception());
+            }
+        }
+        ::CE::Diagnostics::report_failure("event notification", std::move(failure));
+    }
+
+    void EventBus::notify_channel(
+        const std::string_view event,
+        const std::type_index type,
+        const std::any& payload,
+        const ErrorHandler& errors
+    ) noexcept {
+        std::vector<std::shared_ptr<Listener>> snapshot;
+        try {
+            std::lock_guard lock(state_->mutex);
+            if (state_->closed)
+                throw ::CE::Exceptions::failed_operation(CE_HERE, "EventBus is closed");
+            ++state_->dispatches;
+            const auto found = state_->channels.find(ChannelView{event, type});
+            if (found == state_->channels.end())
+                return;
+            snapshot = found->second;
+        } catch (...) {
+            report_notification_failure(errors, std::current_exception());
+            return;
+        }
+        for (const auto& listener : snapshot) {
+            try {
+                deliver(listener, payload);
+            } catch (...) {
+                report_notification_failure(errors, std::current_exception());
+            }
+        }
+    }
 
     EventBus::DeliveryTicket::~DeliveryTicket() {
         if (entered.load(std::memory_order_acquire))

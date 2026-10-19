@@ -25,6 +25,10 @@
 #include <vector>
 
 namespace CE::Runtime {
+    std::shared_ptr<Detail::RuntimePressureSource> Detail::GameRuntimeAccess::pressure_source(GameRuntime& runtime) {
+        return runtime.pressure_source_;
+    }
+
     void Detail::GameRuntimeAccess::set_simulation_thread_factory(
         GameRuntime& runtime,
         std::function<std::thread(std::function<void()>)> factory
@@ -49,6 +53,11 @@ namespace CE::Runtime {
         (void)::CE::Runtime::Simulation::Scheduler(timing_);
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
+        pressure_source_ = std::make_shared<Detail::RuntimePressureSource>();
+    }
+
+    GameRuntime::~GameRuntime() {
+        pressure_source_->close();
     }
 
     void GameRuntime::run() {
@@ -60,6 +69,7 @@ namespace CE::Runtime {
         });
         // Reserve the graph before either runtime can initialize or clean up its adapters.
         try {
+            pressure_source_->bind_owner();
             engine_.begin_session();
             next_timing_report_ = next_platform_report_ = ::CE::Runtime::Simulation::Clock::now() + std::chrono::seconds{2};
             CE_LOG_INFO(
@@ -76,11 +86,13 @@ namespace CE::Runtime {
             stop();
             report_session(true);
             run_finished_.store(true, std::memory_order_release);
+            pressure_source_->close();
             throw;
         }
         stop();
         report_session(false);
         run_finished_.store(true, std::memory_order_release);
+        pressure_source_->close();
     }
 
     RuntimeStats GameRuntime::diagnostics() const {
@@ -171,6 +183,7 @@ namespace CE::Runtime {
             );
         }
         reported_drops_ = diagnostics_.dropped_batches;
+        pressure_source_->stage_lag(lag_warning_, diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds);
         CE_LOG_DEBUG(
             ::CE::Logging::Categories::engine,
             "subsystem=runtime domain={} operation=simulation_summary updates={} published={} superseded={} skipped={}",
@@ -303,6 +316,7 @@ namespace CE::Runtime {
                 const auto batch = timing.advance(::CE::Runtime::Simulation::Clock::now());
                 observe_timing(batch);
                 observe_platform(false);
+                publish_runtime_pressure();
                 bool updated = false;
                 for (std::size_t i = 0; i < batch.steps.size(); ++i) {
                     // Every actual update gets its own detached mailbox and whole
@@ -390,6 +404,12 @@ namespace CE::Runtime {
         renderer_ready_ = false;
         if (failure)
             std::rethrow_exception(failure);
+    }
+
+    void GameRuntime::publish_runtime_pressure() noexcept {
+        pressure_source_->publish(
+            engine_.events(), pressure_warning_, diagnostics_.backpressure, ::CE::Runtime::Simulation::Clock::now()
+        );
     }
 
     void GameRuntime::run_concurrent() {
@@ -608,6 +628,7 @@ namespace CE::Runtime {
                 }
 
                 observe_platform(pressure);
+                publish_runtime_pressure();
                 if (poll_due) {
                     phase_ = "input_poll";
                     input.poll();

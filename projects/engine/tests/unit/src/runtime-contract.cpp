@@ -1,6 +1,7 @@
 #include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
+#include <core/game-framework/game-runtime-internal.h>
 #include <core/controls/input-interface.h>
 #include <core/display/display-system-interface.h>
 #include <core/rendering/presentation-surface.h>
@@ -10,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <stdexcept>
@@ -275,4 +277,97 @@ TEST(runtime_contract, missing_display) {
         ),
         CE::Exceptions::invalid_args
     );
+}
+
+TEST(runtime_pressure, runtime_owners) {
+    using Change = CE::Runtime::Detail::RuntimePressureChanged;
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        struct PressureGame final : CE::Game::AbstractGame {
+            std::shared_ptr<CE::Runtime::Detail::RuntimePressureSource> source;
+            std::atomic<bool> observed{false};
+
+            void init() override {}
+            void deinit() override {}
+            void update(const CE::Game::TickContext&) override { source->stage_lag(!observed.load(), 2, 100); }
+            void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+                static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
+            }
+        } game;
+        CE::Runtime::GameRuntime runtime(engine, game, mode);
+        game.source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+        const auto platform_owner = std::this_thread::get_id();
+        int calls = 0;
+        engine.events().register_listener(CE::Runtime::Detail::runtime_pressure_changed_event, [](const Change&) {
+            throw std::runtime_error("optional runtime observer");
+        });
+        const auto watch = game.source->watch(engine.events(), [&](const Change& change) {
+            EXPECT_EQ(std::this_thread::get_id(), platform_owner);
+            ++calls;
+            if (change.current.conditions.simulation_lag)
+                game.observed.store(true);
+            else
+                runtime.stop();
+        });
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(calls, 2);
+        EXPECT_TRUE(game.source->current().closed);
+        EXPECT_FALSE(game.source->current().conditions.simulation_lag);
+        EXPECT_FALSE(engine.events().diagnostics().closed);
+        EXPECT_TRUE(engine.events().unregister_and_wait(watch.registration));
+    }
+}
+
+TEST(runtime_pressure, unstarted) {
+    Observations observations;
+    CE::Runtime::Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    ContractGame game(engine, observations);
+    CE::Runtime::GameRuntime runtime(engine, game);
+    const auto source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+    int calls = 0;
+    const auto watch = source->watch(engine.events(), [&](const CE::Runtime::Detail::RuntimePressureChanged&) { ++calls; });
+    runtime.stop();
+    runtime.run();
+    EXPECT_TRUE(source->current().closed);
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(source->current().revision, 0u);
+    EXPECT_FALSE(engine.events().diagnostics().closed);
+    EXPECT_TRUE(engine.events().unregister_and_wait(watch.registration));
+}
+
+TEST(runtime_pressure, failed_start) {
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        struct FailingGame final : CE::Game::AbstractGame {
+            void init() override { throw std::runtime_error("game initialization failed"); }
+            void deinit() override {}
+            void update(const CE::Game::TickContext&) override { ADD_FAILURE(); }
+            void prepare_render_frame(CE::Rendering::FrameWriter&) const override { ADD_FAILURE(); }
+        } game;
+        std::shared_ptr<CE::Runtime::Detail::RuntimePressureSource> source;
+        {
+            CE::Runtime::GameRuntime runtime(engine, game, mode);
+            source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+            EXPECT_THROW(runtime.run(), std::runtime_error);
+            EXPECT_TRUE(source->current().closed);
+        }
+        EXPECT_TRUE(source->current().closed); // Retained observation state survives its runtime.
+        EXPECT_EQ(source->current().revision, 0u);
+        EXPECT_FALSE(engine.events().diagnostics().closed);
+        EXPECT_EQ(observations.shutdowns, 1);
+    }
 }
