@@ -27,6 +27,16 @@ music; the file must remain available until playback ends. Decode and initial fi
 opening are synchronous preparation operations, so applications perform them at
 loading boundaries or dispatch owned decode requests through their worker groups.
 
+```mermaid
+flowchart LR
+    accTitle: Shared clips and independent voices
+    accDescr: An audio system retains two voices with independent playback cursors. Both voices can use the same immutable clip storage.
+    system["Audio system"] -->|retains playback| first["Voice A and cursor A"]
+    system -->|retains playback| second["Voice B and cursor B"]
+    first -->|reads| clip["Shared immutable clip"]
+    second -->|reads| clip
+```
+
 Voice and master volumes are normalized linear gains in `[0, 1]`, with zero as
 mute. Invalid/non-finite gains throw. Multiple voices are mixed; overlapping loud
 sources can exceed nominal PCM amplitude and applications manage their mix levels.

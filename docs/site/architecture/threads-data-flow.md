@@ -21,6 +21,18 @@ owners to their systems.
 
 ## Choose how work is delivered
 
+Choose the required delivery behavior before choosing an executor:
+
+```mermaid
+flowchart TB
+    accTitle: Choosing a work transfer
+    accDescr: Owner-affine work uses dispatch, independent CPU work uses workers, occurrences use events, and current-state publication uses immutable snapshots.
+    need{"What must cross the boundary?"} -->|operation on a particular owner| dispatch["Owner dispatcher"]
+    need -->|independent CPU preparation| worker["Worker-group job"]
+    need -->|an occurrence for subscribers| event["Event channel"]
+    need -->|the latest complete value| snapshot["Immutable snapshot"]
+```
+
 | Need | Use | Completion and ordering |
 | --- | --- | --- |
 | Perform an operation on its current owner | A direct call | It completes or throws before returning; the caller supplies valid access. |
@@ -37,13 +49,19 @@ empty queue or a diagnostic count does not prove that detached work has finished
 
 Asset loading, text updates and UI publication share this sequence:
 
-```text
-Simulation: request replacement; keep the current version
-    -> Worker: prepare owned CPU data
-    -> Platform: upload and return a complete candidate
-    -> Simulation update: adopt the ready candidate
-    -> Frame preparation: copy values and retain selected resources
-    -> Platform: render and recycle the completed frame
+```mermaid
+sequenceDiagram
+    accTitle: Prepare and adopt a replacement
+    accDescr: Simulation keeps the current version while a worker prepares owned data and platform uploads it. A later simulation update adopts the ready candidate and publishes a retained frame.
+    participant Simulation
+    participant Worker
+    participant Platform
+    Simulation->>Worker: Submit owned replacement request
+    Worker->>Platform: Queue prepared CPU data for upload
+    Platform-->>Simulation: Complete candidate future
+    Simulation->>Simulation: Adopt ready candidate during update
+    Simulation->>Platform: Publish frame retaining selected resources
+    Platform->>Platform: Render and recycle frame
 ```
 
 A worker-to-platform request carries CPU data and retained inputs, not a pointer

@@ -132,6 +132,20 @@ for a new channel so registration and submission agree on its payload type.
 
 ## Optional queued delivery
 
+Queued delivery copies the event into owned work. The selected target controls
+execution; the listener's registration still controls callback entry.
+
+```mermaid
+flowchart TB
+    accTitle: Queued event delivery and errors
+    accDescr: The bus prepares owned event work, a selected delivery target schedules it, and a valid listener runs on that target. Queued preparation, rejection, cancellation and callback failures reach the registration-owned error sink.
+    bus["Event bus"] -->|owned event work| target["Delivery target"]
+    target -->|valid entry| callback["Listener"]
+    bus -->|preparation fails| errors["Owned error sink"]
+    target -->|rejected or cancelled| errors
+    callback -->|exception| errors
+```
+
 To change simulation-owned state from another producer, include
 `<cheryl/core/engine/event-delivery.h>`, `<atomic>` and `<memory>`. With the bus,
 channel and `last_level` above, and an application-owned `runtime`, register a

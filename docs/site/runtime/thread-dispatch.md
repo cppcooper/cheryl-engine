@@ -25,6 +25,25 @@ platform because simulation ownership was never established.
 
 ## Submit and adopt a result
 
+Submission queues owned work; adoption belongs to a later update after readiness
+has been observed. Neither submission nor destroying a future runs the callback
+on the producer.
+
+```mermaid
+sequenceDiagram
+    accTitle: Owner dispatch and later result adoption
+    accDescr: Simulation submits owned work and retains a future. Platform executes a detached queue batch, completes the future, and a later simulation update adopts the result without blocking.
+    participant Simulation
+    participant Queue as Platform queue
+    participant Platform
+    Simulation->>Queue: Submit owned callback
+    Queue-->>Simulation: Future
+    Queue->>Platform: Detached batch at owner boundary
+    Platform->>Platform: Execute callback
+    Platform-->>Simulation: Complete result future
+    Simulation->>Simulation: Later update checks ready, then gets result
+```
+
 This fragment belongs in a game that already retains `engine_`, its runtime
 context. It makes one explicit live-window observation; ordinary layout should
 use `tick.framebuffer_size` instead. Include

@@ -5,12 +5,14 @@ A native callback records failure for an ordinary C++ boundary to rethrow.
 failure to the application's caller. Catch there to choose the process result
 or application recovery policy; ordinary log output is not the error channel.
 
-```text
-Native callback catches and retains its first exception
-    -> C++ pump/check boundary consumes and rethrows it
-    -> Runtime stops and cleans up, preserving that first failure
-    -> run() rethrows to the application
-Later cleanup failures -> bounded emergency stderr reports
+```mermaid
+flowchart TB
+    accTitle: Propagating a native callback failure
+    accDescr: A callback retains its first exception, an ordinary C++ boundary rethrows it, and runtime cleanup preserves it for the application. Later cleanup failures use independent emergency reports.
+    callback["Native callback retains exception"] -->|ordinary C++ boundary| pump["Pump or check rethrows"]
+    pump -->|stop and clean up| cleanup["Runtime preserves first failure"]
+    cleanup -->|run rethrows first failure| app["Application recovery policy"]
+    cleanup -->|later cleanup failures| emergency["Bounded emergency stderr reports"]
 ```
 
 For setup and the application entry point, see

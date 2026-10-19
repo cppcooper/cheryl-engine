@@ -15,6 +15,19 @@ machine-wide capacity accidentally.
 
 ## Jobs
 
+Groups share physical capacity while retaining separate queues and scheduling
+limits. A submitted job's future reports its own outcome.
+
+```mermaid
+flowchart TB
+    accTitle: Worker groups share one pool
+    accDescr: Two workload groups queue owned jobs on one physical pool. Pool workers execute eligible jobs and complete each job's future; groups do not each create their own threads.
+    first["Asset-preparation group"] -->|eligible queued jobs| pool["Shared physical pool"]
+    second["Other CPU-work group"] -->|eligible queued jobs| pool
+    pool -->|runs owned callable| job["Job execution"]
+    job -->|value or exception| future["That job's future"]
+```
+
 Jobs own their callables and return futures. Callback exceptions reach those
 futures, without stopping another job. FIFO selection within a group does not
 promise completion order when its concurrency is greater than one. A group's

@@ -143,6 +143,19 @@ emission macros remain global preprocessor names.
 
 ### Runtime thresholds
 
+For an emitted ordinary record, filtering and delivery use this path. The
+emergency stderr path described later is independent.
+
+```mermaid
+flowchart TB
+    accTitle: Ordinary log filtering and delivery
+    accDescr: Compile policy and the named logger gate admit a severity before submission to the shared asynchronous queue. The logging worker applies the configured file and console destination thresholds.
+    compiled["Compile policy"] --> logger["Category gates"]
+    logger -->|submit| backend["Shared queue and worker"]
+    backend -->|file level| file["Category file"]
+    backend -->|console level| console["Console"]
+```
+
 `CE::Logging::Config::for_logger(name, profile)` supplies explicit initial thresholds.
 `CE::Logging::Profile` selects Developer, Support or Release presets. Default
 construction uses the selected compile profile's runtime preset; an explicitly

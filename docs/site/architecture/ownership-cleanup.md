@@ -17,6 +17,17 @@ native backend's usable lifetime are separate obligations.
 For example, two game objects can retain the same sprite while keeping independent
 positions and animation cursors. Dropping one object's handle releases only that
 owner. A manager cache or published frame can still retain the sprite's resources.
+
+```mermaid
+flowchart LR
+    accTitle: Independent owners of shared appearance
+    accDescr: A cache, two actors and a published frame can all retain the same immutable appearance resources. Releasing one owner leaves the others intact.
+    cache["Asset cache"] -->|retains| appearance["Immutable appearance resources"]
+    first["First actor"] -->|retains| appearance
+    second["Second actor"] -->|retains| appearance
+    frame["Published frame packets"] -->|retain| appearance
+```
+
 The [resource guide](../resources/resource-residency.md#cache-ownership) explains
 which owners to inspect before treating continued residency as a leak.
 

@@ -14,6 +14,19 @@ sources can therefore describe clock advances without depending on OS scheduling
 
 ## Choose a timing policy
 
+The branches describe simulation-time accounting. Input observation time and
+execution-thread selection remain independent.
+
+```mermaid
+flowchart LR
+    accTitle: Choosing simulation-time accounting
+    accDescr: Variable timing passes elapsed time to an update. After a large fixed-step stall, drop excess whole steps and retain the fractional remainder, or use a fixed prefix and one recovery update before clearing remaining debt.
+    policy{"Timing mode?"} -->|Variable| elapsed["Update with elapsed interval"]
+    policy -->|Fixed, after a large stall| recovery{"Recovery policy?"}
+    recovery -->|DropExcessLag| fixed["Bound fixed updates; retain remainder"]
+    recovery -->|VariableCatchUp| hybrid["Prefix and recovery update; clear debt"]
+```
+
 | Policy | Choose it when | Consequence after a stall |
 | --- | --- | --- |
 | Variable, the default | Each update should receive the elapsed interval and the game can handle changing deltas. | The next delta includes the stall; it can be large. |

@@ -9,6 +9,23 @@ interface obligations, not a requirement for five libraries. The
 
 ## Runtime adapters
 
+The runtime uses this adapter graph; the implementation tables below name the
+existing modules and each interface's obligations.
+
+```mermaid
+flowchart TB
+    accTitle: Required runtime adapters
+    accDescr: A Context owns display, presentation, renderer and resources, and owns or borrows input. Display owns the window borrowed by input and presentation.
+    context["Context"] -->|owns| display["Display"]
+    context -->|owns| presentation["Presentation"]
+    context -->|owns| renderer["Renderer"]
+    context -->|owns| resources["Resource provider"]
+    context -->|owns or borrows| input["Input"]
+    display -->|owns| window["Window"]
+    input -->|borrows| window
+    presentation -->|borrows in the native assembly| window
+```
+
 | Contract | Existing implementation | Obligations and detailed contract |
 | --- | --- | --- |
 | {cpp:class}`CE::Platform::DisplaySystem` | `CE::Platform::GLFW::DisplaySystem` | Own windows, expose monitor inventory and scale, create/select a compatible active window; document borrowed inventory freshness. [Display ownership](../runtime/display-and-window-contract.md); [Native GLFW](../modules/native-glfw.md); [platform replacement and current OpenGL coupling](#replacing-a-platform-integration). |

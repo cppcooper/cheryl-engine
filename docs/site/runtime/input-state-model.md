@@ -79,6 +79,24 @@ They do not add multiple-gamepad discovery to that adapter.
 
 ### Request and polling boundaries
 
+This successful attachment path separates request acceptance from the first
+published input sample:
+
+```mermaid
+sequenceDiagram
+    accTitle: Attaching an action context
+    accDescr: A consumer receives a lease after its definition is accepted. The polling owner installs it at a later poll and publishes the state queried through a subsequent tick.
+    participant Consumer
+    participant Requests as Context endpoint
+    participant Poll as Polling owner
+    Consumer->>Requests: attach owned definition
+    Requests-->>Consumer: Accepted context lease
+    Requests->>Poll: Pending attachment
+    Poll->>Poll: Install at next successful poll
+    Poll-->>Consumer: Published state arrives in a tick
+    Consumer->>Consumer: Query local actions through the lease
+```
+
 `attach()` validates/copies the definition before accepting it. Empty or closed
 endpoints reject; invalid chords, axis scales/dead zones and conflicting action kinds
 reject according to the ordinary binding rules. A truthy `Context` means its
@@ -194,6 +212,20 @@ cleanup, including partial initialization. Read `Move` as an absolute value and
 [binding task](../getting-started/how-to/bind-input.md) shows that lifecycle.
 
 ## Poll snapshots
+
+Semantic action state travels through complete observations before game code
+reads it. Runtime transfers the whole accumulated poll batch at an actual update.
+Independently captured ordered records travel alongside this state.
+
+```mermaid
+flowchart LR
+    accTitle: From physical controls to tick actions
+    accDescr: Bindings evaluate physical controls into complete poll snapshots. Runtime accumulates polls and transfers the whole available batch to one tick at each actual simulation update.
+    controls["Controls"] --> bindings["Action mappings"]
+    bindings --> polls["Poll snapshots"]
+    polls -->|whole pending batch| tick["Input tick"]
+    tick --> update["Game update"]
+```
 
 Each adapter processes its physical changes and publishes one complete poll. The GLFW adapter feeds State from key/mouse callbacks in their shared observation order, then updates Gainput and publishes the State/record pair through `publish_input()`. It mirrors key/mouse state into private Gainput devices, but ignores their notifications to prevent replay and cross-device reordering. Gamepad notifications are normalized to Engine control IDs before reaching Cheryl bindings; the adapter also reconciles the gamepad's current state for reattachment/disconnection when no delta was delivered. Readers receive a `std::shared_ptr<const CE::Input::Actions::Snapshot>` through `CE::Input::System::action_snapshot()`. The published pointer is replaced atomically; an earlier handle keeps its complete sample while later polls proceed.
 

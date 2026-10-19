@@ -38,20 +38,25 @@ session. GUI sessions and audio systems have their own application-owned
 lifetimes; they are composed alongside the runtime rather than installed into a
 universal system manager.
 
-```text
-Application
-  owns game state and application services
-  owns Context
-    owns display/window, presentation, renderer, resources
-    owns input or borrows an application-owned input system
-    owns tracked worker groups and lazy pool, or retains a supplied shared pool
-  owns GameRuntime, borrowing Context and Game
-  owns optional GUI session and audio system
-
-Input polls -> game updates -> immutable render frames -> rendering/presentation
-Asset preparation -> resource upload/publication -> retained draw packets
-Events -> immediate listeners or selected dispatch/worker delivery
+```mermaid
+flowchart TB
+    accTitle: Application and runtime ownership
+    accDescr: The application owns its game, Context, runtime and optional services. The runtime borrows the game and Context; the Context owns adapters and tracks CPU work.
+    app["Application"] -->|owns| game["Game and mutable state"]
+    app -->|owns| context["Context"]
+    app -->|owns| runtime["GameRuntime"]
+    app -->|optionally owns| services["GUI session and audio system"]
+    runtime -->|borrows| game
+    runtime -->|borrows| context
+    context -->|owns| adapters["Display, presentation, renderer and resources"]
+    context -->|owns or borrows| input["Input"]
+    context -->|tracks| groups["CPU worker groups"]
 ```
+
+Context-created groups share a lazily created owned pool or an application-supplied
+shared pool. Input polls feed game updates; complete immutable frames feed rendering
+and presentation. Asset preparation precedes resource upload and retained drawing.
+Events use immediate listeners or explicitly selected queued delivery.
 
 Owning an object, borrowing an interface, retaining an immutable result and
 submitting work carry different obligations. A retained draw packet keeps its

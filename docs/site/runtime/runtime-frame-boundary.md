@@ -93,6 +93,22 @@ constructed ticks default to no runtime stop source; `request_stop()` then throw
 
 ## Frame publication and recycling
 
+During ordinary publication, each slot follows this lifecycle. Rendering may keep
+using the current complete slot while simulation prepares another; platform owns
+recycling.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Render-frame slot lifecycle
+    accDescr: Simulation prepares a free slot and publishes it ready. Platform renders the newest ready slot and recycles superseded or replaced slots, releasing their retained resources.
+    Free --> Preparing: simulation obtains a slot
+    Preparing --> Ready: publish complete frame
+    Ready --> Rendering: platform claims newest frame
+    Ready --> Free: superseded and recycled on platform
+    Rendering --> Rendering: reuse current frame
+    Rendering --> Free: replaced or stopped, then recycled
+```
+
 `CE::Game::AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
 the final useful update of a bounded batch when a slot is free. If all slots are occupied, the update still
 advances the simulation and only that tick's visual snapshot is skipped. The
@@ -131,6 +147,20 @@ The [demo guide](../../../projects/apps/demo/README.md) owns its options, contro
 application bootstrap.
 
 ## Shutdown
+
+While joining simulation and settling accepted CPU work, platform keeps servicing
+dependencies. The remaining phases preserve their owners through cleanup:
+
+```mermaid
+flowchart TB
+    accTitle: Runtime shutdown phases
+    accDescr: Stop closes CPU-group acceptance, simulation finishes while platform dependencies are serviced, producers quiesce, accepted CPU work settles, frames recycle and game cleanup precedes adapter shutdown.
+    stop["Stop CPU acceptance"] --> join["Join simulation"]
+    join --> quiesce["Quiesce producers"]
+    quiesce --> settle["Settle accepted work"]
+    settle --> recycle["Cancel queue; recycle frames"]
+    recycle --> cleanup["Game and adapter cleanup"]
+```
 
 Stopping closes context CPU-group acceptance and stops simulation. Simulation
 cancels its pending dispatcher work on its owner before publishing completion;
