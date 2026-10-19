@@ -14,6 +14,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -279,6 +280,23 @@ TEST(runtime_contract, missing_display) {
     );
 }
 
+namespace {
+    using PressureAccess = CE::Runtime::Detail::GameRuntimeAccess;
+    using PressureChange = CE::Runtime::Detail::RuntimePressureChanged;
+
+    struct PressureFixture {
+        Observations observations;
+        CE::Runtime::Context engine{
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        };
+        ContractGame game{engine, observations};
+        CE::Runtime::GameRuntime runtime{engine, game};
+        std::shared_ptr<CE::Runtime::Detail::RuntimePressureState> state = PressureAccess::pressure_state(runtime);
+    };
+}
+
 TEST(runtime_pressure, runtime_owners) {
     using Change = CE::Runtime::Detail::RuntimePressureChanged;
     for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
@@ -289,24 +307,24 @@ TEST(runtime_pressure, runtime_owners) {
             std::make_unique<ContractInput>(observations)
         );
         struct PressureGame final : CE::Game::AbstractGame {
-            std::shared_ptr<CE::Runtime::Detail::RuntimePressureSource> source;
+            std::shared_ptr<CE::Runtime::Detail::RuntimePressureState> state;
             std::atomic<bool> observed{false};
 
             void init() override {}
             void deinit() override {}
-            void update(const CE::Game::TickContext&) override { source->stage_lag(!observed.load(), 2, 100); }
+            void update(const CE::Game::TickContext&) override { state->stage_lag(!observed.load(), 2, 100); }
             void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
                 static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
             }
         } game;
         CE::Runtime::GameRuntime runtime(engine, game, mode);
-        game.source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+        game.state = CE::Runtime::Detail::GameRuntimeAccess::pressure_state(runtime);
         const auto platform_owner = std::this_thread::get_id();
         int calls = 0;
         engine.events().register_listener(CE::Runtime::Detail::runtime_pressure_changed_event, [](const Change&) {
             throw std::runtime_error("optional runtime observer");
         });
-        const auto watch = game.source->watch(engine.events(), [&](const Change& change) {
+        const auto watch = CE::Runtime::Detail::GameRuntimeAccess::watch_pressure(runtime, [&](const Change& change) {
             EXPECT_EQ(std::this_thread::get_id(), platform_owner);
             ++calls;
             if (change.current.conditions.simulation_lag)
@@ -316,8 +334,8 @@ TEST(runtime_pressure, runtime_owners) {
         });
         EXPECT_NO_THROW(runtime.run());
         EXPECT_EQ(calls, 2);
-        EXPECT_TRUE(game.source->current().closed);
-        EXPECT_FALSE(game.source->current().conditions.simulation_lag);
+        EXPECT_TRUE(game.state->current().closed);
+        EXPECT_FALSE(game.state->current().conditions.simulation_lag);
         EXPECT_FALSE(engine.events().diagnostics().closed);
         EXPECT_TRUE(engine.events().unregister_and_wait(watch.registration));
     }
@@ -332,14 +350,16 @@ TEST(runtime_pressure, unstarted) {
     );
     ContractGame game(engine, observations);
     CE::Runtime::GameRuntime runtime(engine, game);
-    const auto source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+    const auto state = CE::Runtime::Detail::GameRuntimeAccess::pressure_state(runtime);
     int calls = 0;
-    const auto watch = source->watch(engine.events(), [&](const CE::Runtime::Detail::RuntimePressureChanged&) { ++calls; });
+    const auto watch = CE::Runtime::Detail::GameRuntimeAccess::watch_pressure(
+        runtime, [&](const CE::Runtime::Detail::RuntimePressureChanged&) { ++calls; }
+    );
     runtime.stop();
     runtime.run();
-    EXPECT_TRUE(source->current().closed);
+    EXPECT_TRUE(state->current().closed);
     EXPECT_EQ(calls, 0);
-    EXPECT_EQ(source->current().revision, 0u);
+    EXPECT_EQ(state->current().revision, 0u);
     EXPECT_FALSE(engine.events().diagnostics().closed);
     EXPECT_TRUE(engine.events().unregister_and_wait(watch.registration));
 }
@@ -358,16 +378,134 @@ TEST(runtime_pressure, failed_start) {
             void update(const CE::Game::TickContext&) override { ADD_FAILURE(); }
             void prepare_render_frame(CE::Rendering::FrameWriter&) const override { ADD_FAILURE(); }
         } game;
-        std::shared_ptr<CE::Runtime::Detail::RuntimePressureSource> source;
+        std::shared_ptr<CE::Runtime::Detail::RuntimePressureState> state;
         {
             CE::Runtime::GameRuntime runtime(engine, game, mode);
-            source = CE::Runtime::Detail::GameRuntimeAccess::pressure_source(runtime);
+            state = CE::Runtime::Detail::GameRuntimeAccess::pressure_state(runtime);
             EXPECT_THROW(runtime.run(), std::runtime_error);
-            EXPECT_TRUE(source->current().closed);
+            EXPECT_TRUE(state->current().closed);
         }
-        EXPECT_TRUE(source->current().closed); // Retained observation state survives its runtime.
-        EXPECT_EQ(source->current().revision, 0u);
+        EXPECT_TRUE(state->current().closed); // Retained observation state survives its runtime.
+        EXPECT_EQ(state->current().revision, 0u);
         EXPECT_FALSE(engine.events().diagnostics().closed);
         EXPECT_EQ(observations.shutdowns, 1);
     }
+}
+
+TEST(runtime_pressure, context_routing) {
+    PressureFixture first;
+    PressureFixture second;
+    first.state->bind_owner();
+    second.state->bind_owner();
+    int first_calls = 0;
+    int second_calls = 0;
+    const auto first_watch = PressureAccess::watch_pressure(first.runtime, [&](const PressureChange& change) {
+        EXPECT_EQ(change.current.source, first.state->current().source);
+        ++first_calls;
+    });
+    const auto second_watch = PressureAccess::watch_pressure(second.runtime, [&](const PressureChange& change) {
+        EXPECT_EQ(change.current.source, second.state->current().source);
+        ++second_calls;
+    });
+    first.state->stage_lag(true, 2, 100);
+    PressureAccess::publish_pressure(first.runtime);
+    EXPECT_EQ(first_calls, 1);
+    EXPECT_EQ(second_calls, 0);
+    second.state->stage_lag(true, 3, 200);
+    PressureAccess::publish_pressure(second.runtime);
+    EXPECT_EQ(first_calls, 1);
+    EXPECT_EQ(second_calls, 1);
+    EXPECT_TRUE(first.engine.events().unregister_and_wait(first_watch.registration));
+    EXPECT_TRUE(second.engine.events().unregister_and_wait(second_watch.registration));
+}
+
+TEST(runtime_pressure, late_watch) {
+    PressureFixture fixture;
+    fixture.state->bind_owner();
+    fixture.state->stage_lag(true, 2, 100);
+    PressureAccess::publish_pressure(fixture.runtime);
+    std::vector<PressureChange> changes;
+    const auto watch = PressureAccess::watch_pressure(fixture.runtime, [&](const PressureChange& change) { changes.push_back(change); });
+    EXPECT_TRUE(changes.empty());
+    EXPECT_EQ(watch.seed.revision, 1u);
+    EXPECT_TRUE(watch.seed.conditions.simulation_lag);
+    PressureAccess::publish_pressure(fixture.runtime);
+    EXPECT_TRUE(changes.empty());
+    fixture.state->stage_lag(false, 2, 100);
+    PressureAccess::publish_pressure(fixture.runtime);
+    ASSERT_EQ(changes.size(), 1u);
+    EXPECT_EQ(changes.front().current.revision, 2u);
+    EXPECT_TRUE(fixture.engine.events().unregister_and_wait(watch.registration));
+    fixture.state->close();
+    const auto closed = PressureAccess::watch_pressure(fixture.runtime, [&](const PressureChange&) { ADD_FAILURE(); });
+    EXPECT_TRUE(closed.seed.closed);
+    EXPECT_EQ(closed.registration.id(), 0u);
+    EXPECT_FALSE(fixture.engine.events().diagnostics().closed);
+}
+
+TEST(runtime_pressure, reentry) {
+    PressureFixture fixture;
+    fixture.state->bind_owner();
+    std::optional<CE::Runtime::Detail::RuntimePressureWatch> joined;
+    std::vector<std::uint64_t> joined_revisions;
+    const auto first = PressureAccess::watch_pressure(fixture.runtime, [&](const PressureChange& change) {
+        if (!joined) {
+            joined = PressureAccess::watch_pressure(fixture.runtime, [&](const PressureChange& next) {
+                joined_revisions.push_back(next.current.revision);
+            });
+            EXPECT_EQ(joined->seed.revision, 1u);
+        }
+        fixture.state->stage_lag(!change.current.conditions.simulation_lag, 2, 100);
+        PressureAccess::publish_pressure(fixture.runtime);
+        throw std::runtime_error("optional pressure observer");
+    });
+    std::vector<std::uint64_t> revisions;
+    const auto later = PressureAccess::watch_pressure(fixture.runtime, [&](const PressureChange& change) {
+        revisions.push_back(change.current.revision);
+    });
+    fixture.state->stage_lag(true, 2, 100);
+    PressureAccess::publish_pressure(fixture.runtime);
+    EXPECT_EQ(revisions, (std::vector<std::uint64_t>{1}));
+    EXPECT_TRUE(joined_revisions.empty());
+    PressureAccess::publish_pressure(fixture.runtime);
+    EXPECT_EQ(revisions, (std::vector<std::uint64_t>{1, 2}));
+    EXPECT_EQ(joined_revisions, (std::vector<std::uint64_t>{2}));
+    EXPECT_TRUE(fixture.engine.events().unregister_and_wait(first.registration));
+    EXPECT_TRUE(fixture.engine.events().unregister_and_wait(later.registration));
+    ASSERT_TRUE(joined);
+    EXPECT_TRUE(fixture.engine.events().unregister_and_wait(joined->registration));
+}
+
+TEST(runtime_pressure, missed_notification) {
+    PressureFixture fixture;
+    fixture.state->bind_owner();
+    fixture.engine.events().close();
+    fixture.state->stage_lag(true, 2, 100);
+    EXPECT_NO_THROW(PressureAccess::publish_pressure(fixture.runtime));
+    const auto current = fixture.state->current();
+    EXPECT_EQ(current.revision, 1u);
+    EXPECT_TRUE(current.conditions.simulation_lag);
+    EXPECT_FALSE(current.closed);
+}
+
+TEST(runtime_pressure, watch_failure) {
+    PressureFixture fixture;
+    fixture.state->bind_owner();
+    struct Target {
+        std::shared_ptr<CE::Runtime::Detail::RuntimePressureState> state;
+        bool& released;
+
+        ~Target() {
+            EXPECT_FALSE(state->current().closed);
+            released = true;
+        }
+    };
+    bool released = false;
+    auto target = std::shared_ptr<Target>(new Target{fixture.state, released});
+    CE::Events::EventChannel<PressureChange>::Callback callback = [target](const PressureChange&) {};
+    target.reset();
+    fixture.engine.events().close();
+    EXPECT_THROW(static_cast<void>(PressureAccess::watch_pressure(fixture.runtime, std::move(callback))), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(released);
+    EXPECT_EQ(fixture.state->current().revision, 0u);
 }

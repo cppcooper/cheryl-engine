@@ -29,7 +29,9 @@ namespace CE::Game {
 namespace CE::Runtime {
     namespace Detail {
         struct GameRuntimeAccess;
-        class RuntimePressureSource;
+        class RuntimePressureState;
+        struct RuntimePressureChanged;
+        struct RuntimePressureWatch;
     }
 
     /** Placement of simulation relative to the calling platform owner. */
@@ -93,7 +95,8 @@ namespace CE::Runtime {
         std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
         ::CE::Runtime::SimulationDispatcher simulation_dispatcher_;
         std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
-        std::shared_ptr<::CE::Runtime::Detail::RuntimePressureSource> pressure_source_;
+        std::shared_ptr<::CE::Runtime::Detail::RuntimePressureState> pressure_state_;
+        bool publishing_pressure_ = false; // Platform-owned; nested diagnoses wait for the next safe pass.
 
     public:
         CE_API GameRuntime(
@@ -129,6 +132,8 @@ namespace CE::Runtime {
         CE_API void observe_timing(const ::CE::Runtime::Simulation::Batch& batch) noexcept;
         CE_API void observe_platform(bool pressure) noexcept;
         CE_API void publish_runtime_pressure() noexcept;
+        [[nodiscard]] CE_API ::CE::Runtime::Detail::RuntimePressureWatch
+        watch_runtime_pressure(std::function<void(const ::CE::Runtime::Detail::RuntimePressureChanged&)> callback);
     };
 }
 

@@ -30,11 +30,16 @@ int main() {
     events.dispatch(typed, 9);
     events.unregister_and_wait(typed_registration);
 
-    int notified = 0;
-    const auto notification_registration = events.register_listener(typed, [&](const int& result) { notified = result; });
-    events.notify(typed, 13);
+    struct DamageTaken {
+        int amount;
+    };
+    const CE::Events::EventChannel<DamageTaken> damage_taken{"damage-taken"};
+    int health = 100;
+    const auto notification_registration =
+        events.register_listener(damage_taken, [&](const DamageTaken& damage) { health -= damage.amount; });
+    events.notify(damage_taken, DamageTaken{13});
     events.unregister_and_wait(notification_registration);
-    if (notified != 13)
+    if (health != 87)
         return 1;
 
     CE::Workers::Pool workers{1};

@@ -25,8 +25,19 @@
 #include <vector>
 
 namespace CE::Runtime {
-    std::shared_ptr<Detail::RuntimePressureSource> Detail::GameRuntimeAccess::pressure_source(GameRuntime& runtime) {
-        return runtime.pressure_source_;
+    std::shared_ptr<Detail::RuntimePressureState> Detail::GameRuntimeAccess::pressure_state(GameRuntime& runtime) {
+        return runtime.pressure_state_;
+    }
+
+    Detail::RuntimePressureWatch Detail::GameRuntimeAccess::watch_pressure(
+        GameRuntime& runtime,
+        ::CE::Events::EventChannel<RuntimePressureChanged>::Callback callback
+    ) {
+        return runtime.watch_runtime_pressure(std::move(callback));
+    }
+
+    void Detail::GameRuntimeAccess::publish_pressure(GameRuntime& runtime) {
+        runtime.publish_runtime_pressure();
     }
 
     void Detail::GameRuntimeAccess::set_simulation_thread_factory(
@@ -53,11 +64,11 @@ namespace CE::Runtime {
         (void)::CE::Runtime::Simulation::Scheduler(timing_);
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
-        pressure_source_ = std::make_shared<Detail::RuntimePressureSource>();
+        pressure_state_ = std::make_shared<Detail::RuntimePressureState>();
     }
 
     GameRuntime::~GameRuntime() {
-        pressure_source_->close();
+        pressure_state_->close();
     }
 
     void GameRuntime::run() {
@@ -69,7 +80,7 @@ namespace CE::Runtime {
         });
         // Reserve the graph before either runtime can initialize or clean up its adapters.
         try {
-            pressure_source_->bind_owner();
+            pressure_state_->bind_owner();
             engine_.begin_session();
             next_timing_report_ = next_platform_report_ = ::CE::Runtime::Simulation::Clock::now() + std::chrono::seconds{2};
             CE_LOG_INFO(
@@ -86,13 +97,13 @@ namespace CE::Runtime {
             stop();
             report_session(true);
             run_finished_.store(true, std::memory_order_release);
-            pressure_source_->close();
+            pressure_state_->close();
             throw;
         }
         stop();
         report_session(false);
         run_finished_.store(true, std::memory_order_release);
-        pressure_source_->close();
+        pressure_state_->close();
     }
 
     RuntimeStats GameRuntime::diagnostics() const {
@@ -183,7 +194,7 @@ namespace CE::Runtime {
             );
         }
         reported_drops_ = diagnostics_.dropped_batches;
-        pressure_source_->stage_lag(lag_warning_, diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds);
+        pressure_state_->stage_lag(lag_warning_, diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds);
         CE_LOG_DEBUG(
             ::CE::Logging::Categories::engine,
             "subsystem=runtime domain={} operation=simulation_summary updates={} published={} superseded={} skipped={}",
@@ -407,9 +418,37 @@ namespace CE::Runtime {
     }
 
     void GameRuntime::publish_runtime_pressure() noexcept {
-        pressure_source_->publish(
-            engine_.events(), pressure_warning_, diagnostics_.backpressure, ::CE::Runtime::Simulation::Clock::now()
+        if (publishing_pressure_)
+            return;
+        const auto change = pressure_state_->take_change(
+            pressure_warning_, diagnostics_.backpressure, ::CE::Runtime::Simulation::Clock::now()
         );
+        if (!change)
+            return;
+        publishing_pressure_ = true;
+        engine_.events().notify(Detail::runtime_pressure_changed_event, *change);
+        publishing_pressure_ = false;
+    }
+
+    Detail::RuntimePressureWatch
+    GameRuntime::watch_runtime_pressure(std::function<void(const Detail::RuntimePressureChanged&)> callback) {
+        if (!callback)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Runtime pressure watch requires a callback");
+        // Selection and attachment share the platform owner (or synchronized
+        // pre-run setup). Simulation can stage state but cannot commit a change
+        // between this seed capture and listener registration. No callback runs
+        // here, and failed registration releases captures outside state locks.
+        const auto seed = pressure_state_->owner_snapshot();
+        if (seed.closed)
+            return {{}, seed};
+        auto registration = engine_.events().register_listener(
+            Detail::runtime_pressure_changed_event,
+            [source = seed.source, callback = std::move(callback)](const Detail::RuntimePressureChanged& change) {
+                if (change.current.source == source)
+                    callback(change);
+            }
+        );
+        return {std::move(registration), seed};
     }
 
     void GameRuntime::run_concurrent() {
