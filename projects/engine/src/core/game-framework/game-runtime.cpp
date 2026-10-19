@@ -7,6 +7,7 @@
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
 #include "../engine/view-state-internal.h"
+#include "../engine/runtime-services-internal.h"
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
@@ -377,6 +378,7 @@ namespace CE::Runtime {
 
     void GameRuntime::finish_lifecycle(std::exception_ptr failure) noexcept {
         shutdown_->close();
+        Detail::RuntimeServicesAccess::close(engine_.services_);
         Detail::ViewSourceAccess::close(engine_.simulation_view_);
         Detail::ViewSourceAccess::close(engine_.window_state_);
         try {
@@ -391,6 +393,18 @@ namespace CE::Runtime {
         } catch (...) {
             CE::Diagnostics::report_failure("runtime stopped observation", std::current_exception());
         }
+    }
+
+    void GameRuntime::bind_renderer_maintenance() {
+        maintenance_binding_ = engine_.services().on_maintenance([&renderer = engine_.renderer()](const PlatformMaintenance& phase) {
+            if (phase.reason != MaintenanceReason::FinalCollection)
+                renderer.maintain_resources();
+        });
+    }
+
+    void GameRuntime::publish_step(const Simulation::Step& step, double dropped) {
+        Detail::RuntimeServicesAccess::step(engine_.services_, std::chrono::duration<double>(step.delta).count(),
+            step.kind, dropped, engine_.simulation_view().snapshot().revision);
     }
 
     WindowState GameRuntime::select_window() {
@@ -445,6 +459,7 @@ namespace CE::Runtime {
             renderer.initialize();
             renderer_ready_ = true;
             initialized_.renderer = true;
+            bind_renderer_maintenance();
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -487,6 +502,7 @@ namespace CE::Runtime {
                         ++diagnostics_.resizes;
                 }
             });
+            Detail::RuntimeServicesAccess::bind_simulation(engine_.services_);
             select_simulation_view(selected_window);
             publish_ready();
             const auto started_at = ::CE::Runtime::Simulation::Clock::now();
@@ -536,6 +552,10 @@ namespace CE::Runtime {
                     select_simulation_view(selected_window);
                     if (stop_source_.stop_requested())
                         break;
+                    phase_ = "simulation_step_services";
+                    publish_step(step, dropped);
+                    if (stop_source_.stop_requested())
+                        break;
                     phase_ = "game_update";
                     ++diagnostics_.updates;
                     game_.update(
@@ -570,8 +590,8 @@ namespace CE::Runtime {
                     engine_.surface().present();
                     ++diagnostics_.rendered;
                 }
-                phase_ = "renderer_maintenance";
-                renderer.maintain_resources();
+                phase_ = "platform_maintenance";
+                Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::Running);
                 std::unique_lock lock(scheduler_->mutex);
                 const auto deadline = std::min(
                     {timing.next_update_at(), backlog.next_poll_at(),
@@ -605,12 +625,16 @@ namespace CE::Runtime {
         finish("recycle frame", [&frame] { frame.recycle(); });
         if (game_started)
             finish("game deinit", [this] { game_.deinit(); });
+        finish("final platform maintenance", [this] {
+            Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::FinalCollection);
+        });
         if (renderer_ready_)
             finish("renderer maintenance", [&renderer] { renderer.maintain_resources(); });
         // Adapters must also clean up if initialize() only completed partway.
         if (input_started)
             finish("input deinitialize", [&input] { input.deinitialize(); });
         viewport_binding.reset();
+        maintenance_binding_.reset();
         if (renderer_started)
             finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;
@@ -700,6 +724,7 @@ namespace CE::Runtime {
             renderer.initialize();
             renderer_ready_ = true;
             initialized_.renderer = true;
+            bind_renderer_maintenance();
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -749,6 +774,7 @@ namespace CE::Runtime {
                 try {
                     simulation_dispatcher_.bind_owner();
                     worker_phase = "simulation_view_initialize";
+                    Detail::RuntimeServicesAccess::bind_simulation(engine_.services_);
                     select_simulation_view(baseline);
                     {
                         std::unique_lock lock(scheduler_->mutex);
@@ -790,6 +816,10 @@ namespace CE::Runtime {
                             const auto& step = batch.steps[i];
                             const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
                             select_simulation_view(selected);
+                            if (stop_source_.stop_requested())
+                                break;
+                            worker_phase = "simulation_step_services";
+                            publish_step(step, dropped);
                             if (stop_source_.stop_requested())
                                 break;
                             worker_phase = "game_update";
@@ -1002,8 +1032,8 @@ namespace CE::Runtime {
                 }
                 // Retirement must progress even before the first frame, while
                 // input capacity is full, or while a slow update produces no frame.
-                phase_ = "renderer_maintenance";
-                renderer.maintain_resources();
+                phase_ = "platform_maintenance";
+                Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::Running);
 
                 std::unique_lock lock(scheduler_->mutex);
                 const auto poll_deadline = handoff.backlog.next_poll_at();
@@ -1081,11 +1111,15 @@ namespace CE::Runtime {
             finish("recycle frame", [&slot] { slot.frame.recycle(); });
         if (game_started)
             finish("game deinit", [this] { game_.deinit(); });
+        finish("final platform maintenance", [this] {
+            Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::FinalCollection);
+        });
         if (renderer_ready_)
             finish("renderer maintenance", [&renderer] { renderer.maintain_resources(); });
         if (input_started)
             finish("input deinitialize", [&input] { input.deinitialize(); });
         viewport_binding.reset();
+        maintenance_binding_.reset();
         if (renderer_started)
             finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;
@@ -1120,6 +1154,9 @@ namespace CE::Runtime {
         // Neither mailbox has opened, so no accepted platform continuation can
         // require pumping; queued CPU jobs observe closed targets and settle.
         finish("finish workers", [this] { engine_.finish_workers(); });
+        finish("final platform maintenance", [this] {
+            Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::FinalCollection);
+        });
         if (failure)
             std::rethrow_exception(failure);
     }
@@ -1139,7 +1176,13 @@ namespace CE::Runtime {
         }
         // Maintenance failure is separate from dispatcher failure: keep servicing
         // accepted CPU-to-platform completions while retaining the original error.
-        if (renderer_ready_) {
+        try {
+            Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::ShutdownDrain);
+        } catch (...) {
+            preserve_failure(failure, "shutdown service maintenance", std::current_exception());
+        }
+        // Installation failure must not remove the direct cleanup guard.
+        if (renderer_ready_ && !maintenance_binding_.attached()) {
             try {
                 engine_.renderer().maintain_resources();
             } catch (...) {

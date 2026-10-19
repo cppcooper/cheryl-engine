@@ -1,5 +1,6 @@
 #include <core/engine/engine-context.h>
 #include <core/engine/event-delivery.h>
+#include "core/engine/runtime-services-internal.h"
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/game-framework/game-runtime-internal.h>
@@ -34,6 +35,10 @@ namespace {
         int frames = 0;
         int renders = 0;
         int viewport_calls = 0;
+        int collections = 0;
+        bool pending_retirement = false;
+        bool collected_retirement = false;
+        bool pending_on_shutdown = false;
         bool fail_viewport = false;
         int presentations = 0;
         int initializations = 0;
@@ -156,12 +161,19 @@ namespace {
             publish_graphics_domain_changes();
         }
         void deinitialize() override {
+            observations_.pending_on_shutdown = observations_.pending_retirement;
             ++observations_.shutdowns;
             if (domain_)
                 domain_->shutdown();
             publish_graphics_domain_changes();
         }
-        void maintain_resources() override {}
+        void maintain_resources() override {
+            ++observations_.collections;
+            if (observations_.pending_retirement) {
+                observations_.pending_retirement = false;
+                observations_.collected_retirement = true;
+            }
+        }
         void render(const CE::Rendering::Frame& frame) override {
             EXPECT_EQ(frame.passes().size(), 1u);
             ++observations_.renders;
@@ -288,6 +300,111 @@ namespace {
             static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
         }
     };
+}
+
+TEST(runtime_services, final_collection_barrier) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        for (const bool fail : {false, true}) {
+            Observations observations;
+            Context engine(
+                std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+                std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+                std::make_unique<ContractInput>(observations)
+            );
+            LifecycleGame game;
+            GameRuntime runtime(engine, game, mode);
+            ServiceAttachment retirement;
+            engine.events().register_listener(runtime_ready_event, [&](const auto&) {
+                retirement = engine.services().on_maintenance([&](const auto& phase) {
+                    if (phase.reason == MaintenanceReason::FinalCollection) {
+                        observations.pending_retirement = true;
+                        if (fail)
+                            throw std::runtime_error("final module failure");
+                    }
+                });
+                runtime.stop();
+            });
+            if (fail)
+                EXPECT_THROW(runtime.run(), std::runtime_error);
+            else
+                EXPECT_NO_THROW(runtime.run());
+            EXPECT_TRUE(observations.collected_retirement);
+            EXPECT_FALSE(observations.pending_on_shutdown);
+            EXPECT_EQ(observations.shutdowns, 1);
+            EXPECT_EQ(game.updates, 0);
+            EXPECT_FALSE(retirement.attached());
+        }
+    }
+}
+
+TEST(runtime_services, maintenance_fallback) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game, mode);
+        ServiceAttachment participant;
+        int ordinary = 0;
+        int final = 0;
+        engine.events().register_listener(runtime_ready_event, [&](const auto&) {
+            observations.collections = 0;
+            participant = engine.services().on_maintenance([&](const auto& phase) {
+                if (phase.reason == MaintenanceReason::FinalCollection)
+                    ++final;
+                else
+                    ++ordinary;
+            });
+        });
+        Detail::RuntimeServicesAccess::before_maintenance(engine.services(), [] { throw std::bad_alloc{}; });
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(final, 1);
+        EXPECT_EQ(observations.collections, ordinary + 1); // The final direct barrier runs exactly once.
+    }
+}
+
+TEST(runtime_services, step_prevents_hook) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        for (const bool fail : {false, true}) {
+            Observations observations;
+            Context engine(
+                std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+                std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+                std::make_unique<ContractInput>(observations)
+            );
+            LifecycleGame game;
+            GameRuntime runtime(engine, game, mode);
+            ServiceAttachment first;
+            ServiceAttachment second;
+            int entered = 0;
+            int later = 0;
+            engine.events().register_listener(runtime_ready_event, [&](const auto&) {
+                first = engine.services().on_step([&](const auto& phase) {
+                    ++entered;
+                    EXPECT_EQ(phase.view_revision, engine.simulation_view().snapshot().revision);
+                    if (fail)
+                        throw std::runtime_error("required step failure");
+                    runtime.stop();
+                });
+                second = engine.services().on_step([&](const auto&) { ++later; });
+            }, CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()), [](std::exception_ptr) {});
+            Detail::RuntimeServicesAccess::before_step(engine.services(), [] { throw std::bad_alloc{}; });
+            if (fail)
+                EXPECT_THROW(runtime.run(), std::runtime_error);
+            else
+                EXPECT_NO_THROW(runtime.run());
+            EXPECT_EQ(entered, 1);
+            EXPECT_EQ(later, 1);
+            EXPECT_EQ(game.updates, 0);
+            EXPECT_EQ(runtime.diagnostics().updates, 0u);
+        }
+    }
 }
 
 TEST(shutdown, default_and_coalescing) {

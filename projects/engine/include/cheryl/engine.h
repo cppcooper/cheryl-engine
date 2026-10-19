@@ -18,6 +18,7 @@
 #include <cheryl/assets/types/3d.h>
 #include <cheryl/core/engine/event-delivery.h>
 #include <cheryl/core/engine/view-state.h>
+#include <cheryl/core/engine/runtime-services.h>
 #include <cheryl/core/game-framework/runtime-lifecycle.h>
 #include <cheryl/core/game-framework/shutdown.h>
 #include <cheryl/core/engine/worker-configuration.h>

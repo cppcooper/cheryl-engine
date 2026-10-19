@@ -26,6 +26,7 @@ namespace CE::UI::RmlUi {
     namespace {
         SessionOptions manual_options(SessionOptions options) {
             options.automatic_view = false;
+            options.automatic_time = false;
             return options;
         }
         std::mutex library_mutex;
@@ -169,6 +170,7 @@ namespace CE::UI::RmlUi {
         CE::Input::Modifiers modifier_state = CE::Input::Modifiers::None;
         bool drawable = false;
         bool pointer_view = false;
+        std::uint64_t automatic_time_updates = 0;
         bool pointer_active = false;
         // Reverse destruction shuts down contexts/fonts before renderer/system
         // storage and memory-loaded font bytes disappear.
@@ -264,8 +266,8 @@ namespace CE::UI::RmlUi {
             throw Exceptions::invalid_args(CE_HERE, "RmlUi requires a nonzero focus target");
         if (options.maximum_texture_size < 1024)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi's stock font atlas needs a texture bound of at least 1024");
-        if (options.automatic_view)
-            throw Exceptions::invalid_args(CE_HERE, "Automatic view construction requires a Context");
+        if (options.automatic_view || options.automatic_time)
+            throw Exceptions::invalid_args(CE_HERE, "Automatic runtime services require a Context");
         state_ = std::make_shared<State>(input, target, options);
     }
 
@@ -291,6 +293,8 @@ namespace CE::UI::RmlUi {
     : Session(engine.input(), engine.fonts(), target, manual_options(options)) {
         if (options.automatic_view)
             follow_view(engine.simulation_view());
+        if (options.automatic_time)
+            follow_time(engine.services());
     }
 
     Session::~Session() = default;
@@ -376,6 +380,31 @@ namespace CE::UI::RmlUi {
 
     void Session::update_time(const double delta_seconds) {
         auto& state = owner();
+        if (time_attachment_.attached())
+            throw Exceptions::failed_operation(CE_HERE, "Detach automatic UI time before manual advancement");
+        apply_time(state, delta_seconds);
+    }
+
+    void Session::follow_time(const CE::Runtime::RuntimeServices& services) {
+        static_cast<void>(owner());
+        auto attachment = services.on_step([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationStepStarting& phase) {
+            if (const auto state = weak.lock()) {
+                apply_time(*state, phase.delta_seconds);
+                if (++state->automatic_time_updates == 1 || state->automatic_time_updates % 120 == 0)
+                    CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                        "subsystem=ui toolkit=rmlui operation=time_apply session={} step={} delta_seconds={} sample_period=120",
+                        phase.session, phase.step, phase.delta_seconds);
+            }
+        });
+        time_attachment_ = std::move(attachment);
+    }
+
+    void Session::detach_time() {
+        static_cast<void>(owner());
+        time_attachment_.reset();
+    }
+
+    void Session::apply_time(State& state, const double delta_seconds) {
         if (!std::isfinite(delta_seconds) || delta_seconds < 0 || !std::isfinite(state.system.elapsed + delta_seconds))
             throw Exceptions::invalid_args(CE_HERE, "RmlUi timing needs a finite nonnegative simulation duration");
         state.system.elapsed += delta_seconds;
@@ -497,6 +526,7 @@ namespace CE::UI::RmlUi {
     }
 
     void Session::close_after_quiescence() {
+        time_attachment_.reset();
         view_attachment_.reset();
         state_.reset();
     }

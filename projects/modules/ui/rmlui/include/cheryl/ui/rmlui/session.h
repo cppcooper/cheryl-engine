@@ -8,6 +8,7 @@
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
 #include <core/engine/view-state.h>
+#include <core/engine/runtime-services.h>
 
 #include <RmlUi/Core/Context.h>
 
@@ -30,6 +31,7 @@ namespace CE::UI::RmlUi {
         // Core's stock font atlas can allocate up to 1024 per dimension.
         unsigned int maximum_texture_size = 4096; ///< Maximum texture dimension in pixels; positive/representable; at least 1024 for the native font atlas.
         bool automatic_view = false; ///< Context construction follows SimulationView; standalone construction requires explicit follow_view().
+        bool automatic_time = false; ///< Context construction advances on future simulation steps; manual update_time() then rejects.
     };
 
     /** Copied support snapshot; committed text does not imply IME composition or full text-editor shaping. */
@@ -52,6 +54,7 @@ namespace CE::UI::RmlUi {
         struct State;
         std::shared_ptr<State> state_;
         CE::Runtime::ViewAttachment view_attachment_;
+        CE::Runtime::ServiceAttachment time_attachment_;
 
     public:
         CE_UI_RMLUI_API Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
@@ -81,6 +84,9 @@ namespace CE::UI::RmlUi {
         // Advances simulation time and updates native layout/animation. record()
         // also updates layout after authoring or input, without advancing time.
         CE_UI_RMLUI_API void update_time(double delta_seconds);
+        /** Attach on the simulation owner; starts next step without replaying a past delta. */
+        CE_UI_RMLUI_API void follow_time(const CE::Runtime::RuntimeServices&);
+        CE_UI_RMLUI_API void detach_time();
         CE_UI_RMLUI_API void request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing = CE::Input::Routing::KeyboardPolicy::Exclusive);
         CE_UI_RMLUI_API void release_keyboard_focus();
         [[nodiscard]] CE_UI_RMLUI_API bool owns_keyboard_focus() const;
@@ -102,6 +108,7 @@ namespace CE::UI::RmlUi {
 
     private:
         static CE_UI_RMLUI_API void apply_view(State&, CE::Platform::Dimensions<int>, CE::Platform::FramebufferSize);
+        static CE_UI_RMLUI_API void apply_time(State&, double);
         [[nodiscard]] CE_UI_RMLUI_API State& owner() const;
     };
 }

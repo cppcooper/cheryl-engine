@@ -12,6 +12,7 @@
 
 namespace CE::Runtime {
     class Context;
+    class RuntimeServices;
     namespace Detail {
         struct ViewSourceAccess;
         struct ViewBinding;
@@ -65,6 +66,7 @@ namespace CE::Runtime {
      */
     class ViewAttachment final {
         std::shared_ptr<Detail::ViewBinding> binding_;
+        friend class RuntimeServices;
         template <class Snapshot, class Change> friend class ViewSource;
         explicit ViewAttachment(std::shared_ptr<Detail::ViewBinding> binding) noexcept;
 

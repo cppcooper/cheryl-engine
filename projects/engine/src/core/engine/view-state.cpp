@@ -1,4 +1,5 @@
 #include "view-state-internal.h"
+#include "required-bindings.h"
 
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
@@ -11,77 +12,7 @@
 #include <utility>
 
 namespace CE::Runtime::Detail {
-    struct ViewBinding {
-        std::mutex mutex;
-        std::condition_variable idle;
-        bool active = true;
-        bool entered = false;
-        const std::thread::id owner = std::this_thread::get_id();
-        std::size_t running = 0;
-        const void* operation = nullptr;
-        std::exception_ptr failure;
-        CE::Events::EventBus::Registration registration;
-        std::shared_ptr<ViewBinding> next;
-        virtual ~ViewBinding() = default;
-
-        struct Invocation {
-            ViewBinding* binding;
-            Invocation* previous;
-        };
-        static thread_local Invocation* invocation;
-
-        void detach() noexcept {
-            {
-                std::lock_guard lock(mutex);
-                active = false;
-            }
-            registration.disconnect();
-            for (auto* current = invocation; current; current = current->previous)
-                if (current->binding == this)
-                    return;
-            std::unique_lock lock(mutex);
-            idle.wait(lock, [this] { return running == 0; });
-        }
-        bool attached() {
-            std::lock_guard lock(mutex);
-            return active;
-        }
-    };
     thread_local ViewBinding::Invocation* ViewBinding::invocation = nullptr;
-
-    template <class Change> struct Binding final : ViewBinding {
-        std::function<void(const Change&)> callback;
-
-        explicit Binding(std::function<void(const Change&)> value)
-        : callback(std::move(value)) {}
-
-        void enter(const Change& change) noexcept {
-            {
-                std::lock_guard lock(mutex);
-                const auto* authorized = static_cast<const Change*>(operation);
-                if (owner != std::this_thread::get_id() || !active || entered || !authorized || change.seed != authorized->seed ||
-                    change.current != authorized->current || change.previous != authorized->previous)
-                    return;
-                entered = true; // Before effects: partial failure is never retried.
-                ++running;
-            }
-            Invocation current{this, invocation};
-            invocation = &current;
-            std::exception_ptr error;
-            try {
-                callback(change);
-            } catch (...) {
-                error = std::current_exception();
-            }
-            invocation = current.previous;
-            {
-                std::lock_guard lock(mutex);
-                failure = error;
-                --running;
-                idle.notify_all();
-            }
-        }
-    };
 
     template <class Snapshot, class Change> struct ViewSourceState {
         CE::Events::EventBus* bus;
@@ -89,8 +20,7 @@ namespace CE::Runtime::Detail {
         mutable std::mutex mutex;
         Snapshot current;
         std::thread::id owner;
-        std::shared_ptr<ViewBinding> head;
-        std::shared_ptr<ViewBinding> tail;
+        RequiredBindings<Change> bindings;
         bool publishing = false;
         std::function<void()> before_notify;
 
@@ -106,23 +36,6 @@ namespace CE::Runtime::Detail {
         void require_owner() const {
             if (owner != std::this_thread::get_id() || current.closed)
                 throw CE::Exceptions::failed_operation(CE_HERE, "View operation requires its live owner");
-        }
-        void prune() {
-            // Only the owner changes links, and never during a detached fanout.
-            auto* link = &head;
-            std::shared_ptr<ViewBinding> retired;
-            tail.reset();
-            while (*link) {
-                const auto node = *link;
-                if (!node->attached()) {
-                    *link = node->next;
-                    node->next = std::move(retired);
-                    retired = node;
-                } else {
-                    tail = node;
-                    link = &node->next;
-                }
-            }
         }
         void reserve(std::uint64_t source, std::uint64_t session) {
             std::lock_guard lock(mutex);
@@ -161,74 +74,29 @@ namespace CE::Runtime::Detail {
                 change.current = current;
                 publishing = true;
             }
-            const auto begin = head;
-            const auto end = tail;
-            for (auto node = begin; node; node = node->next) {
-                std::lock_guard lock(node->mutex);
-                node->operation = &change;
-                node->entered = false;
-                node->failure = {};
-                if (node == end)
-                    break;
-            }
-            try {
-                if (before_notify)
-                    before_notify();
-                publisher.notify(channel(), change);
-            } catch (...) {
-                CE::Diagnostics::report_failure("view observation", std::current_exception());
-            }
-            std::exception_ptr failure;
-            std::uint64_t required_entries = 0;
-            std::uint64_t fallbacks = 0;
-            for (auto node = begin; node;) {
-                auto next_node = node->next; // Pins a retired node through self-detach.
-                {
-                    std::lock_guard lock(node->mutex);
-                    if (node->active && !node->entered)
-                        ++fallbacks;
-                }
-                static_cast<Binding<Change>&>(*node).enter(change);
-                {
-                    std::lock_guard lock(node->mutex);
-                    if (!failure)
-                        failure = node->failure;
-                    if (node->entered)
-                        ++required_entries;
-                    node->operation = nullptr;
-                }
-                if (node == end)
-                    break;
-                node = std::move(next_node);
-            }
+            const auto result = bindings.publish(change, publisher, channel(), before_notify);
             {
                 std::lock_guard lock(mutex);
                 publishing = false;
             }
-            prune();
             CE_LOG_DEBUG(
                 CE::Logging::Categories::engine,
                 "subsystem=events event={} operation=notification_attempt source={} session={} revision={} logical_width={} logical_height={} pixel_width={} pixel_height={} required_entries={} fallbacks={} required_failed={}",
                 channel().name(), change.current.source, change.current.session, change.current.revision, change.current.logical_size.width,
                 change.current.logical_size.height, change.current.framebuffer_size.width, change.current.framebuffer_size.height,
-                required_entries, fallbacks, bool(failure)
+                result.entered, result.fallbacks, bool(result.failure)
             );
-            if (failure)
-                std::rethrow_exception(failure);
+            if (result.failure)
+                std::rethrow_exception(result.failure);
             return true;
         }
         void close() noexcept {
-            std::shared_ptr<ViewBinding> retired;
             {
                 std::lock_guard lock(mutex);
                 current.closed = true;
                 bus = nullptr;
-                retired = std::move(head);
-                tail.reset();
             }
-            // No publication on destruction. Invalidate before releasing targets.
-            for (auto node = retired; node; node = node->next)
-                node->detach();
+            bindings.close();
         }
     };
 
@@ -307,33 +175,7 @@ namespace CE::Runtime {
                 throw CE::Exceptions::failed_operation(CE_HERE, "View watch requires an initialized source");
             seed = {state.current, state.current, true};
         }
-        if (!state.publishing)
-            state.prune();
-        auto node = std::make_shared<Detail::Binding<Change>>(std::move(callback));
-        node->registration = state.bus->register_listener(state.channel(), [weak = std::weak_ptr(node)](const Change& change) {
-            if (auto retained = weak.lock())
-                retained->enter(change);
-        });
-        ViewAttachment attachment(node);
-        // A private seed belongs only to this attachment, including a watch added
-        // from another watch's callback. It never re-enters global fanout.
-        {
-            std::lock_guard lock(node->mutex);
-            node->operation = &seed;
-        }
-        node->enter(seed);
-        {
-            std::lock_guard lock(node->mutex);
-            node->operation = nullptr;
-        }
-        if (node->failure)
-            std::rethrow_exception(node->failure);
-        if (state.tail)
-            state.tail->next = node;
-        else
-            state.head = node;
-        state.tail = node;
-        return attachment;
+        return ViewAttachment(state.bindings.attach(*state.bus, state.channel(), std::move(callback), &seed));
     }
     template class ViewSource<WindowState, WindowStateChanged>;
     template class ViewSource<SimulationView, SimulationViewChanged>;

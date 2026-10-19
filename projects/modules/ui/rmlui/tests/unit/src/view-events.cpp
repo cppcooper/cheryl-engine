@@ -1,6 +1,9 @@
 #include <ui/rmlui/session.h>
 #include <core/engine/view-state.h>
 #include "core/engine/view-state-internal.h"
+#include "core/engine/runtime-services-internal.h"
+#include <RmlUi/Core/Core.h>
+#include <RmlUi/Core/SystemInterface.h>
 #include <internals/exceptions.h>
 #include <gtest/gtest.h>
 #include <future>
@@ -70,4 +73,35 @@ TEST(ui_rmlui_view, uninitialized) {
     EXPECT_THROW(session.follow_view(source), CE::Exceptions::failed_operation);
     EXPECT_EQ(session.context().GetDimensions(), (Rml::Vector2i{30, 20}));
     Access::close(source);
+}
+
+TEST(ui_rmlui_time, automatic_and_manual) {
+    using Access = CE::Runtime::Detail::RuntimeServicesAccess;
+    CE::Events::EventBus bus;
+    auto services = Access::make(bus);
+    Access::begin(services, 11, 12);
+    Access::bind_simulation(services);
+    Access::step(services, .25, CE::Runtime::Simulation::UpdateKind::Fixed, 0, 1);
+    ViewInput input;
+    CE::UI::RmlUi::Session session(input, 7);
+    session.update_time(.5);
+    const auto elapsed = [] { return Rml::GetSystemInterface()->GetElapsedTime(); };
+    EXPECT_DOUBLE_EQ(elapsed(), .5);
+    bus.register_listener(CE::Runtime::simulation_step_starting_event, [&](const auto& phase) {
+        if (phase.step == 2)
+            session.follow_time(services);
+    });
+    Access::step(services, .25, CE::Runtime::Simulation::UpdateKind::Fixed, 0, 1);
+    EXPECT_DOUBLE_EQ(elapsed(), .5);
+    EXPECT_THROW(session.update_time(.25), CE::Exceptions::failed_operation);
+    Access::step(services, .25, CE::Runtime::Simulation::UpdateKind::VariableCatchUp, .1, 1);
+    EXPECT_DOUBLE_EQ(elapsed(), .75);
+    session.detach_time();
+    session.update_time(.1);
+    EXPECT_DOUBLE_EQ(elapsed(), .85);
+    Access::step(services, .25, CE::Runtime::Simulation::UpdateKind::Fixed, 0, 1);
+    EXPECT_DOUBLE_EQ(elapsed(), .85);
+    session.close_after_quiescence();
+    Access::step(services, .25, CE::Runtime::Simulation::UpdateKind::Fixed, 0, 1);
+    Access::close(services);
 }

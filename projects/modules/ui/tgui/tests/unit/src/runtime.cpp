@@ -298,12 +298,13 @@ namespace {
         Scene current_;
         std::future<Scene> pending_;
         bool blue_submitted_ = false;
+        bool automatic_time_ = false;
 
     public:
         CE::Runtime::GameRuntime* runtime = nullptr;
 
-        Game(CE::Runtime::Context& engine, RuntimeState& state)
-        : engine_(engine), state_(state), uploader_(engine.resources()) {}
+        Game(CE::Runtime::Context& engine, RuntimeState& state, bool automatic_time = false)
+        : engine_(engine), state_(state), uploader_(engine.resources()), automatic_time_(automatic_time) {}
         void init() override {}
         void deinit() override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
@@ -319,8 +320,12 @@ namespace {
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{640, 480}));
             if (!session_) {
                 state_.simulation = std::this_thread::get_id();
-                session_ = std::make_unique<Session>(engine_.input(), 7);
-                session_->follow_view(engine_.simulation_view());
+                if (automatic_time_)
+                    session_ = std::make_unique<Session>(engine_, 7, SessionOptions{.automatic_view = true, .automatic_time = true});
+                else {
+                    session_ = std::make_unique<Session>(engine_.input(), 7);
+                    session_->follow_view(engine_.simulation_view());
+                }
                 session_->gui().add(tgui::Label::create("Queued UI"));
                 picture_ = tgui::Picture::create(texture(false));
                 picture_->setPosition({10, 40});
@@ -340,7 +345,8 @@ namespace {
                 if (state_.blue_seen.load())
                     runtime->stop();
             }
-            session_->update_time(tick.delta_seconds);
+            if (!automatic_time_)
+                session_->update_time(tick.delta_seconds);
             session_->handle_input(tick.input.records(), true);
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
@@ -349,7 +355,7 @@ namespace {
         }
     };
 
-    void run_ui(const CE::Runtime::RunMode mode) {
+    void run_ui(const CE::Runtime::RunMode mode, bool automatic_time = false) {
         RuntimeState state;
         EXPECT_FALSE(tgui::isBackendSet());
         {
@@ -357,7 +363,7 @@ namespace {
                 std::make_unique<Display>(), std::make_unique<Surface>(state), std::make_unique<Renderer>(state),
                 std::make_unique<Resources>(state), std::make_unique<Input>(state)
             );
-            Game game(engine, state);
+            Game game(engine, state, automatic_time);
             CE::Runtime::GameRuntime runtime(engine, game, mode);
             game.runtime = &runtime;
             runtime.run();
@@ -416,4 +422,9 @@ TEST(ui_tgui_runtime, sequential) {
 
 TEST(ui_tgui_runtime, concurrent) {
     run_ui(CE::Runtime::RunMode::Concurrent);
+}
+
+TEST(ui_tgui_runtime, automatic_time) {
+    run_ui(CE::Runtime::RunMode::Sequential, true);
+    run_ui(CE::Runtime::RunMode::Concurrent, true);
 }

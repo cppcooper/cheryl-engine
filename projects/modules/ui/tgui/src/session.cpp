@@ -23,6 +23,7 @@ namespace CE::UI::TGUI {
     namespace {
         SessionOptions manual_options(SessionOptions options) {
             options.automatic_view = false;
+            options.automatic_time = false;
             return options;
         }
         std::mutex backend_mutex;
@@ -181,6 +182,7 @@ namespace CE::UI::TGUI {
         std::uint64_t focus_epoch = 0;
         bool drawable = false;
         bool pointer_view = false;
+        std::uint64_t automatic_time_updates = 0;
         std::unordered_map<tgui::Widget*, ManagedSize> managed_sizes;
         // Destruction order keeps the backend alive through GUI/font teardown.
         BackendLease backend;
@@ -216,8 +218,8 @@ namespace CE::UI::TGUI {
     Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
         if (target == 0)
             throw Exceptions::invalid_args(CE_HERE, "TGUI requires a nonzero focus target");
-        if (options.automatic_view)
-            throw Exceptions::invalid_args(CE_HERE, "Automatic view construction requires a Context");
+        if (options.automatic_view || options.automatic_time)
+            throw Exceptions::invalid_args(CE_HERE, "Automatic runtime services require a Context");
         state_ = std::make_shared<State>(input, target, options);
     }
 
@@ -243,6 +245,8 @@ namespace CE::UI::TGUI {
     : Session(engine.input(), engine.fonts(), target, manual_options(options)) {
         if (options.automatic_view)
             follow_view(engine.simulation_view());
+        if (options.automatic_time)
+            follow_time(engine.services());
     }
 
     Session::~Session() = default;
@@ -362,6 +366,31 @@ namespace CE::UI::TGUI {
 
     void Session::update_time(const double seconds) {
         auto& state = owner();
+        if (time_attachment_.attached())
+            throw Exceptions::failed_operation(CE_HERE, "Detach automatic UI time before manual advancement");
+        apply_time(state, seconds);
+    }
+
+    void Session::follow_time(const CE::Runtime::RuntimeServices& services) {
+        static_cast<void>(owner());
+        auto attachment = services.on_step([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationStepStarting& phase) {
+            if (const auto state = weak.lock()) {
+                apply_time(*state, phase.delta_seconds);
+                if (++state->automatic_time_updates == 1 || state->automatic_time_updates % 120 == 0)
+                    CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                        "subsystem=ui toolkit=tgui operation=time_apply session={} step={} delta_seconds={} sample_period=120",
+                        phase.session, phase.step, phase.delta_seconds);
+            }
+        });
+        time_attachment_ = std::move(attachment);
+    }
+
+    void Session::detach_time() {
+        static_cast<void>(owner());
+        time_attachment_.reset();
+    }
+
+    void Session::apply_time(State& state, const double seconds) {
         const auto maximum = std::chrono::duration<double>(std::chrono::nanoseconds::max()).count();
         if (!std::isfinite(seconds) || seconds < 0 || seconds >= maximum)
             throw Exceptions::invalid_args(CE_HERE, "TGUI timing requires a finite nonnegative representable duration");
@@ -439,6 +468,7 @@ namespace CE::UI::TGUI {
     }
 
     void Session::close_after_quiescence() {
+        time_attachment_.reset();
         view_attachment_.reset();
         state_.reset();
     }

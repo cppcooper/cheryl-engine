@@ -1,6 +1,7 @@
 #include <core/engine/engine-context.h>
 #include "engine-context-internal.h"
 #include "view-state-internal.h"
+#include "runtime-services-internal.h"
 
 #include <assets/resources/resource-provider.h>
 #include <core/controls/input-interface.h>
@@ -89,6 +90,7 @@ namespace CE::Runtime {
         renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
         Detail::ViewSourceAccess::reserve(window_state_, window_source, session);
         Detail::ViewSourceAccess::reserve(simulation_view_, simulation_source, session);
+        Detail::RuntimeServicesAccess::begin(services_, context, session);
         event_context_ = context;
         session_started_.store(true, std::memory_order_release);
     }
@@ -105,6 +107,7 @@ namespace CE::Runtime {
             std::terminate();
         }
         Detail::ViewSourceAccess::close(simulation_view_);
+        Detail::RuntimeServicesAccess::close(services_);
         Detail::ViewSourceAccess::close(window_state_);
     }
 

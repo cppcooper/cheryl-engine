@@ -5,6 +5,7 @@
 #include <core/controls/polling-backlog.h>
 #include <core/engine/simulation-dispatcher.h>
 #include <core/engine/view-state.h>
+#include <core/engine/runtime-services.h>
 #include <core/diagnostics.h>
 
 #include "simulation-scheduler.h"
@@ -86,6 +87,7 @@ namespace CE::Runtime {
         RuntimeLifecycle lifecycle_;
         InitializedCapabilities initialized_;
         std::unique_ptr<Detail::ShutdownController> shutdown_;
+        ServiceAttachment maintenance_binding_;
 
     public:
         CE_API GameRuntime(
@@ -116,6 +118,8 @@ namespace CE::Runtime {
         [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
+        CE_API void bind_renderer_maintenance();
+        CE_API void publish_step(const Simulation::Step&, double dropped_seconds);
         CE_API void process_shutdown();
         CE_API void publish_ready();
         CE_API void publish_shutdown_starting(std::exception_ptr failure) noexcept;

@@ -9,6 +9,7 @@
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
 #include <core/engine/view-state.h>
+#include <core/engine/runtime-services.h>
 #include <cheryl/text/font.h>
 
 #include <TGUI/Backend/Window/BackendGui.hpp>
@@ -30,6 +31,7 @@ namespace CE::UI::TGUI {
         unsigned int maximum_texture_size = 4096; ///< Maximum texture dimension in pixels, at least 128 and int-representable.
         float font_scale = 1; ///< Positive finite toolkit font scale, fixed for this session.
         bool automatic_view = false; ///< Context construction follows SimulationView; standalone construction requires explicit follow_view().
+        bool automatic_time = false; ///< Context construction advances on future simulation steps; manual update_time() then rejects.
     };
 
     /** Copied support snapshot; committed text does not imply IME composition or full text-editor shaping. */
@@ -50,6 +52,7 @@ namespace CE::UI::TGUI {
         struct State;
         std::shared_ptr<State> state_;
         CE::Runtime::ViewAttachment view_attachment_;
+        CE::Runtime::ServiceAttachment time_attachment_;
 
     public:
         CE_UI_TGUI_API Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
@@ -80,6 +83,9 @@ namespace CE::UI::TGUI {
         // freeze at their current size. Other native sizing remains unchanged.
         CE_UI_TGUI_API void set_layout(tgui::Widget::Ptr widget, const WidgetLayout& layout);
         CE_UI_TGUI_API void update_time(double seconds);
+        /** Attach on the simulation owner; starts next step without replaying a past delta. */
+        CE_UI_TGUI_API void follow_time(const CE::Runtime::RuntimeServices&);
+        CE_UI_TGUI_API void detach_time();
         CE_UI_TGUI_API void request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing = CE::Input::Routing::KeyboardPolicy::Exclusive);
         CE_UI_TGUI_API void release_keyboard_focus();
         [[nodiscard]] CE_UI_TGUI_API bool owns_keyboard_focus() const;
@@ -104,6 +110,7 @@ namespace CE::UI::TGUI {
 
     private:
         static CE_UI_TGUI_API void apply_view(State&, CE::Platform::Dimensions<int>, CE::Platform::FramebufferSize);
+        static CE_UI_TGUI_API void apply_time(State&, double);
         [[nodiscard]] CE_UI_TGUI_API State& owner() const;
     };
 }

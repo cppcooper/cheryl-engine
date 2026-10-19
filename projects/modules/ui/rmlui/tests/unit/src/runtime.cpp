@@ -280,10 +280,11 @@ namespace {
         Scene current_;
         std::future<Scene> pending_;
         bool blue_submitted_ = false;
+        bool automatic_time_ = false;
 
     public:
-        Game(CE::Runtime::Context& engine, RuntimeState& state)
-        : engine_(engine), state_(state), uploader_(engine.resources()) {}
+        Game(CE::Runtime::Context& engine, RuntimeState& state, bool automatic_time = false)
+        : engine_(engine), state_(state), uploader_(engine.resources()), automatic_time_(automatic_time) {}
         void init() override {}
         void deinit() override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
@@ -299,8 +300,12 @@ namespace {
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{640, 480}));
             if (!session_) {
                 state_.simulation = std::this_thread::get_id();
-                session_ = std::make_unique<Session>(engine_.input(), 7);
-                session_->follow_view(engine_.simulation_view());
+                if (automatic_time_)
+                    session_ = std::make_unique<Session>(engine_, 7, SessionOptions{.automatic_view = true, .automatic_time = true});
+                else {
+                    session_ = std::make_unique<Session>(engine_.input(), 7);
+                    session_->follow_view(engine_.simulation_view());
+                }
                 const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
                 // RmlUi strips the leading slash from absolute image URLs.
                 // Anchor the document at the fixtures and use relative names.
@@ -308,7 +313,8 @@ namespace {
                 const auto document_url = Rml::StringUtilities::Replace(
                     (image_path.parent_path() / "runtime.rml").generic_string(), ':', '|'
                 );
-                auto& document = RmlUiTests::document(*session_, document_url);
+                auto& document = RmlUiTests::document(*session_, document_url,
+                    automatic_time_ ? RmlUiTests::DocumentSetup::Runtime : RmlUiTests::DocumentSetup::Manual);
                 document.SetInnerRML(
                     "<div>Queued RmlUi</div><img id='picture' src='" + image_path.filename().generic_string() +
                     "' style='width:20px; height:20px;' />"
@@ -330,7 +336,8 @@ namespace {
                 if (state_.blue_seen.load())
                     tick.request_stop();
             }
-            session_->update_time(tick.delta_seconds);
+            if (!automatic_time_)
+                session_->update_time(tick.delta_seconds);
             session_->handle_input(tick.input.records(), true);
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
@@ -339,7 +346,7 @@ namespace {
         }
     };
 
-    void run_ui(const CE::Runtime::RunMode mode) {
+    void run_ui(const CE::Runtime::RunMode mode, bool automatic_time = false) {
         RuntimeState state;
         EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
         {
@@ -347,7 +354,7 @@ namespace {
                 std::make_unique<Display>(), std::make_unique<Surface>(state), std::make_unique<Renderer>(state),
                 std::make_unique<Resources>(state), std::make_unique<Input>(state)
             );
-            Game game(engine, state);
+            Game game(engine, state, automatic_time);
             CE::Runtime::GameRuntime runtime(engine, game, mode);
             runtime.run();
             const auto* builder = dynamic_cast<const CE::Testing::MaterialBuilder*>(engine.resources().shader_asset_builder());
@@ -400,4 +407,9 @@ TEST(ui_rmlui_runtime, sequential) {
 
 TEST(ui_rmlui_runtime, concurrent) {
     run_ui(CE::Runtime::RunMode::Concurrent);
+}
+
+TEST(ui_rmlui_runtime, automatic_time) {
+    run_ui(CE::Runtime::RunMode::Sequential, true);
+    run_ui(CE::Runtime::RunMode::Concurrent, true);
 }
