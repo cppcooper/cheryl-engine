@@ -20,10 +20,10 @@ Your engine Context already owns a bus, available through `engine.events()`.
 You can also own a separate `CE::Events::EventBus`, for example for a scene, or
 use the default bus through `CE::Events::EventSystem::get()`.
 
-```{mermaid}
-:alt: Context access returns its bus; a scene can own a separate bus; EventSystem forwards calls to its default bus. These are independent registries.
-
+```mermaid
 flowchart LR
+    accTitle: Choosing an event bus
+    accDescr: Context access returns its bus, a scene can own a separate bus, and EventSystem forwards calls to its default bus. These are independent registries.
     context["engine.events()"] -->|returns| context_bus["Context EventBus"]
     scene["Scene owner"] -->|owns| scene_bus["Separate EventBus"]
     system["EventSystem::get()"] -->|forwards calls| default_bus["Default EventBus"]
@@ -69,10 +69,10 @@ Define the payload type and channel once, then register listeners before the
 occurrences they should receive. Construct a payload value each time the event
 happens. Both `dispatch()` and `notify()` publish a value through the bus.
 
-```{mermaid}
-:alt: A HUD registers its callback; game code creates a DamageTaken value and dispatches it; the bus calls the HUD before returning; the HUD unregisters when finished.
-
+```mermaid
 sequenceDiagram
+    accTitle: Create, listen, dispatch and stop listening
+    accDescr: A HUD registers its callback. Game code creates a DamageTaken value and dispatches it. The bus calls the HUD before returning. The HUD unregisters when finished.
     participant Game as Game code
     participant Bus as Chosen EventBus
     participant HUD as HUD listener
@@ -158,10 +158,10 @@ failure handling and listener lifetime details.
 When the game's wiring already selects a particular action, a direct function
 call or an injected callback is another option:
 
-```{mermaid}
-:alt: With a bus, combat publishes to independently registered HUD and sound listeners. With a direct callback, combat invokes a supplied callable directly.
-
+```mermaid
 flowchart LR
+    accTitle: Event bus compared with a direct callback
+    accDescr: With a bus, combat publishes to independently registered HUD and sound listeners. With a direct callback, combat invokes a supplied callable directly.
     subgraph via_bus["Event bus"]
         combat["Combat code"] -->|"dispatch / notify"| bus["Selected bus"]
         bus -->|"callback(payload)"| hud["HUD listener"]
