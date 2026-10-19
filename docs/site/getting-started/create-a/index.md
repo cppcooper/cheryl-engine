@@ -17,6 +17,7 @@ Character <character>
 AIController <ai-controller>
 UIController <ui-controller>
 HUD with TGUI <hud>
+Event <event>
 Abstract controller interfaces <abstract-controller>
 ```
 
@@ -26,6 +27,9 @@ applies it and prepares its appearance. The UIController owns the shared TGUI
 session and scene publication, while HUD/menu/chat components manage their widgets.
 The final abstract-interface discussion is optional: use the concrete examples to
 identify whether the game needs a shared invocation contract.
+
+[Create an event](event.md) is an independent example of a typed game notification,
+from its payload and channel to listeners, publication and cleanup.
 
 Share immutable assets between instances while keeping action contexts, positions,
 behavior state, and UI component state independent. The

@@ -1,8 +1,10 @@
 # Event buses and persistent registration
 
-Use a typed channel to notify registered consumers about an occurrence. Own a
-`CE::Events::EventBus` to isolate a subsystem's channels and lifetime, or use
-`CE::Events::EventSystem::get()` for the global default bus. Include
+Use a typed channel to notify registered consumers about an occurrence. Game code
+can use its `CE::Runtime::Context::events()` bus; publishers and listeners must use
+the same bus. [Create an event](../getting-started/create-a/event.md) walks through
+a game notification. Own a `CE::Events::EventBus` to isolate a subsystem's channels
+and lifetime, or use `CE::Events::EventSystem::get()` for the global default bus. Include
 `<cheryl/core/subsystems/event-bus.h>`.
 
 The example below records level `3` synchronously in `last_level`, then removes
@@ -42,10 +44,11 @@ the typed callback; inconsistent internal payloads throw `bad_any_cast` instead 
 reaching that callback. Public named producers cannot target a typed channel.
 
 Persistent registration, snapshot order, invalidation, waits, close and optional
-delivery use the same listener machinery as named channels. `CE::Events::EventSystem` forwards
-both APIs to its default bus. Initial typed-payload construction failures reach the
-producer before the registry dispatch begins. Per-listener queued copying,
-callback/target failures and cancellation still belong to the registered error sink;
+delivery use the same listener machinery as named channels. `CE::Events::EventSystem`
+forwards registration and `dispatch()` to its default bus. With `dispatch()`,
+initial typed-payload construction failures reach the producer before the registry
+dispatch begins. Per-listener queued copying, callback/target failures and
+cancellation still belong to the registered error sink;
 invalidation waits protect the callback's borrowed target, not that error sink's
 independent lifetime through pending-ticket destruction. No typed API chooses a
 thread or changes worker-stream ordering.
@@ -68,14 +71,28 @@ include bus identity, so an ID from a different bus cannot remove a local listen
 
 ## Immediate delivery
 
-Immediate delivery runs on dispatch's caller, in registration order within that
-dispatch. Overlapping producers can overlap callbacks; immediate listeners must
-be safe on each producer thread. Nested dispatch is synchronous and completes
-inside the outer callback. Exceptions propagate to the immediate caller.
+Immediate delivery runs on the publisher's thread, in registration order within
+that publication. Overlapping producers can overlap callbacks; immediate listeners
+must be safe on each producer thread. Nested publication is synchronous and
+completes inside the outer callback. With `dispatch()`, an immediate exception
+propagates to the caller and stops the remaining listeners in that dispatch.
 
 The registry lock is released before callbacks run. Registration during dispatch
 joins the next snapshot, not the already detached one. String channel names and
 `std::any` payload typing retain their current application-level contract.
+
+### Observations with notify
+
+Use typed `EventBus::notify(channel, payload)` for observations of changes already
+applied. It contains notification failures and attempts each remaining valid
+listener after an immediate listener fails. It still uses immediate delivery by
+default. Neither publication operation rolls back the producer's state.
+
+An optional third `ErrorHandler` receives payload preparation, closed-bus,
+snapshot and immediate-listener failures synchronously outside bus locks. This
+sink must not recursively notify through the same bus. An empty or throwing sink
+uses independent emergency reporting. Queued listeners retain their own
+registration-owned error sinks and delivery lifetimes.
 
 ## Removal and shutdown
 

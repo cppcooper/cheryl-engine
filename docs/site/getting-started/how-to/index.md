@@ -133,7 +133,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 
 | Task | Guide |
 | --- | --- |
-| Send typed events | [Typed events](../../runtime/event-delivery.md#typed-channels). |
+| Create and send typed events | [Create an event](../create-a/event.md); [channel contracts](../../runtime/event-delivery.md#typed-channels). |
 | Queue event delivery | [Queued event delivery](../../runtime/event-delivery.md#optional-queued-delivery). |
 | Remove event listeners | [Registration removal](../../runtime/event-delivery.md#removal-and-shutdown). |
 
