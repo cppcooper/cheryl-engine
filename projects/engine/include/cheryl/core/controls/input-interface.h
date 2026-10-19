@@ -6,8 +6,13 @@
 #include "action-context.h"
 #include "input-capture.h"
 #include "poll-snapshot.h"
+#include "gamepad-availability.h"
+#include <cheryl/core/subsystems/event-bus.h>
 
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <utility>
 
 namespace CE::Platform {
     class Window;
@@ -45,6 +50,17 @@ namespace CE::Input {
         // adapters get empty records; capture-capable State-only publication throws.
         [[nodiscard]] CE_API virtual std::shared_ptr<const PollSnapshot> poll_snapshot();
 
+        /** Select optional notification routing on the platform owner before polling.
+         * The weak handle may outlive its bus. Runtime supplies its Context's handle;
+         * standalone adapters can opt in explicitly. Never closes the selected bus.
+         */
+        CE_API void publish_events_to(CE::Events::EventBus::Publisher publisher) noexcept;
+        /** Copy current slot state under its lock. Register a listener then read this
+         * seed on the platform owner; no poll can interleave those owner operations.
+         * Other threads may read copies, but must post subscription/seed setup to that owner.
+         */
+        [[nodiscard]] CE_API GamepadAvailability gamepad_availability() const;
+
     protected:
         // Before pumping, latch one focus/capture snapshot for routing and State gating.
         CE_API void begin_input_poll();
@@ -54,11 +70,25 @@ namespace CE::Input {
         // Detachment cleanup drops pending records/focus, preserving delivered handles
         // and live capture request counts. Collector staging has no rollback guarantee.
         CE_API void discard_captured_input();
+        // Adapter lifecycle and staging run on its platform owner. Open reserves
+        // checked identities before native effects; only publish_input commits a sample.
+        CE_API void open_gamepad_availability();
+        CE_API void stage_gamepad_availability(DeviceId device, bool available) noexcept;
+        CE_API void close_gamepad_availability(bool notify = true) noexcept;
 
     private:
         Capture::Collector capture_;
         Routing::Manager routing_;
         std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_{nullptr};
+        mutable std::mutex gamepad_mutex_;
+        GamepadAvailability gamepad_;
+        GamepadAvailability published_gamepad_;
+        std::optional<std::pair<DeviceId, bool>> staged_gamepad_;
+        CE::Events::EventBus::Publisher gamepad_publisher_;
+        bool publishing_gamepad_ = false; // Platform owner only; prevents recursive fanout.
+
+        CE_API void commit_gamepad_availability(const PollSnapshot& poll) noexcept;
+        CE_API void publish_gamepad_availability() noexcept;
     };
 }
 

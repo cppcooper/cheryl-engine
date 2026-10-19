@@ -37,6 +37,7 @@ namespace {
         int quiesces = 0;
         int game_shutdowns = 0;
         bool pressed = false;
+        bool sample_gamepad = false;
         std::stop_source saved_stop{std::nostopstate};
     };
 
@@ -81,10 +82,23 @@ namespace {
     public:
         explicit ContractInput(Observations& observations)
         : observations_(observations) {}
-        void initialize(CE::Platform::Window& window) override { observations_.attached = &window; }
-        void deinitialize() override { observations_.attached = nullptr; }
+        void initialize(CE::Platform::Window& window) override {
+            if (observations_.sample_gamepad)
+                open_gamepad_availability();
+            observations_.attached = &window;
+        }
+        void deinitialize() override {
+            observations_.attached = nullptr;
+            if (observations_.sample_gamepad)
+                discard_captured_input();
+        }
         void poll() override {
             bindings_.on_button({keyboard_id(), 65}, true);
+            if (observations_.sample_gamepad) {
+                stage_gamepad_availability(gamepad_id(), true);
+                static_cast<void>(publish_input());
+                return;
+            }
             (void)bindings_.publish_actions();
         }
         CE::Input::Actions::Bindings& bindings() override { return bindings_; }
@@ -208,6 +222,38 @@ TEST(runtime_contract, frame) {
     EXPECT_EQ(diagnostics.published, 1u);
     EXPECT_EQ(diagnostics.rendered, 1u);
     EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+}
+
+TEST(runtime_contract, gamepad_notifications) {
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        observations.sample_gamepad = true;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        std::vector<CE::Input::GamepadAvailability> changes;
+        const auto owner = std::this_thread::get_id();
+        const auto id = engine.events().register_listener(
+            CE::Input::gamepad_availability_changed_event,
+            [&](const CE::Input::GamepadAvailabilityChanged& change) {
+                EXPECT_EQ(std::this_thread::get_id(), owner);
+                if (!change.current.closed)
+                    EXPECT_EQ(change.current.poll, engine.input().poll_snapshot()->state->poll());
+                changes.push_back(change.current);
+            }
+        );
+        ContractGame game(engine, observations);
+        CE::Runtime::GameRuntime runtime(engine, game, mode);
+        runtime.run();
+        ASSERT_EQ(changes.size(), 2u);
+        EXPECT_TRUE(changes.front().available);
+        EXPECT_FALSE(changes.front().closed);
+        EXPECT_TRUE(changes.back().available);
+        EXPECT_TRUE(changes.back().closed);
+        EXPECT_TRUE(engine.events().unregister_and_wait(id));
+    }
 }
 
 TEST(runtime_contract, concurrent_window_snapshot) {

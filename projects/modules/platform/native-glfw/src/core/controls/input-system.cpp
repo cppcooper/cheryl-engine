@@ -269,6 +269,7 @@ namespace CE::Platform::GLFW {
     }
 
     InputSystem::~InputSystem() {
+        close_gamepad_availability(false); // Destruction never publishes callbacks.
         // Explicit runtime teardown reports failures. Destruction must still
         // finish detachment without allowing a publication failure to escape.
         try {
@@ -295,72 +296,80 @@ namespace CE::Platform::GLFW {
         auto* handle = glfw_window->native_handle();
         if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
             throw Exceptions::failed_operation(CE_HERE, "The window already has an input adapter");
+        open_gamepad_availability();
+        try {
 #if defined(_WIN32)
-        void* gainput_window = glfwGetWin32Window(handle);
+            void* gainput_window = glfwGetWin32Window(handle);
 #else
-        // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
-        // initialization does not consume a native window handle.
-        void* gainput_window = nullptr;
+            // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
+            // initialization does not consume a native window handle.
+            void* gainput_window = nullptr;
 #endif
-        if (!state_->manager_initialized_) {
-            // Release the claim if Init fails. Once initialized, retain it through
-            // Exit and member destruction so no adapter can tear down another's HID.
-            auto lifetime = std::make_unique<Detail::GainputLifetime>(gainput_ownership, gainput_window);
-            CE_LOG_DEBUG(
-                CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=begin", state_->domain_
-            );
-            state_->manager_.Init(gainput_window);
-            CE_LOG_DEBUG(
-                CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=returned", state_->domain_
-            );
-            state_->gainput_lifetime_ = std::move(lifetime);
-            state_->manager_initialized_ = true;
-        } else
-            state_->gainput_lifetime_->require_window(gainput_window);
+            if (!state_->manager_initialized_) {
+                // Release the claim if Init fails. Once initialized, retain it through
+                // Exit and member destruction so no adapter can tear down another's HID.
+                auto lifetime = std::make_unique<Detail::GainputLifetime>(gainput_ownership, gainput_window);
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=begin", state_->domain_
+                );
+                state_->manager_.Init(gainput_window);
+                CE_LOG_DEBUG(
+                    CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=returned", state_->domain_
+                );
+                state_->gainput_lifetime_ = std::move(lifetime);
+                state_->manager_initialized_ = true;
+            } else
+                state_->gainput_lifetime_->require_window(gainput_window);
 
-        // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
-        if (!state_->keyboard_) {
-            state_->keyboard_ = state_->manager_.CreateAndGetDevice<Detail::GlfwKeyboardDevice>();
-            state_->keyboard_id_ = state_->keyboard_->GetDeviceId();
-        }
-        if (!state_->mouse_) {
-            state_->mouse_ = state_->manager_.CreateAndGetDevice<Detail::GlfwMouseDevice>();
-            state_->mouse_id_ = state_->mouse_->GetDeviceId();
-        }
-        if (state_->gamepad_id_ == gainput::InvalidDeviceId)
-            state_->gamepad_id_ = state_->manager_.CreateDevice<gainput::InputDevicePad>();
-        CE_LOG_DEBUG(
-            CE::Logging::Categories::platform,
-            "subsystem=input domain={} operation=gamepad_setup device={} hid_report_device={} hid_report_device_known={} diagnostics={}",
-            state_->domain_, state_->gamepad_id_, gainput_hid_report_device, gainput_hid_report_device_known, state_->gamepad_diagnostics_
-        );
-        // Map GLFW controls in their shared callback order. Gainput's per-device
-        // queue order must not erase a keyboard-modified mouse tap in this poll.
-        state_->bindings_.use_external_state(state_->keyboard_id_);
-        state_->bindings_.use_external_state(state_->mouse_id_);
+            // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
+            if (!state_->keyboard_) {
+                state_->keyboard_ = state_->manager_.CreateAndGetDevice<Detail::GlfwKeyboardDevice>();
+                state_->keyboard_id_ = state_->keyboard_->GetDeviceId();
+            }
+            if (!state_->mouse_) {
+                state_->mouse_ = state_->manager_.CreateAndGetDevice<Detail::GlfwMouseDevice>();
+                state_->mouse_id_ = state_->mouse_->GetDeviceId();
+            }
+            if (state_->gamepad_id_ == gainput::InvalidDeviceId)
+                state_->gamepad_id_ = state_->manager_.CreateDevice<gainput::InputDevicePad>();
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::platform,
+                "subsystem=input domain={} operation=gamepad_setup device={} hid_report_device={} hid_report_device_known={} diagnostics={}",
+                state_->domain_, state_->gamepad_id_, gainput_hid_report_device, gainput_hid_report_device_known,
+                state_->gamepad_diagnostics_
+            );
+            // Map GLFW controls in their shared callback order. Gainput's per-device
+            // queue order must not erase a keyboard-modified mouse tap in this poll.
+            state_->bindings_.use_external_state(state_->keyboard_id_);
+            state_->bindings_.use_external_state(state_->mouse_id_);
 
-        attached_inputs.emplace(handle, this);
-        state_->window_ = glfw_window;
-        state_->pad_axes_.assign(gainput::PadButtonMax_, 0.0f);
-        state_->pad_buttons_.assign(gainput::PadButtonMax_, false);
-        state_->next_gamepad_diagnostics_ = {};
-        glfwGetCursorPos(handle, &state_->cursor_x_, &state_->cursor_y_);
-        const auto size = window.logical_size();
-        state_->manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
-        // GLFW callbacks only queue transitions. Gainput processes them together in update().
-        glfwSetInputMode(handle, GLFW_LOCK_KEY_MODS, GLFW_TRUE);
-        glfwSetCharCallback(handle, on_character);
-        glfwSetCursorPosCallback(handle, on_cursor);
-        glfwSetKeyCallback(handle, on_key);
-        glfwSetMouseButtonCallback(handle, on_mouse_button);
-        glfwSetScrollCallback(handle, on_scroll);
-        state_->last_update_ = CE::Input::ObservationClock::now();
-        state_->observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
-        CE_LOG_DEBUG(
-            CE::Logging::Categories::platform,
-            "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", state_->domain_,
-            state_->window_->diagnostic_id(), state_->keyboard_id_, state_->mouse_id_, state_->gamepad_id_, state_->observed_window_focus_
-        );
+            attached_inputs.emplace(handle, this);
+            state_->window_ = glfw_window;
+            state_->pad_axes_.assign(gainput::PadButtonMax_, 0.0f);
+            state_->pad_buttons_.assign(gainput::PadButtonMax_, false);
+            state_->next_gamepad_diagnostics_ = {};
+            glfwGetCursorPos(handle, &state_->cursor_x_, &state_->cursor_y_);
+            const auto size = window.logical_size();
+            state_->manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
+            // GLFW callbacks only queue transitions. Gainput processes them together in update().
+            glfwSetInputMode(handle, GLFW_LOCK_KEY_MODS, GLFW_TRUE);
+            glfwSetCharCallback(handle, on_character);
+            glfwSetCursorPosCallback(handle, on_cursor);
+            glfwSetKeyCallback(handle, on_key);
+            glfwSetMouseButtonCallback(handle, on_mouse_button);
+            glfwSetScrollCallback(handle, on_scroll);
+            state_->last_update_ = CE::Input::ObservationClock::now();
+            state_->observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::platform,
+                "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", state_->domain_,
+                state_->window_->diagnostic_id(), state_->keyboard_id_, state_->mouse_id_, state_->gamepad_id_,
+                state_->observed_window_focus_
+            );
+        } catch (...) {
+            close_gamepad_availability();
+            throw;
+        }
     }
 
     void InputSystem::update() {
@@ -455,6 +464,7 @@ namespace CE::Platform::GLFW {
             );
         }
         // Listeners have now updated pending physical state. Commit the complete semantic sample.
+        stage_gamepad_availability(state_->gamepad_id_, available);
         (void)publish_input();
     }
 

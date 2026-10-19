@@ -15,6 +15,7 @@ set(consumer_headers
     cheryl/core/subsystems/event-bus.h
     cheryl/core/subsystems/event-system.h
     cheryl/core/controls/input-interface.h
+    cheryl/core/controls/gamepad-availability.h
     cheryl/core/controls/action-context.h
     cheryl/core/controls/button-codes.h
     cheryl/core/controls/input-record.h

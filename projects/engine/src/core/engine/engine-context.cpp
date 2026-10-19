@@ -72,6 +72,7 @@ namespace CE::Runtime {
     void Context::begin_session() {
         if (session_started_.exchange(true, std::memory_order_acq_rel))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
+        input_->publish_events_to(events_.publisher());
     }
 
     Context::~Context() {

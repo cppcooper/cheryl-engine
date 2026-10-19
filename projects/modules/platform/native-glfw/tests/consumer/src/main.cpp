@@ -15,6 +15,10 @@ int main() {
     CE::Platform::GLFW::Detail::report_glfw_diagnostics("consumer");
 #if CHERYL_NATIVE_INPUT
     CE::Platform::GLFW::InputSystem input;
+    CE::Events::EventBus events;
+    input.publish_events_to(events.publisher());
+    if (!input.gamepad_availability().closed)
+        return 1;
     if (input.device(input.keyboard_id()).known())
         return 1;
 #endif
