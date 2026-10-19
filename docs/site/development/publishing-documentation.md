@@ -43,13 +43,15 @@ branch filters or job conditions does not suppress those configuration errors;
 correct the invalid YAML or expression. See
 [GitHub's workflow-log guidance](https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs).
 
-The Read the Docs configuration uses Ubuntu 24.04 and Python 3.13, with one custom
-`build.jobs.build.html` command:
+The Read the Docs configuration uses Ubuntu 24.04, Graphviz for SVG diagrams and
+Python 3.13, with one custom `build.jobs.build.html` command:
 
 ```yaml
 version: 2
 build:
   os: ubuntu-24.04
+  apt_packages:
+    - graphviz
   tools:
     python: "3.13"
   jobs:

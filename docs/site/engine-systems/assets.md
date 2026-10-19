@@ -33,6 +33,24 @@ Types below are in `CE::Assets` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Assets integration
+:alt: Game objects retain shared assets and Rendering resolves their visual data. Assets uses Utilities for file discovery and Resources to upload prepared CPU data.
+
+digraph assets_usage {
+    rankdir=LR;
+    assets [label="Assets", penwidth=2];
+    game [label="Game objects"];
+    rendering [label="Rendering\nCPU submission"];
+    utilities [label="Utilities\nfile discovery"];
+    resources [label="Resources"];
+    game -> assets [label="loads / retains shared assets;\nkeeps its own animation state"];
+    rendering -> assets [label="resolves sprites / tiles\ninto draw packets"];
+    assets -> utilities [label="discovers files / manifests"];
+    assets -> resources [label="uploads prepared CPU data"];
+}
+```
+
 ### Uses
 
 File discovery and manifests supply CPU inputs; Resources uploads and publishes

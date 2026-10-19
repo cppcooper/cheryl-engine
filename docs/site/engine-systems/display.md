@@ -32,6 +32,24 @@ Types below are in `CE::Platform` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Display integration
+:alt: Runtime uses Display to observe windows. Input and presentation borrow its live window. Display publishes resize notifications through Events.
+
+digraph display_usage {
+    rankdir=LR;
+    display [label="Display", penwidth=2];
+    runtime [label="Runtime"];
+    input [label="Input"];
+    presentation [label="Rendering\npresentation surface"];
+    events [label="Events"];
+    runtime -> display [label="owns adapter;\ncopies dimensions into ticks"];
+    input -> display [label="borrows live window"];
+    presentation -> display [label="uses native window"];
+    display -> events [label="publishes resize notifications"];
+}
+```
+
 ### Uses
 
 The selected platform implementation owns native library/window state and

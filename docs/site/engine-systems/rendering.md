@@ -33,6 +33,26 @@ Types below are in `CE::Rendering` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Rendering integration
+:alt: Game preparation writes Rendering frames and Runtime plays them. Rendering resolves retained asset, text and GUI visuals, retains Resources handles and presents through a Display window.
+
+digraph rendering_usage {
+    rankdir=LR;
+    rendering [label="Rendering", penwidth=2];
+    game [label="Game preparation"];
+    runtime [label="Runtime"];
+    visuals [label="Assets / Text / GUI\nretained visuals"];
+    resources [label="Resources"];
+    display [label="Display"];
+    game -> rendering [label="writes passes with copied\ncamera / draw values"];
+    runtime -> rendering [label="plays completed frames;\npresents / recycles"];
+    rendering -> visuals [label="resolves visual data\ninto draw packets"];
+    rendering -> resources [label="retains images / geometry /\nmaterials for playback"];
+    rendering -> display [label="presents through a\ncompatible live window"];
+}
+```
+
 ### Uses
 
 Applications resolve assets, text and retained UI scenes into complete packets.

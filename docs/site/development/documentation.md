@@ -28,7 +28,8 @@ Publishing documentation <publishing-documentation>
 
 ## Generate locally
 
-Use a Git checkout and Python 3.11 or newer with the standard `venv` module. You
+Use a Git checkout, Python 3.11 or newer with the standard `venv` module, and
+[Graphviz](https://graphviz.org/download/) with its `dot` command on `PATH`. You
 do not need to install Sphinx, Doxygen or pip manually. The first fallback setup
 needs network access to PyPI and the official Doxygen release assets, and a writable
 user cache. The shell entry point requires Bash and selects `python3`, falling
@@ -112,8 +113,39 @@ types have their own pages rather than repeated declarations in the outer class.
 The reference adds Doxygen's `final`, `[[nodiscard]]` and template constraints as
 declaration notes, and includes concept definitions. Each declaration page links
 to its header at the recorded source revision. Consult that header for the full C++
-declaration. Existing Mermaid fences are displayed as plain text until a diagram
-renderer is selected; they are not rendered diagrams.
+declaration.
+
+### Diagrams
+
+Author diagrams as Graphviz DOT text inside a MyST `graphviz` directive. Sphinx's
+built-in [Graphviz extension](https://www.sphinx-doc.org/en/master/usage/extensions/graphviz.html)
+renders them to SVG assets during generation, so local and hosted readers need
+no diagram service or browser script. Supply a caption, descriptive alternative
+text and labeled relationships:
+
+````markdown
+```{graphviz}
+:caption: Example system integration
+:alt: An application uses a system, which requests work from another system.
+
+digraph integration {
+    rankdir=LR;
+    system [label="System", penwidth=2];
+    "Application" -> system [label="uses"];
+    system -> "Other system" [label="requests work"];
+}
+```
+````
+
+Engine-system Usage diagrams put callers before the emphasized system and its
+dependencies after it. Arrows run from consumer to dependency; dashed arrows
+mark optional paths. Keep the main connections readable and retain precise types
+and ownership rules in the surrounding text and tables.
+
+Graphviz is a system prerequisite, separate from bootstrap's Python/Doxygen
+cache. Check it with `dot -V`; the documentation CI and Read the Docs configuration
+install it for hosted generation. A plain `mermaid` code fence still displays
+source text; use the supported directive for a rendered diagram.
 
 ### Incremental rebuilds and full regeneration
 

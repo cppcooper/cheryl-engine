@@ -31,6 +31,30 @@ Types below are in `CE::Diagnostics` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Diagnostics integration
+:alt: Applications and developers inspect Diagnostics through each owner's snapshot API. Runtime counts require completed execution; work and resource counters follow their owners' observation rules. Ordinary summaries can use Logging.
+
+digraph diagnostics_usage {
+    rankdir=LR;
+    diagnostics [label="Diagnostics\nowner snapshot APIs", penwidth=2];
+    observers [label="Applications / developers"];
+    runtime [label="Runtime"];
+    work [label="Workers / Dispatch / Events"];
+    resources [label="Assets / Memory / Resources"];
+    logging [label="Logging"];
+    observers -> diagnostics [label="inspects copied snapshots\nat permitted boundaries"];
+    diagnostics -> runtime [label="reads completed-session counts"];
+    diagnostics -> work [label="observes queue / job /\nlistener activity"];
+    diagnostics -> resources [label="observes publication /\nallocation / retirement"];
+    diagnostics -> logging [label="optional: ordinary summaries", style=dashed];
+}
+```
+
+These are owner-specific snapshot APIs rather than a central sampler. Runtime
+counts require synchronization with `run()` completion; other owners retain their
+own observation rules.
+
 ### Uses
 
 Observers read snapshots under each owner's synchronization and observation

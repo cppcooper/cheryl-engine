@@ -36,6 +36,24 @@ implementing storage integration rather than using the default pool.
 
 ## Usage
 
+```{graphviz}
+:caption: Memory integration
+:alt: Applications construct pooled objects and asset or legacy text caches retain managed CPU backing through Memory. Allocators supply storage; retained release contexts keep destruction and slot return valid after a facade disappears.
+
+digraph memory_usage {
+    rankdir=LR;
+    memory [label="Memory", penwidth=2];
+    application [label="Application objects"];
+    caches [label="Assets / legacy Text\ncaches and geometry"];
+    storage [label="Allocator / backing storage"];
+    release [label="Retained release context"];
+    application -> memory [label="constructs / reserves\npooled CPU objects"];
+    caches -> memory [label="retains managed CPU backing"];
+    memory -> storage [label="checks out / returns ranges"];
+    memory -> release [label="captures bookkeeping\nin returned handles"];
+}
+```
+
 ### Uses
 
 Allocators/backing owners supply storage and construction contexts track live

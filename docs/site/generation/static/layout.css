@@ -1,3 +1,37 @@
+/* Keep diagram labels readable at their authored size on narrow screens. The
+   white SVG canvas also preserves contrast in the site's dark appearance. */
+.rst-content div.graphviz {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1px solid #c6d1dd;
+    border-radius: 0.25rem;
+    background: #fff;
+}
+
+.rst-content object.graphviz {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+}
+
+@media screen and (max-width: 767px) {
+    .rst-content div.graphviz::before {
+        content: "Scroll horizontally for the full diagram.";
+        display: block;
+        position: sticky;
+        left: 0;
+        padding: 0.5rem 0.75rem;
+        background: #f3f6fa;
+        color: #253346;
+        font-size: 0.875rem;
+    }
+
+    .rst-content object.graphviz {
+        max-width: none;
+    }
+}
+
 @media screen {
     /* Keep the theme's 800px content width when space permits, then grow with
        the viewport. The parent already reserves space for the sidebar. */

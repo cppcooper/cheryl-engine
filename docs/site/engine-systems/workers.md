@@ -31,6 +31,26 @@ Types below are in `CE::Workers` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Workers integration
+:alt: Runtime creates tracked worker groups over owned or shared capacity. Applications submit CPU preparation and Events can select serial worker delivery. Workers can use a topology provider; jobs can post owner-affine follow-up through Dispatch.
+
+digraph workers_usage {
+    rankdir=LR;
+    workers [label="Workers\nshared pool + groups", penwidth=2];
+    runtime [label="Runtime Context"];
+    preparation [label="Application preparation\nAssets / Text / Audio"];
+    events [label="Events"];
+    topology [label="Native topology provider"];
+    dispatch [label="Dispatch"];
+    runtime -> workers [label="owns / retains capacity;\ncreates tracked groups"];
+    preparation -> workers [label="submits owned CPU jobs"];
+    events -> workers [label="optional: serial listener delivery", style=dashed];
+    workers -> topology [label="optional: observes CPUs / caches;\napplies supported affinity", style=dashed];
+    workers -> dispatch [label="jobs may post owner-affine\nfollow-up work", style=dashed];
+}
+```
+
 ### Uses
 
 Optional native providers supply CPU/core/cache observations and affinity

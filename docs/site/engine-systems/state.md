@@ -31,6 +31,24 @@ Types below are in `CE::State` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: State integration
+:alt: Game components use State for sampling, publication and transitions. Assets, Events and Memory use singleton helpers. State operates on caller-defined values and invokes callbacks on the setter or trigger caller.
+
+digraph state_usage {
+    rankdir=LR;
+    state [label="State", penwidth=2];
+    game [label="Game components"];
+    services [label="Assets / Events / Memory"];
+    values [label="Application values /\nState and Trigger types"];
+    callbacks [label="Application callbacks"];
+    game -> state [label="samples / publishes values;\ntriggers transitions"];
+    services -> state [label="uses singleton helpers"];
+    state -> values [label="copies / compares;\nevaluates transition rules"];
+    state -> callbacks [label="invokes observers / hooks\non setter / trigger caller"];
+}
+```
+
 ### Uses
 
 The supplied value types define comparison, copying, assignment and pointee

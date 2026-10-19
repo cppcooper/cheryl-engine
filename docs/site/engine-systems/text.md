@@ -35,6 +35,28 @@ Types below are in `CE::Text` unless another namespace is shown.
 
 ## Usage
 
+```{graphviz}
+:caption: Text integration
+:alt: Games request text and GUI adapters use shared font services. Rendering resolves retained text generations. Text uploads through Resources; its optional Updater uses Workers and platform Dispatch.
+
+digraph text_usage {
+    rankdir=LR;
+    text [label="Text", penwidth=2];
+    game [label="Game / HUD"];
+    gui [label="GUI adapters"];
+    rendering [label="Rendering\nCPU submission"];
+    resources [label="Resources"];
+    workers [label="Workers"];
+    dispatch [label="Dispatch\nplatform owner"];
+    game -> text [label="selects fonts;\nrequests labels / dialogue"];
+    gui -> text [label="uses shared font handles\nand rasterization"];
+    rendering -> text [label="resolves retained\ntext generations"];
+    text -> resources [label="uploads glyph atlas / geometry"];
+    text -> workers [label="Updater: CPU preparation", style=dashed];
+    text -> dispatch [label="Updater: owned upload requests", style=dashed];
+}
+```
+
 ### Uses
 
 Font discovery and CPU processing precede resource upload and draw resolution.
