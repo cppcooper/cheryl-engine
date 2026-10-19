@@ -70,11 +70,10 @@ struct DemoUi::TguiState {
     explicit TguiState(CE::Runtime::Context& engine)
     : engine(engine), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()) {}
 
-    void create_widgets(const CE::Game::TickContext& tick) {
+    void create_widgets() {
         using CE::UI::TGUI::Scalable;
 
-        session = std::make_unique<CE::UI::TGUI::Session>(engine, 2);
-        session->set_view(tick.logical_size, tick.framebuffer_size);
+        session = std::make_unique<CE::UI::TGUI::Session>(engine, 2, CE::UI::TGUI::SessionOptions{.automatic_view = true});
         auto& gui = session->gui();
         gui.setTextSize(16);
         gui.setKeyboardNavigationEnabled(true);
@@ -223,9 +222,7 @@ DemoUi::~DemoUi() = default;
 bool DemoUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& tgui = *tgui_state_;
     if (!tgui.session)
-        tgui.create_widgets(tick);
-    else
-        tgui.session->set_view(tick.logical_size, tick.framebuffer_size);
+        tgui.create_widgets();
     tgui.handle_input(tick);
     tgui.session->update_time(tick.delta_seconds);
     tgui.status_label->setText(

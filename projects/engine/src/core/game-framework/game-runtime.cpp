@@ -5,6 +5,7 @@
 #include <core/controls/input-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
+#include "../engine/view-state-internal.h"
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
@@ -79,9 +80,11 @@ namespace CE::Runtime {
             scheduler->wake.notify_all();
         });
         // Reserve the graph before either runtime can initialize or clean up its adapters.
+        bool admitted = false;
         try {
             pressure_state_->bind_owner();
             engine_.begin_session();
+            admitted = true;
             next_timing_report_ = next_platform_report_ = ::CE::Runtime::Simulation::Clock::now() + std::chrono::seconds{2};
             CE_LOG_INFO(
                 ::CE::Logging::Categories::engine,
@@ -98,12 +101,18 @@ namespace CE::Runtime {
             report_session(true);
             run_finished_.store(true, std::memory_order_release);
             pressure_state_->close();
+            if (admitted) {
+                Detail::ViewSourceAccess::close(engine_.simulation_view_);
+                Detail::ViewSourceAccess::close(engine_.window_state_);
+            }
             throw;
         }
         stop();
         report_session(false);
         run_finished_.store(true, std::memory_order_release);
         pressure_state_->close();
+        Detail::ViewSourceAccess::close(engine_.simulation_view_);
+        Detail::ViewSourceAccess::close(engine_.window_state_);
     }
 
     RuntimeStats GameRuntime::diagnostics() const {
@@ -238,6 +247,35 @@ namespace CE::Runtime {
         );
     }
 
+    WindowState GameRuntime::select_window() {
+        auto& window = engine_.window();
+        window.check_native_failure();
+        WindowState next;
+        next.logical_size = window.logical_size();
+        next.framebuffer_size = window.framebuffer_size();
+        next.focused = window.focused();
+        next.observed_at = std::chrono::steady_clock::now();
+        Detail::ViewSourceAccess::select(engine_.window_state_, next);
+        window.check_native_failure();
+        return engine_.window_state_.snapshot();
+    }
+
+    void GameRuntime::select_simulation_view(const WindowState& selected) {
+        SimulationView next;
+        next.logical_size = selected.logical_size;
+        next.framebuffer_size = selected.framebuffer_size;
+        next.window_revision = selected.revision;
+        next.observed_at = std::chrono::steady_clock::now();
+        Detail::ViewSourceAccess::select(engine_.simulation_view_, next);
+    }
+
+    bool GameRuntime::window_selection_current(const WindowState& selected) const {
+        auto& window = engine_.window();
+        window.check_native_failure();
+        return window.logical_size() == selected.logical_size && window.framebuffer_size() == selected.framebuffer_size &&
+               window.focused() == selected.focused;
+    }
+
     void GameRuntime::run_sequential() {
         if (stop_source_.stop_requested()) {
             finish_unstarted_session();
@@ -250,6 +288,7 @@ namespace CE::Runtime {
         bool renderer_started = false;
         bool input_started = false;
         bool game_started = false;
+        ViewAttachment viewport_binding;
         std::exception_ptr failure;
 
         try {
@@ -290,8 +329,15 @@ namespace CE::Runtime {
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "Input adapter did not supply an initial snapshot");
-            auto viewport = window.framebuffer_size();
-            renderer.set_viewport(viewport);
+            auto selected_window = select_window();
+            viewport_binding = engine_.window_state().watch([&](const WindowStateChanged& change) {
+                if (change.seed || change.previous.framebuffer_size != change.current.framebuffer_size) {
+                    renderer.set_viewport(change.current.framebuffer_size);
+                    if (!change.seed)
+                        ++diagnostics_.resizes;
+                }
+            });
+            select_simulation_view(selected_window);
             const auto started_at = ::CE::Runtime::Simulation::Clock::now();
             ::CE::Input::Accumulator accumulator(previous_poll, started_at);
             Input::PollingBacklog backlog(polling_);
@@ -317,13 +363,7 @@ namespace CE::Runtime {
                 }
                 if (stop_source_.stop_requested() || window.should_close())
                     break;
-                const auto size = window.framebuffer_size();
-                const auto logical_size = window.logical_size();
-                if (size != viewport) {
-                    renderer.set_viewport(size);
-                    viewport = size;
-                    ++diagnostics_.resizes;
-                }
+                selected_window = select_window();
                 const auto batch = timing.advance(::CE::Runtime::Simulation::Clock::now());
                 observe_timing(batch);
                 observe_platform(false);
@@ -338,11 +378,15 @@ namespace CE::Runtime {
                     auto state = accumulator.consume_polls(::CE::Input::ObservationClock::now(), backlog.consume());
                     const auto& step = batch.steps[i];
                     const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                    select_simulation_view(selected_window);
+                    if (stop_source_.stop_requested())
+                        break;
                     phase_ = "game_update";
                     ++diagnostics_.updates;
                     game_.update(
                         ::CE::Game::TickContext{
-                            std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size, stop_source_
+                            std::chrono::duration<double>(step.delta).count(), state, selected_window.framebuffer_size,
+                            step.kind, dropped, selected_window.logical_size, stop_source_
                         }
                     );
                     updated = true;
@@ -364,7 +408,7 @@ namespace CE::Runtime {
                     published = true;
                     ++diagnostics_.published;
                 }
-                if (published) {
+                if (published && window_selection_current(selected_window)) {
                     phase_ = "render_present";
                     renderer.clear();
                     renderer.render(frame);
@@ -410,6 +454,7 @@ namespace CE::Runtime {
         // Adapters must also clean up if initialize() only completed partway.
         if (input_started)
             finish("input deinitialize", [&input] { input.deinitialize(); });
+        viewport_binding.reset();
         if (renderer_started)
             finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;
@@ -471,8 +516,7 @@ namespace CE::Runtime {
         };
         struct Handoff {
             Input::PollingBacklog backlog;
-            ::CE::Platform::FramebufferSize framebuffer_size;
-            ::CE::Platform::Dimensions<int> logical_size{0, 0};
+            WindowState window;
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
             bool worker_done = false;
@@ -487,6 +531,7 @@ namespace CE::Runtime {
         bool renderer_started = false;
         bool input_started = false;
         bool game_started = false;
+        ViewAttachment viewport_binding;
         std::exception_ptr failure;
 
         try {
@@ -526,17 +571,23 @@ namespace CE::Runtime {
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "Input adapter did not supply an initial snapshot");
-            auto viewport = window.framebuffer_size();
-            renderer.set_viewport(viewport);
-            handoff.framebuffer_size = viewport;
-            handoff.logical_size = window.logical_size();
+            auto selected_window = select_window();
+            viewport_binding = engine_.window_state().watch([&](const WindowStateChanged& change) {
+                if (change.seed || change.previous.framebuffer_size != change.current.framebuffer_size) {
+                    renderer.set_viewport(change.current.framebuffer_size);
+                    if (!change.seed)
+                        ++diagnostics_.resizes;
+                }
+            });
+            handoff.window = selected_window;
 
             // The worker owns simulation and its clock; the calling thread alone
             // touches the window, input adapter, renderer, and presentation surface.
-            auto simulate = [&, previous_poll = std::move(previous_poll)]() mutable {
+            auto simulate = [&, previous_poll = std::move(previous_poll), baseline = selected_window]() mutable {
                 const char* worker_phase = "simulation_bind";
                 try {
                     simulation_dispatcher_.bind_owner();
+                    select_simulation_view(baseline);
                     const auto started_at = ::CE::Runtime::Simulation::Clock::now();
                     ::CE::Input::Accumulator accumulator(previous_poll, started_at);
                     ::CE::Runtime::Simulation::Scheduler timing(timing_, started_at);
@@ -558,25 +609,27 @@ namespace CE::Runtime {
                             simulation_dispatcher_.drain();
                             if (stop_source_.stop_requested())
                                 break;
-                            ::CE::Platform::FramebufferSize size;
-                            ::CE::Platform::Dimensions<int> logical_size{0, 0};
+                            WindowState selected;
                             ::CE::Input::ObservationClock::time_point consumed_at;
                             {
                                 std::lock_guard lock(scheduler_->mutex);
                                 polls = handoff.backlog.consume();
-                                size = handoff.framebuffer_size;
-                                logical_size = handoff.logical_size;
+                                selected = handoff.window;
                                 consumed_at = ::CE::Input::ObservationClock::now();
                             }
                             scheduler_->wake.notify_all();
                             auto state = accumulator.consume_polls(consumed_at, std::move(polls));
                             const auto& step = batch.steps[i];
                             const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                            select_simulation_view(selected);
+                            if (stop_source_.stop_requested())
+                                break;
                             worker_phase = "game_update";
                             ++diagnostics_.updates;
                             game_.update(
                                 ::CE::Game::TickContext{
-                                    std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size,
+                                    std::chrono::duration<double>(step.delta).count(), state, selected.framebuffer_size, step.kind, dropped,
+                                    selected.logical_size,
                                     stop_source_
                                 }
                             );
@@ -675,6 +728,7 @@ namespace CE::Runtime {
 
                 observe_platform(pressure);
                 publish_runtime_pressure();
+                std::shared_ptr<const Input::PollSnapshot> completed_poll;
                 if (poll_due) {
                     phase_ = "input_poll";
                     input.poll();
@@ -682,26 +736,22 @@ namespace CE::Runtime {
                     window.check_native_failure();
                     if (stop_source_.stop_requested() || window.should_close())
                         break;
-                    auto completed = input.poll_snapshot();
-                    if (!completed)
+                    completed_poll = input.poll_snapshot();
+                    if (!completed_poll)
                         throw ::CE::Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
-                    observe_input(completed);
-                    const auto size = window.framebuffer_size();
-                    const auto logical_size = window.logical_size();
-                    if (size != viewport) {
-                        renderer.set_viewport(size);
-                        viewport = size;
-                        ++diagnostics_.resizes;
-                    }
-                    {
-                        std::lock_guard lock(scheduler_->mutex);
-                        // Every completed poll consumes capacity, including an
-                        // unchanged observation. No completed observation is discarded.
-                        handoff.backlog.complete(std::move(completed), ::CE::Input::ObservationClock::now());
+                    observe_input(completed_poll);
+                }
+
+                selected_window = select_window();
+                {
+                    std::lock_guard lock(scheduler_->mutex);
+                    // Transfer a completed poll with its coherent window selection.
+                    // Unchanged polls still consume capacity.
+                    if (completed_poll) {
+                        handoff.backlog.complete(std::move(completed_poll), ::CE::Input::ObservationClock::now());
                         diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, handoff.backlog.completed_polls());
-                        handoff.framebuffer_size = size;
-                        handoff.logical_size = logical_size;
                     }
+                    handoff.window = selected_window;
                 }
 
                 // Superseded frames still hold asset handles. Only this thread
@@ -735,7 +785,7 @@ namespace CE::Runtime {
                     }
                     current_frame = ready;
                 }
-                if (current_frame) {
+                if (current_frame && window_selection_current(selected_window)) {
                     phase_ = "render_present";
                     renderer.clear();
                     renderer.render(slots[*current_frame].frame);
@@ -817,6 +867,7 @@ namespace CE::Runtime {
             finish("renderer maintenance", [&renderer] { renderer.maintain_resources(); });
         if (input_started)
             finish("input deinitialize", [&input] { input.deinitialize(); });
+        viewport_binding.reset();
         if (renderer_started)
             finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;

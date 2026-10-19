@@ -31,6 +31,8 @@ namespace {
         int updates = 0;
         int frames = 0;
         int renders = 0;
+        int viewport_calls = 0;
+        bool fail_viewport = false;
         int presentations = 0;
         int initializations = 0;
         int shutdowns = 0;
@@ -46,19 +48,24 @@ namespace {
     class ContractWindow final : public CE::Platform::Window {
         const std::thread::id owner_ = std::this_thread::get_id();
         const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        CE::Platform::Dimensions<int> logical_{16, 12};
+        CE::Platform::FramebufferSize pixels_{32, 24};
 
     public:
         CE::Platform::Dimensions<int> logical_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
-            return {16, 12};
+            return logical_;
         }
         CE::Platform::FramebufferSize framebuffer_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
-            return {32, 24};
+            return pixels_;
         }
         CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
         bool should_close() const override { return std::chrono::steady_clock::now() >= deadline_; }
-        void resize(int, int) override {}
+        void resize(int width, int height) override {
+            logical_ = {width, height};
+            pixels_ = {2 * width, 2 * height};
+        }
         void set_mode(CE::Platform::WindowMode) override {}
         void hide_cursor(bool) const override {}
     };
@@ -149,7 +156,12 @@ namespace {
             ++observations_.renders;
         }
         void clear() override {}
-        void set_viewport(CE::Platform::FramebufferSize size) override { observations_.viewport = size; }
+        void set_viewport(CE::Platform::FramebufferSize size) override {
+            ++observations_.viewport_calls;
+            if (observations_.fail_viewport)
+                throw std::runtime_error("viewport apply");
+            observations_.viewport = size;
+        }
         void set_depth_test(bool) override {}
         void set_clear_colour(float, float, float, float) override {}
         void set_camera_matrices(const glm::mat4&, const glm::mat4&) override {}
@@ -176,6 +188,7 @@ namespace {
     class ContractGame final : public CE::Game::AbstractGame {
         CE::Runtime::Context& engine_;
         Observations& observations_;
+        CE::Runtime::ViewAttachment view_;
 
     public:
         ContractGame(CE::Runtime::Context& engine, Observations& observations)
@@ -197,6 +210,15 @@ namespace {
             ++observations_.game_shutdowns;
         }
         void update(const CE::Game::TickContext& tick) override {
+            const auto selected = engine_.simulation_view().snapshot();
+            EXPECT_TRUE(selected.initialized);
+            EXPECT_EQ(selected.logical_size, tick.logical_size);
+            EXPECT_EQ(selected.framebuffer_size, tick.framebuffer_size);
+            if (!view_.attached())
+                view_ = engine_.simulation_view().watch([selected](const auto& change) {
+                    EXPECT_TRUE(change.seed);
+                    EXPECT_EQ(change.current, selected);
+                });
             observations_.pressed = tick.input.button(CE::Input::Actions::Id{1}).pressed();
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{32, 24}));
             EXPECT_EQ(tick.logical_size.width, 16);
@@ -324,6 +346,74 @@ TEST(runtime_contract, concurrent_window_snapshot) {
     EXPECT_EQ(observations.game_shutdowns, 1);
     EXPECT_EQ(observations.shutdowns, 1);
     EXPECT_EQ(observations.attached, nullptr);
+}
+
+TEST(runtime_view, window_selection) {
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        std::vector<CE::Runtime::WindowState> windows;
+        engine.events().register_listener(CE::Runtime::window_state_changed_event, [&](const auto& change) {
+            windows.push_back(change.current);
+            if (windows.size() == 1)
+                engine.window().resize(40, 30); // Fresh selection must follow after fanout.
+            throw std::runtime_error("optional window observer");
+        });
+        class ViewGame final : public CE::Game::AbstractGame {
+            CE::Runtime::Context& engine_;
+        public:
+            explicit ViewGame(CE::Runtime::Context& engine) : engine_(engine) {}
+            void init() override {}
+            void quiesce() override {}
+            void deinit() override {}
+            void update(const CE::Game::TickContext& tick) override {
+                const auto selected = engine_.simulation_view().snapshot();
+                EXPECT_EQ(selected.logical_size, tick.logical_size);
+                EXPECT_EQ(selected.framebuffer_size, tick.framebuffer_size);
+                if (tick.logical_size.width == 40)
+                    tick.request_stop();
+            }
+            void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+                static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
+            }
+        } game(engine);
+        CE::Runtime::GameRuntime runtime(engine, game, mode);
+        runtime.run();
+        ASSERT_EQ(windows.size(), 2u);
+        EXPECT_EQ(windows[0].framebuffer_size, (CE::Platform::FramebufferSize{32, 24}));
+        EXPECT_EQ(windows[1].logical_size, (CE::Platform::Dimensions<int>{40, 30}));
+        EXPECT_EQ(windows[1].framebuffer_size, (CE::Platform::FramebufferSize{80, 60}));
+        EXPECT_EQ(observations.viewport_calls, 2);
+        EXPECT_EQ(observations.viewport, (CE::Platform::FramebufferSize{80, 60}));
+        EXPECT_TRUE(engine.simulation_view().snapshot().closed);
+    }
+}
+
+TEST(runtime_view, failed_required_seed) {
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        observations.fail_viewport = true;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        ContractGame game(engine, observations);
+        // Quiesce expects a stop source only after update in the ordinary fixture.
+        observations.saved_stop = std::stop_source{};
+        observations.saved_stop.request_stop();
+        CE::Runtime::GameRuntime runtime(engine, game, mode);
+        EXPECT_THROW(runtime.run(), std::runtime_error);
+        EXPECT_EQ(observations.viewport_calls, 1);
+        EXPECT_EQ(observations.updates, 0);
+        EXPECT_EQ(observations.renders, 0);
+        EXPECT_EQ(observations.shutdowns, 1);
+        EXPECT_EQ(observations.game_shutdowns, 1);
+    }
 }
 
 TEST(runtime_contract, stopped) {

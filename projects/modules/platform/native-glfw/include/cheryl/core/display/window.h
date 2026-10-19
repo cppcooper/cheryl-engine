@@ -56,6 +56,7 @@ namespace CE::Platform::GLFW {
         // Selected mode; a later callback failure does not roll this value back.
         [[nodiscard]] ::CE::Platform::WindowMode mode() const override { return window_mode_; }
         [[nodiscard]] CE_NATIVE_GLFW_API bool should_close() const override;
+        [[nodiscard]] CE_NATIVE_GLFW_API std::optional<bool> focused() const override;
         CE_NATIVE_GLFW_API void check_native_failure() const override;
 
         CE_NATIVE_GLFW_API void resize(int width, int height) override;

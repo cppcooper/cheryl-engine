@@ -76,9 +76,8 @@ struct DemoRmlUi::RmlUiState {
             session->close_after_quiescence();
     }
 
-    void create_widgets(const CE::Game::TickContext& tick) {
-        session = std::make_unique<CE::UI::RmlUi::Session>(engine, 3);
-        session->set_view(tick.logical_size, tick.framebuffer_size);
+    void create_widgets() {
+        session = std::make_unique<CE::UI::RmlUi::Session>(engine, 3, CE::UI::RmlUi::SessionOptions{.automatic_view = true});
         const auto source = (root / "graphics/ui/demo.rml").u8string();
         document = session->context().LoadDocument(Rml::String(source.begin(), source.end()));
         if (!document)
@@ -158,9 +157,7 @@ DemoRmlUi::~DemoRmlUi() = default;
 bool DemoRmlUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& rmlui = *rmlui_state_;
     if (!rmlui.session)
-        rmlui.create_widgets(tick);
-    else
-        rmlui.session->set_view(tick.logical_size, tick.framebuffer_size);
+        rmlui.create_widgets();
     rmlui.session->update_time(tick.delta_seconds);
     rmlui.handle_input(tick);
     rmlui.status_label->SetInnerRML(

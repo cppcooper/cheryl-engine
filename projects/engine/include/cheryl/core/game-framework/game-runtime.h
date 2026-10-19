@@ -4,6 +4,7 @@
 
 #include <core/controls/polling-backlog.h>
 #include <core/engine/simulation-dispatcher.h>
+#include <core/engine/view-state.h>
 #include <core/diagnostics.h>
 
 #include "simulation-scheduler.h"
@@ -120,6 +121,9 @@ namespace CE::Runtime {
         [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
+        CE_API WindowState select_window();
+        CE_API void select_simulation_view(const WindowState& selected);
+        [[nodiscard]] CE_API bool window_selection_current(const WindowState& selected) const;
         friend struct ::CE::Runtime::Detail::GameRuntimeAccess;
         CE_API void run_sequential();
         CE_API void run_concurrent();

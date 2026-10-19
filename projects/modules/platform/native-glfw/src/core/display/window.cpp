@@ -62,6 +62,10 @@ namespace CE::Platform::GLFW {
             ::CE::Diagnostics::report_failure("window destruction with an unconsumed callback failure", native_failure_);
     }
 
+    std::optional<bool> Window::focused() const {
+        return glfwGetWindowAttrib(glfw_window_, GLFW_FOCUSED) == GLFW_TRUE;
+    }
+
     void Window::make_context_current(const int swap_interval) {
         if (swap_interval < 0)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");

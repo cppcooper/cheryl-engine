@@ -7,6 +7,8 @@ namespace CE::Platform {
         T width; ///< Width in the coordinate units defined by the containing API.
         T height; ///< Height in the same units as width.
 
+        bool operator==(const Dimensions&) const = default;
+
         Dimensions(T width, T height)
         : width(width), height(height) {}
     };

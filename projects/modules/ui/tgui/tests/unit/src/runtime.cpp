@@ -320,7 +320,7 @@ namespace {
             if (!session_) {
                 state_.simulation = std::this_thread::get_id();
                 session_ = std::make_unique<Session>(engine_.input(), 7);
-                session_->set_view(tick.logical_size, tick.framebuffer_size);
+                session_->follow_view(engine_.simulation_view());
                 session_->gui().add(tgui::Label::create("Queued UI"));
                 picture_ = tgui::Picture::create(texture(false));
                 picture_->setPosition({10, 40});

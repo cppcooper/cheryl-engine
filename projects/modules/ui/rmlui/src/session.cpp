@@ -24,6 +24,10 @@
 
 namespace CE::UI::RmlUi {
     namespace {
+        SessionOptions manual_options(SessionOptions options) {
+            options.automatic_view = false;
+            return options;
+        }
         std::mutex library_mutex;
         bool library_owned = false;
 
@@ -260,7 +264,9 @@ namespace CE::UI::RmlUi {
             throw Exceptions::invalid_args(CE_HERE, "RmlUi requires a nonzero focus target");
         if (options.maximum_texture_size < 1024)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi's stock font atlas needs a texture bound of at least 1024");
-        state_ = std::make_unique<State>(input, target, options);
+        if (options.automatic_view)
+            throw Exceptions::invalid_args(CE_HERE, "Automatic view construction requires a Context");
+        state_ = std::make_shared<State>(input, target, options);
     }
 
     Session::Session(
@@ -282,7 +288,10 @@ namespace CE::UI::RmlUi {
     }
 
     Session::Session(CE::Runtime::Context& engine, const CE::Input::Routing::TargetId target, const SessionOptions options)
-    : Session(engine.input(), engine.fonts(), target, options) {}
+    : Session(engine.input(), engine.fonts(), target, manual_options(options)) {
+        if (options.automatic_view)
+            follow_view(engine.simulation_view());
+    }
 
     Session::~Session() = default;
 
@@ -340,6 +349,25 @@ namespace CE::UI::RmlUi {
         auto& state = owner();
         if (logical.width < 0 || logical.height < 0 || framebuffer.width < 0 || framebuffer.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi window dimensions must be nonnegative");
+        view_attachment_.reset();
+        apply_view(state, logical, framebuffer);
+    }
+
+    void Session::follow_view(const CE::Runtime::SimulationViewSource& source) {
+        static_cast<void>(owner());
+        auto attachment = source.watch([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationViewChanged& change) {
+            if (const auto state = weak.lock()) {
+                apply_view(*state, change.current.logical_size, change.current.framebuffer_size);
+                CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                    "subsystem=ui toolkit=rmlui operation=view_apply source={} revision={} seed={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
+                    change.current.source, change.current.revision, change.seed, change.current.logical_size.width,
+                    change.current.logical_size.height, change.current.framebuffer_size.width, change.current.framebuffer_size.height);
+            }
+        });
+        view_attachment_ = std::move(attachment);
+    }
+
+    void Session::apply_view(State& state, const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         state.pointer_view = logical.width > 0 && logical.height > 0;
         state.drawable = state.pointer_view && framebuffer.width > 0 && framebuffer.height > 0;
         state.renderer.set_view({logical.width, logical.height});
@@ -469,6 +497,7 @@ namespace CE::UI::RmlUi {
     }
 
     void Session::close_after_quiescence() {
+        view_attachment_.reset();
         state_.reset();
     }
 }

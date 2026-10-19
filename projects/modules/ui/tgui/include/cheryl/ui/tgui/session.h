@@ -8,6 +8,7 @@
 #include <core/controls/input-interface.h>
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
+#include <core/engine/view-state.h>
 #include <cheryl/text/font.h>
 
 #include <TGUI/Backend/Window/BackendGui.hpp>
@@ -28,6 +29,7 @@ namespace CE::UI::TGUI {
     struct SessionOptions {
         unsigned int maximum_texture_size = 4096; ///< Maximum texture dimension in pixels, at least 128 and int-representable.
         float font_scale = 1; ///< Positive finite toolkit font scale, fixed for this session.
+        bool automatic_view = false; ///< Context construction follows SimulationView; standalone construction requires explicit follow_view().
     };
 
     /** Copied support snapshot; committed text does not imply IME composition or full text-editor shaping. */
@@ -46,7 +48,8 @@ namespace CE::UI::TGUI {
      * @see [Session integration](cheryl-guide:modules/tgui) */
     class Session final {
         struct State;
-        std::unique_ptr<State> state_;
+        std::shared_ptr<State> state_;
+        CE::Runtime::ViewAttachment view_attachment_;
 
     public:
         CE_UI_TGUI_API Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
@@ -70,6 +73,8 @@ namespace CE::UI::TGUI {
         CE_UI_TGUI_API void set_font(tgui::Widget::Ptr widget, const CE::Text::Font& selected, CE::Text::FontStyle style = {});
         // Both dimensions are copied by the runtime; no native window is read.
         CE_UI_TGUI_API void set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer);
+        /** Attach and seed on the simulation owner. A valid set_view() detaches automatic sizing. */
+        CE_UI_TGUI_API void follow_view(const CE::Runtime::SimulationViewSource& source);
         // Add the widget to this GUI first. Typed rules bind its current parent's
         // content dimensions; reapply after reparenting. Released scalable axes
         // freeze at their current size. Other native sizing remains unchanged.
@@ -98,6 +103,7 @@ namespace CE::UI::TGUI {
         CE_UI_TGUI_API void close_after_quiescence();
 
     private:
+        static CE_UI_TGUI_API void apply_view(State&, CE::Platform::Dimensions<int>, CE::Platform::FramebufferSize);
         [[nodiscard]] CE_UI_TGUI_API State& owner() const;
     };
 }

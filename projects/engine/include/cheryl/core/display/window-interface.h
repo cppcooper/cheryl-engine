@@ -7,6 +7,7 @@
 #include <core/subsystems/event-channel.h>
 
 #include <enums.h>
+#include <optional>
 
 namespace CE::Platform {
     /** Display-owned window accessed on the platform owner. Logical dimensions use
@@ -21,6 +22,8 @@ namespace CE::Platform {
         [[nodiscard]] virtual ::CE::Platform::FramebufferSize framebuffer_size() const = 0;
         [[nodiscard]] virtual ::CE::Platform::WindowMode mode() const = 0;
         [[nodiscard]] virtual bool should_close() const = 0;
+        /** Optional native focus observation, sampled on the platform owner. */
+        [[nodiscard]] virtual std::optional<bool> focused() const { return std::nullopt; }
         virtual void check_native_failure() const {}
         virtual void resize(int width, int height) = 0;
         virtual void set_mode(::CE::Platform::WindowMode mode) = 0;

@@ -7,6 +7,7 @@
 #include <core/controls/input-interface.h>
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
+#include <core/engine/view-state.h>
 
 #include <RmlUi/Core/Context.h>
 
@@ -28,6 +29,7 @@ namespace CE::UI::RmlUi {
     struct SessionOptions {
         // Core's stock font atlas can allocate up to 1024 per dimension.
         unsigned int maximum_texture_size = 4096; ///< Maximum texture dimension in pixels; positive/representable; at least 1024 for the native font atlas.
+        bool automatic_view = false; ///< Context construction follows SimulationView; standalone construction requires explicit follow_view().
     };
 
     /** Copied support snapshot; committed text does not imply IME composition or full text-editor shaping. */
@@ -48,7 +50,8 @@ namespace CE::UI::RmlUi {
      * @see [Session integration](cheryl-guide:modules/rmlui) */
     class Session final {
         struct State;
-        std::unique_ptr<State> state_;
+        std::shared_ptr<State> state_;
+        CE::Runtime::ViewAttachment view_attachment_;
 
     public:
         CE_UI_RMLUI_API Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
@@ -73,6 +76,8 @@ namespace CE::UI::RmlUi {
         [[nodiscard]] CE_UI_RMLUI_API Rml::String font_family(const CE::Text::Font& selected);
         CE_UI_RMLUI_API void set_font(Rml::Element& element, const CE::Text::Font& selected);
         CE_UI_RMLUI_API void set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer);
+        /** Attach and seed on the simulation owner. A valid set_view() detaches automatic sizing. */
+        CE_UI_RMLUI_API void follow_view(const CE::Runtime::SimulationViewSource& source);
         // Advances simulation time and updates native layout/animation. record()
         // also updates layout after authoring or input, without advancing time.
         CE_UI_RMLUI_API void update_time(double delta_seconds);
@@ -96,6 +101,7 @@ namespace CE::UI::RmlUi {
         CE_UI_RMLUI_API void close_after_quiescence();
 
     private:
+        static CE_UI_RMLUI_API void apply_view(State&, CE::Platform::Dimensions<int>, CE::Platform::FramebufferSize);
         [[nodiscard]] CE_UI_RMLUI_API State& owner() const;
     };
 }

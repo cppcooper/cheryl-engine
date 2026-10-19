@@ -7,7 +7,6 @@
 #include <cheryl/ui/tgui/scene.h>
 #include <cheryl/ui/tgui/session.h>
 
-#include <array>
 #include <future>
 #include <memory>
 #include <optional>
@@ -23,7 +22,6 @@ namespace Tutorial {
         std::future<CE::UI::TGUI::Scene> pending_;
         std::unique_ptr<CE::UI::TGUI::Session> session_;
         std::optional<Hud> hud_;
-        std::optional<std::array<int, 4>> view_;
         int score_ = 0;
         unsigned int health_ = 100;
 
@@ -37,15 +35,7 @@ namespace Tutorial {
 
         void update(const CE::Game::TickContext& tick) {
             if (!session_)
-                session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, tgui_target_);
-
-            const std::array current_view{
-                tick.logical_size.width, tick.logical_size.height, tick.framebuffer_size.width, tick.framebuffer_size.height
-            };
-            if (!view_ || *view_ != current_view) {
-                session_->set_view(tick.logical_size, tick.framebuffer_size);
-                view_ = current_view;
-            }
+                session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true});
             if (!hud_)
                 hud_.emplace(*session_);
 

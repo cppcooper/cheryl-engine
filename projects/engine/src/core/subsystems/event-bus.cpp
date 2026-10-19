@@ -248,22 +248,29 @@ namespace CE::Events {
     bool EventBus::unregister_listener(const Registration& registration) {
         if (registration.bus_.lock() != state_)
             return false;
-        auto listener = registration.listener_.lock();
+        return registration.disconnect();
+    }
+
+    bool EventBus::Registration::disconnect() const {
+        auto state = bus_.lock();
+        auto listener = listener_.lock();
+        if (!state)
+            return false;
         if (!listener)
             return false;
         bool removed = false;
         {
-            std::lock_guard lock(state_->mutex);
+            std::lock_guard lock(state->mutex);
             // Publish invalidation before detaching. A concurrent close must
             // never miss a removed listener whose invocation gate is still open.
             invalidate(listener);
-            const auto channel = state_->channels.find(listener->event);
-            if (channel != state_->channels.end()) {
+            const auto channel = state->channels.find(listener->event);
+            if (channel != state->channels.end()) {
                 removed = std::erase(channel->second, listener) != 0;
                 if (removed)
-                    --state_->active;
+                    --state->active;
                 if (channel->second.empty())
-                    state_->channels.erase(channel);
+                    state->channels.erase(channel);
             }
         }
         // The local owner releases callback captures after the registry unlocks.

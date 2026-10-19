@@ -4,6 +4,7 @@
 
 #include "platform-dispatcher.h"
 #include "worker-pool.h"
+#include "view-state.h"
 #include <core/subsystems/event-bus.h>
 #include <cheryl/text/font-service.h>
 
@@ -57,6 +58,8 @@ namespace CE::Runtime {
      */
     class Context final {
         ::CE::Events::EventBus events_; // Outlives adapters and runtime-owned dispatch queues.
+        WindowStateSource window_state_{events_};
+        SimulationViewSource simulation_view_{events_};
         std::unique_ptr<CE::Platform::DisplaySystem> display_;
         std::unique_ptr<CE::Rendering::PresentationSurface> surface_;
         std::unique_ptr<CE::Rendering::Renderer> renderer_;
@@ -108,6 +111,8 @@ namespace CE::Runtime {
         [[nodiscard]] CE::Text::FontService& fonts() const noexcept { return fonts_; }
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
         [[nodiscard]] ::CE::Events::EventBus& events() noexcept { return events_; }
+        [[nodiscard]] const WindowStateSource& window_state() const noexcept { return window_state_; }
+        [[nodiscard]] const SimulationViewSource& simulation_view() const noexcept { return simulation_view_; }
         [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.

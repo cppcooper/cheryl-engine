@@ -1,5 +1,6 @@
 #include <core/engine/engine-context.h>
 #include "engine-context-internal.h"
+#include "view-state-internal.h"
 
 #include <assets/resources/resource-provider.h>
 #include <core/controls/input-interface.h>
@@ -72,8 +73,12 @@ namespace CE::Runtime {
     }
 
     void Context::begin_session() {
-        if (session_started_.exchange(true, std::memory_order_acq_rel))
+        std::lock_guard lock(execution_mutex_);
+        if (session_started_.load(std::memory_order_acquire))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
+        const auto session = Detail::ViewSourceAccess::identity();
+        const auto window_source = Detail::ViewSourceAccess::identity();
+        const auto simulation_source = Detail::ViewSourceAccess::identity();
         input_->publish_events_to(events_.publisher());
         events_.register_listener(
             CE::Rendering::graphics_domain_state_changed_event, [](const CE::Rendering::GraphicsDomainStateChanged& change) {
@@ -81,6 +86,9 @@ namespace CE::Runtime {
             }
         );
         renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
+        Detail::ViewSourceAccess::reserve(window_state_, window_source, session);
+        Detail::ViewSourceAccess::reserve(simulation_view_, simulation_source, session);
+        session_started_.store(true, std::memory_order_release);
     }
 
     Context::~Context() {
@@ -94,6 +102,8 @@ namespace CE::Runtime {
             Diagnostics::report_outcome("execution", domain_, "context_destruction", "failed");
             std::terminate();
         }
+        Detail::ViewSourceAccess::close(simulation_view_);
+        Detail::ViewSourceAccess::close(window_state_);
     }
 
     CE::Workers::Group Context::make_worker_group(CE::Workers::GroupOptions options) {

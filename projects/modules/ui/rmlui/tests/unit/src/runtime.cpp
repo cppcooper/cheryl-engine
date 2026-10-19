@@ -300,7 +300,7 @@ namespace {
             if (!session_) {
                 state_.simulation = std::this_thread::get_id();
                 session_ = std::make_unique<Session>(engine_.input(), 7);
-                session_->set_view(tick.logical_size, tick.framebuffer_size);
+                session_->follow_view(engine_.simulation_view());
                 const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
                 // RmlUi strips the leading slash from absolute image URLs.
                 // Anchor the document at the fixtures and use relative names.

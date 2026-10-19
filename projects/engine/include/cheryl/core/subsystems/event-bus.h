@@ -139,6 +139,8 @@ namespace CE::Events {
             Registration() = default;
             [[nodiscard]] std::uint64_t id() const { return id_; }
             [[nodiscard]] ::CE::Diagnostics::DomainId bus_id() const { return bus_id_; }
+            /** Invalidate without retaining or borrowing the bus facade. Running callbacks may finish. */
+            CE_API bool disconnect() const;
         };
 
         /** Copyable notification handle that does not retain the bus or Context.
