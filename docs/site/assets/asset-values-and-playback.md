@@ -86,6 +86,20 @@ strong handles under a lock; those handles survive clear/replacement independent
 
 ## Sprite playback
 
+Playback cursors share immutable CPU clip data while retaining independent time
+and frame selection. The sprite separately retains the uploaded appearance.
+
+```mermaid
+flowchart LR
+    accTitle: Independent sprite playback over shared clip data
+    accDescr: A sprite and two animation cursors retain the same CPU definition allocation. Each cursor selects its own cell; the cursors do not retain the sprite's GPU handles.
+    sprite["Sprite asset"] -->|retains| clip["CPU clip data"]
+    first["Cursor A"] -->|retains| clip
+    second["Cursor B"] -->|retains| clip
+    first -->|selects| cell_a["Cell A"]
+    second -->|selects| cell_b["Cell B"]
+```
+
 For a first animated actor, [Play sprite animation](../getting-started/how-to/animate-sprite.md)
 adds a timed clip to First Game, retains its cursor, advances it during update
 and submits its selected cell. The rules below define lookup and playback limits.

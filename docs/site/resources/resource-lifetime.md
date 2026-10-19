@@ -58,6 +58,20 @@ define the exact bookkeeping, exception and reentrancy contracts.
 
 ## Pool ownership
 
+The pool facade, a reservation and a claimed object handle retain release state
+independently. That retained state lets a handle return storage after its original
+facade or reservation has gone away.
+
+```mermaid
+flowchart TB
+    accTitle: Retained CPU release state
+    accDescr: Pool facades, reservations and claimed object handles retain shared release state. The claimed handle owns its constructed object and returns its slot through that state on final release.
+    facade["Pool facade"] -->|retains| state["Shared release state"]
+    reservation["Reservation"] -->|retains| state
+    handle["Claimed object handle"] -->|retains| state
+    handle -->|owns| object["Constructed object"]
+```
+
 `CE::Memory::Block<T>` is the typed range and backing ownership primitive.
 `CE::Memory::ByteBlock` and `CE::Memory::HeapBlock` name its `void` specialization;
 `CE::Memory::OptionalByteBlock` is an optional byte block. Byte bookkeeping belongs

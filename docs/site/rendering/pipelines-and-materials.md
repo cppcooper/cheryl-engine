@@ -86,6 +86,22 @@ pixels; that choice belongs to the consumer.
 
 ## Parameters and ownership
 
+A packet retains the selected resource generations as well as its copied
+parameter values. Its material reaches the executable through a pipeline:
+
+```mermaid
+flowchart TB
+    accTitle: What a draw packet retains
+    accDescr: A packet retains geometry, a material and resolved values. The material retains a pipeline and its executable program; image and sampler handles are retained through resolved values and material defaults.
+    packet["Draw packet"] -->|retains| geometry["Geometry"]
+    packet -->|retains| material["Material"]
+    packet -->|owns| values["Resolved values"]
+    material -->|retains| pipeline["Pipeline"]
+    pipeline -->|retains| program["Executable program"]
+    values -->|retain| images["Images and samplers"]
+    material -->|defaults retain| images
+```
+
 Parameter values own scalars, vectors, matrices, and their map keys.
 `CE::Rendering::Parameters::ImageBinding` owns a shared const image handle,
 a binding-unit request and an optional retained const sampler override.

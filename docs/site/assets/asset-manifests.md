@@ -36,8 +36,18 @@ The complete sprite document describes the actor's two 16-by-16 cells:
 
 Both `definitions/sprites.json` and `textures/actor.png` resolve from `graphics/`,
 even though the definition itself is in `graphics/definitions/`. The namespace
-and sprite map key combine into `first-game:actor`. During platform-owned game
-initialization, after the provider is ready:
+and sprite map key combine into `first-game:actor`:
+
+```mermaid
+flowchart LR
+    accTitle: Sprite manifest references and identity
+    accDescr: The graphics index selects a sprite document. That document references an image relative to graphics and defines the qualified identity first-game:actor.
+    index["graphics-manifests.json"] -->|selects| document["definitions/sprites.json"]
+    document -->|texture path| image["textures/actor.png"]
+    document -->|namespace and name| identity["first-game:actor"]
+```
+
+During platform-owned game initialization, after the provider is ready:
 
 ```cpp
 CE::Assets::Loading::Loader loader(asset_root);

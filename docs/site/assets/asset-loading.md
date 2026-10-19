@@ -7,6 +7,20 @@ preparation selects indexed documents, decodes owned RGBA pixels and snapshots
 shader source bytes without a provider; `upload()` constructs resources and
 publishes retained metadata on the provider's loading thread.
 
+```mermaid
+flowchart TB
+    accTitle: Asset preparation and publication
+    accDescr: CPU preparation reads selected source files into an owned batch. Upload consumes that batch on the provider owner and publishes cache entries before the final metadata snapshot.
+    prepare["CPU preparation"] --> batch["Owned batch"]
+    batch --> upload["Provider-owner upload"]
+    upload -->|per entry| caches["Asset caches"]
+    upload -->|batch succeeds| metadata["Submitted-definition snapshot"]
+```
+
+Preparation and upload have different failure boundaries: preparation publishes
+no resources, while an upload can leave earlier cache entries published. The
+last successful metadata snapshot remains available until another batch succeeds.
+
 ## Runtime entry point
 
 Start with the self-contained [First Game asset root](../getting-started/first-game.md#init-load-assets-and-create-the-actor).

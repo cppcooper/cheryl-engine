@@ -363,6 +363,18 @@ while retaining the actual accepted-line width and source/bidi contracts.
 
 ## Preparation, upload and retained submission
 
+The CPU and provider-owner stages produce complete values. Frame preparation
+then resolves packets from the selected uploaded generation.
+
+```mermaid
+flowchart LR
+    accTitle: From shaped text to retained draw packets
+    accDescr: A shaped layout is prepared into owned CPU glyph pages and geometry, uploaded into a complete generation, then resolved into packets retaining matching page resources.
+    layout["Shaped layout"] -->|prepare| pages["CPU pages and quads"]
+    pages -->|upload| generation["Uploaded generation"]
+    generation -->|resolve| packets["Retained packets"]
+```
+
 `CE::Text::Rendering::prepare(shaped, raster_options)` owns the layout and prepares
 grayscale alpha pages and six-vertex glyph quads on the CPU. It rasterizes each
 distinct face-qualified glyph once for that message, retaining glyph bearings and

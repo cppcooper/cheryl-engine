@@ -62,6 +62,20 @@ defines layout and alpha validation. Generic asset batches follow the separate
 
 ## Native retirement and maintenance
 
+Logical release can happen on another thread; native collection remains on the
+graphics owner. Shutdown closes the native domain even when logical owners remain.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Native registration retirement
+    accDescr: Final logical release marks a native registration pending. Graphics-owner maintenance collects it. Renderer shutdown sweeps remaining registrations and closes the domain, making later logical release harmless.
+    Live --> Pending: final logical owner releases
+    Pending --> Collected: graphics-owner maintenance
+    Live --> Closed: renderer shutdown sweep
+    Pending --> Closed: renderer shutdown sweep
+    Closed --> Closed: late logical release does no native work
+```
+
 Strong owners and their native retirement paths are below. Namespace names in
 the table are relative to `CE`.
 
