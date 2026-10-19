@@ -3,6 +3,8 @@
 #include <cheryl/export.h>
 
 #include "clip.h"
+#include "playback-events.h"
+#include <core/subsystems/event-bus.h>
 
 #include <filesystem>
 #include <memory>
@@ -27,6 +29,10 @@ namespace CE::Audio {
         float volume = 1; ///< Current per-voice normalized linear gain.
         bool looping = false; ///< Current looping policy; changing it does not restart playback.
         std::optional<std::chrono::duration<double>> duration; ///< Source duration in seconds when known; not current play position.
+        std::uint64_t system = 0; ///< Checked output identity; zero for backends without outcome support.
+        std::uint64_t voice = 0; ///< Logical voice identity, stable across successful restart.
+        std::uint64_t generation = 0; ///< Current admitted generation; starts at one when supported.
+        std::optional<PlaybackTerminal> terminal; ///< Immutable current-generation outcome, retained after close.
     };
 
     // Normalized linear gain, inclusive [0, 1]; rejects non-finite values.
@@ -60,7 +66,7 @@ namespace CE::Audio {
      * playback ends. No game callback runs from the native mixing thread.
      * Destroy/close stops output and retires voices before native output state.
      * The application settles producers before destroying this object. Surviving
-     * Voice handles remain safe. Subsequent system operations throw, except closed/close.
+     * Voice handles remain safe. After close, only closure/notification operations remain available.
      */
     class CE_API System {
     public:
@@ -76,6 +82,9 @@ namespace CE::Audio {
         virtual void maintain() = 0;
         virtual void close() noexcept = 0;
         [[nodiscard]] virtual bool closed() const = 0;
+        CE_API virtual void publish_events_to(::CE::Events::EventBus::Publisher publisher);
+        CE_API virtual void publish_notifications();
+        [[nodiscard]] CE_API virtual PlaybackNotifications notification_snapshot() const;
     };
 }
 
@@ -150,4 +159,21 @@ namespace CE::Audio {
 
 /** @fn bool CE::Audio::System::closed() const
  * Return synchronized output closure state; remains callable after close().
+ */
+
+/** @fn void CE::Audio::System::publish_events_to(CE::Events::EventBus::Publisher publisher)
+ * Choose a weak notification destination and designate the calling thread as publication owner.
+ * Call before pumping/attaching services. A configured source rejects foreign-owner changes and
+ * changes during publication. Empty publishers discard attempts. Unsupported backends throw.
+ */
+/** @fn void CE::Audio::System::publish_notifications()
+ * Observe completion and attempt pending outcomes through the entry sequence cutoff on the designated
+ * owner (the first pump designates it if unconfigured). Never call recursively. Listeners run outside
+ * audio locks; their new records wait for a later pump. Allowed after close for final outcomes.
+ * Each record has one attempt; bus failure has no retry. Unsupported backends throw.
+ */
+/** @fn CE::Audio::PlaybackNotifications CE::Audio::System::notification_snapshot() const
+ * Return synchronized closure, sequence and bounded-loss observations without invoking listeners.
+ * Default backends return system zero. Retain individual Voice snapshots to reconcile a live
+ * generation after a gap; neither snapshot recovers superseded playback history.
  */

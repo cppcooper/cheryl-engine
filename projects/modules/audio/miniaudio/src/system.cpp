@@ -1,16 +1,29 @@
 #include <backends/miniaudio.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
+#include <core/diagnostics.h>
 #include "native-errors.h"
+#include "system-internal.h"
 
 #include <miniaudio.h>
 
 #include <algorithm>
+#include <array>
+#include <limits>
 #include <mutex>
 #include <optional>
+#include <thread>
 #include <utility>
 #include <vector>
 
 namespace CE::Audio::Miniaudio::Detail {
+    [[nodiscard]] std::uint64_t identity() {
+        const auto id = CE::Diagnostics::next_domain_id();
+        if (!id)
+            throw CE::Exceptions::failed_operation(CE_HERE, "Playback identity space is exhausted");
+        return id;
+    }
+
     struct VoiceData {
         std::optional<::CE::Audio::Clip> clip;
         std::optional<std::filesystem::path> file;
@@ -26,6 +39,10 @@ namespace CE::Audio::Miniaudio::Detail {
         float volume = 1;
         bool looping = false;
         std::optional<std::chrono::duration<double>> duration;
+        std::uint64_t voice = 0;
+        std::uint64_t generation = 0;
+        bool admitted = false;
+        std::optional<PlaybackTerminal> terminal;
 
         void retire() noexcept {
             if (sound_initialized) {
@@ -54,7 +71,7 @@ namespace CE::Audio::Miniaudio::Detail {
                 return ::CE::Audio::PlaybackState::Closed;
             if (requested == ::CE::Audio::PlaybackState::Stopped)
                 return ::CE::Audio::PlaybackState::Stopped;
-            if (ma_sound_at_end(&sound))
+            if ((terminal && terminal->reason == PlaybackEndReason::Completed) || ma_sound_at_end(&sound))
                 return ::CE::Audio::PlaybackState::Finished;
             return requested;
         }
@@ -71,15 +88,103 @@ namespace CE::Audio::Miniaudio::Detail {
         ::CE::Audio::Format output;
         std::string backend;
         std::vector<std::shared_ptr<VoiceData>> voices;
+        const std::uint64_t id = identity();
+        std::uint64_t sequence = 0;
+        std::uint64_t active_generations = 0;
+        std::uint64_t lost = 0;
+        std::uint64_t first_lost = 0;
+        std::uint64_t last_lost = 0;
+        std::uint64_t reported_lost = 0;
+        std::vector<PlaybackEnded> outbox;
+        std::size_t head = 0;
+        std::size_t pending = 0;
+        CE::Events::EventBus::Publisher publisher;
+        std::thread::id publication_owner;
+        bool publishing = false;
+        bool discarded = false;
+        ma_result next_stop = MA_SUCCESS;
+        ma_result next_start = MA_SUCCESS;
+
+        explicit SystemState(PlaybackNotificationOptions options) : outbox(options.capacity) {
+            if (outbox.empty())
+                throw CE::Exceptions::invalid_args(CE_HERE, "Playback notification capacity must be positive");
+        }
+
+        struct TerminalPermit {
+            SystemState& system;
+            bool held = true;
+            explicit TerminalPermit(SystemState& state) : system(state) {
+                if (system.active_generations >= std::numeric_limits<std::uint64_t>::max() - system.sequence)
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Playback terminal sequence space is exhausted");
+                ++system.active_generations;
+            }
+            ~TerminalPermit() {
+                if (held)
+                    --system.active_generations;
+            }
+            void admit(VoiceData& data) noexcept {
+                data.admitted = true;
+                held = false;
+            }
+        };
+
+        void terminal(VoiceData& data, PlaybackEndReason reason) noexcept {
+            if (!data.admitted || data.terminal)
+                return;
+            data.terminal = PlaybackTerminal{reason, ++sequence, std::chrono::steady_clock::now()};
+            --active_generations;
+            if (discarded)
+                return;
+            if (pending == outbox.size()) {
+                const auto dropped = outbox[head].terminal.sequence;
+                if (!first_lost)
+                    first_lost = dropped;
+                last_lost = dropped;
+                ++lost;
+                head = (head + 1) % outbox.size();
+                --pending;
+            }
+            outbox[(head + pending++) % outbox.size()] = {id, data.voice, data.generation, *data.terminal};
+        }
+
+        void observe(VoiceData& data) noexcept {
+            if (data.sound_initialized && !data.terminal && ma_sound_at_end(&data.sound))
+                terminal(data, PlaybackEndReason::Completed);
+        }
+
+        void require_publication_owner() {
+            if (publication_owner == std::thread::id{})
+                publication_owner = std::this_thread::get_id();
+            if (publication_owner != std::this_thread::get_id() || publishing)
+                throw CE::Exceptions::bad_request(CE_HERE, "Playback publication requires its designated owner and cannot recurse");
+        }
+
+        [[nodiscard]] PlaybackNotifications snapshot_locked() const noexcept {
+            return {id, sequence, lost, first_lost, last_lost, pending, outbox.size(), !engine_initialized};
+        }
 
         void require_open() const {
             if (!engine_initialized)
                 throw ::CE::Exceptions::bad_request(CE_HERE, "Audio system is closed");
         }
 
+        void stop(VoiceData& data, const char* operation) {
+            check(std::exchange(next_stop, MA_SUCCESS), operation);
+            check(ma_sound_stop(&data.sound), operation);
+        }
+        void start(VoiceData& data, const char* operation) {
+            check(std::exchange(next_start, MA_SUCCESS), operation);
+            check(ma_sound_start(&data.sound), operation);
+        }
+
         void maintain_locked() {
-            std::erase_if(voices, [](const auto& voice) {
-                return voice.use_count() == 1 && voice->state() != ::CE::Audio::PlaybackState::Playing;
+            std::erase_if(voices, [this](const auto& voice) {
+                observe(*voice);
+                if (voice.use_count() == 1 && voice->state() != ::CE::Audio::PlaybackState::Playing) {
+                    terminal(*voice, PlaybackEndReason::Reclaimed);
+                    return true;
+                }
+                return false;
             });
         }
 
@@ -87,8 +192,11 @@ namespace CE::Audio::Miniaudio::Detail {
             const std::lock_guard lock(mutex);
             if (engine_initialized) {
                 static_cast<void>(ma_engine_stop(&engine));
-                for (const auto& voice : voices)
+                for (const auto& voice : voices) {
+                    observe(*voice);
+                    terminal(*voice, PlaybackEndReason::OutputClosed);
                     voice->retire();
+                }
                 voices.clear();
                 ma_engine_uninit(&engine);
                 engine_initialized = false;
@@ -101,6 +209,57 @@ namespace CE::Audio::Miniaudio::Detail {
 
         ~SystemState() { close(); }
     };
+
+    void publish_notifications(std::shared_ptr<SystemState> state) {
+        CE::Events::EventBus::Publisher publisher;
+        std::uint64_t cutoff;
+        {
+            const std::lock_guard lock(state->mutex);
+            if (state->discarded)
+                return;
+            state->require_publication_owner();
+            for (const auto& voice : state->voices)
+                state->observe(*voice);
+            cutoff = state->sequence;
+            publisher = state->publisher;
+            state->publishing = true;
+        }
+        // Each record is removed before its attempt. Reentrant producers can stage
+        // more outcomes, but cannot extend this pump's immutable entry cutoff.
+        std::size_t attempted = 0;
+        std::array<std::size_t, 5> outcomes{};
+        bool report_loss = false;
+        PlaybackNotifications final;
+        for (;;) {
+            PlaybackEnded record;
+            {
+                const std::lock_guard lock(state->mutex);
+                if (state->discarded || !state->pending || state->outbox[state->head].terminal.sequence > cutoff) {
+                    state->publishing = false;
+                    final = state->snapshot_locked();
+                    report_loss = final.lost_observations != state->reported_lost;
+                    state->reported_lost = final.lost_observations;
+                    break;
+                }
+                record = state->outbox[state->head];
+                state->head = (state->head + 1) % state->outbox.size();
+                --state->pending;
+                record.lost_observations = state->lost;
+                record.first_lost_sequence = state->first_lost;
+                record.last_lost_sequence = state->last_lost;
+            }
+            publisher.notify(CE::Audio::playback_ended_event, record);
+            ++outcomes[static_cast<std::size_t>(record.terminal.reason)];
+            ++attempted;
+        }
+        if (attempted || report_loss)
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine,
+                "subsystem=audio event=playback-ended operation=notification_attempt system={} cutoff={} attempted={} pending={} lost={} first_lost={} last_lost={} closed={} completed={} stopped={} replaced={} output_closed={} reclaimed={}",
+                final.system, cutoff, attempted, final.pending, final.lost_observations, final.first_lost_sequence,
+                final.last_lost_sequence, final.closed, outcomes[0], outcomes[1], outcomes[2], outcomes[3], outcomes[4]
+            );
+    }
 
     [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const ::CE::Audio::Clip& clip) {
         auto data = std::make_shared<VoiceData>();
@@ -190,14 +349,17 @@ namespace CE::Audio::Miniaudio::Detail {
 
         [[nodiscard]] ::CE::Audio::VoiceSnapshot snapshot() const override {
             const std::lock_guard lock(system_->mutex);
-            return {data_->state(), data_->volume, data_->looping, data_->duration};
+            system_->observe(*data_);
+            return {data_->state(), data_->volume, data_->looping, data_->duration,
+                    system_->id, data_->voice, data_->generation, data_->terminal};
         }
 
         void pause() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
+            system_->observe(*data_);
             if (data_->state() == ::CE::Audio::PlaybackState::Playing) {
-                check(ma_sound_stop(&data_->sound), "Pause audio voice");
+                system_->stop(*data_, "Pause audio voice");
                 data_->requested = ::CE::Audio::PlaybackState::Paused;
             }
         }
@@ -205,8 +367,9 @@ namespace CE::Audio::Miniaudio::Detail {
         void resume() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
+            system_->observe(*data_);
             if (data_->state() == ::CE::Audio::PlaybackState::Paused) {
-                check(ma_sound_start(&data_->sound), "Resume audio voice");
+                system_->start(*data_, "Resume audio voice");
                 data_->requested = ::CE::Audio::PlaybackState::Playing;
             }
         }
@@ -214,25 +377,40 @@ namespace CE::Audio::Miniaudio::Detail {
         void stop() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
-            check(ma_sound_stop(&data_->sound), "Stop audio voice");
+            system_->observe(*data_);
+            system_->stop(*data_, "Stop audio voice");
             data_->requested = ::CE::Audio::PlaybackState::Stopped;
+            system_->terminal(*data_, PlaybackEndReason::Stopped);
         }
 
         void restart() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
+            system_->observe(*data_);
+            if (data_->generation == std::numeric_limits<std::uint64_t>::max())
+                throw CE::Exceptions::failed_operation(CE_HERE, "Playback generation space is exhausted");
+            SystemState::TerminalPermit permit(*system_);
             // A fresh node/cursor also discards decoder/resampler processing caches.
             // Prepare it before stopping the current voice, so admission failure
             // leaves that voice intact. Native start failure leaves it Stopped.
             auto replacement = data_->clip ? make_voice(*system_, *data_->clip) : make_voice(*system_, *data_->file);
+            replacement->voice = data_->voice;
+            replacement->generation = data_->generation + 1;
             ma_sound_set_volume(&replacement->sound, data_->volume);
             ma_sound_set_looping(&replacement->sound, data_->looping ? MA_TRUE : MA_FALSE);
             replacement->volume = data_->volume;
             replacement->looping = data_->looping;
-            check(ma_sound_stop(&data_->sound), "Stop audio voice for restart");
+            system_->stop(*data_, "Stop audio voice for restart");
             data_->requested = ::CE::Audio::PlaybackState::Stopped;
-            check(ma_sound_start(&replacement->sound), "Restart audio voice");
+            try {
+                system_->start(*replacement, "Restart audio voice");
+            } catch (...) {
+                system_->terminal(*data_, PlaybackEndReason::Stopped);
+                throw;
+            }
             replacement->requested = ::CE::Audio::PlaybackState::Playing;
+            system_->terminal(*data_, PlaybackEndReason::Replaced);
+            permit.admit(*replacement);
             const auto slot = std::find(system_->voices.begin(), system_->voices.end(), data_);
             *slot = replacement;
             data_->retire();
@@ -243,6 +421,7 @@ namespace CE::Audio::Miniaudio::Detail {
             ::CE::Audio::validate_volume(volume);
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
+            system_->observe(*data_);
             ma_sound_set_volume(&data_->sound, volume);
             data_->volume = volume;
         }
@@ -250,14 +429,17 @@ namespace CE::Audio::Miniaudio::Detail {
         void set_looping(bool looping) override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
+            system_->observe(*data_);
+            if (data_->terminal && data_->terminal->reason == PlaybackEndReason::Completed)
+                system_->stop(*data_, "Preserve completed audio voice");
             ma_sound_set_looping(&data_->sound, looping ? MA_TRUE : MA_FALSE);
             data_->looping = looping;
         }
     };
 
-    [[nodiscard]] std::shared_ptr<SystemState> open(::CE::Audio::Format output, bool offline) {
+    [[nodiscard]] std::shared_ptr<SystemState> open(::CE::Audio::Format output, bool offline, PlaybackNotificationOptions notifications) {
         output.validate();
-        auto state = std::make_shared<SystemState>();
+        auto state = std::make_shared<SystemState>(notifications);
         state->offline = offline;
         auto config = ma_engine_config_init();
         config.channels = output.channels;
@@ -306,8 +488,12 @@ namespace CE::Audio::Miniaudio::Detail {
     [[nodiscard]] std::shared_ptr<::CE::Audio::Voice> publish_voice(
         const std::shared_ptr<SystemState>& system,
         const std::shared_ptr<VoiceData>& data,
-        ::CE::Audio::PlaybackOptions options
+        ::CE::Audio::PlaybackOptions options,
+        std::uint64_t voice,
+        SystemState::TerminalPermit& permit
     ) {
+        data->voice = voice;
+        data->generation = 1;
         ma_sound_set_volume(&data->sound, options.volume);
         ma_sound_set_looping(&data->sound, options.looping ? MA_TRUE : MA_FALSE);
         data->volume = options.volume;
@@ -316,28 +502,49 @@ namespace CE::Audio::Miniaudio::Detail {
         system->voices.push_back(data);
         if (!options.paused) {
             try {
-                check(ma_sound_start(&data->sound), "Start audio voice");
+                system->start(*data, "Start audio voice");
                 data->requested = ::CE::Audio::PlaybackState::Playing;
             } catch (...) {
                 system->voices.pop_back();
                 throw;
             }
         }
+        permit.admit(*data);
         return handle;
+    }
+
+    void SystemAccess::fail_next_stop(System& system) {
+        const std::lock_guard lock(system.state_->mutex);
+        system.state_->next_stop = MA_ERROR;
+    }
+    void SystemAccess::fail_next_start(System& system) {
+        const std::lock_guard lock(system.state_->mutex);
+        system.state_->next_start = MA_ERROR;
+    }
+    void SystemAccess::reserve_last_terminal(System& system) {
+        const std::lock_guard lock(system.state_->mutex);
+        if (system.state_->active_generations || system.state_->sequence)
+            throw CE::Exceptions::bad_request(CE_HERE, "Counter fixture requires a fresh output");
+        system.state_->sequence = std::numeric_limits<std::uint64_t>::max() - 1;
     }
 }
 
 namespace CE::Audio::Miniaudio {
     System::System(std::shared_ptr<Detail::SystemState> state) : state_(std::move(state)) {}
 
-    System::~System() { close(); }
-
-    std::unique_ptr<System> System::open_device(::CE::Audio::Format output) {
-        return std::unique_ptr<System>(new System(Detail::open(output, false)));
+    System::~System() {
+        close();
+        const std::lock_guard lock(state_->mutex);
+        state_->discarded = true;
+        state_->pending = 0;
     }
 
-    std::unique_ptr<System> System::open_offline(::CE::Audio::Format output) {
-        return std::unique_ptr<System>(new System(Detail::open(output, true)));
+    std::unique_ptr<System> System::open_device(::CE::Audio::Format output, PlaybackNotificationOptions notifications) {
+        return std::unique_ptr<System>(new System(Detail::open(output, false, notifications)));
+    }
+
+    std::unique_ptr<System> System::open_offline(::CE::Audio::Format output, PlaybackNotificationOptions notifications) {
+        return std::unique_ptr<System>(new System(Detail::open(output, true, notifications)));
     }
 
     std::shared_ptr<::CE::Audio::Voice> System::play(const ::CE::Audio::Clip& clip, ::CE::Audio::PlaybackOptions options) {
@@ -345,8 +552,10 @@ namespace CE::Audio::Miniaudio {
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
         state_->maintain_locked();
+        Detail::SystemState::TerminalPermit permit(*state_);
+        const auto id = Detail::identity();
         auto data = Detail::make_voice(*state_, clip);
-        return Detail::publish_voice(state_, data, options);
+        return Detail::publish_voice(state_, data, options, id, permit);
     }
 
     std::shared_ptr<::CE::Audio::Voice> System::stream(const std::filesystem::path& file, ::CE::Audio::PlaybackOptions options) {
@@ -355,8 +564,10 @@ namespace CE::Audio::Miniaudio {
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
         state_->maintain_locked();
+        Detail::SystemState::TerminalPermit permit(*state_);
+        const auto id = Detail::identity();
         auto data = Detail::make_voice(*state_, file);
-        return Detail::publish_voice(state_, data, options);
+        return Detail::publish_voice(state_, data, options, id, permit);
     }
 
     void System::set_volume(float volume) {
@@ -384,6 +595,30 @@ namespace CE::Audio::Miniaudio {
     bool System::closed() const {
         const std::lock_guard lock(state_->mutex);
         return !state_->engine_initialized;
+    }
+
+    void System::publish_events_to(CE::Events::EventBus::Publisher publisher) {
+        const std::lock_guard lock(state_->mutex);
+        state_->require_publication_owner();
+        state_->publisher = std::move(publisher);
+    }
+
+    void System::publish_notifications() { Detail::publish_notifications(state_); }
+
+    PlaybackNotifications System::notification_snapshot() const {
+        const std::lock_guard lock(state_->mutex);
+        return state_->snapshot_locked();
+    }
+
+    CE::Runtime::ServiceAttachment System::pump_with(const CE::Runtime::RuntimeServices& services) {
+        {
+            const std::lock_guard lock(state_->mutex);
+            state_->require_publication_owner();
+        }
+        return services.on_maintenance([weak = std::weak_ptr(state_)](const CE::Runtime::PlatformMaintenance&) {
+            if (auto state = weak.lock())
+                Detail::publish_notifications(std::move(state));
+        });
     }
 
     ::CE::Audio::Format System::output_format() const {

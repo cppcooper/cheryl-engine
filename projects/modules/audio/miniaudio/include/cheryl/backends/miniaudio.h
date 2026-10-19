@@ -3,6 +3,7 @@
 #include <cheryl/export.h>
 
 #include <audio/system.h>
+#include <core/engine/runtime-services.h>
 
 #include <cstddef>
 #include <span>
@@ -11,6 +12,7 @@
 namespace CE::Audio::Miniaudio {
     namespace Detail {
         struct SystemState;
+        struct SystemAccess;
     }
 
     /** Bound whole-file decoded PCM memory; streaming is a separate playback path. */
@@ -27,6 +29,7 @@ namespace CE::Audio::Miniaudio {
      * @see [Miniaudio integration](cheryl-guide:modules/miniaudio)
      */
     class CE_TYPE_API System final : public ::CE::Audio::System {
+        friend struct Detail::SystemAccess;
         std::shared_ptr<Detail::SystemState> state_;
 
         CE_AUDIO_MINIAUDIO_API explicit System(std::shared_ptr<Detail::SystemState> state);
@@ -37,9 +40,9 @@ namespace CE::Audio::Miniaudio {
         System& operator=(const System&) = delete;
 
         // Native selection excludes miniaudio's null backend; device failures throw.
-        [[nodiscard]] CE_AUDIO_MINIAUDIO_API static std::unique_ptr<System> open_device(::CE::Audio::Format output = {});
+        [[nodiscard]] CE_AUDIO_MINIAUDIO_API static std::unique_ptr<System> open_device(::CE::Audio::Format output = {}, ::CE::Audio::PlaybackNotificationOptions notifications = {});
         // No device is opened. Only render() advances this system's mixing clock.
-        [[nodiscard]] CE_AUDIO_MINIAUDIO_API static std::unique_ptr<System> open_offline(::CE::Audio::Format output = {});
+        [[nodiscard]] CE_AUDIO_MINIAUDIO_API static std::unique_ptr<System> open_offline(::CE::Audio::Format output = {}, ::CE::Audio::PlaybackNotificationOptions notifications = {});
 
         [[nodiscard]] CE_AUDIO_MINIAUDIO_API std::shared_ptr<::CE::Audio::Voice>
         play(const ::CE::Audio::Clip& clip, ::CE::Audio::PlaybackOptions options = {}) override;
@@ -50,6 +53,10 @@ namespace CE::Audio::Miniaudio {
         CE_AUDIO_MINIAUDIO_API void maintain() override;
         CE_AUDIO_MINIAUDIO_API void close() noexcept override;
         [[nodiscard]] CE_AUDIO_MINIAUDIO_API bool closed() const override;
+        CE_AUDIO_MINIAUDIO_API void publish_events_to(::CE::Events::EventBus::Publisher publisher) override;
+        CE_AUDIO_MINIAUDIO_API void publish_notifications() override;
+        [[nodiscard]] CE_AUDIO_MINIAUDIO_API ::CE::Audio::PlaybackNotifications notification_snapshot() const override;
+        [[nodiscard]] CE_AUDIO_MINIAUDIO_API ::CE::Runtime::ServiceAttachment pump_with(const ::CE::Runtime::RuntimeServices& services);
 
         [[nodiscard]] CE_AUDIO_MINIAUDIO_API ::CE::Audio::Format output_format() const;
         [[nodiscard]] CE_AUDIO_MINIAUDIO_API std::string backend_name() const;
@@ -58,6 +65,14 @@ namespace CE::Audio::Miniaudio {
         CE_AUDIO_MINIAUDIO_API void render(std::span<float> output);
     };
 }
+
+/** @fn CE::Runtime::ServiceAttachment CE::Audio::Miniaudio::System::pump_with(const CE::Runtime::RuntimeServices& services)
+ * Attach explicit platform-maintenance pumping after runtime initialization on the designated owner.
+ * The move-only attachment controls pumping; it retains no audio output or borrowed System pointer.
+ * Set the event destination first. The application still owns producer settlement and output closure:
+ * close(), publish_notifications() for final outcomes, then release the attachment/system. Maintenance
+ * may also pump after explicit close. Destruction discards unpublished records without callbacks.
+ */
 
 /** @fn CE::Audio::Clip CE::Audio::Miniaudio::decode_file(const std::filesystem::path& file, DecodeOptions options)
  * Decode WAV/FLAC/MP3 on CPU into owned channel-interleaved float PCM at the source rate/channel count. Reject empty/NUL paths, unsupported formats/channels/rates, empty data and a decoded budget overflow. File/decode/allocation failures throw; no device is opened.
@@ -68,12 +83,14 @@ namespace CE::Audio::Miniaudio {
  * Close output after external producers stop using this object; surviving Voice handles remain safe.
  */
 
-/** @fn std::unique_ptr<CE::Audio::Miniaudio::System> CE::Audio::Miniaudio::System::open_device(Format output)
+/** @fn std::unique_ptr<CE::Audio::Miniaudio::System> CE::Audio::Miniaudio::System::open_device(Format output, PlaybackNotificationOptions notifications)
  * Open native output at a validated mono/stereo 8..192kHz format. Excludes miniaudio's null backend; device/native/allocation failures throw. Playback advances independently on the native clock.
+ * Allocate the positive notification capacity before opening native output.
  */
 
-/** @fn std::unique_ptr<CE::Audio::Miniaudio::System> CE::Audio::Miniaudio::System::open_offline(Format output)
+/** @fn std::unique_ptr<CE::Audio::Miniaudio::System> CE::Audio::Miniaudio::System::open_offline(Format output, PlaybackNotificationOptions notifications)
  * Create output without opening a device. Only render() advances the mixing clock; validate output as for open_device().
+ * Allocate the positive notification capacity before initializing output.
  */
 
 /** @fn std::shared_ptr<CE::Audio::Voice> CE::Audio::Miniaudio::System::play(const Clip& clip, PlaybackOptions options)
