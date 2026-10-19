@@ -9,6 +9,17 @@ used by [PlayerController](controller.md), [Character](character.md), and
 [AIController](ai-controller.md). These are application-owned roles and classes;
 Cheryl supplies input, timing, resources, and execution boundaries.
 
+```mermaid
+flowchart LR
+    accTitle: Different decisions share one actor command
+    accDescr: Player input drives a PlayerController and world observations drive an AI controller. Either returns the same command type, which the game gives to a Character to apply.
+    input["Player input"] --> player["PlayerController"]
+    world["World observations"] --> ai["AI controller"]
+    player --> command["CharacterCommand"]
+    ai --> command
+    command -->|game applies to| character["Character"]
+```
+
 ## Define the actor command
 
 Create `character-command.h`:

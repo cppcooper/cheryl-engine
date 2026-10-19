@@ -8,6 +8,15 @@ use it when you want to link already compiled Cheryl libraries. Both paths
 provide the same public CMake names, such as `Cheryl::Cheryl`, for
 `target_link_libraries()`, and the same `cheryl/` headers.
 
+```mermaid
+flowchart LR
+    accTitle: Two ways to obtain Cheryl targets
+    accDescr: Adding a source checkout or finding an installed SDK supplies Cheryl's public CMake targets. The game links those targets in either case.
+    source["Source checkout"] -->|add_subdirectory| targets["Cheryl targets"]
+    sdk["Installed SDK"] -->|find_package| targets
+    targets -->|target_link_libraries| game["Your game"]
+```
+
 After setup, continue with [Your first game](first-game.md). It introduces startup,
 the game hooks and resource ownership before putting a sprite and text on screen.
 The [consumption reference](../development/consuming-engine.md) covers other

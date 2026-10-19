@@ -9,6 +9,19 @@ Start with [First Game](../first-game.md), or continue from
 [Create a Character](character.md). This lesson establishes the shared lifecycle.
 [Create a HUD](hud.md) adds the first visible component.
 
+The enclosing UI owner manages the session's lifetime. Components borrow that
+session rather than creating a separate session for each panel:
+
+```mermaid
+flowchart TB
+    accTitle: A UI owner with one shared session
+    accDescr: The game owns its UIController. That controller owns a TGUI session and the components added in later lessons; each component borrows the session while managing its widgets.
+    game["Game"] -->|owns| controller["UIController"]
+    controller -->|owns| session["Shared TGUI session"]
+    controller -->|owns added components| components["UI components"]
+    components -->|borrow| session
+```
+
 ## Select TGUI
 
 Enable `CHERYL_BUILD_UI_TGUI=ON` in First Game's source configuration, or use an

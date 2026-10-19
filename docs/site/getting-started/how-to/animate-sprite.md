@@ -49,6 +49,18 @@ Do not retrieve a fresh cursor in every update: that restarts playback.
 
 ## Advance only during update
 
+The cursor advances with simulation time. Frame preparation reads its selected
+cell and retains the sprite's resources without advancing playback again:
+
+```mermaid
+flowchart LR
+    accTitle: Advance animation before frame preparation
+    accDescr: Simulation time advances a per-actor cursor. Its selected cell and the shared sprite are used during frame preparation to resolve a retained draw packet.
+    time["Simulation time"] -->|advance| cursor["Actor's cursor"]
+    cursor -->|selected cell| packet["Resolved packet"]
+    sprite["Shared sprite"] -->|retain resources| packet
+```
+
 Replace First Game's Space-driven cell-selection block with:
 
 ```cpp

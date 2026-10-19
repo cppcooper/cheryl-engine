@@ -37,6 +37,18 @@ dispatcher member, future, or worker-management code.
 
 ## Supply the desired content
 
+The updater keeps one active replacement and only the newest desired request.
+The current complete text stays available while that replacement is prepared:
+
+```mermaid
+flowchart TB
+    accTitle: Bounded text replacement
+    accDescr: The newest desired request starts when the active slot is free. One replacement prepares and uploads a complete candidate, which update adopts as current text. Frames retain the current generation independently.
+    desired["Newest request"] -->|when idle| active["One active replacement"]
+    active -->|adopt ready candidate| current["Current text"]
+    current -->|retain| frames["Frame packets"]
+```
+
 After First Game's gameplay updates, let Space also increment the score:
 
 ```cpp

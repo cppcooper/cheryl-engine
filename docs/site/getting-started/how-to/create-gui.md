@@ -282,6 +282,23 @@ the entire batch; the callback does not relabel existing records.
 
 ## Upload without queue growth and publish
 
+The application retains the previous complete scene while one replacement is
+pending. Only the owned recording crosses from the live UI to graphics:
+
+```mermaid
+sequenceDiagram
+    accTitle: Publish an RmlUi scene without blocking simulation
+    accDescr: Simulation records the document and queues owned scene data to platform. After upload completes, a later update adopts the scene and frame preparation publishes its retained resources.
+    participant UI as Simulation and UI
+    participant Platform
+    UI->>UI: Record document after input and time
+    UI->>Platform: Submit owned recording when no upload is pending
+    Platform->>Platform: Upload with live provider
+    Platform-->>UI: Complete scene future
+    UI->>UI: Adopt ready scene during update
+    UI->>Platform: Publish frame with retained scene
+```
+
 At the end of update:
 
 ```cpp

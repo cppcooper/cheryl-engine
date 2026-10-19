@@ -171,6 +171,18 @@ show ordered application controls and complete input-batch handling.
 
 ## Publish and clean up
 
+Each toolkit adapter follows these publication roles while keeping its own
+session and authoring API. Live widget or document objects stay with the UI owner.
+
+```mermaid
+flowchart LR
+    accTitle: Toolkit UI becomes retained frame data
+    accDescr: The UI owner records widgets or documents into owned CPU data. Platform uploads a scene; simulation adopts the ready scene and appends retained packets to a frame.
+    session["Live toolkit UI"] -->|record| recording["Owned recording"]
+    recording -->|upload| scene["Retained scene"]
+    scene -->|adopt and append| frame["Frame packets"]
+```
+
 Recording creates owned CPU scene data. Send upload work to the platform through
 its dispatcher, consume completed results without blocking simulation, and
 append the latest uploaded scene to a prepared frame. Both integrations support

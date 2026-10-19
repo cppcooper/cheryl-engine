@@ -152,6 +152,20 @@ context provides services; the runtime controls the loop that calls your game.
 
 ### Game state and lifecycle
 
+In a normal session, the hooks have this lifetime order. Updates and frame
+preparation repeat within the active phase; rendering independently consumes
+complete published frames.
+
+```mermaid
+flowchart TB
+    accTitle: First Game hook lifetime
+    accDescr: Initialize game state while adapters are live, run updates and frame preparation, stop and join simulation, quiesce producers, settle accepted work, then release game resources during deinit.
+    init["Game init"] --> active["Updates and frame preparation"]
+    active -->|stop and join simulation| quiesce["Game quiesce"]
+    quiesce --> settle["Settle accepted work"]
+    settle --> deinit["Game deinit"]
+```
+
 {cpp:struct}`CE::Game::AbstractGame` is the base interface for a game. Derive your
 own class from it and implement its virtual member functions, called **hooks**
 because the runtime calls them at defined points in the lifecycle. The example's
@@ -232,6 +246,15 @@ Separate shared resource contents from the mutable state that uses them. A
 sprite contains image/grid data; each actor owns its position and selected cell.
 A text generation contains an uploaded label; the game chooses its position and
 which generation to submit. Keep those choices with simulation.
+
+```mermaid
+flowchart LR
+    accTitle: Copy state and retain appearance for drawing
+    accDescr: Frame preparation copies actor or label placement and retains selected resource handles in draw packets. Platform rendering consumes those packets rather than reading mutable game state.
+    state["Game position and cell"] -->|copy values| packets["Frame packets"]
+    handles["Sprite or text handles"] -->|retain resources| packets
+    packets -->|playback| renderer["Platform renderer"]
+```
 
 | Resource | Obtain | Use | Stop using |
 | --- | --- | --- | --- |

@@ -65,6 +65,18 @@ session per process; component ownership fits within that single session.
 
 ## Connect game state to the widgets
 
+Game rules supply presentation values; the shared UI owner then records the
+updated widgets as part of the whole interface:
+
+```mermaid
+flowchart LR
+    accTitle: From game values to HUD presentation
+    accDescr: The game passes health and score to the UIController, which updates the HUD's widgets before recording and publishing the shared session's scene.
+    game["Health and score"] --> controller["UIController"]
+    controller -->|update values| hud["HUD widgets"]
+    hud -->|record| scene["Shared UI scene"]
+```
+
 Keep the game's `ui_` member and lifecycle calls from the UIController lesson.
 Remove First Game's raw `score_` generation, font/layout/upload block, direct text
 draw, and generation cleanup. Keep an application score and health value:

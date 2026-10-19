@@ -8,6 +8,15 @@ Use the direct path below for game-wide actions. The
 [context path](#reuse-bindings-for-runtime-consumers) supports reusable controllers
 whose lifetimes begin or end during play.
 
+```mermaid
+flowchart LR
+    accTitle: Bind controls once and read semantic actions
+    accDescr: Platform-owned bindings map keyboard controls to game actions. Complete poll observations reach a tick, and game update reads that tick without consulting native device codes.
+    keys["Keyboard controls"] -->|bind| bindings["Platform bindings"]
+    bindings -->|poll| tick["Tick actions"]
+    tick -->|read| update["Game update"]
+```
+
 ## Choose action and registration storage
 
 First Game already declares these members, with `<array>` and the input headers:

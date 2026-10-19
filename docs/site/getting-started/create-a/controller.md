@@ -11,6 +11,19 @@ The application defines what a command means. Cheryl supplies action contexts,
 copied tick input and lifecycle boundaries; it does not require a particular
 controller class or inheritance hierarchy.
 
+Once their contexts have been published by a poll, separate instances can read
+the same local IDs without sharing action state:
+
+```mermaid
+flowchart TB
+    accTitle: Player controllers have separate action namespaces
+    accDescr: Two player controllers query their own contexts, each using local action IDs one and two. Each produces its own CharacterCommand value.
+    first["Context A: actions 1 and 2"] -->|tick view| player_a["PlayerController A"]
+    second["Context B: actions 1 and 2"] -->|tick view| player_b["PlayerController B"]
+    player_a --> command_a["Command for actor A"]
+    player_b --> command_b["Command for actor B"]
+```
+
 ## Define a command
 
 Use `character-command.h` from [Actor controllers and commands](actor-controller.md#define-the-actor-command).

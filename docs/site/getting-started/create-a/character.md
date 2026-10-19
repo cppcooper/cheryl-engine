@@ -5,6 +5,17 @@ consumes the command from [Create a PlayerController](controller.md), so the sam
 Character class can be driven by a player or by autonomous patrol behavior.
 Continue in First Game's initialization, update, frame and cleanup hooks.
 
+```mermaid
+flowchart LR
+    accTitle: Character state and retained appearance
+    accDescr: A Character applies an actor command to its own position. It retains shared appearance and resolves packets during frame preparation; those packets retain their selected resources.
+    command["Actor command"] -->|update| character["Character"]
+    character -->|changes| position["Own position"]
+    character -->|retains| appearance["Shared appearance"]
+    character -->|append| packet["Draw packet"]
+    packet -->|retains resources| appearance
+```
+
 ## Compose state and appearance
 
 Create `character.h`:
