@@ -9,6 +9,17 @@ or compile the engine. Header selection comes from the public-root inventory in
 public exception types in `projects/engine/include/internals/exceptions.h` are
 one such explicit owner; this does not make all `internals/` declarations public.
 
+```mermaid
+flowchart LR
+    accTitle: Manual and API sources become one documentation site
+    accDescr: Selected public headers become Doxygen XML and generated API pages through Breathe and Exhale. MyST reads the Markdown guides; Sphinx combines both into the HTML site.
+    headers["Selected headers"] --> xml["Doxygen XML"]
+    xml --> api["Breathe and Exhale"]
+    api --> sphinx["Sphinx"]
+    markdown["Markdown guides"] -->|MyST| sphinx
+    sphinx --> html["HTML site"]
+```
+
 The generated artifact is an HTML site rooted at
 `docs/site/generation/generated/html/index.html`, containing both the manual and API
 reference. For an explicit CMake artifact target, use

@@ -7,6 +7,17 @@ and SDK production; [Testing and validation](testing.md) owns runner and fixture
 
 ## GitHub CI and SDK artifacts
 
+Successful validation, SDK collection and release publication have separate gates:
+
+```mermaid
+flowchart TB
+    accTitle: Validation artifacts and gated publication
+    accDescr: Successful main-push validation supplies four platform and linkage SDK candidates. Collection verifies a six-file distribution set; publication requires the additional release eligibility gates.
+    validation["Validation jobs"] -->|successful main-push gates| candidates["Four SDK candidates"]
+    candidates -->|verify and collect| collection["Six-file SDK set"]
+    collection -->|release gates pass| release["Published release"]
+```
+
 [ci.yml](../../../.github/workflows/ci.yml) validates pushes to `develop`/`main`, pull
 requests targeting either branch and manual dispatches. Each job checks out recorded
 recursive submodules. Actions use commit pins; Windows uses the manifest's pinned

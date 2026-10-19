@@ -104,6 +104,19 @@ when an implemented consumer demonstrates the requirement.
 
 ## Update, publication and shutdown
 
+Record on the UI owner, upload on the provider owner, and publish complete values.
+Frame preparation runs on simulation/UI; graphics upload and playback run on
+platform in the runtime's native assembly.
+
+```mermaid
+flowchart TB
+    accTitle: UI adapter publication boundaries
+    accDescr: The UI owner transfers an owned CPU recording to the upload owner. A complete scene returns to simulation for frame preparation, and retained packets reach playback without live toolkit objects.
+    ui["UI owner"] -->|owned CPU recording| upload["Upload owner"]
+    upload -->|complete scene| prepare["Frame preparation"]
+    prepare -->|retained packets| playback["Playback owner"]
+```
+
 1. On platform, prepare the resource upload endpoint. Default materials are
    created lazily on that owner during the first nonempty upload.
 2. Configure Engine fonts before consumers. On simulation/UI, create the toolkit

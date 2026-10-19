@@ -215,6 +215,19 @@ the Linux Debug terminal; that module retains its source-composition path.
 
 ## Context assembly
 
+The standard startup result owns the context; the game and runtime borrow it.
+Declare the result before those borrowers so destruction releases them first:
+
+```mermaid
+flowchart TB
+    accTitle: Keep the startup result alive through its borrowers
+    accDescr: StartupResult owns Context. The game borrows Context, and GameRuntime borrows both Context and the game for its session.
+    result["StartupResult"] -->|owns| context["Context"]
+    game["Game"] -->|borrows| context
+    runtime["GameRuntime"] -->|borrows| context
+    runtime -->|borrows| game
+```
+
 Use `CE::Application::make_startup()` for the standard configured assembly; the
 [complete application below](#minimal-native-application) shows its entry point.
 For a custom assembly, supply `StartupBackend::create` to `Startup` or construct

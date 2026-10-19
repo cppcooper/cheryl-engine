@@ -7,6 +7,24 @@ implement related responsibilities without becoming dependencies of neutral
 Engine consumers. A system name in [Engine Systems](../engine-systems/index.md)
 does not imply a separate library.
 
+This common native assembly shows dependency direction. UI and audio remain
+independent selections alongside the graphics path; the table below lists the
+other selectable capabilities.
+
+```mermaid
+flowchart LR
+    accTitle: A native assembly with optional UI and audio
+    accDescr: A game selects OpenGL with Native GLFW and can add a toolkit or audio module independently. Concrete modules use Engine contracts; Engine does not depend on them.
+    game["Game"] -->|native graphics| graphics["OpenGL"]
+    game -->|optional| ui["UI toolkits"]
+    game -->|optional| audio["miniaudio"]
+    graphics -->|requires| native["Native GLFW"]
+    graphics -->|uses| engine["Engine"]
+    native -->|implements| engine
+    ui -->|uses| engine
+    audio -->|implements| engine
+```
+
 For the interfaces a replacement must fulfill, use the
 [Integration contracts](../architecture/interfaces-adapters.md).
 It separates runtime requirements from optional backend capabilities and

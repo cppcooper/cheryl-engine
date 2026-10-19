@@ -34,6 +34,19 @@ discovery or permission to omit directly linked libraries.
 
 ## Standard application path
 
+Handle the returned result before constructing a game or runtime. Help and
+validation results carry an exit code without a context:
+
+```mermaid
+flowchart TB
+    accTitle: Handle the startup result before running
+    accDescr: Startup initialization returns a result. A result without a context returns its exit code; a startable result owns the Context borrowed by the application's game and runtime.
+    initialize["Startup.initialize"] --> result{"should_start?"}
+    result -->|no| exit["Return exit_code"]
+    result -->|yes| context["Result owns Context"]
+    context -->|borrow for the session| run["Construct game and run runtime"]
+```
+
 ```cpp
 #include <cheryl/application/startup.h>
 

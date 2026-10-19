@@ -21,6 +21,19 @@ standard application bootstrap and privately integrates configured backends.
 than another runtime library. CLI11 remains the explicit public option frontend;
 Engine and OpenGL do not depend back on Startup.
 
+An integration's public target carries its required Engine and header usage.
+Dependency arrows point from the consumer to what it needs:
+
+```mermaid
+flowchart TB
+    accTitle: Public and private module dependencies
+    accDescr: An application links an integration module's public target. The module uses Engine and public-header dependencies publicly, while implementation-only dependencies remain private.
+    app["Application"] -->|links public target| module["Integration module"]
+    module -->|PUBLIC| engine["Engine"]
+    module -->|PUBLIC| headers["Public-header dependencies"]
+    module -->|PRIVATE| implementation["Implementation dependencies"]
+```
+
 The optional [Workers module](../modules/workers.md), `Cheryl::Workers`, groups
 configuration loading and topology integration with independent JSON/hwloc
 features. Core pool execution/scheduling remains in Engine. Its capability-specific

@@ -14,6 +14,18 @@ command produces the artifact you need. A library build leaves headers in their
 source directories. SDK installation collects them into one redistributable
 `include/` tree alongside the compiled libraries and CMake import targets.
 
+For SDK production, building, installing and archiving are separate operations:
+
+```mermaid
+flowchart TB
+    accTitle: From configured targets to SDK artifacts
+    accDescr: Configuration selects targets. Building cheryl-sdk produces build-tree libraries; installing the CherylSDK component collects an SDK directory, while package.py stages an archive with identity and checksums.
+    configure["Configure SDK targets"] --> build["Build cheryl-sdk"]
+    build --> libraries["Build-tree libraries"]
+    libraries -->|install component| prefix["SDK directory"]
+    libraries -->|package.py| archive["SDK archive and identity"]
+```
+
 | Artifact | Trigger | Result |
 | --- | --- | --- |
 | HTML manual and C++ reference | Follow [Documentation tooling](documentation.md) for direct generation or the CMake documentation targets. | `docs/site/generation/generated/html/index.html` and linked pages. |
