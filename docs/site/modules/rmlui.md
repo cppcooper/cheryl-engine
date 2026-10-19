@@ -47,7 +47,13 @@ catalogue and establishes its configured default for document inheritance. The
 session owns one global Core initialization; a second session or
 host-installed interface rejects instead of replacing the host's SDK state.
 
-Supply copied logical/framebuffer dimensions with `set_view`. Context dimensions
+Its focus ID identifies the entire session as an Engine keyboard/text recipient.
+Choose any nonzero value and keep independent recipients distinct; its magnitude
+gives no priority. Documents/elements share that ID and use native focus within
+the session. See [session routing and widget focus](../gui/index.md#session-routing-and-widget-focus).
+
+Initialize copied logical/framebuffer dimensions with `set_view`, then refresh
+them whenever either pair changes. Repeating the call each update is also valid. Context dimensions
 are logical units and its density-independent ratio is one; framebuffer scaling
 belongs to Cheryl's clip/projection playback. `update_time` advances the supplied
 simulation duration and updates native layout/animation. `record` updates pending

@@ -28,7 +28,10 @@ references by subject, use [Guides by topic](../../guides/index.md).
 | Task | Guide |
 | --- | --- |
 | Add/remove action bindings | [Bind input actions](bind-input.md). |
-| Attach/detach player input | [Runtime consumer contexts](bind-input.md#reuse-bindings-for-runtime-consumers); [Controller](../create-a/controller.md) and [Character](../create-a/character.md) tutorials. |
+| Choose an actor's control source | [Actor controllers and commands](../create-a/actor-controller.md). |
+| Attach/detach player input | [Runtime consumer contexts](bind-input.md#reuse-bindings-for-runtime-consumers); [PlayerController](../create-a/controller.md) and [Character](../create-a/character.md) tutorials. |
+| Drive an actor with AI | [Create an AIController](../create-a/ai-controller.md). |
+| Choose a common controller interface | [Abstract controller interfaces](../create-a/abstract-controller.md). |
 | Bind axes and scroll | [Axis bindings and control identities](../../runtime/input-state-model.md#control-identities-and-binding-tokens); [controller backend choices](../../modules/native-glfw.md#choose-a-controller-path). |
 | Bind key/button chords | [Chord bindings](../../runtime/input-state-model.md#bindings). |
 | Read input events and text | [Capture and record channels](../../runtime/input-state-model.md#ordered-events-and-os-text). |
@@ -69,7 +72,8 @@ references by subject, use [Guides by topic](../../guides/index.md).
 
 | Task | Guide |
 | --- | --- |
-| Set default fonts | [Configure fonts once](../../assets/text-layout.md#configure-fonts-once). |
+| Set default fonts or reuse a FontSelection | [Ordered application defaults](../../assets/text-layout.md#set-an-ordered-application-default). |
+| Register named fonts and groups | [Named catalogue choices](../../assets/text-layout.md#register-named-families-and-groups). |
 | Save random font choices | [Named groups and saved font references](../../assets/text-layout.md#choose-and-save-a-font). |
 | Display/update text | [Display and update text](update-text.md); [retained text updater](../../assets/text-layout.md#retained-text-updates). |
 | Select font styles and fallbacks | [Retained styles](../../assets/text-layout.md#retained-font-handles-and-style); [font selection](../../assets/text-layout.md#font-selection). |
@@ -83,9 +87,12 @@ references by subject, use [Guides by topic](../../guides/index.md).
 | Task | Guide |
 | --- | --- |
 | Choose a GUI backend | [GUI integration choices](../../gui/index.md#choose-an-interface). |
+| Own a shared TGUI session | [Create a UIController](../create-a/ui-controller.md). |
 | Create a TGUI HUD | [Create a HUD with TGUI](../create-a/hud.md). |
 | Create an interactive RmlUi document | [Create an interactive GUI with RmlUi](create-gui.md). |
+| Move keyboard focus between menu and chat | [Session routing and widget focus](../../gui/index.md#session-routing-and-widget-focus). |
 | Customize GUI fonts | [GUI font selection](../../gui/index.md#select-fonts). |
+| Refresh a GUI view after size changes | [Shared session dimensions](../create-a/ui-controller.md#establish-the-shared-session). |
 | Resize GUI layouts | [TGUI layout](../../modules/tgui.md#typed-layout); [RmlUi document layout](create-gui.md#author-the-document-and-stylesheet). |
 | Customize UI materials | [Custom UI materials](../../rendering/pipelines-and-materials.md#custom-ui-materials). |
 

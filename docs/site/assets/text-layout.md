@@ -67,7 +67,46 @@ auto layout = CE::Text::layout_text(font, "Score: 0", {.pixel_height = 24});
 ```
 
 Configure application fonts at startup, before creating UI sessions or other
-font consumers. A `FontFamily` gives a font a stable application reference.
+font consumers. Existing consumers retain their selected font snapshots.
+
+### Set an ordered application default
+
+Use `FontSelection` when the game has an ordered list of preferred default fonts:
+
+```cpp
+CE::Text::FontSelection selection;
+selection.asset_directories = {asset_root};
+selection.automatic_system_fonts = true;
+selection.preferred = {
+    "ProggyVector", "Cantarell", "FreeSans",
+    "Adwaita Mono", "FreeSerif", "DejaVu Sans"
+};
+engine.fonts().configure(selection);
+auto font = engine.fonts().default_font();
+```
+
+Keep the game's existing `asset_root` and preference list. Missing names are
+skipped. The first available face becomes primary; later faces provide glyph
+fallback in preference order, followed by automatic choices when enabled and the
+embedded safety face. Each name resolves application assets before installed fonts.
+
+For code previously calling `FontCollection::load(selection)`, configure the
+service with that same selection to establish Engine and context-aware GUI
+defaults. New consumers can retain the returned `Font`; collection-based callers
+can use `font.collection()`. The standalone loader remains useful for independent
+CPU font processing.
+
+This overload keeps the stable reference `application-default`. Use
+`configure(selection, "interface")` to give the ordered policy an application
+reference. Selected source faces retain path/collection-index identities,
+independent of preference positions; the embedded face uses `cheryl:embedded`.
+The chosen reference cannot collide with embedded or selected source references.
+See [Font selection](#font-selection) for source forms and discovery details.
+
+### Register named families and groups
+
+Use `FontConfiguration` when the application needs separately named font choices,
+style variants, or selection groups. A `FontFamily` gives a font a stable application reference.
 Its sources supply the family's regular, bold and italic faces. A named group
 contains alternative family references to choose from; it is separate from
 style variants and glyph fallback.
@@ -98,7 +137,10 @@ each returned handle contributes its primary family, including when the default
 family also appears in the configured fallback list.
 
 `default_font()` returns the configured default when available, otherwise the
-embedded font. `get("handwriting")` selects that registered font; an unknown or
+embedded font. `default_font` selects one family reference; the registration order
+and `fallbacks` list do not select another default when that family is unavailable.
+The common fallback list supplies missing glyphs for available fonts.
+`get("handwriting")` selects that registered font; an unknown or
 unavailable reference resolves to the default. `all()` lists the available
 registered handles and the embedded handle. References are case-sensitive
 application identifiers, independent of registration order and physical family
@@ -184,26 +226,8 @@ after configuration does not invalidate its retained bytes. A later explicit
 configuration evaluates availability again. References identify the application's
 font choices; they do not identify a particular revision of a font file.
 
-For an application already using an ordered `FontSelection`, preserve that policy
-without extracting font paths for each toolkit:
-
-```cpp
-CE::Text::FontSelection selection;
-selection.preferred = {"Arial", "Noto Sans", "DejaVuSans.ttf"};
-selection.asset_directories = {asset_root};
-engine.fonts().configure(selection);
-auto font = engine.fonts().default_font();
-```
-
-This overload retains the existing selection and fallback order under the stable
-reference `application-default`. It defines the default without named random
-groups. Retained source faces are also registered by path and collection index,
-independently of preference-list positions; embedded always uses `cheryl:embedded`.
-Use `configure(selection, "demo")` to name the ordered default policy when native
-documents already refer to that family; the name cannot collide with embedded or
-selected source references.
-The standalone collection interface below remains available for explicit
-CPU font processing.
+For an ordered default policy, use the [selection overload](#set-an-ordered-application-default).
+Its selected bytes are also retained for toolkit consumers without reopening paths.
 
 ## Font selection
 

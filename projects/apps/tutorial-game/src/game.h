@@ -1,9 +1,9 @@
 #pragma once
 
 #include "character.h"
-#include "hud.h"
 #include "patrol-controller.h"
 #include "player-controller.h"
+#include "ui-controller.h"
 
 #include <cheryl/core/controls/input-bindings.h>
 #include <cheryl/core/engine/engine-context.h>
@@ -39,7 +39,7 @@ namespace Tutorial {
         std::optional<Character> second_player_;
         std::optional<Character> enemy_;
         PatrolController patrol_{80, 500};
-        std::optional<Hud> hud_;
+        std::optional<UIController> ui_;
         std::optional<CE::Assets::Sprites::Animation> animation_;
         int points_ = 0;
 

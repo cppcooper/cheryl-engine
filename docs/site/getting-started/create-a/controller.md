@@ -1,8 +1,9 @@
-# Create a Controller
+# Create a PlayerController
 
-A controller turns an input or behavior decision into a command for a character.
-Start with [First Game](../first-game.md), then build this controller before
-[the Character](character.md) and [the HUD](hud.md). The maintained
+A PlayerController turns a player's scoped input actions into an actor command.
+Start with [First Game](../first-game.md) and the
+[actor-controller command contract](actor-controller.md), then build this
+controller before [the Character](character.md). The maintained
 [tutorial game](../../../../projects/apps/tutorial-game/README.md) implements the
 complete sequence.
 
@@ -12,16 +13,10 @@ controller class or inheritance hierarchy.
 
 ## Define a command
 
-Create `character-command.h`. It carries an intent, without borrowing input or
-rendering resources:
-
-```{literalinclude} ../../../../projects/apps/tutorial-game/src/character-command.h
-:language: cpp
-```
-
-Here `-1` requests left movement, `1` requests right movement and `0` requests no
-movement. The Character will apply speed and elapsed simulation time. A later
-autonomous controller can return the same value.
+Use `character-command.h` from [Actor controllers and commands](actor-controller.md#define-the-actor-command).
+Its `horizontal` value requests left, right, or no movement. The Character applies
+speed and elapsed time; an [AIController](ai-controller.md) will produce the same
+command from game observations.
 
 ## Translate a player's actions
 
@@ -86,7 +81,7 @@ The [Character tutorial](character.md#update-characters-from-commands) applies
 this command. Keep control translation in the controller so character movement
 can also accept a patrol or other application-selected source.
 
-A controller needs no work in frame preparation. Read it during simulation
+This player controller needs no work in frame preparation. Read it during simulation
 updates, then let frame preparation copy the Character's resulting visible state.
 Input capture, routed keyboard focus and controller action namespaces are
 separate policies; see [input contexts](../../runtime/input-state-model.md#action-contexts).

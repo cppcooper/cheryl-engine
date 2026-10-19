@@ -53,7 +53,7 @@ namespace Tutorial {
         animation_.emplace(sprite_->animation("blink"));
         // [/assets]
 
-        hud_.emplace(engine_);
+        ui_.emplace(engine_);
     }
 
     // [update]
@@ -86,8 +86,8 @@ namespace Tutorial {
         world_camera_.set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-view_origin_, 0.0f)));
 
         if (tick.input.button(score_).pressed() && points_ < std::numeric_limits<int>::max())
-            hud_->set_score(++points_);
-        hud_->update(tick);
+            ui_->set_score(++points_);
+        ui_->update(tick);
     }
     // [/update]
 
@@ -106,15 +106,15 @@ namespace Tutorial {
         style.model_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(80, 340, 0));
         world.add(CE::Rendering::Submission::resolve_sprite(*sprite_, animation_->cell(), style, context));
 
-        hud_->append(frame);
+        ui_->append(frame);
     }
     // [/render]
 
     // [cleanup]
     void Game::deinit() {
-        if (hud_)
-            hud_->close_after_quiescence();
-        hud_.reset();
+        if (ui_)
+            ui_->close_after_quiescence();
+        ui_.reset();
         animation_.reset();
         second_controller_.reset();
         controller_.reset();

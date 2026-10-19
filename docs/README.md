@@ -6,7 +6,7 @@ Choose the entry point for your work:
 | --- | --- |
 | Look up a declaration | [C++ API](site/api/index.md) |
 | Set up a game project | [Project setup](site/getting-started/project-setup.md) |
-| Follow a complete example | [Tutorials](site/getting-started/create-a/index.md): First Game, Controller, Character and TGUI HUD |
+| Follow a complete example | [Tutorials](site/getting-started/create-a/index.md): First Game, actor/player/AI controllers, Character, and shared UIController/HUD |
 | Find an operation | [Task index](site/getting-started/how-to/index.md) |
 | Browse a subject | [Guides by topic](site/guides/index.md) |
 | Understand system responsibilities and public types | [Engine Systems](site/engine-systems/index.md) |
@@ -36,7 +36,8 @@ implementations; [Source and SDK integration](site/development/consuming-engine.
 owns detailed linking, context assembly and deployment.
 
 The [tutorial sequence](site/getting-started/create-a/index.md) starts with First Game,
-then composes a Controller, Character and TGUI HUD. The
+then covers actor commands, Player/AI controllers, a Character, and a shared TGUI
+UIController/HUD. The optional final discussion considers abstract interfaces. The
 [maintained tutorial application](../projects/apps/tutorial-game/README.md)
 implements the class-based lessons.
 

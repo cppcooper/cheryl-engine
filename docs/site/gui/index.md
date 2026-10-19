@@ -21,7 +21,7 @@ RmlUi reference <../modules/rmlui>
 
 | Integration | Application authors | Guide |
 | --- | --- | --- |
-| TGUI | Native C++ widgets and layouts through the session's `gui()` object. | [Create a HUD](../getting-started/create-a/hud.md); [TGUI contracts](../modules/tgui.md) |
+| TGUI | Native C++ widgets and layouts through the session's `gui()` object. | [Create a UIController](../getting-started/create-a/ui-controller.md), then [a HUD](../getting-started/create-a/hud.md); [TGUI contracts](../modules/tgui.md) |
 | RmlUi | Native contexts, RML documents and RCSS styles through a document session. | [Create an interactive GUI](../getting-started/how-to/create-gui.md); [RmlUi contracts](../modules/rmlui.md) |
 
 Neither integration provides a common widget API. Select one according to the
@@ -36,8 +36,16 @@ on the first update rather than during platform-owned game initialization.
 Construct the scene uploader from the resource provider during platform-owned
 `init()`. It obtains default rendering materials automatically during upload.
 
+The session executes widget logic, callbacks, layout, and CPU recording. Native
+event polling, graphics uploads, and scene playback remain on platform. The
+[UIController tutorial](../getting-started/create-a/ui-controller.md#assign-the-execution-owners)
+shows that division across initialization, updates, frame preparation, and cleanup.
+Components such as HUD, menu, and chat borrow the enclosing owner's session;
+the owner drives shared input/time and publishes their combined scene.
+
 Construct either session with the Engine context and a distinct nonzero focus
-target, for example `CE::UI::TGUI::Session(engine, 7)`. It obtains input and the
+target, for example `CE::UI::TGUI::Session(engine, tgui_target)`, with a named
+`constexpr CE::Input::Routing::TargetId tgui_target = 2;`. It obtains input and the
 configured Engine font catalogue/default. Configure `engine.fonts()` before
 creating consumers; no separate toolkit font-file registration is needed for the
 default interface. A native button and edit field are ordinary toolkit objects:
@@ -91,15 +99,18 @@ available.
 
 ## Route input and focus explicitly
 
-Update the session's view from `tick.logical_size` and
-`tick.framebuffer_size`; do not read the live window on simulation. Feed the
+Initialize the session's view from `tick.logical_size` and `tick.framebuffer_size`,
+then refresh it when either pair changes. The view persists; calling `set_view()`
+every update is a convenience, and the [UIController example](../getting-started/create-a/ui-controller.md#establish-the-shared-session)
+shows change detection using the copied dimensions. Keep logical and framebuffer
+changes, including zero extents, so layout, input mapping, scale, and drawable
+state remain current. Do not read the live window on simulation. Feed the
 complete `tick.input.records()` batch once, with an explicit decision about
 which UI receives pointer input. Do not prefilter away modifier releases.
 
-When opening an editor, call `request_keyboard_focus()` and, when closing it,
-`release_keyboard_focus()`. Exclusive focus withholds keyboard gameplay actions
-while text is directed to the UI; pointer selection is a separate application
-choice. Give different sessions different focus targets. Requests affect later
+Use the enclosing UI owner's policy to request or release the session's keyboard
+focus. Exclusive focus withholds keyboard gameplay actions while text is directed
+to the UI; pointer selection is a separate application choice. Requests affect later
 polls, so pending records retain the focus epoch under which they were captured.
 Session `before_record` callbacks support ordered application controls without
 rewriting that entry epoch.
@@ -113,6 +124,50 @@ Advance toolkit time, apply game-state changes on the UI owner, then record the
 scene. A widget callback may update simulation-owned intent such as
 `apply_requested_`; graphics operations belong to the platform owner. Do not run
 a toolkit's independent main loop over Cheryl's runtime.
+
+## Session routing and widget focus
+
+The constructor's `target` is an application-chosen identity for the whole session.
+Any nonzero `TargetId` is suitable, and larger values have no priority. For example,
+TGUI can use `2` and RmlUi `3` when both share one input system. The latest focus
+publication wins; records retain the target and request epoch of their input poll.
+Each session filters keyboard/text delivery to its own requested target/epoch.
+
+Within one TGUI session, HUD, menu, and chat share that target. Native widget focus
+selects which control receives keyboard/text. The application decides which panels
+are visible or modal and which widget regains focus when a panel closes.
+
+Using the field and button from the construction example, the following blocks
+illustrate separate UI actions. When entering a field, acquire session focus if
+needed, then focus the native widget:
+
+```cpp
+if (!session_->owns_keyboard_focus())
+    session_->request_keyboard_focus();
+field->setFocused(true);
+```
+
+When moving from a chat field to a menu control within the same session, retain
+the session's focus lease and select the new widget:
+
+```cpp
+button->setFocused(true);
+```
+
+Closing the menu can restore `field->setFocused(true)` if chat remains active.
+When the whole TGUI interface relinquishes keyboard input to gameplay:
+
+```cpp
+session_->release_keyboard_focus();
+```
+
+Release also unfocuses the session's widgets. A component closing while another
+needs input should transfer widget focus through the enclosing UI policy. Native
+RmlUi element focus uses the same two-level relationship with its session lease.
+Pointer delivery remains an independent decision passed to `handle_input()`.
+The [TGUI demo](../../../projects/apps/demo/src/tgui-demo.cpp) and
+[RmlUi task](../getting-started/how-to/create-gui.md#feed-records-and-control-focus)
+show ordered application controls and complete input-batch handling.
 
 ## Publish and clean up
 
@@ -134,8 +189,9 @@ callbacks or UI operations can still run.
 
 ## Continue
 
-Use [the TGUI HUD tutorial](../getting-started/create-a/hud.md) for a widget
-class, [the RmlUi GUI task](../getting-started/how-to/create-gui.md) for document
+Use [the UIController tutorial](../getting-started/create-a/ui-controller.md) for
+shared session ownership, [the HUD tutorial](../getting-started/create-a/hud.md)
+for a widget component, [the RmlUi GUI task](../getting-started/how-to/create-gui.md) for document
 authoring and editing, [GUI system relationships](../engine-systems/gui.md) for
 ownership,
 and [input focus contracts](../runtime/input-state-model.md#focus-routing-and-editing-controls)

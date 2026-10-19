@@ -49,7 +49,7 @@ and playback. Cameras and object transforms remain application-owned.
 
 | Types | Systems |
 | --- | --- |
-| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:struct}`CE::Game::AbstractGame`<br>[`Tutorial::Character`](../getting-started/create-a/character.md)<br>[`Tutorial::Hud`](../getting-started/create-a/hud.md)<br>{cpp:class}`CE::UI::TGUI::Scene`<br>{cpp:class}`CE::UI::RmlUi::Scene` | [Runtime](runtime.md)<br>[GUI](gui.md) |
+| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:struct}`CE::Game::AbstractGame`<br>[`Tutorial::Character`](../getting-started/create-a/character.md)<br>[`Tutorial::UIController`](../getting-started/create-a/ui-controller.md)<br>{cpp:class}`CE::UI::TGUI::Scene`<br>{cpp:class}`CE::UI::RmlUi::Scene` | [Runtime](runtime.md)<br>[GUI](gui.md) |
 
 ## Contracts
 

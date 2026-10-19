@@ -181,7 +181,8 @@ that is simulation, so run this block in `update()` after quit handling:
 
 ```cpp
 if (!ui_) {
-    ui_ = std::make_unique<CE::UI::RmlUi::Session>(engine_, 7);
+    constexpr CE::Input::Routing::TargetId rmlui_target = 7;
+    ui_ = std::make_unique<CE::UI::RmlUi::Session>(engine_, rmlui_target);
     ui_->set_view(tick.logical_size, tick.framebuffer_size);
     const auto source = (asset_root_ / "graphics/ui/tutorial.rml").u8string();
     document_ = ui_->context().LoadDocument(Rml::String(source.begin(), source.end()));
@@ -203,9 +204,17 @@ if (!ui_) {
     ui_->set_view(tick.logical_size, tick.framebuffer_size);
 ```
 
-Target `7` is a chosen nonzero routing identity; reserve a distinct target for
-every other session. RmlUi permits one session owning Core's process globals.
-Add more documents to that session when extending the interface.
+`rmlui_target` identifies the whole session as an Engine keyboard/text recipient.
+Its nonzero numeric value has no priority. Choose distinct targets for independent
+recipients sharing the input system, such as TGUI and RmlUi sessions. Documents
+and fields within this session share its target and use native element focus.
+See [session routing and widget focus](../../gui/index.md#session-routing-and-widget-focus).
+RmlUi permits one session owning Core's process globals; add more documents to that
+session when extending the interface.
+
+This example refreshes the copied view each update. The view persists, so calling
+`set_view()` initially and whenever either logical or framebuffer dimensions change
+is sufficient. Keep zero-size and scale changes as well as ordinary window resizing.
 
 The session imports the configured Engine fonts and retains their bytes through
 Core shutdown. Showing a document,

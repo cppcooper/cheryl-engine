@@ -17,5 +17,5 @@ Use the [GUI guide](../gui/index.md) when a toolkit session should interpret the
 records. Capture requests and focus leases have separate lifetimes and neither
 retains a native window.
 Use [action contexts](../runtime/input-state-model.md#action-contexts) for scoped
-bindings and [Create a Controller](../getting-started/create-a/controller.md) to
+bindings and [Create a PlayerController](../getting-started/create-a/controller.md) to
 translate each consumer's local actions into application commands.

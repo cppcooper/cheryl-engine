@@ -1,7 +1,7 @@
 # Create a Character
 
 A Character owns its position, movement settings and retained appearance. It
-consumes the command from [Create a Controller](controller.md), so the same
+consumes the command from [Create a PlayerController](controller.md), so the same
 Character class can be driven by a player or by autonomous patrol behavior.
 Continue in First Game's initialization, update, frame and cleanup hooks.
 
@@ -84,37 +84,15 @@ replaces its presentation. Add [animation](../how-to/animate-sprite.md) or
 
 ## Add an autonomous controller
 
-Create `patrol-controller.h` to produce the same command from a Character's
-position rather than physical input:
-
-```{literalinclude} ../../../../projects/apps/tutorial-game/src/patrol-controller.h
-:language: cpp
-```
-
-Include `patrol-controller.h` in the game header before declaring its members.
-Retain `Tutorial::PatrolController patrol_{80.0f, 500.0f};` and
-`std::optional<Tutorial::Character> enemy_;` in the game. During `init()`, create
-the second Character with a different valid sprite cell and speed:
-
-```cpp
-enemy_.emplace(sprite_, images_, glm::vec2(80.0f, 220.0f), 1, 80.0f);
-```
-
-During update, pass its autonomous command through the same Character operation:
-
-```cpp
-enemy_->update(patrol_.read(*enemy_, tick.delta_seconds), tick.delta_seconds);
-```
-
-Append `enemy_` to the world pass after `player_`. This simple patrol stops at an
-endpoint and reverses on a later update; a long update does not simulate multiple
-reflections. Choose initial positions inside the patrol interval. The interval
-constrains the sprite pivot, without accounting for image extent or a collision
-shape. Each patrol owns its own direction state.
+[Create an AIController](ai-controller.md) supplies the complete patrol extension:
+behavior state, Character observations, construction, update, drawing, and cleanup.
+It produces the same command as the player controller while retaining independent
+direction state. Follow that lesson to add `patrol_` and `enemy_`, or continue here
+with player input alone.
 
 ## Join and leave during play
 
-The complete update block below includes the autonomous Character above. Add
+The complete update block below also includes the optional AI extension. Add
 `std::optional<Tutorial::PlayerController> second_controller_;` and
 `std::optional<Tutorial::Character> second_player_;` beside the first player's
 members. Declare game-wide action IDs `join_{7}` and `leave_{8}` with type
@@ -129,7 +107,7 @@ bindings_[2] = bindings.bind_button({keyboard_, CE::Input::KeyboardKey::F3}, lea
 ```
 
 Here `bindings` is the existing platform binding reference. Replace the single
-player and patrol update calls with the maintained game's complete player block.
+player update call and any patrol update with the maintained game's complete player block.
 The first line imports its controller name into your `update()` scope:
 
 ```{literalinclude} ../../../../projects/apps/tutorial-game/src/game.cpp
@@ -178,4 +156,5 @@ backend remains alive. Published frames retain their own handles until recycling
 Observe one arrow-controlled Character and, when enabled, a second J/L player and
 a patrol. Moving one player must not move the other; F3 must leave the first
 controller working. Repeat in both runtime execution modes. Continue with
-[Create a HUD](hud.md) to display game values using TGUI widgets.
+[Create an AIController](ai-controller.md) for autonomous behavior, then
+[Create a UIController](ui-controller.md) and [a HUD](hud.md) for shared-session widgets.

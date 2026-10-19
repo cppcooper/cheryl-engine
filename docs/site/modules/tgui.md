@@ -45,15 +45,15 @@ before selecting the module.
 
 ## Use it in a game
 
-[Create a HUD with TGUI](../getting-started/create-a/hud.md)
-provides the complete score-label/health-bar workflow, including layout,
-game-state updates and scene publication. The
+[Create a UIController](../getting-started/create-a/ui-controller.md) establishes
+shared session ownership and scene publication. [Create a HUD with TGUI](../getting-started/create-a/hud.md)
+adds score/health widgets borrowing that session. The
 [maintained TGUI demo](../../../projects/apps/demo/src/tgui-demo.cpp) also supplies
 interactive buttons, editing and application focus controls. The lifecycle is:
 
 1. During platform-owned `init()`, construct a scene uploader from the resource provider.
 2. On the first simulation update, create a session and native widgets.
-3. Supply copied sizes, simulation time and the complete input batch each update.
+3. Refresh the view when copied sizes change; supply simulation time and the complete input batch each update.
 4. Record CPU scene data and keep one upload pending while retaining the previous scene.
 5. Append the uploaded scene during frame preparation, after world/HUD passes.
 6. After UI quiescence, release application-held toolkit objects and close the session.
@@ -73,8 +73,15 @@ active and uses the Engine context's configured default font.
 `SessionOptions` supplies a texture bound of at least 128 and an
 explicit positive font scale; this is not a hardware or monitor-scale query.
 
-For each update, pass the tick's copied `logical_size` and `framebuffer_size` to
-`set_view`, then pass simulation seconds to `update_time` and the entire immutable
+The focus ID identifies the whole session as an Engine keyboard/text recipient.
+Choose any nonzero value and keep separate recipients distinct. All TGUI components
+share the session's ID and use native widget focus within it. Numeric values give
+no focus priority. See [session routing and widget focus](../gui/index.md#session-routing-and-widget-focus)
+for menu/chat transitions and coexistence with RmlUi.
+
+Initialize `set_view` with the tick's copied `logical_size` and `framebuffer_size`,
+then refresh it when either pair changes. An unconditional call each update is
+also valid. Pass simulation seconds to `update_time` and the entire immutable
 record stream to `handle_input`. GUI input/layout use logical units; the recording
 target uses physical ratios only for pixel rounding. Zero framebuffer dimensions
 record an empty scene. Drawing does not advance a separate wall clock or run a

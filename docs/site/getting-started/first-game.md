@@ -13,7 +13,7 @@ screen-coordinate section extends that example; the linked text-update guide
 adds a changing score.
 
 Complete the sprite, static text and cleanup steps first. They form the starting
-application for [Create a Controller](create-a/controller.md). Screen-space text
+application for [Create a PlayerController](create-a/controller.md). Screen-space text
 and [loading during play](#load-or-replace-resources-during-play) are optional
 extensions when those tasks become relevant.
 
@@ -613,7 +613,8 @@ shutdown and failure ordering.
 The introductory game is complete when arrows move the actor, Space changes its
 cell, `Score: 0` remains visible through resizing, and Escape closes cleanly.
 Try the same controls with `--concurrent` to exercise the separate simulation owner.
-Continue with [Create a Controller](create-a/controller.md), then a Character
+Continue with [Actor controllers and commands](create-a/actor-controller.md),
+then [Create a PlayerController](create-a/controller.md) and a Character
 and TGUI HUD, to organize this state into reusable application classes.
 
 The section below extends resource loading during play. Use

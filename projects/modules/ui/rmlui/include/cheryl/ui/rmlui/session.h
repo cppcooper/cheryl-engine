@@ -102,14 +102,20 @@ namespace CE::UI::RmlUi {
 
 /** @fn CE::UI::RmlUi::Session::Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options)
  * Construct a standalone toolkit session on the UI owner before creating widgets/documents. target must be nonzero; capture support and toolkit global ownership are required. Borrow input for the session lifetime; option/capture/global-state/allocation failures throw. Configure standalone fonts explicitly as needed.
+ * @param target Nonzero application-chosen keyboard/text routing identity for this entire session. Components share it; numeric magnitude gives no priority. Choose distinct IDs for independent recipients sharing one input system.
+ * @see [Session routing and widget focus](cheryl-guide:gui/index#session-routing-and-widget-focus)
  */
 
 /** @fn CE::UI::RmlUi::Session::Session(CE::Input::System& input, const CE::Text::FontService& fonts, CE::Input::Routing::TargetId target, SessionOptions options)
  * Construct with a retained catalogue/default snapshot: ordinary native text inherits the configured default. Existing Font handles/bytes are retained without reopening paths; later service reconfiguration does not rebind this session. Input remains borrowed, but the font service need not outlive the imported snapshot. Case-insensitive RCSS aliases must identify one case-sensitive Engine reference; case collisions reject construction.
+ * @param target Nonzero application-chosen keyboard/text routing identity for this entire session. Components share it; numeric magnitude gives no priority. Choose distinct IDs for independent recipients sharing one input system.
+ * @see [Session routing and widget focus](cheryl-guide:gui/index#session-routing-and-widget-focus)
  */
 
 /** @fn CE::UI::RmlUi::Session::Session(CE::Runtime::Context& engine, CE::Input::Routing::TargetId target, SessionOptions options)
  * Construct using engine.input() and engine.fonts(). Acquire this on the permitted owner after Engine initialization; preserve the input lifetime and release the session before runtime input teardown.
+ * @param target Nonzero application-chosen keyboard/text routing identity for this entire session. Components share it; numeric magnitude gives no priority. Choose distinct IDs for independent recipients sharing one input system.
+ * @see [Session routing and widget focus](cheryl-guide:gui/index#session-routing-and-widget-focus)
  */
 
 /** @fn CE::UI::RmlUi::Session::~Session()
@@ -122,6 +128,7 @@ namespace CE::UI::RmlUi {
 
 /** @fn void CE::UI::RmlUi::Session::set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer)
  * Copy logical window and framebuffer-pixel dimensions; neither reads a native window. Negative sizes reject. Zero logical extent disables pointer input; zero logical/framebuffer extent suppresses drawing. Native layout uses logical units.
+ * Initialize before first input/recording, then refresh when either size changes. The view persists between calls; repeating unchanged values is valid.
  */
 
 /** @fn void CE::UI::RmlUi::Session::update_time(double delta_seconds)

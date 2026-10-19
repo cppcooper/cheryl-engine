@@ -1,9 +1,10 @@
 # Tutorial game
 
-This maintained example follows [Controller → Character → HUD](../../../docs/site/getting-started/create-a/index.md).
+This maintained example follows the [controller, Character, and shared UI tutorials](../../../docs/site/getting-started/create-a/index.md).
 A player controller translates scoped input actions into a game-owned movement
 command; a patrol controller produces the same command without input. Both drive
-one Character class. The HUD uses TGUI score and health widgets. The
+one Character class. `UIController` owns the TGUI session and scene publication;
+`Hud` borrows that session for score and health widgets. The
 [task index](../../../docs/site/getting-started/how-to/index.md) links the engine
 operations behind these examples.
 
@@ -63,8 +64,10 @@ with `CMAKE_PREFIX_PATH` pointing to a matching SDK containing Startup/OpenGL,
 native input and TGUI.
 
 The example supports the standard startup/runtime arguments, including
-`--concurrent`. UI objects live on simulation; graphics upload runs through the
-platform dispatcher. Shutdown releases external widgets after simulation joins,
+`--concurrent`. The UI controller prepares its uploader during platform initialization, then
+creates its session and HUD on simulation. It refreshes the view when logical or
+framebuffer sizes change, drives shared input/time, and publishes the combined
+scene through the platform dispatcher. Shutdown releases external widgets after simulation joins,
 settles accepted requests and releases game resources before backend closure.
 Compile acceptance and native observation are separate: a successful build
 alone does not establish visible widgets, fonts, focus or graphics teardown.

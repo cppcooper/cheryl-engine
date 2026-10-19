@@ -29,6 +29,7 @@ add_executable(tutorial-game
     src/character.h
     src/player-controller.h
     src/patrol-controller.h
+    src/ui-controller.h
     src/hud.h)
 target_compile_features(tutorial-game PRIVATE cxx_std_23)
 target_compile_definitions(tutorial-game PRIVATE

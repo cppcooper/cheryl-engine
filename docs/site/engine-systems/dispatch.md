@@ -48,7 +48,7 @@ Workers.
 
 | Types | Systems |
 | --- | --- |
-| {cpp:type}`CE::Events::EventBus::Delivery`<br>{cpp:class}`CE::UI::TGUI::SceneUploader`<br>{cpp:class}`CE::UI::RmlUi::SceneUploader`<br>[`Tutorial::Hud`](../getting-started/create-a/hud.md) | [Events](events.md)<br>[Assets](assets.md)<br>[Text](text.md)<br>[GUI](gui.md)<br>[Resources](resources.md) |
+| {cpp:type}`CE::Events::EventBus::Delivery`<br>{cpp:class}`CE::UI::TGUI::SceneUploader`<br>{cpp:class}`CE::UI::RmlUi::SceneUploader`<br>[`Tutorial::UIController`](../getting-started/create-a/ui-controller.md) | [Events](events.md)<br>[Assets](assets.md)<br>[Text](text.md)<br>[GUI](gui.md)<br>[Resources](resources.md) |
 
 ## Contracts
 

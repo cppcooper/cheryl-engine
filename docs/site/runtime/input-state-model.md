@@ -69,7 +69,7 @@ platform initialization; a definition retains their values, without borrowing or
 querying a native device. Attach a reusable definition when creating a consumer,
 then retain the returned lease for that consumer's lifetime. The
 [binding task](../getting-started/how-to/bind-input.md#reuse-bindings-for-runtime-consumers)
-shows independent consumers; [Create a Controller](../getting-started/create-a/controller.md)
+shows independent consumers; [Create a PlayerController](../getting-started/create-a/controller.md)
 puts the lease and local IDs inside an application class.
 
 Device discovery and availability remain backend responsibilities. The current
