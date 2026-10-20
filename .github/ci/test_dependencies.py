@@ -419,6 +419,92 @@ class CommandTests(unittest.TestCase):
         install.assert_called_once_with("modules")
 
 
+class WindowsToolsTests(unittest.TestCase):
+    def setUp(self):
+        output = redirect_stdout(io.StringIO())
+        output.__enter__()
+        self.addCleanup(output.__exit__, None, None, None)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve() / "checkout with spaces"
+        configuration = self.root / ".github/ci/environment.json"
+        configuration.parent.mkdir(parents=True)
+        configuration.write_text(json.dumps(CONFIGURATION), encoding="utf-8")
+        configuration.with_name("vcpkg.json").write_text(json.dumps({"builtin-baseline": BASELINE}), encoding="utf-8")
+        vcpkg = self.root / "vcpkg"
+        (vcpkg / ".git").mkdir(parents=True)
+        (vcpkg / "vcpkg.exe").write_bytes(b"vcpkg fixture")
+        self.tools = self.root / "cached tools"
+        chocolatey = self.root / "chocolatey"
+        self.package = chocolatey / "lib/ccache/tools/bin/ccache.exe"
+        self.package.parent.mkdir(parents=True)
+        self.package.write_bytes(b"ccache fixture")
+        self.github_path = self.root / "github-path.txt"
+        self.github_path.write_text("existing path\n", encoding="utf-8")
+        self.commands = []
+        self.install_results = []
+        self.version = CONFIGURATION["windows"]["ccache_version"]
+        self.install = ["choco", "install", "ccache", "--version=4.14.0", "--yes", "--no-progress"]
+        self.addCleanup(patch.stopall)
+        patch.object(dependencies, "ROOT", self.root).start()
+        patch.dict(dependencies.os.environ, {
+            "CHERYL_CI_VCPKG_ROOT": str(vcpkg), "CHERYL_CI_CCACHE_TOOLS": str(self.tools),
+            "ChocolateyInstall": str(chocolatey), "GITHUB_PATH": str(self.github_path),
+        }, clear=True).start()
+        patch.object(dependencies.subprocess, "run", side_effect=self.execute).start()
+        self.sleep = patch("time.sleep").start()
+
+    def execute(self, command, **options):
+        self.commands.append(command)
+        if command == self.install:
+            result = self.install_results.pop(0) if self.install_results else 0
+            return subprocess.CompletedProcess(command, result)
+        return subprocess.CompletedProcess(command, 0, stdout=f"ccache version {self.version}\n")
+
+    def assert_published(self):
+        self.assertEqual((self.tools / "ccache.exe").read_bytes(), b"ccache fixture")
+        self.assertEqual(self.github_path.read_text(encoding="utf-8").splitlines(), ["existing path", str(self.tools)])
+
+    def test_install(self):
+        dependencies.windows_tools()
+        self.assertEqual(self.commands.count(self.install), 1)
+        self.sleep.assert_not_called()
+        self.assert_published()
+
+    def test_retry_install(self):
+        self.install_results = [1, 1, 0]
+        dependencies.windows_tools()
+        self.assertEqual(self.commands.count(self.install), 3)
+        self.assertEqual([entry.args[0] for entry in self.sleep.call_args_list], [10, 20])
+        self.assert_published()
+
+    def test_install_failure(self):
+        self.install_results = [1, 1, 1]
+        with self.assertRaises(subprocess.CalledProcessError) as failure:
+            dependencies.windows_tools()
+        self.assertEqual(failure.exception.cmd, self.install)
+        self.assertEqual(self.commands.count(self.install), 3)
+        self.assertEqual([entry.args[0] for entry in self.sleep.call_args_list], [10, 20])
+        self.assertFalse(self.tools.exists())
+        self.assertEqual(self.github_path.read_text(encoding="utf-8"), "existing path\n")
+
+    def test_cached(self):
+        self.tools.mkdir()
+        (self.tools / "ccache.exe").write_bytes(b"ccache fixture")
+        dependencies.windows_tools()
+        self.assertNotIn(self.install, self.commands)
+        self.sleep.assert_not_called()
+        self.assert_published()
+
+    def test_wrong_version(self):
+        self.version = "unexpected"
+        with self.assertRaisesRegex(RuntimeError, "Unexpected ccache version"):
+            dependencies.windows_tools()
+        self.assertEqual(self.commands.count(self.install), 1)
+        self.sleep.assert_not_called()
+        self.assertEqual(self.github_path.read_text(encoding="utf-8"), "existing path\n")
+
+
 class PreparedTests(unittest.TestCase):
     def setUp(self):
         output = redirect_stdout(io.StringIO())

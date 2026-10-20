@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -213,7 +214,16 @@ def windows_tools():
     tools = Path(os.environ["CHERYL_CI_CCACHE_TOOLS"])
     executable = tools / "ccache.exe"
     if not executable.is_file():
-        run(["choco", "install", "ccache", f"--version={versions['ccache_package_version']}", "--yes", "--no-progress"])
+        for attempt in range(3):
+            try:
+                run(["choco", "install", "ccache", f"--version={versions['ccache_package_version']}", "--yes", "--no-progress"])
+                break
+            except subprocess.CalledProcessError:
+                if attempt == 2:
+                    raise
+                delay = 10 * (attempt + 1)
+                print(f"ccache installation failed; retrying in {delay} seconds (attempt {attempt + 2}/3).", flush=True)
+                time.sleep(delay)
         installed = Path(os.environ["ChocolateyInstall"]) / "lib/ccache/tools"
         candidates = sorted(installed.rglob("ccache.exe"))
         if not candidates:
