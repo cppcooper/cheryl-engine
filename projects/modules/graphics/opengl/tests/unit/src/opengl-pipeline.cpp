@@ -684,6 +684,12 @@ TEST(opengl_domain, shutdown_eviction) {
         OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](OpenGL::Context&) {});
         OpenGL::ResourceProvider provider(renderer);
         const auto token = provider.graphics_domain();
+        provider.publish_events_to(events.publisher());
+        using ImageChange = CE::Assets::Cache::AssetCatalogueChanged<CE::Rendering::Resources::Image, std::filesystem::path>;
+        std::vector<ImageChange> catalogue_changes;
+        events.register_listener(
+            CE::Assets::Cache::asset_catalogue_changed_event<CE::Rendering::Resources::Image, std::filesystem::path>,
+            [&](const ImageChange& change) { catalogue_changes.push_back(change); });
         std::vector<GraphicsDomainSnapshot> changes;
         bool evicted = false;
         events.register_listener(graphics_domain_state_changed_event, [](const GraphicsDomainStateChanged&) {
@@ -709,6 +715,11 @@ TEST(opengl_domain, shutdown_eviction) {
         images.upload("closing-domain.png", CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}}, provider);
         const auto retained = images.get_asset("closing-domain.png");
         ASSERT_TRUE(retained);
+        const auto generation = images.asset_snapshot("closing-domain.png").generation;
+        ASSERT_TRUE(generation);
+        EXPECT_EQ(generation->graphics_domain.snapshot(), token.snapshot());
+        ASSERT_EQ(catalogue_changes.size(), 1);
+        EXPECT_EQ(catalogue_changes.front().kind, CE::Assets::Cache::CatalogueChangeKind::Published);
         context.fail_release = fail_release;
         if (fail_release) {
             try {
@@ -724,6 +735,9 @@ TEST(opengl_domain, shutdown_eviction) {
         EXPECT_EQ(changes.back(), token.snapshot());
         EXPECT_TRUE(evicted);
         EXPECT_EQ(images.size(), 0u);
+        ASSERT_EQ(catalogue_changes.size(), 2);
+        EXPECT_EQ(catalogue_changes.back().kind, CE::Assets::Cache::CatalogueChangeKind::Reset);
+        EXPECT_EQ(generation->graphics_domain.snapshot().sequence, 2);
         EXPECT_EQ(retained->pixel_size().width, 1u);
         const auto queries = context.queries;
         EXPECT_THROW(retained->bind(0), CE::Exceptions::failed_operation);

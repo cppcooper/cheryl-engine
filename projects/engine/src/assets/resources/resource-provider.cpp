@@ -11,6 +11,14 @@
 #include <internals/compile-time-logging.hpp>
 
 namespace CE::Rendering::Resources {
+    void Provider::publish_events_to(CE::Events::EventBus::Publisher publisher) {
+        std::lock_guard lock(notification_mutex_);
+        notification_publisher_ = std::move(publisher);
+    }
+    CE::Events::EventBus::Publisher Provider::notification_publisher() const {
+        std::lock_guard lock(notification_mutex_);
+        return notification_publisher_;
+    }
     std::shared_ptr<Image> Provider::load_image(const std::filesystem::path& file) {
         return create_image(CE::Assets::Images::decode(file));
     }
@@ -45,7 +53,7 @@ namespace CE::Rendering::Resources {
 }
 
 namespace CE::Assets::Cache {
-    Context::ClearStats Context::clear_provider_assets(const bool observe) noexcept {
+    Context::ClearStats Context::clear_provider_assets(const bool observe, const bool notify) noexcept {
         ClearStats counts{0, 0, observe};
         const auto clear = [&](auto* manager) {
             if (!manager)
@@ -57,7 +65,10 @@ namespace CE::Assets::Cache {
                     counts.known = false;
                 }
             }
-            manager->clear_assets();
+            if (notify)
+                manager->clear_assets();
+            else
+                manager->discard_assets();
             if (observe) {
                 try {
                     counts.after += manager->size();
@@ -111,6 +122,12 @@ namespace CE::Assets::Cache {
         }
     }
 
+    Context::PublicationContext Context::publication_context(const CE::Rendering::Resources::Provider& provider) {
+        std::lock_guard lock(provider_mutex_);
+        verify_locked(provider, bound_domain_.snapshot());
+        return {bound_domain_, provider.notification_publisher()};
+    }
+
     bool Context::evict_graphics_domain(const CE::Rendering::GraphicsDomainStateChanged& change) noexcept {
         const CE::Rendering::Resources::Provider* provider;
         CE::Diagnostics::DomainId provider_id;
@@ -126,7 +143,7 @@ namespace CE::Assets::Cache {
         }
         // Quiescent loading is required. Never hold the context or cache map
         // locks while destroying final owners; their destructors can reenter.
-        const auto counts = clear_provider_assets(CE::Logging::Compile::enabled(CE::Logging::Compile::DEBUG_));
+        const auto counts = clear_provider_assets(CE::Logging::Compile::enabled(CE::Logging::Compile::DEBUG_), true);
         release_provider(provider);
         CE_LOG_DEBUG(
             CE::Logging::Categories::assets,

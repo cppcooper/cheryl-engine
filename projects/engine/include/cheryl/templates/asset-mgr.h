@@ -3,6 +3,7 @@
 #include <cheryl/export.h>
 #include <core/diagnostics.h>
 #include <core/rendering/graphics-domain.h>
+#include <core/resources/asset-management/asset-catalogue.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>
@@ -66,6 +67,11 @@ namespace CE::Assets::Cache {
 
     protected:
         static CE_API void bind_provider(const CE::Rendering::Resources::Provider& provider);
+        struct PublicationContext {
+            CE::Rendering::GraphicsDomain domain;
+            CE::Events::EventBus::Publisher publisher;
+        };
+        [[nodiscard]] static CE_API PublicationContext publication_context(const CE::Rendering::Resources::Provider& provider);
 
     private:
         static bool begin_provider_release(const CE::Rendering::Resources::Provider& provider) noexcept {
@@ -91,7 +97,7 @@ namespace CE::Assets::Cache {
             std::uint64_t after = 0;
             bool known = false;
         };
-        static CE_API ClearStats clear_provider_assets(bool observe = false) noexcept;
+        static CE_API ClearStats clear_provider_assets(bool observe = false, bool notify = false) noexcept;
     };
 
     /**
@@ -110,17 +116,36 @@ namespace CE::Assets::Cache {
         using Handle = std::shared_ptr<AssetType>;
         /** Exact unordered-map identity; normalization/aliases belong to a derived manager. */
         using key_type = Key;
+        /** CPU-only source, qualified by this asset namespace and exact key type. */
+        using Catalogue = AssetCatalogue<AssetType, Key>;
+        /** Atomically selected handle and its current catalogue generation. */
+        struct EntrySnapshot {
+            Handle asset; ///< Independent strong owner; retains the selected generation across replacement.
+            std::optional<CatalogueGeneration> generation; ///< Absent when the exact key is missing.
+            std::uint64_t revision = 0; ///< Catalogue revision at the same lookup boundary.
+        };
 
     protected:
-        mutable std::shared_mutex assets_mutex_; ///< Protects map/counters; user construction/final release occurs outside it.
+        Catalogue catalogue_ = Catalogue::create(); ///< Retained CPU metadata; never owns uploaded assets.
+        std::shared_mutex& assets_mutex_ = catalogue_.state_->mutex; ///< Shared cache/catalogue commit lock.
         std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{}; ///< Strong key-to-generation owners; direct access requires the corresponding lock.
-        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id(); ///< Identity of this cache facade and its counters.
+        const CE::Diagnostics::DomainId domain_ = catalogue_.state_->id; ///< Checked catalogue/cache identity, separate from native provenance.
         std::uint64_t publications_ = 0; ///< New-key count protected by assets_mutex_.
         std::uint64_t replacements_ = 0; ///< Existing-key replacement count protected by assets_mutex_.
 
     public:
         Store() = default;
-        virtual ~Store() { clear_assets(); }
+        Store(const Store&) = delete;
+        Store& operator=(const Store&) = delete;
+        virtual ~Store() { clear_assets_impl(false, true); }
+        [[nodiscard]] Catalogue catalogue() const noexcept { return catalogue_; }
+        [[nodiscard]] EntrySnapshot asset_snapshot(const Key& key) const {
+            std::shared_lock lock(assets_mutex_);
+            const auto asset = loaded_assets.find(key);
+            if (asset == loaded_assets.end())
+                return {{}, {}, catalogue_.state_->revision};
+            return {asset->second, catalogue_.state_->entries.at(key), catalogue_.state_->revision};
+        }
         [[nodiscard]] virtual Handle get_asset(const Key& key) const {
             std::shared_lock lock(assets_mutex_);
             if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
@@ -140,7 +165,12 @@ namespace CE::Assets::Cache {
             std::shared_lock lock(assets_mutex_);
             return {domain_, loaded_assets.size(), publications_, replacements_};
         }
-        virtual void clear_assets() noexcept {
+        virtual void clear_assets() noexcept { clear_assets_impl(true, false); }
+
+    private:
+        friend class Context;
+        void discard_assets() noexcept { clear_assets_impl(false, false); }
+        void clear_assets_impl(bool notify, bool close) noexcept {
             // Preserve allocator identity: swapping maps with unequal, nonpropagating
             // allocators is invalid. Default production caches still use std::allocator.
             const auto allocator = [this] {
@@ -150,14 +180,57 @@ namespace CE::Assets::Cache {
             decltype(loaded_assets) retired(allocator);
             {
                 std::unique_lock lock(assets_mutex_);
+                auto& state = *catalogue_.state_;
+                std::shared_ptr<typename Catalogue::Change> record;
+                if (notify || !close) {
+                    static_cast<void>(state.next_revision());
+                }
+                if (notify) {
+                    record = state.prepare(CatalogueChangeKind::Reset, nullptr, {}, {});
+                }
                 retired.swap(loaded_assets);
+                state.entries.clear();
+                clear_metadata();
+                if (notify)
+                    state.commit(std::move(record));
+                if (!notify) {
+                    if (!close) {
+                        ++state.revision;
+                    }
+                    state.pending = 0;
+                    for (auto& pending : state.outbox) {
+                        if (pending.change)
+                            state.lose(pending.change->revision);
+                        pending = {};
+                    }
+                    if (!state.explicit_route)
+                        state.publisher = {};
+                    state.domain = {};
+                }
+                state.closed = close;
             }
             // A deleter can inspect this cache without re-entering its write lock.
+            retired.clear();
+            if (notify)
+                catalogue_.publish_notifications();
         }
 
     protected:
         explicit Store(const Allocator& allocator)
         : loaded_assets(allocator) {}
+
+        // Commit derived metadata under the same lock, before Reset publication.
+        // The hook must not allocate, throw or reenter this cache.
+        virtual void clear_metadata() noexcept {}
+
+        void bind_provider(const CE::Rendering::Resources::Provider& provider) {
+            Context::bind_provider(provider);
+            const auto publication = Context::publication_context(provider);
+            std::unique_lock lock(assets_mutex_);
+            catalogue_.state_->domain = publication.domain;
+            if (!catalogue_.state_->explicit_route)
+                catalogue_.state_->publisher = publication.publisher;
+        }
 
         Handle publish_asset(const Key& key, Handle asset) {
             return publish_asset(key, std::move(asset), []() noexcept {});
@@ -169,15 +242,32 @@ namespace CE::Assets::Cache {
             static_assert(std::is_nothrow_invocable_v<Published>);
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
-            std::unique_lock lock(assets_mutex_);
-            // Keep this local owner until the lock has unwound. Node/rehash
-            // failure may destroy an insertion candidate while still inside
-            // try_emplace; that must not run its final deleter under this lock.
-            const auto [entry, inserted] = loaded_assets.try_emplace(key, asset);
-            if (inserted)
+            Handle result;
+            {
+                std::unique_lock lock(assets_mutex_);
+                if (const auto existing = loaded_assets.find(key); existing != loaded_assets.end()) {
+                    std::forward<Published>(published)();
+                    return existing->second;
+                }
+                auto& state = *catalogue_.state_;
+                const auto revision = state.next_revision();
+                state.require_domain();
+                const CatalogueGeneration generation{revision, state.domain};
+                const auto [metadata, added] = state.entries.try_emplace(key, generation);
+                const auto record = state.prepare(CatalogueChangeKind::Published, &key, {}, generation);
+                try {
+                    result = loaded_assets.try_emplace(key, asset).first->second;
+                } catch (...) {
+                    if (added)
+                        state.entries.erase(metadata);
+                    throw;
+                }
                 ++publications_;
-            std::forward<Published>(published)();
-            return entry->second;
+                std::forward<Published>(published)();
+                state.commit(record);
+            }
+            catalogue_.publish_notifications();
+            return result;
         }
         Handle replace_asset(const Key& key, Handle asset) {
             if (!asset)
@@ -186,14 +276,35 @@ namespace CE::Assets::Cache {
             Handle result;
             {
                 std::unique_lock lock(assets_mutex_);
-                const auto [entry, inserted] = loaded_assets.try_emplace(key, Handle{});
+                auto& state = *catalogue_.state_;
+                const auto revision = state.next_revision();
+                state.require_domain();
+                const CatalogueGeneration generation{revision, state.domain};
+                const auto [metadata, added] = state.entries.try_emplace(key, generation);
+                const auto record = state.prepare(added ? CatalogueChangeKind::Published : CatalogueChangeKind::Replaced,
+                    &key, added ? std::optional<CatalogueGeneration>{} : metadata->second, generation);
+                typename decltype(loaded_assets)::iterator entry;
+                bool inserted;
+                try {
+                    auto selected = loaded_assets.try_emplace(key, Handle{});
+                    entry = selected.first;
+                    inserted = selected.second;
+                } catch (...) {
+                    if (added)
+                        state.entries.erase(metadata);
+                    throw;
+                }
                 if (inserted)
                     ++publications_;
                 else
                     ++replacements_;
                 retired = std::exchange(entry->second, std::move(asset));
                 result = entry->second;
+                metadata->second = generation;
+                state.commit(record);
             }
+            retired.reset();
+            catalogue_.publish_notifications();
             return result;
         }
         /** Reserve raw slots for selective construction with emplace(). */
@@ -289,7 +400,21 @@ namespace CE::Assets::Cache {
 /**
  * @fn template<typename AssetType, typename Key, typename Allocator> void CE::Assets::Cache::Store<AssetType, Key, Allocator>::clear_assets() noexcept
  * @brief Detach every map entry under its write lock, then release retired handles after unlocking.
- * Preserves allocator identity and cumulative publication/replacement counters. Independent readers retain old assets. Because the operation is noexcept, allocator/locking failures cannot escape and terminate rather than report partial success.
+ * Commit derived clear_metadata() before one optional Reset observation with a new revision.
+ * Preserves allocator identity and cumulative publication/replacement counters. Independent readers retain old assets.
+ * Observation allocation/bus failure cannot escape; loss is visible in the catalogue snapshot.
+ * Allocator/locking failure or revision exhaustion terminates because this operation is noexcept.
+ */
+
+/** @fn template<typename AssetType, typename Key, typename Allocator> auto CE::Assets::Cache::Store<AssetType, Key, Allocator>::catalogue() const noexcept
+ * Return a copyable CPU-only source. Its snapshots/watch seeds contain exact keys, checked generations,
+ * revision/loss state and optional native-domain tokens. It retains no asset, provider or Context.
+ * Source destruction cleanup is silent; a retained source reports closed after Store destruction.
+ */
+/** @fn template<typename AssetType, typename Key, typename Allocator> auto CE::Assets::Cache::Store<AssetType, Key, Allocator>::asset_snapshot(const Key& key) const
+ * Select the exact-key strong handle and its generation/provenance under one shared lock. Missing
+ * keys have null asset/absent generation. Old snapshots retain old handles across replacement/clear;
+ * catalogue identity/revision does not authorize native use. Check the separate domain token.
  */
 
 /**

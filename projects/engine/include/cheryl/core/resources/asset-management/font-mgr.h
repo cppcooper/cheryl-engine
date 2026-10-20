@@ -29,11 +29,11 @@ namespace CE::Text::Legacy {
         CE_API void load(const std::vector<std::filesystem::path>& files, CE::Rendering::Resources::Provider& provider);
 
         [[nodiscard]] CE_API Handle default_font() const;
-
         CE_API void clear_assets() noexcept override;
 
     private:
         std::filesystem::path default_font_path_;
+        CE_API void clear_metadata() noexcept override;
     };
 }
 

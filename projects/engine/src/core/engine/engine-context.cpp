@@ -82,6 +82,7 @@ namespace CE::Runtime {
         const auto window_source = Detail::ViewSourceAccess::identity();
         const auto simulation_source = Detail::ViewSourceAccess::identity();
         input_->publish_events_to(events_.publisher());
+        resources_->publish_events_to(events_.publisher());
         events_.register_listener(
             CE::Rendering::graphics_domain_state_changed_event, [](const CE::Rendering::GraphicsDomainStateChanged& change) {
                 static_cast<void>(CE::Assets::Cache::Context::evict_graphics_domain(change));

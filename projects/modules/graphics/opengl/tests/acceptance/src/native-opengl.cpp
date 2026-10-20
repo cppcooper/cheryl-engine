@@ -968,9 +968,22 @@ TEST(native_opengl, retained_frame_reload) {
     renderer.initialize();
     NativeShaderFiles files;
     auto& materials = CE::Assets::Materials::Manager::get();
+    engine->resources().publish_events_to(engine->events().publisher());
+    using CatalogueChange = CE::Assets::Cache::AssetCatalogueChanged<const CE::Rendering::Resources::Material, std::filesystem::path>;
+    std::vector<CatalogueChange> catalogue_changes;
+    const auto catalogue_observer = engine->events().register_listener(
+        CE::Assets::Cache::asset_catalogue_changed_event<const CE::Rendering::Resources::Material, std::filesystem::path>,
+        [&](const CatalogueChange& change) {
+            catalogue_changes.push_back(change);
+            if (change.kind == CE::Assets::Cache::CatalogueChangeKind::Replaced)
+                throw std::runtime_error("Optional reload observer failure after successful commit");
+        });
     const auto key = files.directory / "material";
     materials.load(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto old = materials.get_asset(key);
+    const auto old_generation = materials.asset_snapshot(key).generation;
+    ASSERT_TRUE(old_generation);
+    EXPECT_EQ(old_generation->graphics_domain.snapshot(), renderer.graphics_domain().snapshot());
     auto geometry = fullscreen_triangle(engine->resources());
     std::weak_ptr<const CE::Rendering::Resources::Material> old_owner = old;
     std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = geometry;
@@ -990,8 +1003,15 @@ TEST(native_opengl, retained_frame_reload) {
     materials.reload(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto current = materials.get_asset(key);
     ASSERT_NE(old, current);
+    ASSERT_EQ(catalogue_changes.size(), 2);
+    EXPECT_EQ(catalogue_changes[0].kind, CE::Assets::Cache::CatalogueChangeKind::Published);
+    EXPECT_EQ(catalogue_changes[1].kind, CE::Assets::Cache::CatalogueChangeKind::Replaced);
+    EXPECT_EQ(catalogue_changes[1].previous->generation, old_generation->generation);
+    EXPECT_EQ(catalogue_changes[1].current->generation, materials.asset_snapshot(key).generation->generation);
     retain_draw(new_frame, geometry, current);
     materials.clear_assets();
+    ASSERT_EQ(catalogue_changes.size(), 3);
+    EXPECT_EQ(catalogue_changes.back().kind, CE::Assets::Cache::CatalogueChangeKind::Reset);
     old.reset();
     current.reset();
     geometry.reset();
@@ -1023,6 +1043,8 @@ TEST(native_opengl, retained_frame_reload) {
     EXPECT_EQ(glIsBuffer(buffer), GL_FALSE);
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
+    EXPECT_EQ(old_generation->graphics_domain.snapshot().sequence, 2);
+    catalogue_observer.disconnect();
 }
 
 TEST(native_opengl, failed_reload_cleanup) {

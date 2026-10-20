@@ -11,10 +11,12 @@
 #include <assets/types/primitives/vertex.h>
 #include <core/diagnostics.h>
 #include <core/rendering/graphics-domain.h>
+#include <core/subsystems/event-bus.h>
 
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <span>
 #include <vector>
 
@@ -38,6 +40,8 @@ namespace CE::Rendering::Resources {
     struct CE_API Provider {
     private:
         const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
+        mutable std::mutex notification_mutex_;
+        CE::Events::EventBus::Publisher notification_publisher_;
 
     public:
         Provider() = default;
@@ -47,6 +51,10 @@ namespace CE::Rendering::Resources {
         Provider& operator=(const Provider&) noexcept { return *this; }
         virtual ~Provider();
         [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
+        /** Set the weak catalogue route before loading/binding managers. Copies of Provider start unrouted. */
+        void publish_events_to(CE::Events::EventBus::Publisher publisher);
+        /** Copy the configured route under its mutex; retains no bus/Context. */
+        [[nodiscard]] CE::Events::EventBus::Publisher notification_publisher() const;
         /** Forward the renderer's retained native domain, or an empty token when unsupported. */
         [[nodiscard]] virtual CE::Rendering::GraphicsDomain graphics_domain() const noexcept { return {}; }
         // Borrowed optional adapter; it cannot outlive this provider.
