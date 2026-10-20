@@ -82,9 +82,9 @@ namespace CE::Audio {
         virtual void maintain() = 0;
         virtual void close() noexcept = 0;
         [[nodiscard]] virtual bool closed() const = 0;
-        CE_API virtual void publish_events_to(::CE::Events::EventBus::Publisher publisher);
-        CE_API virtual void publish_notifications();
-        [[nodiscard]] CE_API virtual PlaybackNotifications notification_snapshot() const;
+        virtual void publish_events_to(::CE::Events::EventBus::Publisher publisher);
+        virtual void publish_notifications();
+        [[nodiscard]] virtual PlaybackNotifications notification_snapshot() const;
     };
 }
 

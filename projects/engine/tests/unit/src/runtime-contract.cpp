@@ -54,7 +54,7 @@ namespace {
 
     class ContractWindow final : public CE::Platform::Window {
         const std::thread::id owner_ = std::this_thread::get_id();
-        const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
         CE::Platform::Dimensions<int> logical_{16, 12};
         CE::Platform::FramebufferSize pixels_{32, 24};
         bool close_ = false;
@@ -62,6 +62,8 @@ namespace {
     public:
         bool consumable = true;
         void request_close() { close_ = true; }
+        bool close_requested() const noexcept { return close_; }
+        void expire_watchdog() { deadline_ = std::chrono::steady_clock::time_point::min(); }
         CE::Platform::Dimensions<int> logical_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
             return logical_;
@@ -608,7 +610,10 @@ TEST(shutdown, native_cancel_and_fallback) {
             engine.events().register_listener(shutdown_request_cancelled_event, [&](const auto&) { window.request_close(); });
         }
         EXPECT_NO_THROW(runtime.run());
-        EXPECT_FALSE(window.should_close());
+        // Slow teardown diagnostics may outlive the watchdog without renewing native close intent.
+        window.expire_watchdog();
+        EXPECT_TRUE(window.should_close());
+        EXPECT_FALSE(window.close_requested());
         EXPECT_EQ(game.updates, 0);
         if (close_bus) {
             EXPECT_EQ(intents.size(), 1u);

@@ -2530,6 +2530,7 @@ TEST(resource_maintenance, retirement_under_backpressure) {
     for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
         MemoryInput input;
         int polls = 0;
+        int backpressured_passes = 0;
         input.on_poll = [&] { ++polls; };
         MemoryRenderer* renderer = nullptr;
         MemorySurface* surface = nullptr;
@@ -2539,16 +2540,19 @@ TEST(resource_maintenance, retirement_under_backpressure) {
         timing.variable_interval = std::chrono::hours{1};
         CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
         renderer->on_maintenance = [&] {
-            if (renderer->maintenance_calls == 2) {
-                // Lockstep capacity is full, and no simulation deadline/frame is
-                // available to wake the platform. The bounded maintenance wait must.
-                EXPECT_EQ(polls, 1);
-                EXPECT_EQ(renderer->renders, 0);
+            // Startup can run maintenance before the first poll fills the backlog.
+            if (polls == 0 || backpressured_passes == 2)
+                return;
+            EXPECT_EQ(polls, 1);
+            EXPECT_EQ(renderer->renders, 0);
+            if (++backpressured_passes == 2) {
+                // No simulation deadline/frame can wake the full lockstep backlog;
+                // the bounded maintenance wait must permit another pass.
                 runtime.stop();
             }
         };
         runtime.run();
-        EXPECT_GE(renderer->maintenance_calls, 2);
+        EXPECT_EQ(backpressured_passes, 2);
         EXPECT_EQ(renderer->maintenance_thread, std::this_thread::get_id());
         EXPECT_EQ(game.updates, 0);
         EXPECT_EQ(game.draws, 0);
