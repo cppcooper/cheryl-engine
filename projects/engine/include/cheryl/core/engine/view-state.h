@@ -114,6 +114,6 @@ namespace CE::Runtime {
     using WindowStateSource = ViewSource<WindowState, WindowStateChanged>;
     /** Retained read/watch facade for Context's simulation-owned selected dimensions. */
     using SimulationViewSource = ViewSource<SimulationView, SimulationViewChanged>;
-    extern template class CE_API ViewSource<WindowState, WindowStateChanged>;
-    extern template class CE_API ViewSource<SimulationView, SimulationViewChanged>;
+    extern template class CE_TYPE_API ViewSource<WindowState, WindowStateChanged>;
+    extern template class CE_TYPE_API ViewSource<SimulationView, SimulationViewChanged>;
 }
