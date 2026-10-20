@@ -138,7 +138,8 @@ class NavigationTests(unittest.TestCase):
             "getting-started/first-game", "getting-started/create-a/actor-controller",
             "getting-started/create-a/controller", "getting-started/create-a/character",
             "getting-started/create-a/ai-controller", "getting-started/create-a/ui-controller",
-            "getting-started/create-a/hud", "getting-started/create-a/abstract-controller",
+            "getting-started/create-a/hud", "getting-started/create-a/event",
+            "getting-started/create-a/abstract-controller",
         ])
 
     def test_engine_sections(self):
