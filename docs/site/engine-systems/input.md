@@ -130,7 +130,7 @@ native callback.
 
 ## Integration
 
-After binding application actions during `init()`, an update can select direction
+After binding application actions during `init_platform()`, an update can select direction
 and speed without referring to physical keys:
 
 ```cpp

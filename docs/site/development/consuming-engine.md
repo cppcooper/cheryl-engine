@@ -251,7 +251,7 @@ application-supplied input. Use [Integration contracts](../architecture/interfac
 when supplying new implementations.
 
 `GameRuntime` borrows the context and game for one session. Its `run()` initializes
-the adapters before calling game `init()` and closes them after game cleanup;
+the adapters before calling game `init_platform()` and closes them after game cleanup;
 stopped adapters are not restarted by another session. Create graphics resources
 through `engine.resources()` during platform-owned initialization or owner dispatch,
 then retain their immutable generations in game state and frame packets. A retained
@@ -345,15 +345,19 @@ factory assembles display, window, input, presentation, renderer and resources;
 
 | Hook | Owner | Responsibility |
 | --- | --- | --- |
-| `init()` | Platform/graphics | Bind actions and create initial resources after adapter startup. |
+| `init_platform()` | Platform/graphics | Bind actions and create initial resources after adapter startup. |
+| `init_simulation()` | Simulation | Construct simulation objects and attach view/step services after the initial view is ready, before Ready and timing start. |
 | `update(tick)` | Simulation | Advance game state using `delta_seconds` and the tick's input/copy of window sizes. |
 | `prepare_render_frame(writer) const` | Simulation | Resolve complete ordered passes/packets; publish no borrowed game state. |
+| `deinit_simulation()` | Simulation before its owner exits | Release state requiring this owner after simulation dispatch closes; retain dependencies still used by producers or accepted CPU work. |
 | `quiesce()` | Platform after simulation joins | Stop external producers and invalidate borrowed listeners; keep their dependencies alive. |
-| `deinit()` | Platform/graphics | Release application resources after accepted work settles and frames recycle. |
+| `deinit_platform()` | Platform/graphics | Release application resources after accepted work settles and frames recycle. |
 
-Sequential mode runs all hooks on the calling thread. Concurrent mode gives
-update/frame preparation to one simulation worker; platform polling, uploads and
-presentation remain on the caller. Cleanup pairs with attempted initialization,
+Initialization and deinitialization hooks default to no-ops. Use the constructor
+for setup with no runtime/thread dependencies. Sequential mode runs all hooks on
+the calling thread. Concurrent mode gives simulation initialization, updates,
+frame preparation and simulation cleanup to one worker; platform polling, uploads
+and presentation remain on the caller. Cleanup pairs with attempted initialization,
 so hooks must tolerate partial startup. The [frame boundary](../runtime/runtime-frame-boundary.md)
 defines shutdown and failure ordering.
 
@@ -373,7 +377,7 @@ class Game final : public CE::Game::AbstractGame {
 
 public:
     explicit Game(CE::Runtime::Context& engine) : engine_(engine) {}
-    void init() override {
+    void init_platform() override {
         auto& input = engine_.input();
         quit_binding_ = input.bindings().bind_button(
             {input.keyboard_id(), CE::Input::KeyboardKey::Escape}, quit_);
@@ -383,7 +387,7 @@ public:
             tick.request_stop();
     }
     void prepare_render_frame(CE::Rendering::FrameWriter&) const override {}
-    void deinit() override {
+    void deinit_platform() override {
         if (quit_binding_ != 0) {
             static_cast<void>(engine_.input().bindings().unbind(quit_binding_));
             quit_binding_ = 0;
@@ -415,7 +419,7 @@ queued [action-context requests](../runtime/input-state-model.md#action-contexts
 
 To add presentation, follow [asset loading](../assets/asset-loading.md) and
 [pipeline/material construction](../rendering/pipelines-and-materials.md#native-bootstrap-and-binding)
-in `init()`, then use CPU submission helpers in frame preparation. For later
+in `init_platform()`, then use CPU submission helpers in frame preparation. For later
 replacements, prepare owned data on [workers](../runtime/worker-execution.md),
 [submit upload](../runtime/thread-dispatch.md) to platform and adopt only a ready
 complete result during update. Keep the prior generation while work is pending.

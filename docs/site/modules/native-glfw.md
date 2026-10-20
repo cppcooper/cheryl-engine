@@ -58,7 +58,7 @@ For a GLFW/OpenGL game, use the [standard Startup path](startup.md#standard-appl
 to assemble the compatible display, input, presentation, renderer and resources.
 Link `Cheryl::Cheryl` for the configured assembly, or select granular targets as
 shown in [Source and SDK integration](../development/consuming-engine.md#granular-composition).
-The runtime initializes input before the game's `init()` and detaches it while
+The runtime initializes input before the game's `init_platform()` and detaches it while
 its display-owned window is still live.
 
 Bind controls during platform-owned initialization using the

@@ -46,7 +46,7 @@ family with its device ID.
 Include `<cheryl/core/controls/input-interface.h>` and
 `<cheryl/core/controls/button-codes.h>`, and link the selected
 [Native GLFW target](../../modules/native-glfw.md) with native input enabled.
-Its `init()` registers these mappings after runtime initializes the input adapter:
+Its `init_platform()` registers these mappings after runtime initializes the input adapter:
 
 ```cpp
 auto& input = engine_.input();
@@ -93,7 +93,7 @@ platform. The tick view is borrowed for that hook.
 
 ## Remove registrations during cleanup
 
-In `deinit()`, tolerate a partially completed initialization:
+In `deinit_platform()`, tolerate a partially completed initialization:
 
 ```cpp
 for (auto& binding : bindings_) {
@@ -142,7 +142,7 @@ static CE::Input::Actions::ContextDefinition movement(
 }
 ```
 
-During platform-owned `init()`, save the device identity and request endpoint,
+During platform-owned `init_platform()`, save the device identity and request endpoint,
 then attach the first consumer:
 
 ```cpp

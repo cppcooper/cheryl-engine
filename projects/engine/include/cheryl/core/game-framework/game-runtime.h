@@ -51,7 +51,8 @@ namespace CE::Runtime {
      * Rendering consumes published render state, never the game's
      * live mutable simulation state. These boundaries
      * apply in either mode. The calling thread owns platform polling and graphics operations;
-     * concurrent mode gives update and frame preparation to one simulation worker.
+     * concurrent mode gives simulation initialization, update, frame preparation
+     * and simulation cleanup to one simulation worker.
      * Sequential mode uses one recycled frame. Concurrent mode uses three slots
      * and renders the newest complete frame available at each handoff.
      */

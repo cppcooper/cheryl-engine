@@ -37,7 +37,7 @@ Tutorial::PatrolController patrol_{80.0f, 500.0f};
 std::optional<Tutorial::Character> enemy_;
 ```
 
-During platform-owned `init()`, after loading those resources:
+During platform-owned `init_platform()`, after loading those resources:
 
 ```cpp
 enemy_.emplace(sprite_, images_, glm::vec2(80.0f, 220.0f), 1, 80.0f);
@@ -63,7 +63,7 @@ per actor per update.
 
 ## Release and observe
 
-Reset `enemy_` during `deinit()` with the other Characters, before releasing the
+Reset `enemy_` during `deinit_platform()` with the other Characters, before releasing the
 retained appearance resources. `patrol_` owns only its numeric behavior state.
 
 Expect the second Character to move between X positions `80` and `500` while the

@@ -1474,7 +1474,7 @@ namespace {
             EXPECT_GT(expected_framebuffer_size.width, 0);
             EXPECT_GT(expected_framebuffer_size.height, 0);
         }
-        void init() override {
+        void init_platform() override {
             geometry = fullscreen_triangle(engine.resources());
             material = material_builder(files.stages(), {1, 0, 0, 1})(engine.resources());
             if (after_init)
@@ -1495,7 +1495,7 @@ namespace {
             auto pass = frame.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
             pass.add({geometry, material, 0, 3, material->resolve({}, {}, {}, {})});
         }
-        void deinit() override {
+        void deinit_platform() override {
             material.reset();
             geometry.reset();
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -1636,8 +1636,8 @@ namespace {
                     throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
             };
         }
-        void init() override {
-            NativeRuntimeGame::init();
+        void init_platform() override {
+            NativeRuntimeGame::init_platform();
             observed->platform_owner = std::this_thread::get_id();
             geometry->bind();
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &observed->vao);
@@ -1692,7 +1692,7 @@ namespace {
             EXPECT_FALSE(image_owner.expired());
             release_cpu.set_value();
         }
-        void deinit() override {
+        void deinit_platform() override {
             ++deinits;
             EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
             if (completion.valid())
@@ -1700,7 +1700,7 @@ namespace {
             if (jobs)
                 EXPECT_EQ(jobs->status().completed, 1u);
             EXPECT_EQ(observed->platform_completions, 1u);
-            NativeRuntimeGame::deinit();
+            NativeRuntimeGame::deinit_platform();
             image.reset();
             // Exercise real loss of the current binding, not a fake GL query.
             // Maintenance will reject it, then renderer shutdown must rebind its
@@ -2278,9 +2278,9 @@ TEST(native_opengl, shutdown_negotiation) {
             const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
         public:
             explicit CloseGame(GLFWwindow* window) : window_(window) {}
-            void init() override { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
+            void init_platform() override { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
             void quiesce() override {}
-            void deinit() override {}
+            void deinit_platform() override {}
             void update(const CE::Game::TickContext&) override {
                 if (std::chrono::steady_clock::now() >= deadline_)
                     throw std::runtime_error("Native shutdown negotiation watchdog");

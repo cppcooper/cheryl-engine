@@ -164,7 +164,7 @@ The session owns the document and elements. Their pointers are borrowed aliases;
 the application owns the listener and detaches it before closing the session.
 Keep native objects after the session in member declaration order.
 
-During platform-owned `init()`, after graphics initialization:
+During platform-owned `init_platform()`, after graphics initialization:
 
 ```cpp
 ui_uploader_.emplace(engine_.resources());
@@ -174,13 +174,15 @@ The uploader belongs to the resource provider's platform owner. Upload work
 uses owned recordings and creates defaults lazily on that platform owner; live
 document operations stay on the UI owner.
 
-## Load the document on the first update
+(load-the-document-on-the-first-update)=
+## Load the document during simulation initialization
 
 Create the session on the owner that will update its UI. In concurrent mode
-that is simulation, so run this block in `update()` after quit handling:
+that is simulation. Declare `void init_simulation() override;` in the game class
+and add this definition alongside its other hooks:
 
 ```cpp
-if (!ui_) {
+void Game::init_simulation() {
     constexpr CE::Input::Routing::TargetId rmlui_target = 7;
     ui_ = std::make_unique<CE::UI::RmlUi::Session>(
         engine_, rmlui_target, CE::UI::RmlUi::SessionOptions{.automatic_view = true}
@@ -336,14 +338,15 @@ insert each fragment into them:
 
 | Hook | Order |
 | --- | --- |
-| `init()` on platform | Keep graphics/asset initialization; construct `ui_uploader_` afterward. |
-| `update()` on simulation | Check guarded quit; create or resize the session; feed the full input batch; advance toolkit time and apply listener intent; run the game's remaining updates; adopt/upload a scene last. |
+| `init_platform()` on platform | Keep graphics/asset initialization; construct `ui_uploader_` afterward. |
+| `init_simulation()` on simulation | Construct the session, load the document and attach its listener with the initial view available. |
+| `update()` on simulation | Check guarded quit; feed the full input batch; advance toolkit time and apply listener intent; run the game's remaining updates; adopt/upload a scene last. |
 | `prepare_render_frame()` on simulation | Keep the world/HUD draws, then call `ui_scene_.write(frame)`. |
-| `deinit()` on platform | Detach the listener and close the session as below, then finish the game's other cleanup. |
+| `deinit_platform()` on platform | Detach the listener and close the session as below, then finish the game's other cleanup. |
 
 ## Close after UI quiescence
 
-In `deinit()`, after simulation has joined and accepted dependencies have settled:
+In `deinit_platform()`, after simulation has joined and accepted dependencies have settled:
 
 ```cpp
 if (apply_button_ && apply_listener_)

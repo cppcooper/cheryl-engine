@@ -74,10 +74,10 @@ services join that sequence through the game's hooks:
 | Boundary | What the application does |
 | --- | --- |
 | Request stop | Return from the current update when no further game work is needed. A stop request does not interrupt an executing callback. |
-| Simulation joins | Finish game updates and frame preparation before transferring UI teardown to platform. |
+| Simulation stops and joins | Close simulation dispatch and call `deinit_simulation()` on its owner before it exits. Retain state still used by external producers or accepted work; transfer final UI teardown to platform. |
 | `quiesce()` | Stop external producers and invalidate borrowed event listeners while their targets remain alive. Avoid waiting for work that still needs platform dispatch. |
 | Accepted work settles | Keep worker inputs, upload dependencies and callback targets alive while platform continues servicing accepted dependencies. |
-| Frames recycle and `deinit()` runs | Release game resources and application-held toolkit objects; close GUI sessions after UI quiescence. Settle and close separately owned audio services. |
+| Frames recycle and `deinit_platform()` runs | Release game resources and application-held toolkit objects; close GUI sessions after UI quiescence. Settle and close separately owned audio services. |
 | Adapters close | Input detaches from a live window; native resources retire before graphics/window destruction. |
 
 Cleanup pairs with attempted initialization, so retain only successfully acquired

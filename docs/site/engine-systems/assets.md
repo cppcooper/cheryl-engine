@@ -94,7 +94,7 @@ without changing essential game state.
 
 ## Integration
 
-On the platform owner during `init()`:
+On the platform owner during `init_platform()`:
 
 ```cpp
 CE::Assets::Loading::Loader loader(asset_root_);

@@ -37,7 +37,7 @@ Add `<chrono>` and retain this member beside First Game's `actor_` member
 std::optional<CE::Assets::Sprites::Animation> animation_;
 ```
 
-After constructing `actor_` in `init()`:
+After constructing `actor_` in `init_platform()`:
 
 ```cpp
 animation_.emplace(actor_->sprite->animation("blink"));
@@ -81,7 +81,7 @@ Keep First Game's
 Frame preparation copies the selected cell without advancing animation. This
 keeps playback correct even when concurrent rendering skips a visual snapshot.
 Add `animation_.reset()` before `actor_.reset()` in
-`deinit()`, retaining the game's partial-safe cleanup. Each additional animated
+`deinit_platform()`, retaining the game's partial-safe cleanup. Each additional animated
 actor needs its own cursor, even when their sprite handles are shared.
 
 The actor should alternate its two cells every 200 milliseconds. Two instances

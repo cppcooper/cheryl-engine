@@ -448,6 +448,7 @@ namespace CE::Runtime {
         bool renderer_started = false;
         bool input_started = false;
         bool game_started = false;
+        bool simulation_started = false;
         ViewAttachment viewport_binding;
         std::exception_ptr failure;
 
@@ -481,16 +482,15 @@ namespace CE::Runtime {
                 input.supports_focus()
             );
             game_started = true;
-            phase_ = "game_init";
-            game_.init();
-            initialized_.game = true;
+            phase_ = "game_platform_init";
+            game_.init_platform();
             if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
             }
 
-            // Game initialization may register bindings and upload assets. Start
-            // timing and sample the baseline only after it has completed.
+            // Platform initialization may register bindings and upload assets.
+            // Sample its input baseline before simulation initialization.
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "Input adapter did not supply an initial snapshot");
@@ -504,6 +504,12 @@ namespace CE::Runtime {
             });
             Detail::RuntimeServicesAccess::bind_simulation(engine_.services_);
             select_simulation_view(selected_window);
+            if (!stop_source_.stop_requested()) {
+                simulation_started = true;
+                phase_ = "game_simulation_init";
+                game_.init_simulation();
+                initialized_.game = true;
+            }
             publish_ready();
             const auto started_at = ::CE::Runtime::Simulation::Clock::now();
             ::CE::Input::Accumulator accumulator(previous_poll, started_at);
@@ -615,6 +621,8 @@ namespace CE::Runtime {
         publish_shutdown_starting(failure);
         finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
+        if (simulation_started)
+            finish("game simulation deinit", [this] { game_.deinit_simulation(); });
         if (game_started)
             finish("game quiesce", [this] { game_.quiesce(); });
         publish_quiescing();
@@ -624,7 +632,7 @@ namespace CE::Runtime {
         // Frames and game dependencies remain alive through accepted CPU work.
         finish("recycle frame", [&frame] { frame.recycle(); });
         if (game_started)
-            finish("game deinit", [this] { game_.deinit(); });
+            finish("game platform deinit", [this] { game_.deinit_platform(); });
         finish("final platform maintenance", [this] {
             Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::FinalCollection);
         });
@@ -700,6 +708,7 @@ namespace CE::Runtime {
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
             bool worker_done = false;
+            bool simulation_bound = false;
             bool simulation_ready = false;
             bool start_released = false;
             const char* worker_phase = "simulation_start";
@@ -746,9 +755,8 @@ namespace CE::Runtime {
                 input.supports_focus()
             );
             game_started = true;
-            phase_ = "game_init";
-            game_.init();
-            initialized_.game = true;
+            phase_ = "game_platform_init";
+            game_.init_platform();
             if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
@@ -771,14 +779,24 @@ namespace CE::Runtime {
             // touches the window, input adapter, renderer, and presentation surface.
             auto simulate = [&, previous_poll = std::move(previous_poll), baseline = selected_window]() mutable {
                 const char* worker_phase = "simulation_bind";
+                bool simulation_started = false;
                 try {
                     simulation_dispatcher_.bind_owner();
                     worker_phase = "simulation_view_initialize";
                     Detail::RuntimeServicesAccess::bind_simulation(engine_.services_);
                     select_simulation_view(baseline);
                     {
+                        std::lock_guard lock(scheduler_->mutex);
+                        handoff.simulation_bound = true;
+                    }
+                    if (!stop_source_.stop_requested()) {
+                        simulation_started = true;
+                        worker_phase = "game_simulation_init";
+                        game_.init_simulation();
+                    }
+                    {
                         std::unique_lock lock(scheduler_->mutex);
-                        handoff.simulation_ready = true;
+                        handoff.simulation_ready = simulation_started;
                         scheduler_->wake.notify_all();
                         scheduler_->wake.wait(lock, [&] { return handoff.start_released || stop_source_.stop_requested(); });
                     }
@@ -884,24 +902,29 @@ namespace CE::Runtime {
                 }
                 // Release unexecuted simulation captures on their owner while
                 // game/resources still exist, before publishing worker_done.
-                try {
-                    simulation_dispatcher_.close();
-                } catch (...) {
-                    const auto next = std::current_exception();
-                    bool secondary = false;
-                    {
-                        std::lock_guard lock(scheduler_->mutex);
-                        if (!handoff.worker_failure) {
-                            handoff.worker_failure = next;
-                            handoff.worker_phase = "simulation_dispatcher_close";
-                        } else
-                            secondary = handoff.worker_failure != next;
+                const auto finish_simulation = [&](const char* phase, auto&& operation) {
+                    try {
+                        operation();
+                    } catch (...) {
+                        const auto next = std::current_exception();
+                        bool secondary = false;
+                        {
+                            std::lock_guard lock(scheduler_->mutex);
+                            if (!handoff.worker_failure) {
+                                handoff.worker_failure = next;
+                                handoff.worker_phase = phase;
+                            } else
+                                secondary = handoff.worker_failure != next;
+                        }
+                        if (secondary) {
+                            lifecycle_.secondary(phase, next);
+                            ::CE::Diagnostics::report_failure(phase, next);
+                        }
                     }
-                    if (secondary) {
-                        lifecycle_.secondary("simulation_dispatcher_close", next);
-                        ::CE::Diagnostics::report_failure("simulation owner dispatcher close", next);
-                    }
-                }
+                };
+                finish_simulation("simulation_dispatcher_close", [this] { simulation_dispatcher_.close(); });
+                if (simulation_started)
+                    finish_simulation("game simulation deinit", [this] { game_.deinit_simulation(); });
                 {
                     std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_done = true;
@@ -934,9 +957,10 @@ namespace CE::Runtime {
             }
             {
                 std::lock_guard lock(scheduler_->mutex);
-                initialized_.simulation_owner = handoff.simulation_ready;
+                initialized_.simulation_owner = handoff.simulation_bound;
+                initialized_.game = handoff.simulation_ready;
             }
-            if (initialized_.simulation_owner)
+            if (initialized_.game)
                 publish_ready();
             {
                 std::lock_guard lock(scheduler_->mutex);
@@ -1099,6 +1123,11 @@ namespace CE::Runtime {
         }
         if (worker_failure != early_worker_failure)
             preserve_failure(failure, worker_phase, std::move(worker_failure));
+        {
+            std::lock_guard lock(scheduler_->mutex);
+            initialized_.simulation_owner = handoff.simulation_bound;
+            initialized_.game = handoff.simulation_ready;
+        }
         // Also handles initialization/thread-start failure before owner binding.
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
@@ -1110,7 +1139,7 @@ namespace CE::Runtime {
         for (auto& slot : slots)
             finish("recycle frame", [&slot] { slot.frame.recycle(); });
         if (game_started)
-            finish("game deinit", [this] { game_.deinit(); });
+            finish("game platform deinit", [this] { game_.deinit_platform(); });
         finish("final platform maintenance", [this] {
             Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::FinalCollection);
         });

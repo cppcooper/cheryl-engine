@@ -45,8 +45,8 @@ Y. The bindings follow the shared view as it changes. See
 
 Extend the initial `ui-controller.h` from the preceding lesson. Include `hud.h`,
 retain `std::optional<Hud> hud_` after the session member, and add score/health
-values with setters. After creating the session and refreshing its view in
-`update()`, construct the HUD once with `hud_.emplace(*session_)`. Update it before
+values with setters. After creating the session with its initial view in
+`init_simulation()`, construct the HUD with `hud_.emplace(*session_)`. Update it before
 recording the combined scene. During final cleanup, reset `hud_` before closing
 the session.
 
@@ -112,7 +112,7 @@ The controller retains the preceding complete scene while a replacement is pendi
 ### Remove a component during play
 
 When removing a HUD during play, call `hud_->remove()` on simulation, then reset
-the component and stop its creation/update branch in the enclosing owner. That
+the component and stop its update branch in the enclosing owner. That
 detaches only its widgets and keeps the session available to
 menus, chat, and other components. Destroying a component's handles alone does not
 detach widgets still owned by the GUI.

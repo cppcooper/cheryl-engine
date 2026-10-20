@@ -26,19 +26,19 @@ namespace Tutorial {
         unsigned int health_ = 100;
 
     public:
-        // Construct during platform-owned Game::init(). Toolkit objects are deferred.
+        // Construct during Game::init_platform(); create toolkit objects on simulation.
         explicit UIController(CE::Runtime::Context& engine)
         : engine_(engine), platform_(engine.platform_dispatcher().submission()), uploader_(engine.resources()) {}
 
         void set_score(int value) { score_ = value; }
         void set_health(unsigned int value) { health_ = value; }
 
-        void update(const CE::Game::TickContext& tick) {
-            if (!session_)
-                session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true});
-            if (!hud_)
-                hud_.emplace(*session_);
+        void init_simulation() {
+            session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true});
+            hud_.emplace(*session_);
+        }
 
+        void update(const CE::Game::TickContext& tick) {
             // This example has a passive HUD. Interactive components choose focus/pointer policy here.
             session_->handle_input(tick.input.records(), false);
             session_->update_time(tick.delta_seconds);

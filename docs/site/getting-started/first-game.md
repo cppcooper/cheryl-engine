@@ -140,7 +140,7 @@ Construct the `FirstGame::Game` instance named `game` with `*result.context`.
 stored in `runtime`, with the parsed loop settings. `runtime.run()` starts the
 rendering and input implementations, calls the game's lifecycle functions, runs
 until stopped, and shuts rendering and input down. Uploading graphics resources
-becomes available inside `Game::init()`.
+becomes available inside `Game::init_platform()`.
 
 Declare `result`, `game`, and `runtime` in that order. Here, **owns** means being
 responsible for an object's lifetime; **borrows** means using an object that
@@ -173,7 +173,7 @@ implementation is `FirstGame::Game`, the class instantiated as `game` in `main()
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.h
 :language: cpp
-:caption: FirstGame::Game — initial state is prepared in init(), then managed by simulation
+:caption: FirstGame::Game — initial state is prepared in init_platform(), then managed by simulation
 :start-after: // [game]
 :end-before: // [/game]
 :dedent: 4
@@ -188,19 +188,24 @@ sprite and text sections below introduce those resource types.
 The **platform thread** is the thread calling `runtime.run()`. It polls native
 events and owns the graphics context. The **simulation owner** runs your game
 updates and frame preparation. By default, it is that same thread. With
-`--concurrent`, it is one dedicated simulation thread; your two simulation hooks
-still run in order on that owner.
+`--concurrent`, it is one dedicated simulation thread; simulation initialization,
+updates, frame preparation and simulation cleanup run on that owner.
 
 | Stage, in lifecycle order | Owner | Your responsibility |
 | --- | --- | --- |
-| `init()` | Platform/graphics thread, before simulation starts | Bind controls, acquire resources, and prepare initial game state. |
+| `init_platform()` | Platform/graphics thread, before simulation starts | Bind controls, acquire resources, and prepare initial game state. |
+| `init_simulation()` | Simulation owner, with services and initial view ready | Construct simulation objects and attach services before Ready, timing and the first update. The default hook is enough for this example. |
 | `update(tick)` | Simulation owner | Change game state using copied input, dimensions, and simulation time. Request a stop when appropriate. |
 | `prepare_render_frame(frame) const` | Same simulation owner | Turn current state into a complete frame of draw values and retained resources. Keep gameplay progression in `update()`; frame preparation can be skipped when no frame slot is available. |
+| `deinit_simulation()` | Simulation owner, after simulation dispatch closes and before it exits | Release state requiring this owner; keep dependencies of active producers or accepted work alive. The default hook is enough for this example. |
 | `quiesce()` | Platform thread, after simulation stops and joins | Detach external listeners and stop producers that could submit more work. The default hook is enough for this example. |
-| `deinit()` | Platform/graphics thread, after submitted background work finishes and frames are released for reuse | Remove bindings and release game-owned resources while input and graphics still exist. |
+| `deinit_platform()` | Platform/graphics thread, after submitted background work finishes and frames are released for reuse | Remove bindings and release game-owned resources while input and graphics still exist. |
 
-Initialization prepares the state on the platform thread before simulation
-begins. During the loop, simulation owns changes to that state. Rendering reads a
+This example prepares its initial state during `init_platform()`; work that needs
+simulation ownership belongs in `init_simulation()`. Both initialization and
+deinitialization hooks default to doing nothing. Use the constructor for setup
+that needs neither initialized owner. During the loop, simulation owns changes
+to game state. Rendering reads a
 **published frame**: a complete set of drawing instructions for one window
 image, containing copied camera/draw values and retained resources.
 After your frame-preparation hook returns, the runtime publishes the completed
@@ -225,9 +230,9 @@ reference in the local variable `resources`.
 
 | Interface | When and why your game uses it |
 | --- | --- |
-| `engine_.input()` | Bind actions in `init()` and unbind them in `deinit()`. Read gameplay input from `tick.input` during updates. |
+| `engine_.input()` | Bind actions in `init_platform()` and unbind them in `deinit_platform()`. Read gameplay input from `tick.input` during updates. |
 | `engine_.window()` | Read native window state on the platform thread. During updates, use `tick.framebuffer_size`, the copied dimensions for simulation. |
-| `engine_.resources()` | Obtain the resource provider for uploads on the graphics owner, initially in `init()`. |
+| `engine_.resources()` | Obtain the resource provider for uploads on the graphics owner, initially in `init_platform()`. |
 | `engine_.fonts()` | Obtain the shared font catalogue. Use its default font or configure named families once before creating text/UI consumers. |
 | `tick`, the `TickContext` parameter of `update()` | Read the simulation delta/input/dimensions and call `tick.request_stop()`. Its borrowed data is valid for that update. |
 | `frame`, the `FrameWriter` parameter of `prepare_render_frame()` | Build drawing instructions on the CPU. Do not retain the writer or passes after the hook returns. |
@@ -286,7 +291,7 @@ binding IDs, stored in the `bindings_` member for cleanup:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Inside Game::init() — platform thread
+:caption: Inside Game::init_platform() — platform thread
 :start-after: // [bindings]
 :end-before: // [/bindings]
 :dedent: 8
@@ -315,8 +320,8 @@ it from the actual framebuffer dimensions before placing the actor:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Inside Game::init() — platform/graphics thread, before bindings and asset loading
-:start-after:     void Game::init() {
+:caption: Inside Game::init_platform() — platform/graphics thread, before bindings and asset loading
+:start-after:     void Game::init_platform() {
 :end-before:         // [bindings]
 :dedent: 8
 ```
@@ -413,7 +418,7 @@ check the required sprite, select nearest sampling and construct `actor_`:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Inside Game::init() — platform/graphics thread
+:caption: Inside Game::init_platform() — platform/graphics thread
 :start-after: // [assets]
 :end-before: // [/assets]
 :dedent: 8
@@ -508,7 +513,7 @@ reference obtained in the asset-loading excerpt:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Inside Game::init() — platform/graphics thread
+:caption: Inside Game::init_platform() — platform/graphics thread
 :start-after: // [score]
 :end-before: // [/score]
 :dedent: 8
@@ -516,7 +521,7 @@ reference obtained in the asset-loading excerpt:
 
 These stages let you reuse prepared text while changing its placement. Layout
 and preparation are CPU work; upload must run on the graphics owner, as it does
-here during `init()`. Keep the resulting `score_` in the game for simulation to
+here during `init_platform()`. Keep the resulting `score_` in the game for simulation to
 select and publish in later frames. Local font/layout variables can leave scope;
 the generation retains the data and resources it needs.
 
@@ -566,7 +571,7 @@ to draw and present.
 The example's camera has an identity view, so the sprite and text can share one
 pass. If a later game pans the world view, give direct screen text a separate
 `CE::Rendering::Camera2D hud_camera_` member and keep its identity view.
-Initialize its size during platform-owned `init()`:
+Initialize its size during platform-owned `init_platform()`:
 
 ```cpp
 hud_camera_.set_framebuffer_size(engine_.window().framebuffer_size());
@@ -613,7 +618,7 @@ The full cleanup hook removes the bindings and releases both examples' handles:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Game::deinit() — platform/graphics thread, after simulation and accepted work finish
+:caption: Game::deinit_platform() — platform/graphics thread, after simulation and accepted work finish
 :start-after: // [cleanup]
 :end-before: // [/cleanup]
 :dedent: 4
@@ -622,7 +627,7 @@ The full cleanup hook removes the bindings and releases both examples' handles:
 Cleanup also follows attempted initialization, so tolerate resources that were
 never created. The runtime stops and joins simulation, calls `quiesce()`, settles
 accepted work while servicing required platform dispatch, recycles frames, and
-calls `deinit()` before input and graphics shutdown.
+calls `deinit_platform()` before input and graphics shutdown.
 
 This game uses the default `quiesce()` because it has no external producers.
 When adding listeners or background services, detach/stop those producers there

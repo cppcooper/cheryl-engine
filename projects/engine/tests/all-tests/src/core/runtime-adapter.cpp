@@ -241,7 +241,7 @@ namespace {
         explicit OneTickGame(CE::Input::System& input, const bool capture = false)
         : input_(input), capture_(capture) {}
 
-        void init() override {
+        void init_platform() override {
             ++initializations;
             (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action);
             if (capture_) {
@@ -258,7 +258,7 @@ namespace {
                 on_quiesce();
         }
 
-        void deinit() override {
+        void deinit_platform() override {
             ++shutdowns;
             focus_.reset();
             text_.reset();
@@ -513,7 +513,7 @@ namespace {
         UiProbeGame(CE::Runtime::Context& engine, MemoryInput& input)
         : engine_(engine), input_(input) {}
 
-        void init() override {
+        void init_platform() override {
             (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, keyboard_action);
             (void)input_.bindings().bind_button({input_.gamepad_id(), test_button}, controller_action);
             events_ = input_.capture(CE::Input::Capture::Channel::Events);
@@ -611,7 +611,7 @@ namespace {
             pass.add(CE::Rendering::Submission::resolve_text(*font_, "UI:" + edited_text, style, context));
         }
 
-        void deinit() override {
+        void deinit_platform() override {
             ++shutdowns;
             focus_.reset();
             text_.reset();
@@ -939,8 +939,8 @@ TEST(runtime_adapter, game_init_failure) {
             ADD_FAILURE() << "Unexpected initialization exception type";
         }
         const auto diagnostics = ::testing::internal::GetCapturedStderr();
-        EXPECT_NE(diagnostics.find("game deinit: cleanup also failed"), std::string::npos);
-        EXPECT_NE(diagnostics.find("operation=game_init outcome=failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("game platform deinit: cleanup also failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("operation=game_platform_init outcome=failed"), std::string::npos);
         EXPECT_NE(diagnostics.find("domain=" + std::to_string(runtime.diagnostics().domain)), std::string::npos);
         EXPECT_EQ(runtime.diagnostics().updates, 0u);
         EXPECT_EQ(game.initializations, 1);

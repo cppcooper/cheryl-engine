@@ -57,7 +57,7 @@ sprite_ = std::move(sprite);
 player_.emplace(sprite_, images_, glm::vec2(160.0f, 100.0f));
 ```
 
-These calls belong in platform-owned `init()` after loading and validation. The
+These calls belong in platform-owned `init_platform()` after loading and validation. The
 controller is already attached as described in the previous tutorial. The
 [maintained game](../../../../projects/apps/tutorial-game/src/game.cpp) retains the
 same resources for later player joins.
@@ -109,7 +109,7 @@ The complete update block below also includes the optional AI extension. Add
 members. Declare game-wide action IDs `join_{7}` and `leave_{8}` with type
 `CE::Input::Actions::Id`. The IDs remain separate from each controller's local IDs.
 
-During platform-owned `init()`, use the now-unused left/right registration slots
+During platform-owned `init_platform()`, use the now-unused left/right registration slots
 in First Game's `bindings_` array:
 
 ```cpp
@@ -129,7 +129,7 @@ The first line imports its controller name into your `update()` scope:
 :prepend: using Tutorial::PlayerController;
 ```
 
-F2 requests a separate action context using the device ID saved during `init()`;
+F2 requests a separate action context using the device ID saved during `init_platform()`;
 its mappings become visible after the next poll. F3 releases that controller and
 Character. Releasing one context does not remove another player's mappings.
 If both players are present, each tick reads their own action namespace before
@@ -150,7 +150,7 @@ complete fields, direct binding registrations, loading and rendering order.
 
 ## Release and observe
 
-Replace `actor_.reset()` during `deinit()` with controller/Character cleanup:
+Replace `actor_.reset()` during `deinit_platform()` with controller/Character cleanup:
 
 ```cpp
 controller_.reset();

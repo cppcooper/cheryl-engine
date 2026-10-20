@@ -16,7 +16,7 @@ namespace Tutorial {
     Game::Game(CE::Runtime::Context& engine, std::filesystem::path assets)
     : engine_(engine), asset_root_(std::move(assets)) {}
 
-    void Game::init() {
+    void Game::init_platform() {
         world_camera_.set_framebuffer_size(engine_.window().framebuffer_size());
 
         // [bindings]
@@ -55,6 +55,10 @@ namespace Tutorial {
         // [/assets]
 
         ui_.emplace(engine_);
+    }
+
+    void Game::init_simulation() {
+        ui_->init_simulation();
     }
 
     // [update]
@@ -112,7 +116,7 @@ namespace Tutorial {
     // [/render]
 
     // [cleanup]
-    void Game::deinit() {
+    void Game::deinit_platform() {
         if (ui_)
             ui_->close_after_quiescence();
         ui_.reset();

@@ -10,12 +10,13 @@ or one update per rendered frame.
 
 | Boundary | Execution owner | Value or responsibility transferred |
 | --- | --- | --- |
-| Initialize adapters, then `game.init()` | Platform/graphics caller of `run()` | Live input/window/graphics become available; the game registers bindings and uploads initial resources. |
+| Initialize adapters, then `game.init_platform()` | Platform/graphics caller of `run()` | Live input/window/graphics become available; the game registers bindings and uploads initial resources. |
+| Bind simulation services and select the initial view, then `game.init_simulation()` | Simulation owner | Construct simulation objects and attach view/step services before Ready, simulation timing and the first update. |
 | Service platform requests and eligible input polls | Platform/graphics | Owned request results, complete input polls and copied dimensions become available. |
 | Drain simulation requests, transfer input, select view, run step services, call `update()` | Simulation owner | The tick uses the selected copied view. Required step participants finish before the game hook. |
 | `prepare_render_frame()` after a useful update batch | Simulation owner | Copy camera/draw values and retain resources in an available frame slot; skip visual publication when no slot is free. |
 | Render, present and maintain resources | Platform/graphics | Consume the newest completed frame without reading mutable game state; recycle superseded frames and deferred native resources. |
-| Stop, join, quiesce, settle accepted work, recycle, `deinit()` | Coordinated shutdown, with cleanup on platform | Keep dependencies alive until accepted users finish; follow [the full shutdown order](#shutdown). |
+| Stop, close simulation dispatch, `deinit_simulation()`, join, quiesce, settle accepted work, recycle, `deinit_platform()` | Simulation cleanup on its owner; remaining cleanup on platform | Keep dependencies alive until accepted users finish; follow [the full shutdown order](#shutdown). |
 
 `CE::Runtime::GameRuntime` coordinates input polling, simulation, rendering, presentation, and
 shutdown. Both execution modes use the [same configurable timing policy](simulation-timing.md), with variable/fixed steps and bounded direct/hybrid recovery. The application chooses a compatible platform, graphics context,
@@ -56,13 +57,22 @@ that thread. Concurrent mode runs only `update()` and `prepare_render_frame()` o
 one simulation worker; it passes complete polling batches and framebuffer dimensions
 as values instead of giving that worker access to a live window. A resize
 callback runs on the platform thread and must not mutate simulation state.
-`init()` runs after input and graphics initialization but before starting the
+`init_platform()` runs after input and graphics initialization but before starting the
 worker, so it can register bindings and load GPU assets. After the worker joins
-and frames are recycled, `deinit()` runs while the graphics context is current.
+and frames are recycled, `deinit_platform()` runs while the graphics context is current.
+`init_simulation()` runs once on the selected simulation owner after its services
+and initial copied view are available. It completes before Ready, simulation
+timing and the first update. Register simulation services and view watchers there
+so they participate from the first step. A stop request before entry skips it.
+`deinit_simulation()` runs on that same owner after its dispatcher closes and
+before the worker exits. Each deinitialization hook pairs with its attempted
+initialization, including partial failure. All four hooks default to doing nothing.
+Use the constructor for setup that needs neither runtime owner; there is no
+generic runtime initialization hook.
 The default GLFW/OpenGL factory owns its input adapter; the overload taking an
 input reference borrows it through context destruction. Owned input detaches
 before the window is destroyed. A runtime and its context each permit one session.
-Game cleanup is paired with attempted initialization, including partial failure;
+Each game cleanup hook is paired with its attempted initialization, including partial failure;
 cleanup preserves the first failure while still shutting down both adapters and
 reports subsequent failures with phase context. See [failure-reporting.md](failure-reporting.md)
 for deferred native callback checks and the bounded emergency reporting contract.
@@ -73,8 +83,9 @@ Use `engine.services()` to attach module work that must finish at an owner
 boundary. Retain the returned `CE::Runtime::ServiceAttachment` as a member;
 discarding it immediately detaches the callback. An attachment added during a
 phase starts with the next phase, without replay. Registration requires the
-initialized owner: platform maintenance can attach during `init()`, while
-simulation step services can attach from the first `update()` in either mode.
+initialized owner: platform maintenance can attach during `init_platform()`, while
+simulation step services can attach during `init_simulation()` in either mode.
+Those step services run before the first game update.
 
 | Phase | Ordering and payload |
 | --- | --- |
@@ -112,7 +123,7 @@ Optional bus listeners use `platform_maintenance_event` or
 `simulation_step_starting_event` and do not replace required attachments.
 
 The renderer's required maintenance binding handles ordinary and shutdown-drain
-passes. After frames and `game.deinit()` release their handles, `FinalCollection`
+passes. After frames and `game.deinit_platform()` release their handles, `FinalCollection`
 runs once, followed, when the renderer initialized successfully, by the direct final
 renderer collection barrier even if a
 service callback failed. This preserves native teardown ordering.
@@ -128,7 +139,7 @@ The channels in `<cheryl/core/game-framework/runtime-lifecycle.h>` carry owned
 
 | Channel / payload | Meaning |
 | --- | --- |
-| `runtime_ready_event` / `RuntimeReady` | Adapter/game initialization, simulation owner and initial selected view are established, before the first game update. Skipped when startup fails or shutdown commits first. |
+| `runtime_ready_event` / `RuntimeReady` | Adapters, both game initialization hooks, simulation owner and initial selected view are established, before the first game update. Skipped when startup fails or shutdown commits first. |
 | `shutdown_starting_event` / `ShutdownStarting` | Shutdown committed once, including partial startup failure. Simulation can still be finishing its current hook. |
 | `runtime_quiescing_event` / `RuntimeQuiescing` | Simulation/mailbox work has stopped and any applicable `game.quiesce()` hook has been attempted. Accepted CPU work can still be settling. |
 | `runtime_stopped_event` / `RuntimeStopped` | Ordered cleanup has been attempted and the terminal outcome recorded, before `run()` returns or rethrows. A failed cleanup is not proof of successful native release. |
@@ -303,8 +314,9 @@ dependencies. The remaining phases preserve their owners through cleanup:
 ```mermaid
 flowchart TB
     accTitle: Runtime shutdown phases
-    accDescr: Stop closes CPU-group acceptance, simulation finishes while platform dependencies are serviced, producers quiesce, accepted CPU work settles, frames recycle and game cleanup precedes adapter shutdown.
-    stop["Stop CPU acceptance"] --> join["Join simulation"]
+    accDescr: Stop closes CPU-group acceptance, simulation cleans up on its owner while platform dependencies are serviced, producers quiesce, accepted CPU work settles, frames recycle and platform game cleanup precedes adapter shutdown.
+    stop["Stop CPU acceptance"] --> sim_cleanup["Close simulation dispatch; deinit_simulation"]
+    sim_cleanup --> join["Join simulation"]
     join --> quiesce["Quiesce producers"]
     quiesce --> settle["Settle accepted work"]
     settle --> recycle["Cancel queue; recycle frames"]
@@ -316,18 +328,24 @@ cancels its pending dispatcher work on its owner before publishing completion;
 initialization failure before owner binding cancels on the initializing thread.
 Platform keeps pumping accepted dependencies while joining simulation, so an
 accepted callback awaiting platform work cannot strand it in a blocking join.
+After closing simulation dispatch, the simulation owner attempts
+`game.deinit_simulation()` if `init_simulation()` was entered, then exits. This
+hook releases only state whose remaining users have stopped. External producers
+and accepted CPU work can still be active; retain their dependencies for the
+later platform cleanup. No further simulation dispatch runs. Sequential mode
+cannot service platform work while blocked inside a simulation hook.
 
 After simulation joins, `game.quiesce()` stops external producers and invalidates
 borrowed event registrations while their targets/resources remain alive. Do not
 block this hook on work that still needs platform dispatch. It pairs with attempted
-game initialization, including partial startup. Accepted CPU work then settles
+platform initialization, including partial startup. Accepted CPU work then settles
 while platform continues servicing dependencies; bounded 1 ms shutdown waits
 observe completion without borrowed runtime wake callbacks in workers. Only
 context-created groups close; an injected pool's unrelated groups remain open.
 An owned root joins before game/resource cleanup.
 
 Remaining platform requests cancel, all retained frames recycle on graphics,
-and `game.deinit()` runs before input and graphics shutdown. Preserve the first
+and `game.deinit_platform()` runs before input and graphics shutdown. Preserve the first
 failure while completing cleanup; report later failures with phase context through
 [failure reporting](failure-reporting.md). Owned input detaches before window
 destruction, and the context must outlive its renderer. External logical handles

@@ -126,7 +126,7 @@ bool demonstrate_damage_event(CE::Runtime::Context& engine) {
 }
 ```
 
-Call `demonstrate_damage_event(engine_)` once from First Game's `init()`.
+Call `demonstrate_damage_event(engine_)` once from First Game's `init_platform()`.
 It returns `true`: health becomes `87`, and the listener copies that value into
 `displayed_health` before `notify()` returns. This variable models the HUD's retained
 state. The shared header defines what an event contains; creating `damage`

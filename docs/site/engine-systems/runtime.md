@@ -79,10 +79,14 @@ application-owned lifetimes.
 ## Contracts
 
 A context and runtime each support one session. Borrowed game/context/input
-objects must survive all use and cleanup. `init()` may upload resources and
+objects must survive all use and cleanup. `init_platform()` may upload resources and
 register bindings; `update()` and frame preparation must not perform graphics
 operations when simulation is concurrent. A borrowed tick, frame writer or pass
 writer is valid only for its hook call.
+`init_simulation()` runs on the simulation owner with services and the initial
+view ready, before Ready, timing and the first update. Initialization and
+deinitialization hooks default to no-ops; use constructors for setup without
+runtime/thread dependencies.
 
 Input observation time and simulation delta have distinct meanings. Rendering
 sees complete published snapshots. Frame preparation may be skipped when no
@@ -92,14 +96,16 @@ the session; cleanup preserves the first failure while reporting later ones.
 ## Lifecycle
 
 The application constructs adapters/context before running. Runtime initializes
-input and graphics, attempts game initialization, then starts the selected
-simulation execution. Game cleanup must tolerate partial initialization.
+input and graphics, attempts `init_platform()`, then establishes the selected
+simulation owner/view and calls `init_simulation()`. Each cleanup hook pairs with
+its attempted initialization and must tolerate partial failure.
 
 Shutdown stops new context-group submissions and simulation, servicing accepted
-platform dependencies while joining. `quiesce()` then stops external producers
+platform dependencies while simulation closes its dispatcher, calls
+`deinit_simulation()` on its owner, and joins. `quiesce()` then stops external producers
 and invalidates borrowed registrations without destroying dependencies still
 needed by accepted work. After that work settles and retained frames recycle,
-`deinit()` releases game resources while adapters remain alive. Input detaches
+`deinit_platform()` releases game resources while adapters remain alive. Input detaches
 before its window disappears; graphics then closes. An injected worker pool's
 unrelated groups remain usable.
 

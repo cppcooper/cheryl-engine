@@ -150,7 +150,8 @@ namespace CE::Runtime {
  */
 /** @fn const CE::Runtime::SimulationViewSource& CE::Runtime::Context::simulation_view() const noexcept
  * Borrow simulation's copied dimension source. The baseline is established on the actual simulation
- * owner before Ready/first update. Watch there for required sizing; snapshots are readable from any
+ * owner before init_simulation()/Ready/first update. Attach watches during init_simulation()
+ * for required sizing; snapshots are readable from any
  * thread and own no native Window. A focus-only window change does not advance the view revision.
  */
 /** @fn const CE::Runtime::RuntimeServices& CE::Runtime::Context::services() const noexcept

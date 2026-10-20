@@ -275,7 +275,7 @@ CE::Input::GamepadAvailability pad_;
 CE::Events::EventBus::Registration pad_listener_;
 ```
 
-During platform-owned `init()`, with the game's borrowed `engine_` Context,
+During platform-owned `init_platform()`, with the game's borrowed `engine_` Context,
 register first, then copy the current state. These owner operations cannot
 interleave with a poll:
 
@@ -292,7 +292,7 @@ pad_ = engine_.input().gamepad_availability();
 
 The slot filter selects this adapter when several producers share a bus. The
 seed may be unknown before the first complete poll. Remove the listener during
-`deinit()`, before its borrowed target is destroyed:
+`deinit_platform()`, before its borrowed target is destroyed:
 
 ```cpp
 engine_.events().unregister_and_wait(pad_listener_);

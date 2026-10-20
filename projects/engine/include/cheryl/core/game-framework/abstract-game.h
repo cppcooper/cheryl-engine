@@ -16,16 +16,20 @@ namespace CE::Game {
      * simulation thread, then publish it.
      * Concurrent mode can skip preparation when all slots are occupied; later updates
      * still advance the authoritative simulation state.
-     * init() and deinit() run on the platform/graphics thread, before the worker starts and
-     * after it joins. In concurrent mode, update() and prepare_render_frame() run only on that
-     * worker. The game must not change input bindings or upload GPU resources from the worker.
+     * init_platform() and deinit_platform() run on the platform/graphics thread, before
+     * the worker starts and after it joins. init_simulation(), update(), prepare_render_frame()
+     * and deinit_simulation() run on the simulation owner. In concurrent mode this is the
+     * worker; sequential mode uses the caller for both owners. The game must not change
+     * input bindings or upload GPU resources from the worker.
      * Hook failures stop the session; runtime cleanup preserves the first failure.
      */
     struct CE_API AbstractGame {
         virtual ~AbstractGame() = default;
-        virtual void init() = 0;
+        virtual void init_platform() {}
+        virtual void init_simulation() {}
+        virtual void deinit_simulation() {}
         virtual void quiesce() {}
-        virtual void deinit() = 0;
+        virtual void deinit_platform() {}
         virtual void update(const ::CE::Game::TickContext& tick) = 0;
         virtual void prepare_render_frame(::CE::Rendering::FrameWriter& frame) const = 0;
     };
@@ -34,28 +38,51 @@ namespace CE::Game {
 /**
  * @fn CE::Game::AbstractGame::~AbstractGame()
  * @brief Destroy the hook object after its runtime session and borrowed use have finished.
- * Destruction is not a replacement for runtime-controlled quiesce()/deinit().
+ * Destruction is not a replacement for runtime-controlled cleanup hooks.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
  */
 
 /**
- * @fn void CE::Game::AbstractGame::init()
- * @brief Initialize game state after renderer/input initialization on the platform owner.
- * Register bindings and upload graphics resources here. Cleanup hooks must tolerate partial initialization if this throws.
+ * @fn void CE::Game::AbstractGame::init_platform()
+ * @brief Initialize platform state after renderer/input initialization, before simulation starts.
+ * Register bindings and upload graphics resources here. The default is a no-op. deinit_platform()
+ * runs even if this hook throws and must tolerate partial initialization. Use the constructor
+ * for setup without runtime/thread dependencies; there is no generic runtime init() hook.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::init_simulation()
+ * @brief Initialize simulation state on its owner after services and the initial view are available.
+ * Runs once after init_platform(), before Ready, simulation timing and the first update. Attach
+ * simulation services and view watchers here so they participate from the first step. The default
+ * is a no-op. A stop request before entry skips this hook. Failure prevents Ready/updates and
+ * still calls deinit_simulation() on this owner for partial cleanup.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::deinit_simulation()
+ * @brief Release state requiring the simulation owner after its dispatcher closes and before it exits.
+ * Paired with attempted init_simulation(), including partial failure. The default is a no-op.
+ * Producers and accepted CPU work can still be active: retain their dependencies until quiesce()
+ * and deinit_platform(). No further simulation dispatch runs. Platform dispatch remains serviced
+ * in concurrent mode; never block sequential execution on work requiring its own platform thread.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
  */
 
 /**
  * @fn void CE::Game::AbstractGame::quiesce()
  * @brief Stop external producers after simulation stops on the platform owner.
- * Invalidate borrowed event registrations while retaining their dependencies through deinit(). Accepted CPU work has not yet settled: do not wait for jobs/callbacks requiring platform dispatch. The default is a no-op.
+ * Invalidate borrowed event registrations while retaining their dependencies through deinit_platform(). Accepted CPU work has not yet settled: do not wait for jobs/callbacks requiring platform dispatch. The default is a no-op.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
  */
 
 /**
- * @fn void CE::Game::AbstractGame::deinit()
+ * @fn void CE::Game::AbstractGame::deinit_platform()
  * @brief Release game resources and bindings on the platform/graphics owner.
- * Runtime calls this after accepted CPU work settles and frame handles are recycled, including after partial init() failure; backend adapters are still alive.
+ * Runtime calls this after accepted CPU work settles and frame handles are recycled, including
+ * after partial init_platform() failure; backend adapters are still alive. The default is a no-op.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
  */
 

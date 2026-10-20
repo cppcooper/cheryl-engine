@@ -153,7 +153,7 @@ namespace {
         std::function<void()> initialize;
         std::function<void(const CE::Game::TickContext&)> advance;
         std::function<void()> cleanup;
-        void init() override {
+        void init_platform() override {
             if (initialize)
                 initialize();
         }
@@ -161,7 +161,7 @@ namespace {
             if (advance)
                 advance(tick);
         }
-        void deinit() override {
+        void deinit_platform() override {
             if (cleanup)
                 cleanup();
         }

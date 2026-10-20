@@ -218,9 +218,17 @@ namespace {
     public:
         ContractGame(CE::Runtime::Context& engine, Observations& observations)
         : engine_(engine), observations_(observations) {}
-        void init() override {
+        void init_platform() override {
             ++observations_.game_initializations;
             (void)engine_.input().bindings().bind_button({1, 65}, CE::Input::Actions::Id{1});
+        }
+        void init_simulation() override {
+            const auto selected = engine_.simulation_view().snapshot();
+            EXPECT_TRUE(selected.initialized);
+            view_ = engine_.simulation_view().watch([selected](const auto& change) {
+                EXPECT_TRUE(change.seed);
+                EXPECT_EQ(change.current, selected);
+            });
         }
         void quiesce() override {
             EXPECT_TRUE(observations_.saved_stop.stop_requested());
@@ -228,7 +236,7 @@ namespace {
             EXPECT_EQ(observations_.shutdowns, 0);
             ++observations_.quiesces;
         }
-        void deinit() override {
+        void deinit_platform() override {
             EXPECT_EQ(observations_.quiesces, 1);
             EXPECT_NE(observations_.attached, nullptr);
             EXPECT_EQ(observations_.shutdowns, 0);
@@ -239,11 +247,7 @@ namespace {
             EXPECT_TRUE(selected.initialized);
             EXPECT_EQ(selected.logical_size, tick.logical_size);
             EXPECT_EQ(selected.framebuffer_size, tick.framebuffer_size);
-            if (!view_.attached())
-                view_ = engine_.simulation_view().watch([selected](const auto& change) {
-                    EXPECT_TRUE(change.seed);
-                    EXPECT_EQ(change.current, selected);
-                });
+            EXPECT_TRUE(view_.attached());
             observations_.pressed = tick.input.button(CE::Input::Actions::Id{1}).pressed();
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{32, 24}));
             EXPECT_EQ(tick.logical_size.width, 16);
@@ -271,21 +275,38 @@ namespace {
         int updates = 0;
         int quiesces = 0;
         int deinits = 0;
+        int simulation_inits = 0;
+        int simulation_deinits = 0;
         std::function<void()> on_update;
         std::function<void()> on_init;
-        void init() override {
+        std::function<void()> on_simulation_init;
+        std::function<void()> on_simulation_deinit;
+        std::function<void()> on_deinit;
+        void init_platform() override {
             if (on_init)
                 on_init();
             if (fail_init)
                 throw std::runtime_error("game init failure");
+        }
+        void init_simulation() override {
+            ++simulation_inits;
+            if (on_simulation_init)
+                on_simulation_init();
+        }
+        void deinit_simulation() override {
+            ++simulation_deinits;
+            if (on_simulation_deinit)
+                on_simulation_deinit();
         }
         void quiesce() override {
             ++quiesces;
             if (fail_quiesce)
                 throw std::runtime_error("game quiesce failure");
         }
-        void deinit() override {
+        void deinit_platform() override {
             ++deinits;
+            if (on_deinit)
+                on_deinit();
             if (fail_deinit)
                 throw std::runtime_error("game deinit failure");
         }
@@ -302,6 +323,143 @@ namespace {
             static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
         }
     };
+}
+
+TEST(runtime_lifecycle, owner_hooks) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        Observations observations;
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        GameRuntime runtime(engine, game, mode);
+        const auto platform = std::this_thread::get_id();
+        std::thread::id simulation;
+        ServiceAttachment step;
+        ViewAttachment view;
+        std::vector<int> order;
+        int steps = 0;
+        game.on_init = [&] {
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            EXPECT_NE(observations.attached, nullptr);
+            order.push_back(1);
+        };
+        game.on_simulation_init = [&] {
+            simulation = std::this_thread::get_id();
+            EXPECT_EQ(simulation == platform, mode == RunMode::Sequential);
+            EXPECT_TRUE(engine.simulation_view().snapshot().initialized);
+            view = engine.simulation_view().watch([](const auto& change) { EXPECT_TRUE(change.seed); });
+            step = engine.services().on_step([&](const auto&) { ++steps; });
+            if (mode == RunMode::Concurrent) {
+                auto bootstrap = engine.platform_dispatcher().submit([&](Context&) {
+                    EXPECT_EQ(std::this_thread::get_id(), platform);
+                });
+                ASSERT_EQ(bootstrap.wait_for(std::chrono::seconds{5}), std::future_status::ready);
+                bootstrap.get();
+            }
+            order.push_back(2);
+        };
+        engine.events().register_listener(runtime_ready_event, [&](const auto& event) {
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            EXPECT_TRUE(event.current.initialized.game);
+            EXPECT_EQ(game.simulation_inits, 1);
+            EXPECT_EQ(game.updates, 0);
+            order.push_back(3);
+        });
+        game.on_update = [&] {
+            EXPECT_EQ(std::this_thread::get_id(), simulation);
+            EXPECT_EQ(steps, 1);
+            order.push_back(4);
+        };
+        game.on_simulation_deinit = [&] {
+            EXPECT_EQ(std::this_thread::get_id(), simulation);
+            EXPECT_EQ(game.quiesces, 0);
+            view.reset();
+            step.reset();
+            order.push_back(5);
+        };
+        game.on_deinit = [&] {
+            EXPECT_EQ(std::this_thread::get_id(), platform);
+            EXPECT_EQ(game.simulation_deinits, 1);
+            EXPECT_EQ(game.quiesces, 1);
+            order.push_back(6);
+        };
+        runtime.run();
+        EXPECT_EQ(order, (std::vector<int>{1, 2, 3, 4, 5, 6}));
+    }
+}
+
+TEST(runtime_lifecycle, simulation_hook_failure) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        for (const bool fail_init : {false, true}) {
+            Observations observations;
+            Context engine(
+                std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+                std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+                std::make_unique<ContractInput>(observations)
+            );
+            LifecycleGame game;
+            GameRuntime runtime(engine, game, mode);
+            std::thread::id simulation;
+            game.on_simulation_init = [&] {
+                simulation = std::this_thread::get_id();
+                if (fail_init)
+                    throw std::runtime_error("simulation init failure");
+            };
+            game.on_simulation_deinit = [&] {
+                EXPECT_EQ(std::this_thread::get_id(), simulation);
+                throw std::runtime_error("simulation deinit failure");
+            };
+            try {
+                runtime.run();
+                FAIL() << "Expected simulation hook failure";
+            } catch (const std::runtime_error& error) {
+                EXPECT_EQ(std::string_view(error.what()), fail_init ? "simulation init failure" : "simulation deinit failure");
+            }
+            const auto final = runtime.lifecycle().snapshot();
+            EXPECT_EQ(final.reached_ready, !fail_init);
+            EXPECT_EQ(final.initialized.game, !fail_init);
+            EXPECT_TRUE(final.initialized.simulation_owner);
+            EXPECT_EQ(final.primary_failure.phase_text(), fail_init ? "game_simulation_init" : "game simulation deinit");
+            EXPECT_EQ(final.secondary_failure_count, fail_init ? 1u : 0u);
+            if (fail_init)
+                EXPECT_EQ(final.secondary_failures[0].message_text(), "simulation deinit failure");
+            EXPECT_EQ(game.updates, fail_init ? 0 : 1);
+            EXPECT_EQ(game.simulation_deinits, 1);
+            EXPECT_EQ(game.quiesces, 1);
+            EXPECT_EQ(game.deinits, 1);
+        }
+    }
+}
+
+TEST(runtime_lifecycle, stop_during_init) {
+    using namespace CE::Runtime;
+    for (const auto mode : std::array{RunMode::Sequential, RunMode::Concurrent}) {
+        for (const bool stop_on_platform : {false, true}) {
+            Observations observations;
+            Context engine(
+                std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+                std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+                std::make_unique<ContractInput>(observations)
+            );
+            LifecycleGame game;
+            GameRuntime runtime(engine, game, mode);
+            if (stop_on_platform)
+                game.on_init = [&] { runtime.stop(); };
+            else
+                game.on_simulation_init = [&] { runtime.stop(); };
+            runtime.run();
+            EXPECT_FALSE(runtime.lifecycle().snapshot().reached_ready);
+            EXPECT_EQ(game.updates, 0);
+            EXPECT_EQ(game.simulation_inits, stop_on_platform ? 0 : 1);
+            EXPECT_EQ(game.simulation_deinits, game.simulation_inits);
+            EXPECT_EQ(game.deinits, 1);
+        }
+    }
 }
 
 TEST(runtime_services, final_collection_barrier) {
@@ -1172,9 +1330,9 @@ TEST(runtime_view, window_selection) {
             CE::Runtime::Context& engine_;
         public:
             explicit ViewGame(CE::Runtime::Context& engine) : engine_(engine) {}
-            void init() override {}
+            void init_platform() override {}
             void quiesce() override {}
-            void deinit() override {}
+            void deinit_platform() override {}
             void update(const CE::Game::TickContext& tick) override {
                 const auto selected = engine_.simulation_view().snapshot();
                 EXPECT_EQ(selected.logical_size, tick.logical_size);
@@ -1303,8 +1461,8 @@ TEST(runtime_pressure, runtime_owners) {
             std::shared_ptr<CE::Runtime::Detail::RuntimePressureState> state;
             std::atomic<bool> observed{false};
 
-            void init() override {}
-            void deinit() override {}
+            void init_platform() override {}
+            void deinit_platform() override {}
             void update(const CE::Game::TickContext&) override { state->stage_lag(!observed.load(), 2, 100); }
             void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
                 static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
@@ -1366,8 +1524,8 @@ TEST(runtime_pressure, failed_start) {
             std::make_unique<ContractInput>(observations)
         );
         struct FailingGame final : CE::Game::AbstractGame {
-            void init() override { throw std::runtime_error("game initialization failed"); }
-            void deinit() override {}
+            void init_platform() override { throw std::runtime_error("game initialization failed"); }
+            void deinit_platform() override {}
             void update(const CE::Game::TickContext&) override { ADD_FAILURE(); }
             void prepare_render_frame(CE::Rendering::FrameWriter&) const override { ADD_FAILURE(); }
         } game;

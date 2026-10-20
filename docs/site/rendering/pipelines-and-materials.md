@@ -508,7 +508,7 @@ Retain a game member:
 std::shared_ptr<const CE::Rendering::Resources::Material> tinted_;
 ```
 
-On platform during `init()`, after `loader.load_assets(engine_.resources())`,
+On platform during `init_platform()`, after `loader.load_assets(engine_.resources())`,
 retrieve the uploaded material:
 
 ```cpp
@@ -542,7 +542,7 @@ draw's tint uses the contract's white default. Game logic can keep tint alongsid
 an object's position and change it during update, then copy both into its next
 draw style. No inheritance hook or material factory is required.
 
-Reset `tinted_` with the game's sprite handles during platform-owned `deinit()`.
+Reset `tinted_` with the game's sprite handles during platform-owned `deinit_platform()`.
 Earlier frames retain their selected material and parameters. A later catalogue
 replacement does not change those packets or automatically replace this retained
 game handle; adopt a new handle explicitly when changing material generations.

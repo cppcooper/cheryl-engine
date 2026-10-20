@@ -90,8 +90,8 @@ frames retain their own geometry/pixels/resources independently.
 ## Automatic view and time
 
 All constructors remain manual by default. A Context-aware session can opt in
-when constructed on its initialized simulation owner, normally the first game
-update. Include `<cheryl/ui/rmlui/session.h>` and `<memory>`; with `engine` as
+when constructed on its initialized simulation owner, normally during
+`init_simulation()`. Include `<cheryl/ui/rmlui/session.h>` and `<memory>`; with `engine` as
 the live Context:
 
 ```cpp
@@ -104,13 +104,14 @@ auto session = std::make_unique<CE::UI::RmlUi::Session>(
 Retain the session between updates. `automatic_view` applies the current
 `SimulationView` seed before construction returns and follows later logical/pixel
 size changes, including zero drawable extents. It must not be enabled during
-platform `init()` before the simulation source exists. The tutorial and demo
+platform `init_platform()` before the simulation source exists. The tutorial and demo
 choose automatic view following while keeping their existing manual time/input
 order.
 
 `automatic_time` advances toolkit time on **future** `SimulationStepStarting`
 phases, before the game update. A session first created inside an update does not
-replay that step. While attached, every manual `update_time()` call rejects,
+replay that step; a session created during `init_simulation()` participates from
+the first step. While attached, every manual `update_time()` call rejects,
 including zero; call `detach_time()` on the UI owner before returning to manual
 advancement. Choose manual time when the application needs it after input or
 other game work. Neither option delivers input, adopts scenes or chooses pass

@@ -39,7 +39,7 @@ than reading the native window.
 
 Put `background.png` in the application asset root. First Game's existing
 `loader.load_assets()` uploads standalone PNGs as well as indexed sprite images.
-After that call in platform-owned `init()`, retrieve its image and create the quad:
+After that call in platform-owned `init_platform()`, retrieve its image and create the quad:
 
 ```cpp
 const auto background_file = std::filesystem::absolute(asset_root_ / "background.png").lexically_normal();
@@ -55,7 +55,7 @@ provider's default textured material. It requires a nonnull image with nonzero
 pixel dimensions from the same provider domain.
 
 When loading an image without the asset loader, use this alternative in
-platform-owned `init()` instead:
+platform-owned `init_platform()` instead:
 
 ```cpp
 background_.emplace(CE::Assets::Graphics::Asset::load(
@@ -102,7 +102,7 @@ Runtime handles publication and presentation.
 
 ## Release and observe
 
-During `deinit()`, release this game's use alongside its other handles:
+During `deinit_platform()`, release this game's use alongside its other handles:
 
 ```cpp
 background_.reset();

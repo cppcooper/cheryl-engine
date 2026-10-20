@@ -41,7 +41,7 @@ namespace CE::Runtime {
     enum class RuntimeStage {
         Unstarted, ///< No session has been admitted.
         Initializing, ///< Session reserved; startup capabilities can be partial.
-        Ready, ///< Initial owners/views established before the first update.
+        Ready, ///< Game initialization and initial owners/views established before the first update.
         Stopping, ///< Shutdown committed; a simulation hook can still be finishing.
         Quiescing, ///< Simulation/mailbox stopped and applicable producer quiescence attempted.
         Stopped ///< Ordered cleanup attempted and terminal outcome retained.
@@ -74,7 +74,7 @@ namespace CE::Runtime {
     struct InitializedCapabilities {
         bool renderer = false; ///< Renderer initialization completed successfully.
         bool input = false; ///< Input initialization completed successfully.
-        bool game = false; ///< Game init hook completed successfully.
+        bool game = false; ///< Both game initialization hooks completed successfully.
         bool simulation_owner = false; ///< Simulation owner/bootstrap was established.
     };
 

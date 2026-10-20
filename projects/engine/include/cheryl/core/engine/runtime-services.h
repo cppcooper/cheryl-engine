@@ -81,12 +81,13 @@ namespace CE::Runtime {
 }
 
 /** @fn CE::Runtime::ServiceAttachment CE::Runtime::RuntimeServices::on_maintenance(std::function<void(const PlatformMaintenance&)> callback) const
- * Attach required immediate work on the initialized platform owner, normally from game init().
+ * Attach required immediate work on the initialized platform owner, normally from game init_platform().
  * No seed/replay is supplied. A callback added during a pass starts on the next pass. All required
  * participants are attempted before the first failure propagates. This phase never pumps native input.
  */
 /** @fn CE::Runtime::ServiceAttachment CE::Runtime::RuntimeServices::on_step(std::function<void(const SimulationStepStarting&)> callback) const
- * Attach required work on the initialized simulation owner, normally from its first game update.
+ * Attach required work on the initialized simulation owner, normally from game init_simulation().
+ * Registration during initialization participates from the first simulation step.
  * Future callbacks run after input/view selection and before the game hook. No current-step replay
  * occurs. Failure or a stop request prevents the dependent update; retain the attachment for lifetime.
  */

@@ -43,10 +43,10 @@ namespace FirstGame {
 
     public:
         Game(CE::Runtime::Context& engine, std::filesystem::path asset_root);
-        void init() override;
+        void init_platform() override;
         void update(const CE::Game::TickContext& tick) override;
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override;
-        void deinit() override;
+        void deinit_platform() override;
     };
     // [/game]
 }

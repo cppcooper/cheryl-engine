@@ -19,7 +19,7 @@ namespace FirstGame {
     Game::Game(CE::Runtime::Context& engine, std::filesystem::path asset_root)
     : engine_(engine), asset_root_(std::move(asset_root)) {}
 
-    void Game::init() {
+    void Game::init_platform() {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
 
         // [bindings]
@@ -102,7 +102,7 @@ namespace FirstGame {
     // [/render]
 
     // [cleanup]
-    void Game::deinit() {
+    void Game::deinit_platform() {
         for (auto& binding : bindings_) {
             if (binding != 0) {
                 static_cast<void>(engine_.input().bindings().unbind(binding));

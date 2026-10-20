@@ -38,7 +38,7 @@ namespace CE::Platform::GLFW {
     };
 
     // Normalizes GLFW window input and Gainput controller reports for Engine bindings.
-    // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
+    // The engine attaches the window before AbstractGame::init_platform, where games can bind device IDs.
     // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
     // can be handed to simulation without reading live Gainput state from another thread.
     // One adapter owns Gainput from its first attachment through destruction.

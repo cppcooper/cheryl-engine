@@ -305,8 +305,8 @@ namespace {
 
         Game(CE::Runtime::Context& engine, RuntimeState& state, bool automatic_time = false)
         : engine_(engine), state_(state), uploader_(engine.resources()), automatic_time_(automatic_time) {}
-        void init() override {}
-        void deinit() override {
+        void init_platform() override {}
+        void deinit_platform() override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             picture_.reset();
             session_.reset(); // The runtime has joined simulation before this hook.
@@ -314,37 +314,36 @@ namespace {
             pending_ = {};
             state_.game_stopped = true;
         }
+        void init_simulation() override {
+            state_.simulation = std::this_thread::get_id();
+            if (automatic_time_)
+                session_ = std::make_unique<Session>(engine_, 7, SessionOptions{.automatic_view = true, .automatic_time = true});
+            else {
+                session_ = std::make_unique<Session>(engine_.input(), 7);
+                session_->follow_view(engine_.simulation_view());
+            }
+            session_->gui().add(tgui::Label::create("Queued UI"));
+            picture_ = tgui::Picture::create(texture(false));
+            picture_->setPosition({10, 40});
+            picture_->setSize({20, 20});
+            session_->gui().add(picture_);
+            auto recording = session_->record();
+            // Mutate the widget before the queued upload sees its old recording.
+            picture_->getRenderer()->setTexture(texture(true));
+            pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording));
+        }
         void update(const CE::Game::TickContext& tick) override {
             EXPECT_EQ(tick.logical_size.width, 320);
             EXPECT_EQ(tick.logical_size.height, 240);
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{640, 480}));
-            if (!session_) {
-                state_.simulation = std::this_thread::get_id();
-                if (automatic_time_)
-                    session_ = std::make_unique<Session>(engine_, 7, SessionOptions{.automatic_view = true, .automatic_time = true});
-                else {
-                    session_ = std::make_unique<Session>(engine_.input(), 7);
-                    session_->follow_view(engine_.simulation_view());
-                }
-                session_->gui().add(tgui::Label::create("Queued UI"));
-                picture_ = tgui::Picture::create(texture(false));
-                picture_->setPosition({10, 40});
-                picture_->setSize({20, 20});
-                session_->gui().add(picture_);
-                auto recording = session_->record();
-                // Mutate the widget before the queued upload sees its old recording.
-                picture_->getRenderer()->setTexture(texture(true));
-                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording));
-            } else {
-                EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
-                (void)adopt_scene(pending_, current_);
-                if (state_.red_seen.load() && !blue_submitted_) {
-                    pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record());
-                    blue_submitted_ = true;
-                }
-                if (state_.blue_seen.load())
-                    runtime->stop();
+            EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
+            (void)adopt_scene(pending_, current_);
+            if (state_.red_seen.load() && !blue_submitted_) {
+                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record());
+                blue_submitted_ = true;
             }
+            if (state_.blue_seen.load())
+                runtime->stop();
             if (!automatic_time_)
                 session_->update_time(tick.delta_seconds);
             session_->handle_input(tick.input.records(), true);

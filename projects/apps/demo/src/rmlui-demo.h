@@ -23,6 +23,7 @@ public:
     ~DemoRmlUi();
     DemoRmlUi(const DemoRmlUi&) = delete;
     DemoRmlUi& operator=(const DemoRmlUi&) = delete;
+    void init_simulation();
     bool update(const CE::Game::TickContext& tick, const DemoUiStatus& status);
     void write(CE::Rendering::FrameWriter& frame) const;
     [[nodiscard]] std::string_view error() const;

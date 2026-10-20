@@ -16,7 +16,7 @@ std::optional<CE::Text::Rendering::Updater> score_;
 int points_ = 0;
 ```
 
-During platform-owned `init()`, replace its font/layout/upload block with:
+During platform-owned `init_platform()`, replace its font/layout/upload block with:
 
 ```cpp
 score_.emplace(engine_, CE::Text::Rendering::Request{
@@ -109,7 +109,7 @@ resources when the updater adopts a new generation.
 
 For a scrolling world, use
 [First Game's separate screen pass](../first-game.md#keep-text-in-screen-coordinates)
-instead of sharing the world camera. During `deinit()`, after runtime has settled
+instead of sharing the world camera. During `deinit_platform()`, after runtime has settled
 accepted work and recycled frames:
 
 ```cpp

@@ -48,16 +48,17 @@ them update UI intent alongside the game state they observe.
 
 | Game hook | Owner | UI work |
 | --- | --- | --- |
-| `init()` | Platform, before simulation starts. | Configure fonts and construct the controller's uploader from the live provider. |
-| First `update(tick)` | Simulation. | Construct the session with automatic view following, receive its initial size, then create widgets. |
+| `init_platform()` | Platform, before simulation starts. | Configure fonts and construct the controller's uploader from the live provider. |
+| `init_simulation()` | Simulation, before Ready and the first update. | Construct the session with automatic view following, receive its initial size, then create widgets. |
 | Each `update(tick)` | Simulation. | Runtime applies view changes before the hook; deliver input, advance toolkit time, update components, and publish available scene replacements. |
 | `prepare_render_frame(frame)` | Simulation. | Append the latest complete UI scene after the world pass. |
-| `deinit()` | Platform, after simulation joins and accepted work settles. | Release component-held toolkit references, then close the session. |
+| `deinit_platform()` | Platform, after simulation joins and accepted work settles. | Release component-held toolkit references, then close the session. |
 
 In sequential mode platform and simulation use the same thread. Concurrent mode
-uses a dedicated simulation thread. Creating the session on the first update
-works in both modes; constructing it during `init()` would bind it to the platform
-thread in concurrent mode. All live session/widget operations use its creating owner.
+uses a dedicated simulation thread. `init_simulation()` supplies the creating
+owner and the initial view in both modes. All live session/widget operations use
+that owner. Final session closure stays in `deinit_platform()` after UI
+quiescence and accepted work have settled.
 
 ## Establish the shared session
 
@@ -91,12 +92,13 @@ namespace Tutorial {
         explicit UIController(CE::Runtime::Context& engine)
         : engine_(engine), platform_(engine.platform_dispatcher().submission()), uploader_(engine.resources()) {}
 
-        void update(const CE::Game::TickContext& tick) {
-            if (!session_)
-                session_ = std::make_unique<CE::UI::TGUI::Session>(
-                    engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true}
-                );
+        void init_simulation() {
+            session_ = std::make_unique<CE::UI::TGUI::Session>(
+                engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true}
+            );
+        }
 
+        void update(const CE::Game::TickContext& tick) {
             session_->handle_input(tick.input.records(), false);
             session_->update_time(tick.delta_seconds);
 
@@ -150,10 +152,19 @@ Include `ui-controller.h` in the game header and add a member:
 std::optional<Tutorial::UIController> ui_;
 ```
 
-During `init()`, after graphics initialization and any font configuration:
+During `init_platform()`, after graphics initialization and any font configuration:
 
 ```cpp
 ui_.emplace(engine_);
+```
+
+Declare `void init_simulation() override;` in the game class, then define it
+alongside the other hooks:
+
+```cpp
+void Game::init_simulation() {
+    ui_->init_simulation();
+}
 ```
 
 After quit handling and gameplay changes in `update()`:
@@ -168,7 +179,7 @@ After world draws in `prepare_render_frame()`:
 ui_->append(frame);
 ```
 
-During `deinit()`, after the runtime has joined simulation and settled accepted work:
+During `deinit_platform()`, after the runtime has joined simulation and settled accepted work:
 
 ```cpp
 if (ui_)

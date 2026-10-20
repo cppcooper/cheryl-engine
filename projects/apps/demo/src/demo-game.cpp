@@ -134,7 +134,7 @@ public:
 
     [[nodiscard]] std::uint64_t completed_updates() const { return updates_; }
 
-    void init() override {
+    void init_platform() override {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
         asset_root_ = std::filesystem::absolute(asset_root_).lexically_normal();
 
@@ -208,7 +208,16 @@ public:
         );
     }
 
-    void deinit() override {
+    void init_simulation() override {
+#ifdef CHERYL_DEMO_TGUI
+        ui_->init_simulation();
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+        rml_ui_->init_simulation();
+#endif
+    }
+
+    void deinit_platform() override {
 #ifdef CHERYL_DEMO_RMLUI
         rml_ui_.reset();
 #endif
@@ -550,12 +559,16 @@ std::uint64_t DemoGame::completed_updates() const {
     return game_state_->game.completed_updates();
 }
 
-void DemoGame::init() {
-    game_state_->game.init();
+void DemoGame::init_platform() {
+    game_state_->game.init_platform();
 }
 
-void DemoGame::deinit() {
-    game_state_->game.deinit();
+void DemoGame::init_simulation() {
+    game_state_->game.init_simulation();
+}
+
+void DemoGame::deinit_platform() {
+    game_state_->game.deinit_platform();
 }
 
 void DemoGame::update(const CE::Game::TickContext& tick) {

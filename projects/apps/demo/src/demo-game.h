@@ -38,8 +38,9 @@ public:
     void stop_after_updates(std::uint64_t count, std::function<void()> stop);
     [[nodiscard]] std::uint64_t completed_updates() const;
 
-    void init() override;
-    void deinit() override;
+    void init_platform() override;
+    void init_simulation() override;
+    void deinit_platform() override;
     void update(const CE::Game::TickContext& tick) override;
     void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override;
 };

@@ -98,7 +98,7 @@ generations. The direct play/control exception remains authoritative.
 
 ## Runtime notification pump
 
-After Runtime initializes its platform services, normally during game `init()`,
+After Runtime initializes its platform services, normally during game `init_platform()`,
 an application-owned miniaudio system can attach to maintenance:
 
 ```cpp

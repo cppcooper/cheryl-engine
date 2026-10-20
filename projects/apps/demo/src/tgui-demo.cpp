@@ -219,10 +219,12 @@ DemoUi::DemoUi(CE::Runtime::Context& engine)
 
 DemoUi::~DemoUi() = default;
 
+void DemoUi::init_simulation() {
+    tgui_state_->create_widgets();
+}
+
 bool DemoUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& tgui = *tgui_state_;
-    if (!tgui.session)
-        tgui.create_widgets();
     tgui.handle_input(tick);
     tgui.session->update_time(tick.delta_seconds);
     tgui.status_label->setText(

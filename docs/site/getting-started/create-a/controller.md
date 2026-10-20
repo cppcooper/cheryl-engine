@@ -62,7 +62,7 @@ std::optional<Tutorial::PlayerController> controller_;
 Keep First Game's input/binding references, native `keyboard` acquisition, and
 game-wide quit/Space registrations. Remove only its direct left/right binding
 registrations. After the existing `const auto keyboard = input.keyboard_id();`
-line in platform-owned `init()`, insert:
+line in platform-owned `init_platform()`, insert:
 
 ```cpp
 keyboard_ = keyboard;
@@ -108,7 +108,7 @@ same class and local action IDs.
 
 Destroying/resetting a controller releases its context lease. That removes its
 mappings at the next poll; previously published ticks retain their state. During
-`deinit()`, after simulation stops, release controller handles and the saved endpoint:
+`deinit_platform()`, after simulation stops, release controller handles and the saved endpoint:
 
 ```cpp
 controller_.reset();

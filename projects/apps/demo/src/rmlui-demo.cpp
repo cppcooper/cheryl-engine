@@ -154,10 +154,12 @@ DemoRmlUi::DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& 
 
 DemoRmlUi::~DemoRmlUi() = default;
 
+void DemoRmlUi::init_simulation() {
+    rmlui_state_->create_widgets();
+}
+
 bool DemoRmlUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& rmlui = *rmlui_state_;
-    if (!rmlui.session)
-        rmlui.create_widgets();
     rmlui.session->update_time(tick.delta_seconds);
     rmlui.handle_input(tick);
     rmlui.status_label->SetInnerRML(

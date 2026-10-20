@@ -61,7 +61,7 @@ std::exception_ptr size_failure_;
 bool request_live_size_ = true;
 ```
 
-During platform-owned `init()`, save the endpoint:
+During platform-owned `init_platform()`, save the endpoint:
 
 ```cpp
 platform_requests_.emplace(engine_.platform_dispatcher().submission());
@@ -98,7 +98,7 @@ reporting policy; it does not trigger an automatic retry. Set `request_live_size
 again only when another observation is wanted. `get()` consumes the future even
 when it throws.
 
-Retain the game members through runtime shutdown and release them in `deinit()`;
+Retain the game members through runtime shutdown and release them in `deinit_platform()`;
 [shutdown settles or cancels accepted requests](runtime-frame-boundary.md#shutdown)
 before that hook. Releasing a future by itself does not cancel submitted work.
 For a producer that outlives a service facade, retain its own endpoint copy and

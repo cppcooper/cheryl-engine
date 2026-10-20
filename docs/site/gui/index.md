@@ -32,9 +32,9 @@ retained scenes; Engine headers do not import either toolkit.
 
 Create the session before toolkit objects, on the thread that will own its UI
 updates. In concurrent runtime mode that is the simulation thread, so create it
-on the first update rather than during platform-owned game initialization.
+during `init_simulation()`, after the runtime establishes its services and initial view.
 Construct the scene uploader from the resource provider during platform-owned
-`init()`. It obtains default rendering materials automatically during upload.
+`init_platform()`. It obtains default rendering materials automatically during upload.
 
 The session executes widget logic, callbacks, layout, and CPU recording. Native
 event polling, graphics uploads, and scene playback remain on platform. The

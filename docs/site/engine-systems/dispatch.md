@@ -90,12 +90,12 @@ there is no total order between independent platform, simulation and worker work
 
 ## Integration
 
-During `init()`, obtain a copyable endpoint and retain it in the producer that
+During `init_platform()`, obtain a copyable endpoint and retain it in the producer that
 will submit requests. During the live session that producer can request a window
 observation on its owner:
 
 ```cpp
-auto platform_requests = engine_.platform_dispatcher().submission(); // Save during init().
+auto platform_requests = engine_.platform_dispatcher().submission(); // Save during init_platform().
 // Later, the producer uses its saved endpoint:
 auto pending = platform_requests.submit([](CE::Runtime::Context& owner) {
     return owner.window().framebuffer_size();
