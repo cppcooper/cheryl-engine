@@ -14,7 +14,7 @@ remain in STATUS; a horizon is not a delivery commitment.
 
 | Horizon | Plan or section | Next checkpoint |
 | --- | --- | --- |
-| Short term | [Engine and module events](short-term/engine-events.md) | Establish isolated notification and required-binding reliability, then deliver coherent window/view integration and explicit automatic UI sizing. |
+| Deferred follow-up | [Event capabilities](short-term/engine-events.md) | Selected non-font integration is implemented. Select a consumer before font catalogue, independent native pumping or further device/OS event work. |
 | Short term | [Font-selection regressions](short-term/README.md#font-selection-regressions) | Cover automatic weight boundaries and explicit preferences. |
 | Short term | [Startup and UI follow-up](short-term/README.md#startup-and-ui-follow-up) | Cover successful context/runtime handoff, callback/batch and placeholder cases; obtain a corrected supplied RmlUi host. |
 | Short term | [Upstream placeholder follow-up](short-term/README.md#upstream-placeholder-follow-up) | Reproduce against unmodified upstream code before proposing a regression or submission. |

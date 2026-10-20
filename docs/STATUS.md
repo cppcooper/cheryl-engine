@@ -30,13 +30,15 @@ deferred review order. The [planning catalogue](planning/README.md) routes to
 subject prerequisites and unfinished checklists. This consolidation does not
 extend implementation or executable acceptance.
 
-**Event integration reconciliation:** 2026-10-19 — Context notification routing,
-sampled gamepad availability, aggregate upload settlement and internal runtime
-pressure have source implementations. The
-[event plan's readiness boundary](planning/short-term/engine-events.md#current-readiness)
-records focused Engine acceptance and outstanding native/application checks.
-Window/view integration and the remaining selected families are still planned;
-additional native capabilities remain deferred.
+**Event integration reconciliation:** 2026-10-19 — Through source `982f74b`,
+the selected non-font integration includes committed views, optional UI sizing/time,
+runtime lifecycle and negotiable close, owner service phases, gamepad/upload
+observations, asset generations/native provenance and playback outcomes. The
+[current event contracts](site/runtime/event-delivery.md#engine-and-module-notifications)
+own behavior. Focused Linux controlled/native checks and offline audio outcomes
+are accepted within their selected scope; physical devices and other platforms
+retain their separate limits. Font catalogue and capability-dependent follow-ups
+remain [deferred](planning/short-term/engine-events.md#deferred-capability-boundaries).
 
 **Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = selected work awaiting investigation, design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work, including capabilities with no complete implementation; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
@@ -46,9 +48,8 @@ The following **four classification sections** comprise 147 distinct entries. Li
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
-| Engine and module event integration | Partial | Isolated typed notification, weak Context routes, sampled gamepad availability, aggregate upload settlement and internal runtime pressure are implemented. Window/view integration, automatic UI sizing and the remaining selected families are planned; native/application acceptance remains bounded by the plan. | [event plan](planning/short-term/engine-events.md#current-readiness) |
 
-*1 entry.*
+*0 entries.*
 
 ## 2. Planned
 
@@ -130,6 +131,7 @@ within each phase.
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
 | **Runtime and concurrency** | | | |
+| Engine and module event integration | Implemented | Typed observations, required view/service attachments, lifecycle and negotiable shutdown, optional UI clocks, asset catalogue/native provenance and bounded playback outcomes. Font catalogue and additional native capabilities remain deferred. | [current contracts](site/runtime/event-delivery.md#engine-and-module-notifications), [follow-up](planning/short-term/engine-events.md) |
 | EngineContext | Implemented | Owns the compatible display, input, rendering, presentation and resource adapters; controls the session domain. | [engine-context.h](../projects/engine/include/cheryl/core/engine/engine-context.h) |
 | AbstractGame lifecycle | Implemented | Consumer hooks for initialization, simulation update, frame preparation, quiescence and teardown. | [abstract-game.h](../projects/engine/include/cheryl/core/game-framework/abstract-game.h) |
 | GameRuntime execution modes | Implemented | Coordinates platform polling, simulation, rendering and shutdown in sequential or concurrent mode. | [game-runtime.cpp](../projects/engine/src/core/game-framework/game-runtime.cpp) |
@@ -187,7 +189,7 @@ within each phase.
 | Asset manifest definitions | Implemented | Schema-backed CPU definitions of sprites, tilesets, pivots, grids, animations and texture references. | [manifest.h](../projects/engine/include/cheryl/assets/definitions/manifest.h) |
 | Manifest parser | Implemented | Parses sprite/tileset and shader documents selected by graphics indexes 2.0; validates exact registered paths and CPU references before construction. | [manifest-loader.cpp](../projects/engine/src/core/resources/asset-management/manifest-loader.cpp) |
 | Asset preparation/upload | Implemented | Separates CPU manifest scan/decode/validation from serialized provider-side GPU upload. | [asset-loader.cpp](../projects/engine/src/core/resources/asset-management/asset-loader.cpp) |
-| Shared asset cache contracts | Implemented | Global asset managers retain immutable resource generations with synchronized publication. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
+| Shared asset cache contracts | Implemented | Global asset managers retain immutable generations with synchronized publication, exact-key catalogue revisions, seeded watches and separate graphics-domain provenance. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
 | Texture manager | Implemented | Normalized-path image cache, exact-key lookup and provider-owner loading checks. | [texture-mgr.h](../projects/engine/include/cheryl/core/resources/asset-management/texture-mgr.h) |
 | Sprite definitions/assets | Implemented | Shared immutable texture/grid resources, pivot, orientations, views and clip definitions. | [sprite.h](../projects/engine/include/cheryl/assets/types/2d/sprite.h) |
 | Sprite animation cursors | Implemented | Named animation selection, facing filters, independent clock advancement and loop/clamp. | [sprite.cpp](../projects/engine/src/assets/types/2d/sprite.cpp) |
@@ -200,10 +202,10 @@ within each phase.
 | Legacy bitmap/font paths | Implemented | `CE::Text::Legacy::AsciiFont` and deprecated `BitmapFont` remain available; recovered binary widths/atlas restore bitmap-font inputs, while JSON widths are metadata only. | [2d/](../projects/engine/include/cheryl/assets/types/2d/) |
 | System font discovery | Implemented | Searches font roots and selects installed font-file candidates. | [fonts-system.h](../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h) |
 | **Ui and audio** | | | |
-| TGUI UI bridge | Implemented | Owns toolkit session, widget APIs, input translation, CPU scene recording and scene upload. | [tgui/](../projects/modules/ui/tgui/) |
-| RmlUi UI bridge | Implemented | Owns native documents/fonts, keyboard/text/pointer input, rectangular clipping and retained scene uploads. Core integration is sufficient to defer further extensions. | [rmlui/](../projects/modules/ui/rmlui/) |
+| TGUI UI bridge | Implemented | Owns toolkit sessions, widgets/input, CPU scene recording/upload and opt-in automatic simulation view/time following. | [tgui/](../projects/modules/ui/tgui/) |
+| RmlUi UI bridge | Implemented | Owns native documents/fonts, input, clipping, retained scene uploads and opt-in automatic simulation view/time following. Core integration is sufficient to defer further extensions. | [rmlui/](../projects/modules/ui/rmlui/) |
 | Nonblocking UI scene adoption | Implemented | Uploads recorded UI resources on graphics owner and adopts completed scene futures without blocking update. | [scene.h](../projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h) |
-| Audio Clip/Voice/System API | Implemented | Backend-neutral immutable PCM clips, synchronized voice control and independent audio lifecycle. | [system.h](../projects/engine/include/cheryl/audio/system.h) |
+| Audio Clip/Voice/System API | Implemented | Backend-neutral immutable PCM clips, synchronized control, independent output lifetime and optional generation outcomes with bounded owner pumping. | [system.h](../projects/engine/include/cheryl/audio/system.h) |
 | WAV/FLAC/MP3 decoding | Implemented | miniaudio-based CPU decode with supported-format checks and bounded output size. | [decode.cpp](../projects/modules/audio/miniaudio/src/decode.cpp) |
 | Offline audio mixer | Implemented | Device-free audio output rendered to caller-provided floating-point buffers. | [miniaudio.h](../projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h) |
 | **Utilities and memory** | | | |
@@ -237,7 +239,7 @@ within each phase.
 | Debug sanitizers | Implemented | Non-MSVC Debug configuration enables address/undefined-behavior sanitizers. | [CMakeLists.txt](../CMakeLists.txt) |
 | Third-party dependency wiring | Implemented | Pinned submodules plus FreeType, HarfBuzz, ICU, GLM, STB, JSON, spdlog, backward-cpp, CTTI and CLI11. | [CherylDependencies.cmake](../cmake/CherylDependencies.cmake) |
 
-*100 entries.*
+*101 entries.*
 
 ## Assessment and direction
 
@@ -295,6 +297,7 @@ the feature classification counts above. Each has an owning document or section:
 
 | Work | Readiness | Plan |
 | --- | --- | --- |
+| Further event capabilities | Deferred; select a consumer before font catalogue, independent native pumping or additional device/OS lifecycle work. | [Event follow-up](planning/short-term/engine-events.md) |
 | Font and startup/UI regression coverage | Existing baseline accepted; dedicated boundary, result-handoff, callback and placeholder cases remain. | [Font selection](planning/short-term/README.md#font-selection-regressions), [Startup/UI](planning/short-term/README.md#startup-and-ui-follow-up) |
 | Supplied RmlUi composition | Needs a corrected dependency and independent consuming host. | [Supplied dependency acceptance](planning/short-term/README.md#supplied-rmlui-acceptance) |
 | Upstream placeholder correction | Needs an unmodified reproduction and matching regression before submission. | [Upstream follow-up](planning/short-term/README.md#upstream-placeholder-follow-up) |

@@ -99,12 +99,13 @@ available.
 
 ## Route input and focus explicitly
 
-Initialize the session's view from `tick.logical_size` and `tick.framebuffer_size`,
-then refresh it when either pair changes. The view persists; calling `set_view()`
-every update is a convenience, and the [UIController example](../getting-started/create-a/ui-controller.md#establish-the-shared-session)
-shows change detection using the copied dimensions. Keep logical and framebuffer
-changes, including zero extents, so layout, input mapping, scale, and drawable
-state remain current. Do not read the live window on simulation. Feed the
+The [UIController example](../getting-started/create-a/ui-controller.md#establish-the-shared-session)
+enables `SessionOptions::automatic_view` on its Context-aware session. The runtime
+applies its coherent seed and later selected size changes before the matching
+game update. Manual sessions instead initialize `set_view()` from
+`tick.logical_size`/`tick.framebuffer_size` and refresh both pairs, including zero
+extents. A valid manual call detaches automatic sizing. Do not read the live window
+on simulation. Feed the
 complete `tick.input.records()` batch once, with an explicit decision about
 which UI receives pointer input. Do not prefilter away modifier releases.
 
@@ -120,8 +121,12 @@ If Escape both releases an editor and quits gameplay, suppress that release gest
 until its physical key release has been processed. The [GUI task](../getting-started/how-to/create-gui.md#feed-records-and-control-focus)
 shows the application guard.
 
-Advance toolkit time, apply game-state changes on the UI owner, then record the
-scene. A widget callback may update simulation-owned intent such as
+Choose manual time after input, as the tutorials do, or opt in to
+`automatic_time` before future game updates; never advance through both paths.
+The [TGUI](../modules/tgui.md#automatic-view-and-time) and
+[RmlUi](../modules/rmlui.md#automatic-view-and-time) references define attach,
+detach and first-step behavior. Apply game-state changes on the UI owner, then
+record the scene. A widget callback may update simulation-owned intent such as
 `apply_requested_`; graphics operations belong to the platform owner. Do not run
 a toolkit's independent main loop over Cheryl's runtime.
 

@@ -126,7 +126,7 @@ namespace CE::Assets::Cache {
         };
 
     protected:
-        Catalogue catalogue_ = Catalogue::create(); ///< Retained CPU metadata; never owns uploaded assets.
+        Catalogue catalogue_ = Catalogue::create(); ///< Retained CPU metadata; never owns uploaded assets. @hideinitializer
         std::shared_mutex& assets_mutex_ = catalogue_.state_->mutex; ///< Shared cache/catalogue commit lock.
         std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{}; ///< Strong key-to-generation owners; direct access requires the corresponding lock.
         const CE::Diagnostics::DomainId domain_ = catalogue_.state_->id; ///< Checked catalogue/cache identity, separate from native provenance.
@@ -370,6 +370,7 @@ namespace CE::Assets::Cache {
 /**
  * @fn template<typename AssetType, typename Key, typename Allocator> CE::Assets::Cache::Store<AssetType, Key, Allocator>::~Store()
  * @brief Clear this cache outside final-deleter lock scopes. Quiesce users before facade destruction; independently retained handles may outlive it.
+ * Closes the retained catalogue source and discards pending observations without Reset or callbacks.
  */
 
 /**
@@ -422,7 +423,10 @@ namespace CE::Assets::Cache {
  * @brief Publish a nonnull complete candidate only if the exact key is absent.
  * @param key Exact publication key.
  * @param asset Retained candidate built before taking the cache write lock.
- * @return Existing winner or newly published handle. Null input throws failed_operation; allocation failure leaves existing entries unchanged and final candidate destruction outside the write lock.
+ * @return Existing winner or newly published handle. Null input throws failed_operation; required
+ * map/generation bookkeeping failure leaves existing entries unchanged and candidate destruction
+ * outside the write lock. Cache hits do not advance catalogue revision or emit a change. Optional
+ * payload allocation/notification failure cannot reject a successful commit.
  */
 
 /**
@@ -442,6 +446,8 @@ namespace CE::Assets::Cache {
  * @param asset Nonnull completed candidate built before publication.
  * @return Retained new owner; old readers retain old generations.
  * Null candidates throw failed_operation; map allocation failure preserves the previous entry. Final retired-owner release occurs after unlocking; no multi-key transaction is provided.
+ * Commits new generation/revision metadata with the handle, then attempts an isolated catalogue
+ * observation. Native provenance uses the bound provider's token; unavailable domains reject publication.
  */
 
 /**

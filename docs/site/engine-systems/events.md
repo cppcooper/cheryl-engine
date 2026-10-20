@@ -55,12 +55,13 @@ Diagnostics observes activity without owning queued failure handling.
 
 ### Used by
 
-Display publishes the typed resize channel. Input publishes completed-poll
-gamepad availability, and configured asset loaders publish aggregate upload
-settlement. Games also publish their own domain events. See
-[engine input and asset notifications](../runtime/event-delivery.md#engine-input-and-asset-notifications)
-for producer wiring and subscription examples. Queued subscriptions deliver
-observations to the selected owner.
+Runtime publishes views, lifecycle milestones, shutdown facts and service phases.
+Input, asset catalogues/loaders, graphics domains and audio publish their owned
+observations. Games also publish their own domain events. The
+[engine/module event catalogue](../runtime/event-delivery.md#engine-and-module-notifications)
+maps each family to its producer setup and retained state. Required view/service
+integration uses [owned attachments](../runtime/event-delivery.md#observe-a-change-or-participate-in-an-operation);
+queued subscriptions deliver optional observations to the selected owner.
 
 | Types | Systems |
 | --- | --- |

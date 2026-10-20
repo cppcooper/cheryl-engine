@@ -141,11 +141,16 @@ namespace CE::UI::RmlUi {
 
 /** @fn void CE::UI::RmlUi::Session::set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer)
  * Copy logical window and framebuffer-pixel dimensions; neither reads a native window. Negative sizes reject. Zero logical extent disables pointer input; zero logical/framebuffer extent suppresses drawing. Native layout uses logical units.
- * Initialize before first input/recording, then refresh when either size changes. The view persists between calls; repeating unchanged values is valid.
+ * In manual mode, initialize before first input/recording and refresh when either size changes.
+ * A valid manual call acknowledges detach from automatic sizing before applying; invalid arguments
+ * preserve the attachment. A native apply failure after detach leaves manual mode selected.
+ * @see [View/time options](cheryl-guide:modules/rmlui#automatic-view-and-time)
  */
 
 /** @fn void CE::UI::RmlUi::Session::update_time(double delta_seconds)
  * Advance toolkit simulation time by a finite nonnegative representable number of seconds. Invalid durations reject; native layout/update failures may propagate. Call record() to update authored layout without advancing elapsed time.
+ * Reject while automatic time is attached, including a zero delta. detach_time() explicitly returns
+ * to manual advancement. This call does not detach sizing or deliver input.
  */
 
 /** @fn void CE::UI::RmlUi::Session::request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing)
@@ -196,4 +201,20 @@ namespace CE::UI::RmlUi {
 
 /** @fn void CE::UI::RmlUi::Session::set_font(Rml::Element& element, const CE::Text::Font& selected)
  * Set the native font-family property to font_family(selected). The element must belong to this session, including its root; foreign elements reject. Other RCSS properties such as weight/italic/size remain native style choices; property/registration failures throw.
+ */
+
+/** @fn void CE::UI::RmlUi::Session::follow_view(const CE::Runtime::SimulationViewSource& source)
+ * On the live UI/source owner, attach required automatic sizing and apply the coherent current seed
+ * before returning. Uninitialized/closed/foreign-owner sources reject. A failed seed leaves no new
+ * subscription; later required apply failure propagates before dependent runtime work. Public
+ * set_view() selects manual mode after validation. Standalone sessions may attach explicitly.
+ */
+/** @fn void CE::UI::RmlUi::Session::follow_time(const CE::Runtime::RuntimeServices& services)
+ * Attach required advancement on the initialized simulation/UI owner. Future selected steps advance
+ * toolkit time before the game hook; the current/past step is not replayed. Manual update_time()
+ * rejects while attached. This operation does not deliver input or adopt a scene.
+ */
+/** @fn void CE::UI::RmlUi::Session::detach_time()
+ * On the live UI owner, acknowledge automatic-time detach. Later manual update_time() is allowed;
+ * elapsed time is retained. Empty/already detached time participation is harmless.
  */

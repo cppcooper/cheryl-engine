@@ -12,7 +12,7 @@ or one update per rendered frame.
 | --- | --- | --- |
 | Initialize adapters, then `game.init()` | Platform/graphics caller of `run()` | Live input/window/graphics become available; the game registers bindings and uploads initial resources. |
 | Service platform requests and eligible input polls | Platform/graphics | Owned request results, complete input polls and copied dimensions become available. |
-| Drain simulation requests, transfer input, call `update()` | Simulation owner | One detached mailbox batch precedes each actual update; the update consumes the available polls and changes game state. |
+| Drain simulation requests, transfer input, select view, run step services, call `update()` | Simulation owner | The tick uses the selected copied view. Required step participants finish before the game hook. |
 | `prepare_render_frame()` after a useful update batch | Simulation owner | Copy camera/draw values and retain resources in an available frame slot; skip visual publication when no slot is free. |
 | Render, present and maintain resources | Platform/graphics | Consume the newest completed frame without reading mutable game state; recycle superseded frames and deferred native resources. |
 | Stop, join, quiesce, settle accepted work, recycle, `deinit()` | Coordinated shutdown, with cleanup on platform | Keep dependencies alive until accepted users finish; follow [the full shutdown order](#shutdown). |
@@ -67,6 +67,153 @@ cleanup preserves the first failure while still shutting down both adapters and
 reports subsequent failures with phase context. See [failure-reporting.md](failure-reporting.md)
 for deferred native callback checks and the bounded emergency reporting contract.
 
+## Runtime service phases
+
+Use `engine.services()` to attach module work that must finish at an owner
+boundary. Retain the returned `CE::Runtime::ServiceAttachment` as a member;
+discarding it immediately detaches the callback. An attachment added during a
+phase starts with the next phase, without replay. Registration requires the
+initialized owner: platform maintenance can attach during `init()`, while
+simulation step services can attach from the first `update()` in either mode.
+
+| Phase | Ordering and payload |
+| --- | --- |
+| `on_maintenance(callback)` / `PlatformMaintenance` | Platform passes independent of frame/update admission, including startup waits and shutdown drainage. Carries context/session, checked pass number, observation time and `Running`, `ShutdownDrain` or `FinalCollection` reason. It does not pump native input. |
+| `on_step(callback)` / `SimulationStepStarting` | After mailbox/input transfer and view selection, before the attempted game update. Carries context/session, step number, simulation delta in seconds, update kind, dropped seconds and matching view revision. |
+
+For a platform-owned module, declare these members in its owning class:
+
+```cpp
+std::uint64_t last_maintenance_pass_ = 0;
+CE::Runtime::ServiceAttachment maintenance_;
+```
+
+During initialized platform setup, with `engine` as the Context:
+
+```cpp
+maintenance_ = engine.services().on_maintenance(
+    [this](const CE::Runtime::PlatformMaintenance& phase) {
+        last_maintenance_pass_ = phase.pass;
+        // Perform this module's bounded platform maintenance here.
+    }
+);
+```
+
+Include `<cheryl/core/engine/runtime-services.h>`. Reset the attachment while its
+borrowed target is still alive. Reset acknowledges an entered callback, except
+safe self-reset; runtime closure also invalidates attachments without invoking
+callbacks from a destructor.
+
+These are required immediate participants. The runtime attempts the remaining
+participants before propagating the first failure; failed step work prevents
+the dependent game update. A step callback that requests stop also prevents that
+update. The step event describes an **attempt**, not a completed game hook.
+Optional bus listeners use `platform_maintenance_event` or
+`simulation_step_starting_event` and do not replace required attachments.
+
+The renderer's required maintenance binding handles ordinary and shutdown-drain
+passes. After frames and `game.deinit()` release their handles, `FinalCollection`
+runs once, followed, when the renderer initialized successfully, by the direct final
+renderer collection barrier even if a
+service callback failed. This preserves native teardown ordering.
+UI clocks are a [separate session opt-in](../modules/tgui.md#automatic-view-and-time).
+Application-owned audio can [attach its notification pump](../modules/miniaudio.md#runtime-notification-pump)
+without transferring output ownership to Runtime.
+
+## Lifecycle observation
+
+Register on `engine.events()` before `run()` for the milestones of interest.
+The channels in `<cheryl/core/game-framework/runtime-lifecycle.h>` carry owned
+`current` snapshots and publish on platform outside scheduler locks:
+
+| Channel / payload | Meaning |
+| --- | --- |
+| `runtime_ready_event` / `RuntimeReady` | Adapter/game initialization, simulation owner and initial selected view are established, before the first game update. Skipped when startup fails or shutdown commits first. |
+| `shutdown_starting_event` / `ShutdownStarting` | Shutdown committed once, including partial startup failure. Simulation can still be finishing its current hook. |
+| `runtime_quiescing_event` / `RuntimeQuiescing` | Simulation/mailbox work has stopped and any applicable `game.quiesce()` hook has been attempted. Accepted CPU work can still be settling. |
+| `runtime_stopped_event` / `RuntimeStopped` | Ordered cleanup has been attempted and the terminal outcome recorded, before `run()` returns or rethrows. A failed cleanup is not proof of successful native release. |
+
+In concurrent mode an immediate Ready callback must not wait for simulation:
+that owner is still behind the startup gate. A simulation-delivered Ready
+listener can queue work for the gate's release before the first update. The
+runtime continues servicing platform dependencies while simulation bootstraps.
+
+Keep a copy of `auto lifecycle = runtime.lifecycle()` for late or post-destruction
+inspection. `lifecycle.snapshot()` is synchronized and retains checked context/
+session identities, sequence, stage, readiness, shutdown cause/request correlation,
+initialized capabilities and terminal outcome. Terminal state includes final
+session counters, the primary failure and bounded secondary failure summaries;
+`secondary_failure_count` can exceed the retained summary array. Failure text owns
+its storage and reports truncation. It does not borrow an exception or adapter.
+
+Bus registration has no lifecycle replay. Snapshot sequence also advances for
+request admission/cancellation, so milestone sequences need not be consecutive.
+`RuntimeStage` uses `Unstarted`, `Initializing`, `Ready`, `Stopping`, `Quiescing`
+and `Stopped`; pending negotiation is represented separately by the shutdown
+snapshot. Lifecycle observation does not replace game hooks, joins, dispatcher
+closure or accepted-work settlement.
+
+## Negotiable shutdown
+
+Use `runtime.shutdown().request()` for an ordinary host request that a game may
+defer or cancel. It returns a `ShutdownTicket` with a checked request ID and shared
+result future. Duplicates coalesce while the same request is unresolved. Requests
+stage for a safe platform pass and wake it independently of input-backlog capacity.
+A retained `ShutdownEndpoint` does not borrow Runtime; it rejects after closure.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Runtime shutdown requests and forced stop
+    accDescr: An ordinary request becomes Pending and can be cancelled or accepted. Stop or failure commits directly and supersedes a pending request. Simulation settlement and quiescence precede final shutdown.
+    Running --> Pending: ordinary request(id)
+    Pending --> Running: cancel(id)
+    Pending --> Committed: accept(id)
+    Running --> Committed: stop or failure
+    Pending --> Committed: stop or failure supersedes request
+    Committed --> Quiescing: simulation stopped and quiescence reached
+    Quiescing --> Stopped: accepted work and cleanup settled
+```
+
+With no host policy, an admitted request is accepted after the
+`shutdown_requested_event` fanout returns. To show a save/quit prompt, retain one
+`ShutdownPolicy` installed before `run()`. Only that policy receives a
+`ShutdownDecision`; public `ShutdownRequested`/`ShutdownRequestCancelled` payloads
+carry facts rather than authority. For a simulation-owned prompt, include
+`<cheryl/core/engine/event-delivery.h>` and `<optional>`. Before `run()`, with an
+application-owned `engine` and `runtime`:
+
+```cpp
+std::optional<CE::Runtime::ShutdownDecision> prompt_decision; // Simulation-owned during run.
+auto policy = runtime.set_shutdown_policy(
+    [&prompt_decision](const CE::Runtime::ShutdownRequest&, CE::Runtime::ShutdownDecision decision) {
+        prompt_decision = decision;
+    },
+    {},
+    CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission())
+);
+```
+
+The game's simulation-owned prompt can later call
+`prompt_decision->accept()` or `cancel()` and then clear its optional. Consume the
+returned boolean: it reports whether the response was still valid and staged;
+the ticket settles when platform processes the decision. Keep the policy and
+borrowed prompt storage alive through the session, then `policy.reset()` before
+destroying that storage. An immediate policy runs on platform and must return
+without waiting for simulation. Never block either needed owner on the ticket.
+
+Pending leaves polling, simulation, presentation and platform services running.
+There is no automatic policy timeout. Policy failure or withdrawal cancels an
+unresolved ordinary request; a fresh request gets a new identity. Stale decisions
+return false. `stop()`, `tick.request_stop()` and runtime failure bypass
+negotiation, supersede pending work and start normal teardown. Ticket results
+distinguish `Accepted`, `Cancelled`, `Superseded` and `Rejected`.
+
+Native GLFW supports [consumable main-window close intent](display-and-window-contract.md#native-close-intent),
+so its close button enters the same protocol. The default policy option
+`NativeClosePolicy::Negotiate` requires that capability. Choose `Force` explicitly
+for a boolean-only adapter: host requests remain negotiable, while native close
+commits unconditionally, including while another request is pending.
+
 ## Queued preparation and stop requests
 
 `engine.platform_dispatcher().submit(work)` transfers owned request data to the platform
@@ -90,6 +237,8 @@ A copied `tick.runtime_stop` retains only stop state and remains safe after runt
 destruction; do not retain the tick itself or its borrowed input view. Manually
 constructed ticks default to no runtime stop source; `request_stop()` then throws
 `failed_operation`. Tests or another scheduler can supply a source explicitly.
+Use the [ordinary shutdown endpoint](#negotiable-shutdown) instead when the game
+must be able to defer or cancel the request.
 
 ## Frame publication and recycling
 

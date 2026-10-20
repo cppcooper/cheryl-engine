@@ -52,7 +52,7 @@ Choose any nonzero value and keep independent recipients distinct; its magnitude
 gives no priority. Documents/elements share that ID and use native focus within
 the session. See [session routing and widget focus](../gui/index.md#session-routing-and-widget-focus).
 
-Initialize copied logical/framebuffer dimensions with `set_view`, then refresh
+For a manual session, initialize copied logical/framebuffer dimensions with `set_view`, then refresh
 them whenever either pair changes. Repeating the call each update is also valid. Context dimensions
 are logical units and its density-independent ratio is one; framebuffer scaling
 belongs to Cheryl's clip/projection playback. `update_time` advances the supplied
@@ -86,6 +86,49 @@ session destruction. After the runtime joins simulation, `close_after_quiescence
 permits final platform-owner teardown. Native contexts and font globals shut down
 while interface/font storage is still live. CPU recordings and uploaded Cheryl
 frames retain their own geometry/pixels/resources independently.
+
+## Automatic view and time
+
+All constructors remain manual by default. A Context-aware session can opt in
+when constructed on its initialized simulation owner, normally the first game
+update. Include `<cheryl/ui/rmlui/session.h>` and `<memory>`; with `engine` as
+the live Context:
+
+```cpp
+auto session = std::make_unique<CE::UI::RmlUi::Session>(
+    engine, 3,
+    CE::UI::RmlUi::SessionOptions{.automatic_view = true, .automatic_time = true}
+);
+```
+
+Retain the session between updates. `automatic_view` applies the current
+`SimulationView` seed before construction returns and follows later logical/pixel
+size changes, including zero drawable extents. It must not be enabled during
+platform `init()` before the simulation source exists. The tutorial and demo
+choose automatic view following while keeping their existing manual time/input
+order.
+
+`automatic_time` advances toolkit time on **future** `SimulationStepStarting`
+phases, before the game update. A session first created inside an update does not
+replay that step. While attached, every manual `update_time()` call rejects,
+including zero; call `detach_time()` on the UI owner before returning to manual
+advancement. Choose manual time when the application needs it after input or
+other game work. Neither option delivers input, adopts scenes or chooses pass
+order.
+
+Existing sessions can call `follow_view(engine.simulation_view())` and
+`follow_time(engine.services())` explicitly. Standalone input/fonts constructors
+reject automatic flags because they have no Context, but can use those explicit
+methods with initialized sources on the same owner. This keeps manual standalone
+use independent of Runtime.
+
+A valid public `set_view()` first detaches automatic sizing, then applies the
+manual view. Invalid dimensions leave the existing attachment intact; a native
+application failure after detach leaves manual mode selected. `follow_view()`
+can reattach with a fresh coherent seed. Session closure acknowledges both
+attachments before releasing toolkit state. Required sizing/time failures
+propagate to the runtime before dependent work; optional bus observers are
+[separate subscriptions](../runtime/event-delivery.md#observe-a-change-or-participate-in-an-operation).
 
 ## Fonts
 

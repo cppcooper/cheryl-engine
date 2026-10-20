@@ -142,6 +142,24 @@ namespace CE::Runtime {
  * Unregister and settle borrowed callback targets before destroying them. A service must not close this shared bus.
  */
 
+/** @fn const CE::Runtime::WindowStateSource& CE::Runtime::Context::window_state() const noexcept
+ * Borrow the platform selection source. Copy the facade to retain synchronized snapshots after
+ * Context destruction. Required watch attachment needs the initialized platform owner; before
+ * selection initialized is false, and runtime closure preserves the final values with closed true.
+ * @see [Committed views](cheryl-guide:runtime/display-and-window-contract#committed-window-and-simulation-views)
+ */
+/** @fn const CE::Runtime::SimulationViewSource& CE::Runtime::Context::simulation_view() const noexcept
+ * Borrow simulation's copied dimension source. The baseline is established on the actual simulation
+ * owner before Ready/first update. Watch there for required sizing; snapshots are readable from any
+ * thread and own no native Window. A focus-only window change does not advance the view revision.
+ */
+/** @fn const CE::Runtime::RuntimeServices& CE::Runtime::Context::services() const noexcept
+ * Borrow platform-maintenance and simulation-step attachment access. Copy the facade for retained
+ * coordination without retaining Context. Attach on each initialized owner; closure rejects new
+ * participants and invalidates old attachments without destructor callbacks.
+ * @see [Service phases](cheryl-guide:runtime/runtime-frame-boundary#runtime-service-phases)
+ */
+
 /**
  * @fn CE::Runtime::Context::Context(std::unique_ptr<CE::Platform::DisplaySystem> display, std::unique_ptr<CE::Rendering::PresentationSurface> surface, std::unique_ptr<CE::Rendering::Renderer> renderer, std::unique_ptr<CE::Rendering::Resources::Provider> resources, CE::Input::System& input, ExecutionOptions execution)
  * @brief Assemble owned compatible adapters and borrowed input without starting a runtime.

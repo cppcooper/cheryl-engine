@@ -85,6 +85,7 @@ namespace CE::Assets::Cache {
      * publish_notifications() services residual work. Overflow drops oldest records.
      * Snapshots recover current keys/generations, not retired history. Optional
      * observer failure never changes a successful cache result.
+     * @see [Catalogue changes](cheryl-guide:assets/asset-loading#catalogue-changes)
      */
     template <typename AssetType, typename Key> class AssetCatalogue final {
         template <typename, typename, typename> friend struct Store;
@@ -367,4 +368,13 @@ namespace CE::Assets::Cache {
  * without recursively entering listeners. Commits normally pump automatically; call this to service
  * a residual bounded backlog. Each record gets one attempt with no bus-failure retry. Closed/empty
  * sources do nothing. Optional observation failures never alter the cache's direct return/exception.
+ */
+
+/** @fn template<typename AssetType, typename Key> void CE::Assets::Cache::AssetCatalogue<AssetType, Key>::Watch::reset() noexcept
+ * Invalidate this optional watch and acknowledge an entered callback, except safe self-reset. The
+ * callback's captures stay pinned through invocation. Default/moved-from/already reset watches are inert.
+ */
+/** @fn template<typename AssetType, typename Key> bool CE::Assets::Cache::AssetCatalogue<AssetType, Key>::Watch::attached() const
+ * Return whether this watch remains active on a live Store source. Store closure makes it false
+ * without a callback. This synchronized observation is not a reservation against later detach/closure.
  */

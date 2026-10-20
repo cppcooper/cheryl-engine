@@ -114,6 +114,8 @@ namespace CE::Audio {
 
 /** @fn void CE::Audio::Voice::stop()
  * Stop playback terminally until restart() explicitly requests frame zero. Does not destroy this handle; closed systems reject controls.
+ * Outcome-capable backends preserve an already observed Completed terminal reason rather than
+ * overwriting it with Stopped. Controls stage outcomes; only the owner pump invokes listeners.
  */
 
 /** @fn void CE::Audio::Voice::restart()
@@ -155,6 +157,8 @@ namespace CE::Audio {
 
 /** @fn void CE::Audio::System::close() noexcept
  * Idempotently stop output and retire voices before backend state. Synchronize producers before destruction; surviving Voice snapshots become Closed and controls throw.
+ * Notification-capable backends stage unfinished terminal outcomes without listeners and permit a
+ * final publish_notifications() after close. Destruction discards unpublished observations.
  */
 
 /** @fn bool CE::Audio::System::closed() const

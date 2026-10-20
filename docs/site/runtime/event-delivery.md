@@ -125,21 +125,63 @@ objects borrowed by callbacks, so listener cleanup still requires the
 [removal barrier](#removal-and-shutdown). It does not select a thread; immediate
 callbacks run on the service's publishing owner.
 
-## Engine input and asset notifications
+## Observe a change or participate in an operation
+
+A bus subscription observes an occurrence. Use the owner's attachment API when
+another operation must finish before the runtime can proceed. For example,
+automatic UI sizing must apply the selected simulation dimensions before the
+game uses that view; a queued resize observer cannot supply that guarantee.
+
+| Need | API | Execution and lifetime |
+| --- | --- | --- |
+| Observe an event | `engine.events().register_listener(channel, callback, ...)` | Immediate on the producer by default; optional queued delivery. The registration persists until explicitly removed. |
+| Apply a selected window or simulation view | `engine.window_state().watch(...)`, `engine.simulation_view().watch(...)` | Required immediate callback on the initialized source owner, including a coherent seed before return. Retain the move-only `ViewAttachment`. |
+| Perform recurring runtime service work | `engine.services().on_maintenance(...)`, `on_step(...)` | Required immediate platform or simulation participation. Retain the move-only `ServiceAttachment`; no seed or replay. |
+| Observe a catalogue's current keys and later changes | `manager.catalogue().watch(...)` | Optional watch with a coherent seed, serialized on the catalogue drainer. Retain its move-only `Watch`; it does not gate runtime progress. |
+
+View/service attachments acknowledge invalidation on `reset()` or destruction:
+an entered callback finishes before reset returns, except safe self-detach.
+Required callbacks are attempted before dependent work; a required failure
+propagates to the caller/runtime after the remaining required participants have
+been attempted. Optional listener failures remain isolated. Attachments added
+during a phase join its next occurrence. A new view watch still receives its own
+initial seed immediately.
+
+Publishing a value on a public observation channel does not select a runtime
+view, run a maintenance pass or authorize shutdown. Those operations remain with
+their owners. [Runtime phases](runtime-frame-boundary.md#runtime-service-phases)
+and [view selection](display-and-window-contract.md#committed-window-and-simulation-views)
+define the supported attachment points.
+
+(engine-input-and-asset-notifications)=
+## Engine and module notifications
 
 These producers use plain typed payloads and weak publication routes:
 
 | Channel and payload | Producer setup and detailed contract |
 | --- | --- |
+| `CE::Runtime::window_state_changed_event` / `WindowStateChanged` | Runtime selects copied logical/pixel sizes and optional native focus on platform. [Committed views](display-and-window-contract.md#committed-window-and-simulation-views). |
+| `CE::Runtime::simulation_view_changed_event` / `SimulationViewChanged` | Runtime selects the view used by the following tick on simulation. UI modules offer required automatic sizing. [View following](../modules/tgui.md#automatic-view-and-time). |
+| `CE::Runtime::runtime_ready_event`, `shutdown_starting_event`, `runtime_quiescing_event`, `runtime_stopped_event` | Platform milestones carry owned lifecycle snapshots; `runtime.lifecycle()` supplies retained current/terminal state. [Lifecycle observation](runtime-frame-boundary.md#lifecycle-observation). |
+| `CE::Runtime::shutdown_requested_event`, `shutdown_request_cancelled_event` | Owned request facts; only the installed host policy receives decision authority. [Negotiable shutdown](runtime-frame-boundary.md#negotiable-shutdown). |
+| `CE::Platform::window_close_requested_event` / `WindowCloseRequested` | A sampled main-window intent enters the runtime's required close bridge. [Native close](display-and-window-contract.md#native-close-intent). |
+| `CE::Runtime::platform_maintenance_event`, `simulation_step_starting_event` | Observe actual owner service passes; required consumers attach through `engine.services()`. [Service phases](runtime-frame-boundary.md#runtime-service-phases). |
 | `CE::Input::gamepad_availability_changed_event` / `CE::Input::GamepadAvailabilityChanged` | Runtime routes its input adapter to `engine.events()` at session start. Standalone adapters select their route explicitly. [Subscribe and read the current gamepad seed](input-state-model.md#gamepad-availability). |
 | `CE::Assets::Loading::asset_upload_settled_event` / `CE::Assets::Loading::AssetUploadSettled` | Call `loader.publish_events_to(engine.events().publisher())` before loading. Each executed attempt produces one aggregate observation, including a batch of 10,000 assets. [Observe upload settlement](../assets/asset-loading.md#upload-settlement-notifications). |
+| `CE::Assets::Cache::asset_catalogue_changed_event<AssetType, Key>` / `AssetCatalogueChanged<AssetType, Key>` | Each manager has a checked source, exact keys and retained generation metadata. Runtime configures provider routing; standalone providers/sources opt in. [Catalogue changes](../assets/asset-loading.md#catalogue-changes). |
+| `CE::Rendering::graphics_domain_state_changed_event` / `GraphicsDomainStateChanged` | Actual native availability/invalidation, independent of provider facade lifetime. Runtime routes the renderer and installs cache eviction. [Graphics domains](../resources/resource-residency.md#graphics-domain-observation). |
+| `CE::Audio::playback_ended_event` / `PlaybackEnded` | An application-owned audio source stages outcomes and explicitly pumps on its designated owner, optionally through maintenance. [Playback outcomes](audio.md#playback-outcomes). |
 
-Register on the producer's chosen bus. Input state has a current snapshot for
-late subscribers; upload outcomes describe individual executed attempts and have
-no event replay. Both publish on their platform/loading owner outside producer
-locks. Select [simulation delivery](#optional-queued-delivery) when a callback
-changes simulation-owned gameplay or UI state. Notifications do not establish
-that simulation has consumed a poll or that a request future is ready.
+Register on the producer's chosen bus. A bus registration itself has no replay;
+use the family's snapshot or seeded watch for current state. Upload settlement
+remains one event per executed batch, while catalogue changes describe actual
+key commits and keep cache hits silent. Neither drives automatic asset adoption.
+
+Select [simulation delivery](#optional-queued-delivery) when a platform/loading
+observation changes simulation-owned gameplay or UI state. A notification does
+not establish that simulation consumed a poll, that an update completed, or that
+a request future is ready. Runtime pressure remains an internal observation;
+font catalogue, physical device topology and OS suspend/resume events are deferred.
 
 ## Removal and shutdown
 
@@ -151,6 +193,12 @@ already entered, not for queued tasks which can safely discard invalid entries.
 Do not wait while holding a lock needed by the callback. Self-unregister works;
 waiting from the same listener, including nested invocation, rejects instead of
 deadlocking. Callback exceptions still release in-flight accounting.
+
+`id.disconnect()` provides the same nonblocking invalidation through the saved
+registration without borrowing the `EventBus` facade. It is safe after bus
+destruction, but still does not wait for an entered callback. Dropping the ID
+continues to leave the registration active. Owned view/service/catalogue
+attachments have their separate RAII cleanup contracts described above.
 
 `close()` invalidates all registrations and rejects subsequent registration and
 dispatch. Concurrent close/removal calls serialize invalidation with registry

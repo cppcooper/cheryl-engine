@@ -240,8 +240,9 @@ example exercises replacement rather than Chinese-language coverage.
 `Game` passes the neutral `DemoUiStatus` model to its selected views and receives
 camera-reset actions. Each view prepares its uploader on platform during
 initialization, then creates its session/native objects lazily on the first
-simulation update. It supplies copied logical/framebuffer dimensions and simulation
-time. Complete CPU recordings go through the platform dispatcher/uploader, with
+simulation update. Both sessions opt in to automatic simulation-view following;
+runtime applies paired size changes before the matching update. The demo retains
+manual time advancement after input. Complete CPU recordings go through the platform dispatcher/uploader, with
 at most one replacement pending per view. Upload failure preserves the current
 scene and appears in the HUD. Frame preparation appends TGUI, then RmlUi, after
 the world/HUD pass; it never traverses live widgets. Teardown follows simulation

@@ -66,6 +66,66 @@ A native start failure leaves it stopped. Control changes take effect at backend
 processing boundaries. Buffered decoded PCM can delay a looping-policy change;
 already queued device output cannot be withdrawn.
 
+## Playback notifications
+
+Use `publish_events_to()` and `publish_notifications()` for the
+[logical outcome contract](../runtime/audio.md#playback-outcomes). This standalone
+example opens no device and advances no mixer clock. Include the existing module
+header plus `<optional>` and `<vector>`:
+
+```cpp
+CE::Events::EventBus events;
+std::optional<CE::Audio::PlaybackEnded> ended;
+auto audio = CE::Audio::Miniaudio::System::open_offline({}, {.capacity = 1024});
+audio->publish_events_to(events.publisher());
+const auto listener = events.register_listener(
+    CE::Audio::playback_ended_event,
+    [&ended](const CE::Audio::PlaybackEnded& outcome) { ended = outcome; }
+);
+auto voice = audio->play(CE::Audio::Clip::from_samples({2, 48000}, std::vector<float>(128, 0.25f)));
+voice->stop();
+audio->publish_notifications(); // ended now identifies this voice/generation as Stopped.
+audio->close();
+audio->publish_notifications(); // Allowed after close; the terminal fact is not duplicated.
+events.unregister_and_wait(listener);
+```
+
+Callbacks run only from the owner pump, outside audio locks. Retain and filter
+system/voice/generation IDs when several outputs share a bus. A source's
+`notification_snapshot()` and retained `voice->snapshot().terminal` reconcile
+current state after bounded observation loss. They do not replay earlier
+generations. The direct play/control exception remains authoritative.
+
+## Runtime notification pump
+
+After Runtime initializes its platform services, normally during game `init()`,
+an application-owned miniaudio system can attach to maintenance:
+
+```cpp
+audio->publish_events_to(engine.events().publisher());
+audio_pump_ = audio->pump_with(engine.services());
+```
+
+Declare `CE::Runtime::ServiceAttachment audio_pump_;` as an owning member and
+retain it through the wanted passes. `pump_with()` captures only weak internal
+audio access, so it holds no borrowed System pointer and does not keep output
+alive. It pumps notifications during platform maintenance, including after an
+explicit close. It does not open/close output, call `maintain()` or advance the
+audio clock. Ordinary voice reclamation remains the application's maintenance
+responsibility.
+
+During platform cleanup after producers settle:
+
+```cpp
+audio->close();
+audio->publish_notifications(); // Explicit final outcomes before detach.
+audio_pump_.reset();
+```
+
+Keep output and the pump's designated publication owner consistent. Releasing
+the system first silently disables its weak pump; destruction never invokes
+listeners. Runtime owns neither application audio shutdown nor playback policy.
+
 ## Dependency configuration
 
 Miniaudio is selected for its available source, permissive licensing and support
@@ -119,7 +179,7 @@ narrow it for a focused change and avoid repeating cases through aggregates.
   cmake --build build/testing-audio --parallel "$(nproc)" --target \
     tests-audio-miniaudio consumer-module-audio-miniaudio
   ctest --test-dir build/testing-audio --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_decode|audio_stream)\.'
+    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_decode|audio_stream|audio_events)\.'
   ./build/testing-audio/cheryl-audio-miniaudio-consumer --offline
 )
 ```
@@ -127,7 +187,10 @@ narrow it for a focused change and avoid repeating cases through aggregates.
 ## Acceptance boundaries
 
 `tests-audio-miniaudio` owns offline PCM, mixing/control, owned-source, file decode,
-short-stream and lifetime regressions. `all-audio-miniaudio` and the root `all-tests`
+short-stream, playback generation/outcome, bounded notification and lifetime regressions.
+Outcome checks include restart failure arbitration, retained EOF, owner/cutoff
+rules, post-close pumping and destructor silence without opening a device.
+`all-audio-miniaudio` and the root `all-tests`
 reuse those case objects. `consumer-module-audio-miniaudio` supplies an independent
 audio consumer and SDK-free first-include probe. None requires a display or device.
 

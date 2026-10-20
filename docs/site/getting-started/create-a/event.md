@@ -73,14 +73,14 @@ happens. Both `dispatch()` and `notify()` publish a value through the bus.
 ```mermaid
 sequenceDiagram
     accTitle: Create, listen, dispatch and stop listening
-    accDescr: A HUD registers its callback. Game code creates a DamageTaken value and dispatches it. The bus calls the HUD before returning. The HUD unregisters when finished.
+    accDescr: A HUD registers its callback. Game code creates a DamageTaken value and notifies the bus. The bus calls the HUD before returning. The HUD unregisters when finished.
     participant Game as Game code
     participant Bus as Chosen EventBus
     participant HUD as HUD listener
     HUD->>Bus: register_listener(damage_taken, callback)
     Bus-->>HUD: registration
     Note over Game: Apply damage and create DamageTaken{13, 87}
-    Game->>Bus: dispatch(damage_taken, damage)
+    Game->>Bus: notify(damage_taken, damage)
     activate Bus
     Bus->>HUD: callback(damage)
     HUD-->>Bus: return
@@ -89,8 +89,7 @@ sequenceDiagram
     HUD->>Bus: unregister_and_wait(registration)
 ```
 
-The diagram shows a successful immediate `dispatch()`. `notify()` follows the
-same delivery path with the failure handling described below. The producer
+The diagram shows a successful immediate `notify()`. The producer
 chooses a channel and bus; the bus finds its registered consumers. Callbacks run
 inside the publication call by default, before it returns. Each callback receives
 a borrowed `const DamageTaken&`.
@@ -169,9 +168,22 @@ damage facts. A publisher does not keep the bus alive, and an empty or expired
 route discards observations. See [weak publishing handles](../../runtime/event-delivery.md#weak-publishing-handles)
 for closure and delivery rules.
 
-The engine already defines [gamepad availability](../../runtime/input-state-model.md#gamepad-availability)
-and [upload settlement](../../assets/asset-loading.md#upload-settlement-notifications)
-channels. Subscribe to those shared definitions when observing input or loading.
+## Use an existing engine event
+
+Use the shared channel when Engine or a module already owns the occurrence.
+The [event catalogue](../../runtime/event-delivery.md#engine-and-module-notifications)
+maps runtime milestones, close requests, views, input, loading, graphics and
+playback outcomes to their setup and snapshot APIs. For example, use upload
+settlement for one batch outcome and catalogue changes for actual key commits.
+
+For automatic UI sizing, use the session's `automatic_view` option or
+`follow_view()` attachment. For recurring required service work, use
+`engine.services()`. Those owner APIs ensure the work finishes at the right
+runtime boundary; an ordinary queued observer cannot supply that guarantee.
+See [observation and participation](../../runtime/event-delivery.md#observe-a-change-or-participate-in-an-operation).
+
+These engine conveniences do not add steps to `DamageTaken`: a custom game event
+still needs only its payload, channel, selected bus and listener.
 
 ## Call a consumer directly
 

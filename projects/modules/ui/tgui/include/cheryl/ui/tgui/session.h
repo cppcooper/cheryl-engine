@@ -143,11 +143,16 @@ namespace CE::UI::TGUI {
 
 /** @fn void CE::UI::TGUI::Session::set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer)
  * Copy logical window and framebuffer-pixel dimensions; neither reads a native window. Negative sizes reject. Zero logical extent disables pointer input; zero logical/framebuffer extent suppresses drawing. Native layout uses logical units.
- * Initialize before first input/recording, then refresh when either size changes. The view persists between calls; repeating unchanged values is valid.
+ * In manual mode, initialize before first input/recording and refresh when either size changes.
+ * A valid manual call acknowledges detach from automatic sizing before applying; invalid arguments
+ * preserve the attachment. A native apply failure after detach leaves manual mode selected.
+ * @see [View/time options](cheryl-guide:modules/tgui#automatic-view-and-time)
  */
 
 /** @fn void CE::UI::TGUI::Session::update_time(double seconds)
  * Advance toolkit simulation time by a finite nonnegative representable number of seconds. Invalid durations reject; native layout/update failures may propagate. Uses the session's UI owner and does not poll platform events.
+ * Reject while automatic time is attached, including a zero delta. detach_time() explicitly returns
+ * to manual advancement. This call does not detach sizing or deliver input.
  */
 
 /** @fn void CE::UI::TGUI::Session::request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing)
@@ -194,4 +199,20 @@ namespace CE::UI::TGUI {
 /** @fn void CE::UI::TGUI::Session::set_layout(tgui::Widget::Ptr widget, const WidgetLayout& layout)
  * Bind typed placement to the current parent's content size. Add the widget to this GUI with native Manual layout first; null/foreign/unparented widgets or invalid/nonfinite rules reject. Reapply after reparenting. Releasing a formerly scalable axis freezes its current size; other native sizing is preserved.
  * @see [Typed layout](cheryl-guide:modules/tgui#typed-layout)
+ */
+
+/** @fn void CE::UI::TGUI::Session::follow_view(const CE::Runtime::SimulationViewSource& source)
+ * On the live UI/source owner, attach required automatic sizing and apply the coherent current seed
+ * before returning. Uninitialized/closed/foreign-owner sources reject. A failed seed leaves no new
+ * subscription; later required apply failure propagates before dependent runtime work. Public
+ * set_view() selects manual mode after validation. Standalone sessions may attach explicitly.
+ */
+/** @fn void CE::UI::TGUI::Session::follow_time(const CE::Runtime::RuntimeServices& services)
+ * Attach required advancement on the initialized simulation/UI owner. Future selected steps advance
+ * toolkit time before the game hook; the current/past step is not replayed. Manual update_time()
+ * rejects while attached. This operation does not deliver input or adopt a scene.
+ */
+/** @fn void CE::UI::TGUI::Session::detach_time()
+ * On the live UI owner, acknowledge automatic-time detach. Later manual update_time() is allowed;
+ * elapsed time is retained. Empty/already detached time participation is harmless.
  */

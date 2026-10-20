@@ -49,8 +49,8 @@ them update UI intent alongside the game state they observe.
 | Game hook | Owner | UI work |
 | --- | --- | --- |
 | `init()` | Platform, before simulation starts. | Configure fonts and construct the controller's uploader from the live provider. |
-| First `update(tick)` | Simulation. | Construct the session, initialize its view, then create widgets. |
-| Each `update(tick)` | Simulation. | Refresh changed view dimensions, deliver input, advance toolkit time, update components, and publish available scene replacements. |
+| First `update(tick)` | Simulation. | Construct the session with automatic view following, receive its initial size, then create widgets. |
+| Each `update(tick)` | Simulation. | Runtime applies view changes before the hook; deliver input, advance toolkit time, update components, and publish available scene replacements. |
 | `prepare_render_frame(frame)` | Simulation. | Append the latest complete UI scene after the world pass. |
 | `deinit()` | Platform, after simulation joins and accepted work settles. | Release component-held toolkit references, then close the session. |
 
@@ -72,7 +72,6 @@ keep First Game's existing direct score display until the HUD lesson replaces it
 #include <cheryl/ui/tgui/scene.h>
 #include <cheryl/ui/tgui/session.h>
 
-#include <array>
 #include <future>
 #include <memory>
 #include <optional>
@@ -87,7 +86,6 @@ namespace Tutorial {
         CE::UI::TGUI::Scene scene_;
         std::future<CE::UI::TGUI::Scene> pending_;
         std::unique_ptr<CE::UI::TGUI::Session> session_;
-        std::optional<std::array<int, 4>> view_;
 
     public:
         explicit UIController(CE::Runtime::Context& engine)
@@ -95,16 +93,9 @@ namespace Tutorial {
 
         void update(const CE::Game::TickContext& tick) {
             if (!session_)
-                session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, tgui_target_);
-
-            const std::array current_view{
-                tick.logical_size.width, tick.logical_size.height,
-                tick.framebuffer_size.width, tick.framebuffer_size.height
-            };
-            if (!view_ || *view_ != current_view) {
-                session_->set_view(tick.logical_size, tick.framebuffer_size);
-                view_ = current_view;
-            }
+                session_ = std::make_unique<CE::UI::TGUI::Session>(
+                    engine_, tgui_target_, CE::UI::TGUI::SessionOptions{.automatic_view = true}
+                );
 
             session_->handle_input(tick.input.records(), false);
             session_->update_time(tick.delta_seconds);
@@ -134,14 +125,17 @@ TGUI and RmlUi sessions. All menus, chat fields, and HUD widgets in this TGUI
 session share its routing identity. TGUI widget focus selects the control within it.
 See [session routing and widget focus](../../gui/index.md#session-routing-and-widget-focus).
 
-The view is persistent state. Initialize it once, then refresh it when either
-logical or framebuffer dimensions change. The current explicit `set_view()` API
-receives copied sizes; this controller detects those changes from the runtime's
-paired tick snapshot. Logical sizes drive layout/input coordinates, while pixel
-sizes provide framebuffer scaling and drawable state. Checking both handles
-resizing and scale changes even when only one pair changes. An unconditional
-`set_view()` call each update is also valid; the method is not a time-advance hook.
-Keep zero-size changes so minimization can suppress drawing.
+`automatic_view` applies the runtime's current simulation-view seed before the
+session constructor returns. Later size changes apply before the matching game
+update, so the controller needs no dimension cache or repeated `set_view()` call.
+Logical sizes drive layout/input coordinates; pixel sizes provide framebuffer
+scaling and drawable state, including zero extents during minimization.
+
+Time stays manual here: input is delivered before `update_time()`. The separate
+`automatic_time` option changes that order to the runtime's pre-update phase;
+do not enable it while retaining the manual call. See
+[automatic view and time](../../modules/tgui.md#automatic-view-and-time) for
+explicit attachment, manual overrides and standalone sessions.
 
 The passive example selects no pointer delivery and requests no keyboard focus.
 Feed the full input batch once for session bookkeeping, including empty batches.
@@ -189,7 +183,7 @@ the provider, and dispatch dependencies alive through runtime cleanup.
 
 ## Add interface components
 
-Construct components after the session's initial `set_view()` call, on simulation.
+Construct components after the automatically sized session returns, on simulation.
 Pass each a `Session&` whose lifetime covers its widgets and callbacks. The
 controller drives input/time and records the whole GUI; individual components
 update their own presentation. Each component should remove only its own widgets
@@ -207,7 +201,7 @@ For complete interactive input handling, follow the
 ## Observe the lifecycle
 
 At this checkpoint the UI has no widgets, so its scene is empty. Inspect the
-session and `view_` in a debugger during updates. The session should be created
-once, and `view_` should follow logical/pixel size changes. Run both runtime modes
+session and `engine_.simulation_view().snapshot()` in a debugger during updates.
+The session should be created once and follow logical/pixel size changes. Run both runtime modes
 to exercise the owner boundary. Continue with [Create a HUD](hud.md) for visible
 score and health widgets and the completed maintained controller.

@@ -182,8 +182,9 @@ that is simulation, so run this block in `update()` after quit handling:
 ```cpp
 if (!ui_) {
     constexpr CE::Input::Routing::TargetId rmlui_target = 7;
-    ui_ = std::make_unique<CE::UI::RmlUi::Session>(engine_, rmlui_target);
-    ui_->set_view(tick.logical_size, tick.framebuffer_size);
+    ui_ = std::make_unique<CE::UI::RmlUi::Session>(
+        engine_, rmlui_target, CE::UI::RmlUi::SessionOptions{.automatic_view = true}
+    );
     const auto source = (asset_root_ / "graphics/ui/tutorial.rml").u8string();
     document_ = ui_->context().LoadDocument(Rml::String(source.begin(), source.end()));
     if (!document_)
@@ -200,8 +201,7 @@ if (!ui_) {
         ui_->release_keyboard_focus();
         throw std::runtime_error("Cannot focus the UI field");
     }
-} else
-    ui_->set_view(tick.logical_size, tick.framebuffer_size);
+}
 ```
 
 `rmlui_target` identifies the whole session as an Engine keyboard/text recipient.
@@ -212,9 +212,11 @@ See [session routing and widget focus](../../gui/index.md#session-routing-and-wi
 RmlUi permits one session owning Core's process globals; add more documents to that
 session when extending the interface.
 
-This example refreshes the copied view each update. The view persists, so calling
-`set_view()` initially and whenever either logical or framebuffer dimensions change
-is sufficient. Keep zero-size and scale changes as well as ordinary window resizing.
+Automatic view following applies the current seed before document creation and
+later paired size changes before the matching update. It includes zero drawable
+extents and scale changes. Time remains manual after input below; do not also
+enable `automatic_time`. See [view/time options](../../modules/rmlui.md#automatic-view-and-time)
+for manual overrides and explicit attachment.
 
 The session imports the configured Engine fonts and retains their bytes through
 Core shutdown. Showing a document,

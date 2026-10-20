@@ -174,6 +174,98 @@ Construct separate loaders for separate roots. Legacy `Loader::get(root)` remain
 available but rejects a different root after its first initialization; `get()` only
 retrieves an already-initialized singleton.
 
+## Catalogue changes
+
+Use a manager's `catalogue()` source when a resource browser, dependency cache or
+reload coordinator needs current keys and later committed changes. It supplies
+CPU-only snapshots and optional seeded watches. Each catalogue has a checked
+identity and revision; a key's generation is source-unique and increasing, so
+generation numbers for one key can have gaps.
+
+The channel is typed by both asset namespace and exact key type:
+`CE::Assets::Cache::asset_catalogue_changed_event<AssetType, Key>` carries
+`AssetCatalogueChanged<AssetType, Key>`. Image/program/material caches use path
+keys; indexed shader, sprite and tileset caches use their string identities.
+Neither all managers nor all keys are flattened into one string namespace.
+
+| Change | Committed meaning |
+| --- | --- |
+| `Published` | An absent exact key acquired a complete generation. |
+| `Replaced` | An existing key acquired a fresh complete generation; `previous` identifies the old one. |
+| `Reset` | Explicit `clear_assets()` cleared the catalogue, including an already empty one. No key/current generation is supplied. |
+
+Cache hits are silent. Changes stage only after cache and derived metadata commit,
+then notify outside cache locks after retired asset owners release. Each payload
+owns its key and previous/current generation metadata, without owning the asset.
+Listener failure cannot turn a successful reload into a claim that the old entry
+was preserved. Earlier entries can still commit before a later batch failure;
+there is no multi-key transaction or automatic relinking of old frames/materials.
+
+Runtime routes its resource provider to `engine.events()` before game loading.
+For standalone use, call `provider.publish_events_to(bus.publisher())` before
+manager loading. A retained catalogue source can explicitly override that route
+with `source.publish_events_to(...)`. Already staged records keep their original
+destination. Without an active route or local watch, commits maintain generation
+metadata without preparing observation payloads.
+
+For a platform-owned loading tool, include
+`<cheryl/core/resources/asset-management/texture-mgr.h>`. With the initialized
+`engine` and `loader` from the entry point above:
+
+```cpp
+auto& images = CE::Assets::Images::Manager::get();
+auto source = images.catalogue();
+std::uint64_t observed_revision = 0;
+auto watch = source.watch(
+    [&observed_revision](const CE::Assets::Cache::CatalogueObservation<
+        CE::Rendering::Resources::Image, std::filesystem::path>& observation) {
+        observed_revision = observation.seed ? observation.seed->revision : observation.change->revision;
+    }
+);
+loader.load_assets(engine.resources());
+auto current = source.snapshot();
+// Inspect current.entries/revision; reconcile this snapshot if an observation was lost.
+watch.reset(); // Before the borrowed counter goes away.
+```
+
+The seed contains current exact keys and generations before `watch()` returns;
+delayed changes at or below its revision are filtered. Later callbacks run on the
+source drainer, possibly another producer thread, serialized for that watch.
+The move-only `Watch` detaches on reset/destruction and acknowledges an entered
+callback, with safe self-reset. Seed failure propagates and removes the watch;
+later observer failure is isolated. Use a bus listener with
+[simulation delivery](../runtime/event-delivery.md#optional-queued-delivery)
+when updating simulation-owned gameplay or UI from platform commits.
+
+`manager.asset_snapshot(exact_key)` selects a strong asset handle, optional
+generation metadata and catalogue revision under the same lock. Missing keys
+have no handle/generation. This is exact-key lookup rather than a manager's
+convenience alias policy. Old selections retain old handles. A generation's
+separate `graphics_domain` token describes its native provenance; an empty token
+explicitly means unsupported/unbound provenance. Catalogue revision does not
+authorize native use. See [graphics domains](../resources/resource-residency.md#graphics-domain-observation).
+
+### Bounded delivery and teardown
+
+Commits automatically start an ordered, nonrecursive drain. It retains at most
+64 observations and attempts at most 64 per call. Reentrant commits can join the
+current drain within that budget; call `source.publish_notifications()` or make
+a later commit to service residual work. Overflow drops the oldest observation.
+Payload-preparation failure also leaves the cache commit intact. Snapshots and
+attempted events expose cumulative loss and first/last lost revisions; the range
+can contain delivered revisions. A bus failure gets no automatic retry.
+
+Snapshots reconcile current keys/generations, not retired history. Store
+destruction closes its retained source without a Reset callback. Provider
+destruction silently clears its global caches and advances their revisions;
+those manager sources can later serve another provider. Actual graphics-domain
+invalidation uses the runtime's cache-eviction consumer and emits explicit Reset
+observations. Destructors never invoke catalogue listeners.
+
+This per-key family is separate from the aggregate upload result below. A batch
+of 10,000 assets still has one `AssetUploadSettled`; configured catalogue observers
+can additionally receive its real new/replaced key commits.
+
 ## Upload settlement notifications
 
 Subscribe to `CE::Assets::Loading::asset_upload_settled_event` to observe an

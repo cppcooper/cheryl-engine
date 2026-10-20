@@ -36,6 +36,51 @@ a new provider can bind the global domain. Externally retained logical assets
 continue to exist independently; their native handles still belong to the old
 renderer/context lifetime and cannot be used after that lifetime closes.
 
+## Graphics-domain observation
+
+Retain `renderer.graphics_domain()` or `provider.graphics_domain()` when a cache
+must know whether its native resources remain usable. The portable
+`CE::Rendering::GraphicsDomain` token retains only synchronized observation state;
+it owns no renderer, window, context or native objects. An empty token has ID zero
+and explicitly means unsupported. A supported domain has a checked permanent ID:
+
+```mermaid
+stateDiagram-v2
+    accTitle: Permanent graphics-domain lifetime
+    accDescr: A supported domain starts uninitialized, becomes available after native initialization, and becomes permanently unavailable after shutdown or abandonment. A replacement renderer creates a different domain.
+    Uninitialized --> Available: initialize / sequence 1
+    Available --> Unavailable: shutdown or abandon / sequence 2
+```
+
+Sequence zero means unavailable with reason `NotInitialized`; sequence one is
+available with reason `Initialized`. Sequence two is permanently unavailable with
+reason `Shutdown` after native deletion/deactivation, or `Abandoned` when native
+cleanup could not run. A domain never reopens. Another renderer has another ID;
+retaining or replacing a provider facade does not migrate old handles.
+
+`CE::Rendering::graphics_domain_state_changed_event` carries an owned historical
+`current` snapshot and a live `domain` token. Runtime configures renderer routing
+and installs `CE::Assets::Cache::Context::evict_graphics_domain` on its Context
+bus. Standalone hosts select a weak renderer route and may install that consumer
+on their loading/graphics owner. It ignores foreign/stale records and clears the
+matching bound caches after real invalidation, releasing their provider binding.
+Native cleanup remains the backend's responsibility even if observation fails.
+
+Available publication waits until the complete renderer initialization operation
+finishes. A failure before deactivation leaves a live domain available; a later
+context-release failure after deactivation preserves the unavailable fact and the
+original direct error. Destruction can abandon a live domain without calling
+listeners; optional terminal owner delivery is best-effort. The retained token's
+current truth remains readable after facade destruction.
+
+Register and read the initial token snapshot on the publication owner when an
+ordered seed is needed. A bus subscription has no replay. Token snapshots may be
+read on any thread, but `Available` grants no foreign-thread/context access and
+does not freeze availability. Per-key [catalogue generations](../assets/asset-loading.md#catalogue-changes)
+carry this provenance separately from catalogue identity, without retaining GPU
+owners. The contract reports native lifetime, not device-loss recovery, residency
+budgets or automatic asset adoption.
+
 ## Immutable resource publication
 
 `CE::Assets::Images::decode(path)` and `decode(encoded_bytes)` are CPU-only
@@ -109,9 +154,12 @@ then runs the context-owned retirement collector. A deleted current program stay
 alive until it is unbound; this also happens before the shutdown sweep while a
 borrowed window/context may remain alive. Subsequent draws select their own program.
 Backends without deferred resource release implement a no-op. Both runtime modes
-call it after platform/render/recycle work and before waiting, including when no
+invoke it through a required [maintenance attachment](../runtime/runtime-frame-boundary.md#runtime-service-phases)
+after platform/render/recycle work and before waiting, including when no
 simulation update or first frame is available. It also runs while accepted CPU
-and simulation work settle, and after final frame/game releases. Partial renderer
+and simulation work settle. After final frame/game releases, the final collection
+phase is followed by the direct renderer maintenance barrier even if a phase
+callback failed. Partial renderer
 initialization does not count as ready for maintenance. Clear/render validate
 their context but no longer duplicate collection.
 

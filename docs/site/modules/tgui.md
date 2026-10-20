@@ -20,6 +20,7 @@ the engine boundaries used by independently implemented UI modules.
 - [Selection and dependency](#selection-and-dependency)
 - [Use it in a game](#use-it-in-a-game)
 - [Session ownership](#session-ownership)
+- [Automatic view and time](#automatic-view-and-time)
 - [Fonts](#fonts)
 - [Typed layout](#typed-layout)
 - [Input translation](#input-translation)
@@ -53,7 +54,7 @@ interactive buttons, editing and application focus controls. The lifecycle is:
 
 1. During platform-owned `init()`, construct a scene uploader from the resource provider.
 2. On the first simulation update, create a session and native widgets.
-3. Refresh the view when copied sizes change; supply simulation time and the complete input batch each update.
+3. Follow the selected simulation view; supply simulation time and the complete input batch each update.
 4. Record CPU scene data and keep one upload pending while retaining the previous scene.
 5. Append the uploaded scene during frame preparation, after world/HUD passes.
 6. After UI quiescence, release application-held toolkit objects and close the session.
@@ -79,7 +80,7 @@ share the session's ID and use native widget focus within it. Numeric values giv
 no focus priority. See [session routing and widget focus](../gui/index.md#session-routing-and-widget-focus)
 for menu/chat transitions and coexistence with RmlUi.
 
-Initialize `set_view` with the tick's copied `logical_size` and `framebuffer_size`,
+For a manual session, initialize `set_view` with the tick's copied `logical_size` and `framebuffer_size`,
 then refresh it when either pair changes. An unconditional call each update is
 also valid. Pass simulation seconds to `update_time` and the entire immutable
 record stream to `handle_input`. GUI input/layout use logical units; the recording
@@ -119,6 +120,49 @@ destruction. The input source must outlive it. After simulation has joined,
 no toolkit calls or references may race or survive it. GUI resources are destroyed
 before TGUI's global font, theme, timers and backend. Retained CPU recordings and
 uploaded Cheryl frames remain independent of the toolkit lifetime.
+
+## Automatic view and time
+
+All constructors remain manual by default. A Context-aware session can opt in
+when constructed on its initialized simulation owner, normally the first game
+update. Include `<cheryl/ui/tgui/session.h>` and `<memory>`; with `engine` as
+the live Context:
+
+```cpp
+auto session = std::make_unique<CE::UI::TGUI::Session>(
+    engine, 2,
+    CE::UI::TGUI::SessionOptions{.automatic_view = true, .automatic_time = true}
+);
+```
+
+Retain the session between updates. `automatic_view` applies the current
+`SimulationView` seed before construction returns and follows later logical/pixel
+size changes, including zero drawable extents. It must not be enabled during
+platform `init()` before the simulation source exists. The tutorial and demo
+choose automatic view following while keeping their existing manual time/input
+order.
+
+`automatic_time` advances toolkit time on **future** `SimulationStepStarting`
+phases, before the game update. A session first created inside an update does not
+replay that step. While attached, every manual `update_time()` call rejects,
+including zero; call `detach_time()` on the UI owner before returning to manual
+advancement. Choose manual time when the application needs it after input or
+other game work. Neither option delivers input, adopts scenes or chooses pass
+order.
+
+Existing sessions can call `follow_view(engine.simulation_view())` and
+`follow_time(engine.services())` explicitly. Standalone input/fonts constructors
+reject automatic flags because they have no Context, but can use those explicit
+methods with initialized sources on the same owner. This keeps manual standalone
+use independent of Runtime.
+
+A valid public `set_view()` first detaches automatic sizing, then applies the
+manual view. Invalid dimensions leave the existing attachment intact; a native
+application failure after detach leaves manual mode selected. `follow_view()`
+can reattach with a fresh coherent seed. Session closure acknowledges both
+attachments before releasing toolkit state. Required sizing/time failures
+propagate to the runtime before dependent work; optional bus observers are
+[separate subscriptions](../runtime/event-delivery.md#observe-a-change-or-participate-in-an-operation).
 
 ## Fonts
 

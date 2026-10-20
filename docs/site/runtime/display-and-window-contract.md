@@ -108,6 +108,80 @@ boundary. Earlier deliveries and native state changes are not rolled back. `shou
 also consumes deferred callback failure before reading the close flag. Cached size
 getters do not consume that failure.
 
+## Committed window and simulation views
+
+Use `engine.window_state()` for the runtime's copied platform selection and
+`engine.simulation_view()` for the dimensions selected by simulation. These
+sources, declared in `<cheryl/core/engine/view-state.h>`, avoid borrowing a live
+window across owners. Their synchronized `snapshot()` results can be retained;
+checked source/session identities and revisions distinguish new selections.
+`initialized` is false before the first selection and `closed` becomes true
+when runtime closes the source. Closure does not fabricate a resize or focus event.
+
+`WindowState` contains logical size, framebuffer pixels, observation time and
+optional native focus. `Window::focused()` defaults to unknown; Native GLFW
+supplies the sampled native value. Input keyboard-routing focus is a separate
+concept. The first selection establishes a baseline. Later logical, pixel or
+supported focus changes advance the window revision.
+
+```mermaid
+flowchart TB
+    accTitle: Native window state and the view used by a tick
+    accDescr: Platform samples the final native window state and applies the renderer viewport. A copied selection crosses to simulation, which commits a SimulationView before required UI sizing and the matching tick.
+    window["Native window on platform"] -->|sample after callbacks| selected["WindowState"]
+    selected -->|required pixel view| renderer["Renderer viewport"]
+    selected -->|copied handoff| simulation["SimulationView"]
+    simulation -->|required seeded watch| ui["UI sizing"]
+    ui --> tick["Matching game update"]
+```
+
+Simulation selects copied dimensions before each actual update and carries that
+selection in `TickContext`. Its view revision changes only for a new size pair,
+not a focus-only window change. `window_revision` records the originating window
+selection when that view commits; it need not equal the latest focus-only
+revision. Required view callbacks finish before dependent work. The renderer
+uses a required platform watch for the initial viewport and later pixel changes;
+UI sessions can [follow simulation view](../modules/tgui.md#automatic-view-and-time).
+
+For optional observation, register `CE::Runtime::window_state_changed_event` or
+`simulation_view_changed_event` on the Context bus. Both payloads own previous/
+current values. A bus subscription has no seed. A source's `watch()` instead
+requires its initialized owner, invokes a protected `seed=true` callback before
+returning, and returns an owned `ViewAttachment`. A required application failure
+propagates and prevents dependent work; it is not hidden as an optional listener
+failure. [Observation versus participation](event-delivery.md#observe-a-change-or-participate-in-an-operation)
+explains these choices and cleanup.
+
+The legacy `WindowResized` producer and its named-then-typed failure ordering
+remain as described above. Runtime samples the final live state rather than
+using a potentially older nested raw payload. A listener that mutates the native
+window is sampled again at a later safe platform pass; runtime does not recursively
+drain view changes, and it avoids rendering with a stale selected native view.
+Native callback freshness is still poll-gated: a full input backlog can delay
+new close, resize or focus observations. Maintenance phases add no extra GLFW pump.
+
+## Native close intent
+
+Native GLFW implements `supports_close_intent()` and
+`consume_close_intent()`. Consumption observes and clears its sticky close flag,
+so rejecting one close request does not poison later polling. A later native
+close can create a fresh request. Other window adapters default to unsupported
+and keep the boolean `should_close()` contract.
+
+Runtime publishes an owned `CE::Platform::WindowCloseRequested` through
+`window_close_requested_event`, with context/session, window-source and intent
+identity plus observation time. It carries no window pointer or decision
+capability. The runtime's required main-window bridge enters the
+[shutdown request protocol](runtime-frame-boundary.md#negotiable-shutdown), even
+if optional observation fails. Native input backlog can delay observing the
+intent; host endpoint requests remain independently serviced.
+
+With no policy, close requests retain the ordinary accept-and-shutdown behavior.
+An installed negotiable policy requires a consumable window. Explicit
+`NativeClosePolicy::Force` allows host-only negotiation with a boolean adapter
+while retaining unconditional native close. Native callback failures still use
+the failure boundary above and can force runtime shutdown.
+
 ## Scale and UI capabilities
 
 A monitor scale query neither establishes per-window scale nor reports scale-change

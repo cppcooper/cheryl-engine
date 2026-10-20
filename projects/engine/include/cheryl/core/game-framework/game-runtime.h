@@ -176,7 +176,29 @@ namespace CE::Runtime {
  * @fn void CE::Runtime::GameRuntime::stop()
  * @brief Request normal shutdown from any producer thread while this runtime lives.
  * Does not join, interrupt a hook or synchronously release resources. run() observes the shared request and completes normal teardown.
+ * Bypasses ordinary shutdown negotiation and supersedes an unresolved request. Use shutdown().request()
+ * when the host policy must be able to defer/cancel; repeated unconditional stop is safe.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/** @fn CE::Runtime::RuntimeLifecycle CE::Runtime::GameRuntime::lifecycle() const noexcept
+ * Retain synchronized current/terminal observations without borrowing Runtime. snapshot() is allowed
+ * during the live session, unlike diagnostics(); terminal state owns final counters and bounded failure
+ * summaries. Register on Context::events() before run for milestone occurrences; there is no bus replay.
+ * @see [Lifecycle observation](cheryl-guide:runtime/runtime-frame-boundary#lifecycle-observation)
+ */
+/** @fn CE::Runtime::ShutdownEndpoint CE::Runtime::GameRuntime::shutdown() const
+ * Retain ordinary command/snapshot access without a raw Runtime pointer. request() stages safe platform
+ * work, coalesces unresolved duplicates and returns a shared result ticket. Runtime closure rejects new
+ * requests. Never block the platform/simulation owner needed by the policy on a ticket's completion.
+ */
+/** @fn CE::Runtime::ShutdownPolicy CE::Runtime::GameRuntime::set_shutdown_policy(ShutdownPolicyCallback callback, ShutdownPolicyOptions options, CE::Events::EventBus::Delivery delivery)
+ * Install the single host decision authority before run and retain its move-only handle. Immediate
+ * callbacks run on platform; optional queued delivery selects another owner and must not run inline.
+ * The callback can retain its private ShutdownDecision while a prompt/save completes. Policy/delivery
+ * failure or withdrawal cancels an unresolved ordinary request; forced stop/failure supersedes it.
+ * Default Negotiate requires consumable native close, while Force keeps native close unconditional.
+ * @see [Shutdown protocol](cheryl-guide:runtime/runtime-frame-boundary#negotiable-shutdown)
  */
 
 /**

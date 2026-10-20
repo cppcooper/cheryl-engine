@@ -18,6 +18,7 @@ Types below are in `CE::Audio` unless another namespace is shown.
 | {cpp:class}`System <CE::Audio::System>`<br>Play clips/streams, set master volume, maintain retired voices and close output. [Lifetime and scheduling](../runtime/audio.md#lifetime-and-scheduling); [adapter catalogue](../architecture/interfaces-adapters.md#integrations-alongside-the-runtime). |
 | {cpp:class}`Voice <CE::Audio::Voice>`, {cpp:struct}`VoiceSnapshot <CE::Audio::VoiceSnapshot>`<br>Control independent playback and obtain a copied state/volume/loop/duration observation. [Playback controls](../runtime/audio.md#clips-and-voices). |
 | {cpp:class}`Miniaudio::System <CE::Audio::Miniaudio::System>`<br>Select device or offline output; use module decoding for file clips. [miniaudio setup](../modules/miniaudio.md#preparation-and-output). |
+| {cpp:struct}`PlaybackEnded <CE::Audio::PlaybackEnded>`, {cpp:struct}`PlaybackNotifications <CE::Audio::PlaybackNotifications>`<br>Observe logical generation outcomes through an explicit owner pump and reconcile retained current state after bounded loss. [Playback outcomes](../runtime/audio.md#playback-outcomes); [runtime pump](../modules/miniaudio.md#runtime-notification-pump). |
 
 ### Playback values and choices
 

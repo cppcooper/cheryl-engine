@@ -46,7 +46,7 @@ resolve the smallest demonstrated seam first.
 | Images and font atlases | [Immutable resource publication](../resources/resource-residency.md#immutable-resource-publication) | Copy CPU pixels into immutable generations; publish provider-owned resources on the platform owner. Resolve font ownership and sampling before exposing textures. |
 | Font selection and loaded data | [Engine font service](../text/index.md) | Consume the configured default/catalogue and explicit retained `Font` handles; translate byte/index/style ownership into native toolkit fonts. |
 | Keyboard, pointer and text | [Input records and focus](../runtime/input-state-model.md) | Translate portable identities and committed text without native input APIs, invented characters or modification of another reader's records. |
-| Time, size and OS services | [Runtime ticks](../runtime/runtime-frame-boundary.md) and capability reporting | Use copied window/framebuffer dimensions and explicit simulation time; report unavailable clipboard, cursor and IME services. |
+| Time, size and OS services | [Selected views](../runtime/display-and-window-contract.md#committed-window-and-simulation-views), [service phases](../runtime/runtime-frame-boundary.md#runtime-service-phases) and capability reporting | Offer explicit owner attachments for automatic sizing/time while preserving manual use; report unavailable clipboard, cursor and IME services. |
 | Queued upload and retained playback | [Thread dispatch](../runtime/thread-dispatch.md) and [native retirement](../resources/resource-residency.md#native-retirement-and-maintenance) | Send owned preparation through platform submission and retain complete published scenes through replacement and teardown. |
 
 Adapters request [built-in 2D materials](../rendering/pipelines-and-materials.md#default-ui-materials)
@@ -122,9 +122,11 @@ flowchart TB
 2. Configure Engine fonts before consumers. On simulation/UI, create the toolkit
    session from the Engine context, then native presentation objects.
    Keep all toolkit calls on that owner, including font and layout changes.
-3. Each update supplies copied logical/framebuffer sizes, simulation time and the
-   immutable input stream. Logical UI coordinates and framebuffer pixels remain
-   distinct; zero drawable dimensions produce an empty recording.
+3. Size/time may follow initialized owner sources through required attachments,
+   or be supplied manually. Context-aware TGUI/RmlUi sessions opt in with
+   `automatic_view`/`automatic_time`; defaults remain manual. Preserve the whole
+   input stream as an explicit application call. Logical UI coordinates and
+   framebuffer pixels remain distinct; zero drawable dimensions produce an empty recording.
 4. Record owned CPU draw data, then submit it for platform upload, optionally
    supplying retained custom material handles. Borrowed toolkit vertices, pixel
    pointers, widgets and documents do not cross that queue boundary.
@@ -137,6 +139,14 @@ flowchart TB
 7. Stop/join the UI owner, release application-held toolkit objects, then destroy
    its context and global interfaces. A final transfer to platform is serial and
    quiescent. Retained Cheryl frames own resources independently of toolkit state.
+
+Follow the [attachment contract](../runtime/event-delivery.md#observe-a-change-or-participate-in-an-operation)
+for required integration. Apply a view seed before exposing a ready consumer,
+acknowledge detach before releasing toolkit state, and propagate required apply
+failures. A manual sizing call validates before detaching automatic mode.
+Automatic step clocks have no replay and reject simultaneous manual advancement;
+keep input/preemption and scene adoption ordering explicit. A queued observation
+of the same payload is not a replacement for required owner participation.
 
 ## Routing and unavailable services
 
