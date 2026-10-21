@@ -15,11 +15,11 @@ flowchart TB
     accTitle: State · application state choices
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>state model"]):::app
-    k1["<b>State::<br/>StateTracker</b><br/><br/>update()<br/>changed()<br/>delta()"]:::focal
-    k2["<b>State::<br/>StateMachine</b><br/><br/>add_transition()<br/>trigger()<br/>state()"]:::focal
+    k1["<b>State::<br/>StateTracker</b><br/><br/>update(T next)<br/><br/>changed()<br/><br/>delta(): decltype(current() - previous())"]:::focal
+    k2["<b>State::<br/>StateMachine</b><br/><br/>add_transition(<br/>State from,<br/>Trigger trigger,<br/>State to,<br/>State::StateMachine&lt;State, Trigger&gt;::Guard guard,<br/>State::StateMachine&lt;State, Trigger&gt;::Action action)<br/><br/>trigger(const Trigger&amp; event)<br/><br/>state(): const State&amp;"]:::focal
     k3(["Application<br/>state producer"]):::app
-    k4["<b>State::<br/>VersionedVariable</b><br/><br/>set()<br/>snapshot()<br/>wait_for_change()"]:::focal
-    k5["<b>State::<br/>ObservedVariable</b><br/><br/>ObservedVariable()<br/>set()<br/>snapshot()"]:::focal
+    k4["<b>State::<br/>VersionedVariable</b><br/><br/>set(T next)<br/><br/>snapshot(): State::VersionedSnapshot&lt;T&gt;<br/><br/>wait_for_change(since): State::VersionedSnapshot&lt;T&gt;"]:::focal
+    k5["<b>State::<br/>ObservedVariable</b><br/><br/>ObservedVariable(<br/>T value,<br/>State::ObservedVariable&lt;T, Observers&gt;::Callback[]<br/>observers)<br/><br/>set(T value)<br/><br/>snapshot(): State::VersionedSnapshot&lt;T&gt;"]:::focal
     k6["State::<br/>VersionedSnapshot"]:::focal
     k7(["Application<br/>snapshot reader"]):::app
     k8(["Application<br/>transition / observer hooks"]):::app

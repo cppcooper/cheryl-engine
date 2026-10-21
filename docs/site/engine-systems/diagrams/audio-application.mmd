@@ -15,17 +15,17 @@ flowchart TB
     accTitle: Audio · application-owned playback and outcomes
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1["<b>Audio::Miniaudio::<br/>System</b><br/><br/>open_device()<br/>publish_events_to()<br/>pump_with()<br/>publish_notifications()"]:::focal
+    k1["<b>Audio::Miniaudio::<br/>System</b><br/><br/>open_device(<br/>Audio::Format output,<br/>Audio::PlaybackNotificationOptions notifications):<br/>Audio::Miniaudio::System [unique]<br/><br/>publish_events_to(Events::EventBus::Publisher publisher)<br/><br/>pump_with(const Runtime::RuntimeServices&amp; services):<br/>Runtime::ServiceAttachment<br/><br/>publish_notifications()"]:::focal
     k2(["Application<br/>loading work"]):::app
-    k3("Audio::<br/>Miniaudio::decode_file()"):::focal
-    k4["<b>Audio::<br/>Clip</b><br/><br/>from_samples()"]:::focal
+    k3("Audio::Miniaudio::decode_file(<br/>file,<br/>Audio::Miniaudio::DecodeOptions options):<br/>Audio::Clip"):::focal
+    k4["<b>Audio::<br/>Clip</b><br/><br/>from_samples(Audio::Format format, samples): Audio::Clip"]:::focal
     k5(["Application<br/>sound controller"]):::app
-    k6["<b>Audio::<br/>System</b><br/><br/>play()<br/>stream()<br/>maintain()<br/>close()"]:::focal
+    k6["<b>Audio::<br/>System</b><br/><br/>play(<br/>const Audio::Clip&amp; clip,<br/>Audio::PlaybackOptions options):<br/>Audio::Voice [shared]<br/><br/>stream(file, Audio::PlaybackOptions options):<br/>Audio::Voice [shared]<br/><br/>maintain()<br/><br/>close()"]:::focal
     k7["Audio::<br/>PlaybackOptions"]:::focal
-    k8["<b>Audio::<br/>Voice</b><br/><br/>snapshot()<br/>pause()<br/>resume()<br/>stop()"]:::focal
+    k8["<b>Audio::<br/>Voice</b><br/><br/>snapshot(): Audio::VoiceSnapshot<br/><br/>pause()<br/><br/>resume()<br/><br/>stop()"]:::focal
     k9["Audio::<br/>VoiceSnapshot"]:::focal
     k10(["Application<br/>listener setup"]):::app
-    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener()<br/>publisher()"]:::neighbor
+    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener(<br/>const Events::EventChannel&lt;Audio::PlaybackEnded&gt;&amp;<br/>event,<br/>Events::EventChannel&lt;Audio::PlaybackEnded&gt;::Callback<br/>callback,<br/>Events::EventBus::Delivery delivery,<br/>Events::EventBus::ErrorHandler errors):<br/>Events::EventBus::Registration<br/><br/>publisher(): Events::EventBus::Publisher"]:::neighbor
     k12["Audio::<br/>PlaybackEnded"]:::focal
     k13(["Application<br/>init_platform()"]):::app
     k14["Runtime::<br/>RuntimeServices"]:::neighbor

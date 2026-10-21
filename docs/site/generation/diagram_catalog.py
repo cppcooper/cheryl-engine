@@ -13,6 +13,13 @@ import re
 IDENTIFIER = re.compile(r"[a-z][a-z0-9-]*")
 
 
+def label_text(value: str, *, markup: bool = False) -> str:
+    """Compare label content independently of HTML wrapping and whitespace."""
+    if markup:
+        value = unescape(re.sub(r"<[^>]*>", "", value))
+    return re.sub(r"\s+", "", value)
+
+
 def frame_version(directory: Path) -> str:
     content = b"".join(
         (directory / name).read_bytes()
@@ -79,8 +86,17 @@ def load_catalog(source: Path) -> dict:
                 path = Path(operation["file"])
                 if path.is_absolute() or ".." in path.parts or operation["line"] < 1:
                     raise ValueError(f"Invalid operation source in {identity}: {name}")
-                if operation["label"] not in unescape(labels[str(keys.index(key))]):
+                if "CE::" in operation["label"] or "std::" in operation["label"]:
+                    raise ValueError(f"Invalid operation display type in {identity}: {name}")
+                if label_text(operation["label"]) not in label_text(labels[str(keys.index(key))], markup=True):
                     raise ValueError(f"Engine diagram {identity} omits operation label: {name}")
+        for key, label in diagram.get("operation_labels", {}).items():
+            if key not in keys or symbols[key].get("kind") != "operation":
+                raise ValueError(f"Invalid operation box in Engine diagram {identity}: {key}")
+            if "CE::" in label or "std::" in label:
+                raise ValueError(f"Invalid operation display type in {identity}: {key}")
+            if label_text(label) != label_text(labels[str(keys.index(key))], markup=True):
+                raise ValueError(f"Engine diagram {identity} operation box label differs: {key}")
     for symbol in symbols.values():
         if symbol["label"].startswith("CE::") or "std::" in symbol["label"]:
             raise ValueError(f"Unqualified Engine diagram label policy: {symbol['label']}")
@@ -104,7 +120,10 @@ def write_catalog(source: Path, destination: Path, objects, get_target_uri, sour
         diagram["source"] = (source / (diagram["id"] + ".mmd")).read_text(encoding="utf-8")
         diagram["nodes"] = [deepcopy(catalog["symbols"][key]) for key in diagram["nodes"]]
         operations = diagram.pop("operations", {})
+        operation_labels = diagram.pop("operation_labels", {})
         for node in diagram["nodes"]:
+            if node["key"] in operation_labels:
+                node["label"] = operation_labels[node["key"]]
             if node["key"] in operations:
                 node["operations"] = operations[node["key"]]
             for item in [node, *node.get("operations", [])]:

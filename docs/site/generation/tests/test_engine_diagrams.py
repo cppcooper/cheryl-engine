@@ -85,6 +85,18 @@ class CatalogTests(unittest.TestCase):
         self.write(catalog, SOURCE.replace('Runtime::Context"]', 'Runtime::Context<br/>events()"]'))
         self.assertEqual(load_catalog(self.source), catalog)
 
+    def test_template_arguments_survive_label_markup_normalization(self):
+        catalog = fixture()
+        method = {**operation(), "label": "notify(Events::EventChannel<Payload>& event)"}
+        catalog["diagrams"][0]["operations"] = {"Runtime::Context": [method]}
+        source = SOURCE.replace('Runtime::Context"]',
+                                'Runtime::Context<br/>notify(<br/>Events::EventChannel&lt;Payload&gt;&amp; event)"]')
+        self.write(catalog, source)
+        self.assertEqual(load_catalog(self.source), catalog)
+        self.write(catalog, source.replace("Payload", "OtherPayload"))
+        with self.assertRaisesRegex(ValueError, "omits operation label"):
+            load_catalog(self.source)
+
     def test_unknown_method_owner_is_rejected(self):
         catalog = fixture()
         catalog["diagrams"][0]["operations"] = {"Elsewhere": [operation()]}
@@ -92,8 +104,43 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unknown operation owner"):
             load_catalog(self.source)
 
+    def test_wrapped_signature_keeps_argument_and_result_types(self):
+        catalog = fixture()
+        method = {**operation(), "label": "events(): Events::EventBus&"}
+        catalog["diagrams"][0]["operations"] = {"Runtime::Context": [method]}
+        source = SOURCE.replace('Runtime::Context"]',
+                                'Runtime::Context<br/>events():<br/>Events::EventBus&amp;"]')
+        self.write(catalog, source)
+        self.assertEqual(load_catalog(self.source), catalog)
+        self.write(catalog, source.replace("Events::EventBus", "Events::EventChannel"))
+        with self.assertRaisesRegex(ValueError, "omits operation label"):
+            load_catalog(self.source)
+
 
 class PublicationTests(unittest.TestCase):
+    def test_typed_free_operation_stays_specific_to_its_view(self):
+        with tempfile.TemporaryDirectory(prefix="cheryl-diagram-operation-") as directory:
+            source = Path(directory) / "source"
+            source.mkdir()
+            catalog = fixture()
+            key = "Runtime::Context"
+            catalog["symbols"][key]["kind"] = "operation"
+            catalog["symbols"][key]["label"] = "make_context()"
+            application = catalog["diagrams"][0]
+            application["operation_labels"] = {key: "make_context(): Runtime::Context [unique]"}
+            catalog["diagrams"].append({**fixture()["diagrams"][0], "id": "runtime-internal"})
+            (source / "catalog.json").write_text(json.dumps(catalog))
+            (source / "runtime-application.mmd").write_text(SOURCE.replace(
+                "Runtime::Context", "make_context():<br/>Runtime::Context [unique]"))
+            (source / "runtime-internal.mmd").write_text(SOURCE.replace("Runtime::Context", "make_context()"))
+            destination = Path(directory) / "html"
+            write_catalog(source, destination, [], lambda name: name + ".html", "https://example.com")
+            output = json.loads((destination / "catalog.json").read_text())
+            self.assertEqual(output["diagrams"][0]["nodes"][0]["label"],
+                             "make_context(): Runtime::Context [unique]")
+            self.assertEqual(output["diagrams"][1]["nodes"][0]["label"], "make_context()")
+            self.assertEqual(catalog["symbols"][key]["label"], "make_context()")
+
     def test_frame_assets_change_their_browser_version(self):
         with tempfile.TemporaryDirectory(prefix="cheryl-diagram-assets-") as directory:
             root = Path(directory)

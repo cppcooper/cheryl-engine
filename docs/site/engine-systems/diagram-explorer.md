@@ -11,6 +11,13 @@ sequence. **Implement hooks** marks methods your game overrides for the engine
 to call. Select a box for each method's purpose, source and available API link;
 search also finds method names.
 
+Signatures use `method(arguments): ResultType`, with qualified Engine types and
+public aliases for arguments and results. They are abridged: a missing result
+suffix can mean a scalar or standard-library result and does not imply `void`.
+`[]` marks a collection. Short notes such as `[shared]`, `[unique]`, `[future]`
+and `[borrowed]` retain ownership, asynchronous-result and borrowing information
+when their library wrappers are omitted. The API reference has the full types.
+
 Application arrows include the argument and result types used by selected
 methods. In the inspector, **Accepts** and **Returns** connect a method to those
 types in the current view. Select an arrow to see the supporting method

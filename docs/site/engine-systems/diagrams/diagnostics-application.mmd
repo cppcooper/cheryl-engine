@@ -15,16 +15,16 @@ flowchart TB
     accTitle: Diagnostics · application observations
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>report"]):::app
-    k1["<b>Runtime::<br/>GameRuntime</b><br/><br/>diagnostics()"]:::neighbor
+    k1["<b>Runtime::<br/>GameRuntime</b><br/><br/>diagnostics(): Runtime::RuntimeStats"]:::neighbor
     k2["Runtime::<br/>RuntimeStats"]:::focal
     k3(["Application<br/>live observations"]):::app
-    k4["<b>Workers::<br/>Group</b><br/><br/>status()<br/>policy()"]:::neighbor
+    k4["<b>Workers::<br/>Group</b><br/><br/>status(): Workers::GroupStatus<br/><br/>policy(): Workers::GroupPolicy"]:::neighbor
     k5["Workers::<br/>GroupStatus"]:::focal
-    k6["<b>Runtime::<br/>PlatformDispatcher</b><br/><br/>diagnostics()"]:::neighbor
+    k6["<b>Runtime::<br/>PlatformDispatcher</b><br/><br/>diagnostics(): Diagnostics::DispatchStats"]:::neighbor
     k7["Diagnostics::<br/>DispatchStats"]:::focal
-    k8["<b>Events::<br/>EventBus</b><br/><br/>diagnostics()"]:::neighbor
+    k8["<b>Events::<br/>EventBus</b><br/><br/>diagnostics(): Events::EventStats"]:::neighbor
     k9["Events::<br/>EventStats"]:::focal
-    k10["<b>Logging::<br/>Logger</b><br/><br/>info()"]:::neighbor
+    k10["<b>Logging::<br/>Logger</b><br/><br/>info(fmt, args...)"]:::neighbor
     k11["Workers::<br/>GroupPolicy"]:::focal
     k0 --> k1
     k1 --> k2

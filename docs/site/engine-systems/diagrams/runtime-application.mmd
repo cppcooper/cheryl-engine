@@ -15,19 +15,19 @@ flowchart TB
     accTitle: Runtime · application composition
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1("Application::GLFWOpenGL::<br/>make_context()"):::focal
+    k1("Application::GLFWOpenGL::make_context(<br/>const Application::GLFWOpenGL::Options&amp; config):<br/>Runtime::Context [unique]"):::focal
     k2["Runtime::<br/>Context"]:::focal
-    k3["<b>Runtime::<br/>GameRuntime</b><br/><br/>run()<br/>shutdown()<br/>lifecycle()<br/>set_shutdown_policy()"]:::focal
+    k3["<b>Runtime::<br/>GameRuntime</b><br/><br/>run()<br/><br/>shutdown(): Runtime::ShutdownEndpoint<br/><br/>lifecycle(): Runtime::RuntimeLifecycle<br/><br/>set_shutdown_policy(<br/>Runtime::ShutdownPolicyCallback callback,<br/>Runtime::ShutdownPolicyOptions options,<br/>Events::EventBus::Delivery delivery):<br/>Runtime::ShutdownPolicy"]:::focal
     k4(["Application-owned game objects"]):::app
-    k5["<b>Game::<br/>AbstractGame</b><br/><br/>Implement hooks<br/>init_platform()<br/>init_simulation()<br/>update(tick)<br/>prepare_render_frame(frame)"]:::focal
+    k5["<b>Game::<br/>AbstractGame</b><br/><br/>Implement hooks<br/>init_platform()<br/><br/>init_simulation()<br/><br/>update(const Game::TickContext&amp; tick)<br/><br/>prepare_render_frame(Rendering::FrameWriter&amp; frame)"]:::focal
     k6(["Application<br/>update()"]):::app
     k7["<b>Game::<br/>TickContext</b><br/><br/>request_stop()"]:::focal
     k8(["Application<br/>prepare_render_frame()"]):::app
-    k9["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass()"]:::neighbor
+    k9["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass(<br/>const glm::mat4&amp; projection,<br/>const glm::mat4&amp; view,<br/>Rendering::Pipelines::PassConstraints2D constraints,<br/>Rendering::Parameters::Set parameters):<br/>Rendering::PassWriter [borrowed]"]:::neighbor
     k10["<b>Runtime::<br/>ShutdownPolicy</b><br/><br/>reset()"]:::focal
     k11(["Application<br/>producer"]):::app
-    k12["<b>Runtime::<br/>ShutdownEndpoint</b><br/><br/>request()"]:::focal
-    k13["<b>Runtime::<br/>RuntimeLifecycle</b><br/><br/>snapshot()"]:::focal
+    k12["<b>Runtime::<br/>ShutdownEndpoint</b><br/><br/>request(Runtime::ShutdownReason reason):<br/>Runtime::ShutdownTicket"]:::focal
+    k13["<b>Runtime::<br/>RuntimeLifecycle</b><br/><br/>snapshot(): Runtime::RuntimeLifecycleSnapshot"]:::focal
     k14(["Application<br/>report"]):::app
     k0 --> k1
     k1 --> k2

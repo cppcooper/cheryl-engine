@@ -15,19 +15,19 @@ flowchart TB
     accTitle: Utilities · application-local helpers
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>loading tool"]):::app
-    k1["<b>Files::<br/>FileIndex</b><br/><br/>FileIndex()<br/>get_files_of_type()<br/>search_directory()"]:::focal
-    k2["<b>Time::<br/>DeltaTime</b><br/><br/>operator()()<br/>elapsed()"]:::focal
+    k1["<b>Files::<br/>FileIndex</b><br/><br/>FileIndex(const Files::Path&amp; root_path)<br/><br/>get_files_of_type(Files::Extension extension):<br/>const Files::Path[]&amp; [borrowed]<br/><br/>search_directory(const Files::Path&amp; directory)"]:::focal
+    k2["<b>Time::<br/>DeltaTime</b><br/><br/>operator()()<br/><br/>elapsed(): Time::DeltaTime&lt;ClockType&gt;::Duration"]:::focal
     k3(["Application<br/>bit bookkeeping"]):::app
-    k4["<b>Math::<br/>BitArray</b><br/><br/>operator[]()<br/>words()"]:::focal
+    k4["<b>Math::<br/>BitArray</b><br/><br/>operator[](index): Math::BitArray&lt;Bits&gt;::Reference<br/><br/>words(): Math::BitArray&lt;Bits&gt;::word_type[] [borrowed]"]:::focal
     k5(["Application<br/>geometry preparation"]):::app
-    k6["<b>Rendering::<br/>Geometry::Anchor</b><br/><br/>MakeQuad()<br/>MakeQuadStrip()"]:::focal
+    k6["<b>Rendering::<br/>Geometry::Anchor</b><br/><br/>MakeQuad(<br/>Rendering::Geometry::Pivot pivot,<br/>texture_width,<br/>texture_height,<br/>width,<br/>height,<br/>x0,<br/>y0):<br/>Rendering::Geometry::Quad<br/><br/>MakeQuadStrip(<br/>Rendering::Geometry::Pivot pivot,<br/>texture_width,<br/>texture_height,<br/>width,<br/>height,<br/>x0,<br/>y0):<br/>Rendering::Geometry::QuadTriangleStrip"]:::focal
     k7["Rendering::Geometry::<br/>Pivot"]:::focal
     k8(["Application<br/>storage owner"]):::app
-    k9("Memory::<br/>adjust_length()"):::focal
+    k9("Memory::adjust_length(<br/>length,<br/>Memory::FitPolicy fit,<br/>gb,<br/>gf)"):::focal
     k10["Memory::<br/>FitPolicy"]:::focal
     k11(["Application<br/>configuration parsing"]):::app
-    k12("Text::<br/>Numbers::parse_integers()"):::focal
-    k13("Text::<br/>Numbers::parse_floats()"):::focal
+    k12("Text::Numbers::parse_integers&lt;is_unsigned&gt;(str):<br/>Text::Numbers::NumberVariant"):::focal
+    k13("Text::Numbers::parse_floats(str)"):::focal
     k0 --> k1
     k0 --> k2
     k3 --> k4
