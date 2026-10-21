@@ -4,11 +4,30 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 import re
 
 IDENTIFIER = re.compile(r"[a-z][a-z0-9-]*")
+
+
+def frame_version(directory: Path) -> str:
+    content = b"".join(
+        (directory / name).read_bytes()
+        for name in ("frame.html", "explorer.css", "explorer.mjs", "shell.js")
+    )
+    return hashlib.sha256(content).hexdigest()[:12]
+
+
+def version_frame_assets(directory: Path) -> None:
+    """Version the iframe's own assets as Sphinx does for the parent page."""
+    frame = directory / "frame.html"
+    text = frame.read_text(encoding="utf-8")
+    for name in ("explorer.css", "explorer.mjs"):
+        version = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:12]
+        text = re.sub(re.escape(name) + r"(?:\?v=[a-f0-9]+)?", name + "?v=" + version, text)
+    frame.write_text(text, encoding="utf-8")
 
 
 def load_catalog(source: Path) -> dict:

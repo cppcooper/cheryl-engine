@@ -10,7 +10,7 @@ from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import make_refnode
 from sphinxcontrib.mermaid import Mermaid
 
-from diagram_catalog import load_catalog, write_catalog
+from diagram_catalog import frame_version, load_catalog, version_frame_assets, write_catalog
 
 
 EXPLORER = "engine-systems/diagram-explorer"
@@ -72,6 +72,7 @@ class EngineExplorer(SphinxDirective):
 
 def page_context(app, pagename, templatename, context, doctree):
     if pagename == EXPLORER:
+        context["engine_diagram_version"] = frame_version(Path(app.confdir) / "static/engine-diagrams")
         return "diagram-explorer.html"
 
 
@@ -100,6 +101,7 @@ def publish_catalog(app, exception) -> None:
         app.env.domains["cpp"].get_objects(), app.builder.get_target_uri,
         app.config.source_repository,
     )
+    version_frame_assets(Path(app.outdir) / "_static/engine-diagrams")
 
 
 def setup(app):

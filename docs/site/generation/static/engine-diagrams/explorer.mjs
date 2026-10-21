@@ -6,7 +6,10 @@ window.galleryState = {
 };
 
 (async () => {
-    const responses = await Promise.all([ fetch('catalog.json'), fetch('../../revision.json') ]);
+    const responses = await Promise.all([
+        fetch('catalog.json', {cache: 'no-cache'}),
+        fetch('../../revision.json', {cache: 'no-cache'})
+    ]);
     if (responses.some(r => !r.ok))
         throw Error('Could not load diagram data or documentation revision.');
     const [data, build] = await Promise.all(responses.map(r => r.json()));
@@ -19,7 +22,9 @@ window.galleryState = {
             return rendered.get(d.id);
         const task = renderQueue.then(async () => {
             const {svg} = await mermaid.render('engine_' + d.id.replaceAll('-', '_'), d.source);
-            const root = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+            const fragment = document.createElement('template');
+            fragment.innerHTML = svg;
+            const root = fragment.content.querySelector('svg');
             root.querySelectorAll('.edgeLabels').forEach(e => e.remove());
             const view = root.viewBox.baseVal;
             if (!view.width || !view.height ||
@@ -83,10 +88,17 @@ window.galleryState = {
         if (!current)
             return;
         const w = canvas.clientWidth, h = canvas.clientHeight;
-        scale = Math.min((w - 60) / current.width, (h - 95) / current.height, 1);
+        const toolbar = document.querySelector('.controls').offsetHeight;
+        document.querySelector('.content').style.setProperty('--toolbar-height', toolbar + 'px');
+        const top = 50, availableHeight = Math.max(60, h - top - toolbar - 25);
+        scale = Math.min((w - 60) / current.width, availableHeight / current.height, 1);
         tx = (w - current.width * scale) / 2;
-        ty = (h - current.height * scale) / 2;
+        ty = top + (availableHeight - current.height * scale) / 2;
         transform()
+    }
+    function inspect(open) {
+        document.documentElement.classList.toggle('inspecting', open);
+        $('#inspect').setAttribute('aria-expanded', String(open));
     }
     function zoom(f, x = canvas.clientWidth / 2, y = canvas.clientHeight / 2) {
         const next = Math.max(.1, Math.min(3, scale * f));
@@ -135,6 +147,7 @@ window.galleryState = {
             show(within(node.system)[0].id);
             return
         }
+        if (matchMedia('(max-width:800px)').matches) inspect(true);
         const outgoing = current.edges.filter(e => e.source === key),
               incoming = current.edges.filter(e => e.target === key), neighbors = new Set([ key ]);
         for (const e of [...outgoing, ...incoming]) {
@@ -190,6 +203,7 @@ window.galleryState = {
         const e = current.edges[index];
         if (!e)
             return;
+        if (matchMedia('(max-width:800px)').matches) inspect(true);
         const get = k => current.nodes.find(n => n.key === k);
         const s = get(e.source), t = get(e.target);
         const examples =
@@ -393,6 +407,7 @@ window.galleryState = {
     $('#plus').onclick = () => zoom(1.2);
     $('#minus').onclick = () => zoom(1 / 1.2);
     $('#clear').onclick = clear;
+    $('#inspect').onclick = () => inspect(!document.documentElement.classList.contains('inspecting'));
     canvas.onpointerdown = e => {
         if (e.button !== 0)
             return;
@@ -476,6 +491,7 @@ window.galleryState = {
     };
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
+            inspect(false);
             $('#compact-results').innerHTML = '';
             $('#compact-search').value = ''
         }

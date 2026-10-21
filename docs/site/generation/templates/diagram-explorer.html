@@ -5,7 +5,7 @@
 {% endblock %}
 {% block content %}
 <main class="engine-explorer-shell"
-      data-frame="{{ pathto('_static/engine-diagrams/frame.html', 1) }}"
+      data-frame="{{ pathto('_static/engine-diagrams/frame.html', 1) }}?v={{ engine_diagram_version }}"
       data-systems="{{ pathto('engine-systems/index') }}">
   <header class="engine-explorer-header">
     <div>
@@ -44,5 +44,5 @@
     {% if source_dirty %}· Working tree modified{% endif %}
   </footer>
 </main>
-<script src="{{ pathto('_static/engine-diagrams/shell.js', 1) }}" defer></script>
+<script src="{{ pathto('_static/engine-diagrams/shell.js', 1) }}?v={{ engine_diagram_version }}" defer></script>
 {% endblock %}

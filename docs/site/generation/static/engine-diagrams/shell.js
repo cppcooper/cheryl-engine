@@ -61,7 +61,10 @@
     }
     setLayout(layout);
     setDiagram(diagram, diagram.startsWith("overview-") ? "overview" : diagram.split("-")[0]);
-    frame.src = shell.dataset.frame + (layout === "shared" ? "?compact=1" : "") + "#" + diagram;
+    const frameUrl = new URL(shell.dataset.frame, location.href);
+    if (layout === "shared") frameUrl.searchParams.set("compact", "1");
+    frameUrl.hash = diagram;
+    frame.src = frameUrl.href;
     frame.hidden = false;
     root.classList.add("engine-explorer-enabled");
     document.querySelectorAll("[data-engine-layout]").forEach(button => {

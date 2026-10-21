@@ -10,7 +10,7 @@ import unittest
 
 GENERATION = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(GENERATION))
-from diagram_catalog import api_targets, load_catalog, write_catalog
+from diagram_catalog import api_targets, frame_version, load_catalog, version_frame_assets, write_catalog
 
 
 def fixture():
@@ -72,6 +72,23 @@ class CatalogTests(unittest.TestCase):
 
 
 class PublicationTests(unittest.TestCase):
+    def test_frame_assets_change_their_browser_version(self):
+        with tempfile.TemporaryDirectory(prefix="cheryl-diagram-assets-") as directory:
+            root = Path(directory)
+            (root / "frame.html").write_text('<link href="explorer.css"><script src="explorer.mjs"></script>')
+            (root / "explorer.css").write_text('body { color: black; }')
+            (root / "explorer.mjs").write_text('const version = 1;')
+            (root / "shell.js").write_text('const layout = "shared";')
+            before = frame_version(root)
+            version_frame_assets(root)
+            first = (root / "frame.html").read_text()
+            self.assertIn('explorer.css?v=', first)
+            self.assertIn('explorer.mjs?v=', first)
+            (root / "explorer.css").write_text('body { color: blue; }')
+            version_frame_assets(root)
+            self.assertNotEqual((root / "frame.html").read_text(), first)
+            self.assertNotEqual(frame_version(root), before)
+
     def test_exact_unambiguous_api_links(self):
         objects = [
             ("CE::Runtime::Context", "", "class", "api/context", "context", 1),

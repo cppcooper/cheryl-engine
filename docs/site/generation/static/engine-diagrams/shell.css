@@ -2,6 +2,14 @@
     margin: 0.3rem 0 1.5rem;
     font-size: 0.85rem;
 }
+.engine-diagram pre.mermaid {
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+}
+.engine-diagram pre.mermaid p {
+    font: inherit;
+    margin: 0;
+}
 .engine-explorer-page,
 .engine-explorer-page body {
     height: 100%;

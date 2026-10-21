@@ -857,6 +857,44 @@ html[data-theme=dark] .controls button {
 .sidebar-footer a {
     color:#426c9d
 }
+#inspect {
+    display: none;
+}
+@media (max-width: 800px) {
+    .content,
+    .compact .content {
+        display: block;
+        position: relative;
+        overflow: hidden;
+    }
+    .diagram-wrap,
+    .compact .diagram-wrap {
+        height: 100%;
+        min-height: 0;
+    }
+    .details,
+    .compact .details {
+        display: none;
+        position: absolute;
+        z-index: 40;
+        top: 50px;
+        left: 10px;
+        right: 10px;
+        bottom: calc(var(--toolbar-height, 85px) + 25px);
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+    }
+    html.inspecting .details {
+        display: block;
+    }
+    .controls {
+        z-index: 50;
+    }
+    #inspect {
+        display: inline-block;
+    }
+}
 .compact .sidebar-footer {
     display:none
 }
