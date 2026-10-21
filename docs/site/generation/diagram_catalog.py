@@ -20,6 +20,13 @@ def label_text(value: str, *, markup: bool = False) -> str:
     return re.sub(r"\s+", "", value)
 
 
+def scoped_label(value: str, namespace: str | None) -> str:
+    """Elide an explicitly named local namespace without changing type identity."""
+    if not namespace:
+        return value
+    return re.sub(r"(?<![\w:])" + re.escape(namespace) + r"::", "", value)
+
+
 def frame_version(directory: Path) -> str:
     content = b"".join(
         (directory / name).read_bytes()
@@ -49,6 +56,9 @@ def load_catalog(source: Path) -> dict:
         if not IDENTIFIER.fullmatch(identity) or identity in seen:
             raise ValueError(f"Invalid or duplicate Engine diagram ID: {identity}")
         seen.add(identity)
+        namespace = diagram.get("namespace")
+        if namespace is not None and not re.fullmatch(r"[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*", namespace):
+            raise ValueError(f"Invalid local namespace in Engine diagram {identity}")
         keys = diagram["nodes"]
         if len(set(keys)) != len(keys) or any(key not in symbols for key in keys):
             raise ValueError(f"Unknown or duplicate node in Engine diagram {identity}")
@@ -88,14 +98,15 @@ def load_catalog(source: Path) -> dict:
                     raise ValueError(f"Invalid operation source in {identity}: {name}")
                 if "CE::" in operation["label"] or "std::" in operation["label"]:
                     raise ValueError(f"Invalid operation display type in {identity}: {name}")
-                if label_text(operation["label"]) not in label_text(labels[str(keys.index(key))], markup=True):
+                display = scoped_label(operation["label"], namespace)
+                if label_text(display) not in label_text(labels[str(keys.index(key))], markup=True):
                     raise ValueError(f"Engine diagram {identity} omits operation label: {name}")
         for key, label in diagram.get("operation_labels", {}).items():
             if key not in keys or symbols[key].get("kind") != "operation":
                 raise ValueError(f"Invalid operation box in Engine diagram {identity}: {key}")
             if "CE::" in label or "std::" in label:
                 raise ValueError(f"Invalid operation display type in {identity}: {key}")
-            if label_text(label) != label_text(labels[str(keys.index(key))], markup=True):
+            if label_text(scoped_label(label, namespace)) != label_text(labels[str(keys.index(key))], markup=True):
                 raise ValueError(f"Engine diagram {identity} operation box label differs: {key}")
     for symbol in symbols.values():
         if symbol["label"].startswith("CE::") or "std::" in symbol["label"]:

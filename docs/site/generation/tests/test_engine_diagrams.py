@@ -116,8 +116,46 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "omits operation label"):
             load_catalog(self.source)
 
+    def test_local_namespace_preserves_nested_and_external_qualifiers(self):
+        catalog = fixture()
+        method = {**operation(), "label": "attach(Runtime::Context next, Input::Actions::Context actions): Runtime::Context"}
+        diagram = catalog["diagrams"][0]
+        diagram["namespace"] = "Runtime"
+        diagram["operations"] = {"Runtime::Context": [method]}
+        source = SOURCE.replace('Runtime::Context"]',
+                                'Context<br/>attach(Context next, Input::Actions::Context actions): Context"]')
+        self.write(catalog, source)
+        self.assertEqual(load_catalog(self.source), catalog)
+        self.write(catalog, source.replace("Input::Actions::Context", "Input::Context"))
+        with self.assertRaisesRegex(ValueError, "omits operation label"):
+            load_catalog(self.source)
+
 
 class PublicationTests(unittest.TestCase):
+    def test_local_namespace_keeps_full_inspector_and_api_identity(self):
+        with tempfile.TemporaryDirectory(prefix="cheryl-diagram-namespace-") as directory:
+            source = Path(directory) / "source"
+            source.mkdir()
+            catalog = fixture()
+            method = {**operation(), "label": "context(): Runtime::Context&"}
+            diagram = catalog["diagrams"][0]
+            diagram["namespace"] = "Runtime"
+            diagram["operations"] = {"Runtime::Context": [method]}
+            (source / "catalog.json").write_text(json.dumps(catalog))
+            (source / "runtime-application.mmd").write_text(SOURCE.replace(
+                'Runtime::Context"]', 'Context<br/>context(): Context&amp;"]'))
+            destination = Path(directory) / "html"
+            objects = [("CE::Runtime::Context", "", "class", "api/context", "type", 1),
+                       (method["name"], "", "function", "api/context", "method", 1)]
+            write_catalog(source, destination, objects, lambda name: name + ".html", "https://example.com")
+            output = json.loads((destination / "catalog.json").read_text())["diagrams"][0]
+            self.assertEqual(output["namespace"], "Runtime")
+            node = output["nodes"][0]
+            self.assertEqual(node["label"], "Runtime::Context")
+            self.assertEqual(node["api"], "api/context.html#type")
+            self.assertEqual(node["operations"][0]["label"], method["label"])
+            self.assertEqual(node["operations"][0]["api"], "api/context.html#method")
+
     def test_typed_free_operation_stays_specific_to_its_view(self):
         with tempfile.TemporaryDirectory(prefix="cheryl-diagram-operation-") as directory:
             source = Path(directory) / "source"

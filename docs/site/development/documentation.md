@@ -207,6 +207,13 @@ markers such as `[shared]`, `[unique]`, `[future]` or `[borrowed]` where hiding 
 library wrapper would otherwise obscure ownership, asynchronous completion or
 borrowing. The API reference remains the complete signature.
 
+A view can declare `namespace`, such as `"Input"`, to omit that prefix from
+its Mermaid labels. Keep nested namespaces (`Actions::Context`) and other
+namespaces (`Runtime::Context`) explicit. The explorer states this local scope
+beside the view question; retain it in the Mermaid accessibility description
+too. Keep catalog symbol and method labels fully qualified for the inspector,
+search and API links. Label validation applies the same scoped abbreviation.
+
 For a named free-function box, use the view's `operation_labels` mapping from
 its existing node key to the typed label. Keep the global symbol identity and
 other views' labels unchanged. Match this label in the Mermaid source; its

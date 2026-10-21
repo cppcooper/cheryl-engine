@@ -17,6 +17,9 @@ suffix can mean a scalar or standard-library result and does not imply `void`.
 `[]` marks a collection. Short notes such as `[shared]`, `[unique]`, `[future]`
 and `[borrowed]` retain ownership, asynchronous-result and borrowing information
 when their library wrappers are omitted. The API reference has the full types.
+When a view names a local namespace, its prefix is omitted in the diagram:
+within Input, `Actions::Context` means `Input::Actions::Context`. Other
+namespaces remain explicit, and the inspector retains the full names.
 
 Application arrows include the argument and result types used by selected
 methods. In the inspector, **Accepts** and **Returns** connect a method to those

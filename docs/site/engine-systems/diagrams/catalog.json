@@ -15019,10 +15019,10 @@
         }
       ],
       "notes": [
-        "attach(ContextDefinition) returns a Context lease. Pass that lease to Tick::actions(Context) to obtain an Actions::View; the alternative overload accepts ContextId. ContextDefinition is setup data, not the lookup argument.",
+        "attach(Actions::ContextDefinition) returns an Actions::Context lease. Pass that lease to Tick::actions(Actions::Context) to obtain an Actions::View; the alternative overload accepts Actions::ContextId. Actions::ContextDefinition is setup data, not the lookup argument.",
         "Direct binding changes run during platform initialization. Reusable controllers retain a context endpoint and their own lease.",
         "Updates consume semantic actions and copied observations; text input/focus is a separate focused view.",
-        "Acquire Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward."
+        "Acquire Runtime::Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward."
       ],
       "level": "detailed",
       "refs": [
@@ -15179,7 +15179,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Input"
     },
     {
       "id": "assets-application",

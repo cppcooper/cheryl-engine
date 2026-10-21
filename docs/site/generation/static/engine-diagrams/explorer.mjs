@@ -286,7 +286,8 @@ window.galleryState = {
                                      : current.level === 'detailed'   ? 'System relationships'
                                                                       : current.level + ' view');
         $('#title').textContent = current.title;
-        $('#question').textContent = current.question;
+        $('#question').textContent = current.question +
+            (current.namespace ? ' Local names omit ' + current.namespace + ':: in the diagram.' : '');
         $('#counts').textContent =
             current.nodes.length + ' boxes · ' + current.edges.length + ' arrows';
         document.querySelectorAll('.nav-button')
