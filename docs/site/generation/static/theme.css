@@ -1,3 +1,64 @@
+:root {
+    --cheryl-syntax-keyword: #b4233c;
+    --cheryl-syntax-type: #805500;
+    --cheryl-syntax-definition: #2a6b38;
+    --cheryl-syntax-call: #006c72;
+    --cheryl-syntax-parameter: #5b6572;
+    --cheryl-syntax-local: #1856a1;
+    --cheryl-syntax-member: #a33367;
+    --cheryl-syntax-constant: #985100;
+    --cheryl-syntax-string: #7e4e16;
+    --cheryl-syntax-comment: #5d6b7b;
+    --cheryl-syntax-annotation: #7746a2;
+}
+
+/* Token roles stay consistent between the generated light and dark palettes. */
+.highlight :is(.c, .ch, .cm, .cpf, .c1, .cs, .go, .w) {
+    color: var(--cheryl-syntax-comment);
+}
+
+.highlight :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .nt, .ow) {
+    color: var(--cheryl-syntax-keyword);
+    font-weight: 500;
+}
+
+.highlight :is(.cp, .nd) {
+    color: var(--cheryl-syntax-annotation);
+}
+
+.highlight :is(.m, .mb, .mf, .mh, .mi, .mo, .il, .no) {
+    color: var(--cheryl-syntax-constant);
+}
+
+.highlight :is(.s, .sa, .sb, .sc, .dl, .sd, .s1, .s2, .sh, .sx, .ss, .se, .si, .sr) {
+    color: var(--cheryl-syntax-string);
+}
+
+.highlight :is(.nc, .nn) {
+    color: var(--cheryl-syntax-type);
+    font-weight: 500;
+}
+
+.highlight :is(.nf, .fm) {
+    color: var(--cheryl-syntax-definition);
+}
+
+.highlight :is(.nb, .bp, .nf-Call) {
+    color: var(--cheryl-syntax-call);
+}
+
+.highlight :is(.nv, .vg, .vm) {
+    color: var(--cheryl-syntax-local);
+}
+
+.highlight :is(.vi, .vc) {
+    color: var(--cheryl-syntax-member);
+}
+
+.highlight .nv-Parameter {
+    color: var(--cheryl-syntax-parameter);
+}
+
 /* Give inline names a quiet surface and readable light-theme contrast. */
 .rst-content :is(code.literal, tt.literal) {
     border-color: #d8dee6;
@@ -70,6 +131,17 @@
         --cheryl-visited: #d0b2ff;
         --cheryl-focus: #ffda82;
         --cheryl-mark: #594a22;
+        --cheryl-syntax-keyword: #ff8899;
+        --cheryl-syntax-type: #eed28c;
+        --cheryl-syntax-definition: #a6d98a;
+        --cheryl-syntax-call: #76d7ca;
+        --cheryl-syntax-parameter: #b3bfcd;
+        --cheryl-syntax-local: #91baff;
+        --cheryl-syntax-member: #f0a1c2;
+        --cheryl-syntax-constant: #ffb875;
+        --cheryl-syntax-string: #cad99a;
+        --cheryl-syntax-comment: #a5afbf;
+        --cheryl-syntax-annotation: #c8acff;
         scrollbar-color: var(--cheryl-border) var(--cheryl-background);
     }
 
@@ -378,31 +450,11 @@
         color: var(--cheryl-muted);
     }
 
-    html[data-theme="dark"] .highlight :is(.c, .ch, .cm, .cpf, .c1, .cs, .go, .w) {
-        color: #a8b8cb;
-    }
-
-    html[data-theme="dark"] .highlight :is(.cp, .k, .kc, .kd, .kn, .kp, .kr, .kt, .nt, .ow) {
-        color: #c3a6ff;
-    }
-
-    html[data-theme="dark"] .highlight :is(.m, .mb, .mf, .mh, .mi, .mo, .il, .no) {
-        color: #ffca91;
-    }
-
-    html[data-theme="dark"] .highlight :is(.s, .sa, .sb, .sc, .dl, .sd, .s1, .s2, .sh, .sx, .ss) {
-        color: #a9dca1;
-    }
-
-    html[data-theme="dark"] .highlight :is(.se, .si, .sr, .na, .nd, .nl) {
-        color: #f3d889;
-    }
-
-    html[data-theme="dark"] .highlight :is(.nb, .bp, .nc, .nf, .fm, .nn, .gh, .gp, .gu, .gt) {
+    html[data-theme="dark"] .highlight :is(.na, .nl, .gh, .gp, .gu, .gt) {
         color: #8ecaff;
     }
 
-    html[data-theme="dark"] .highlight :is(.ni, .nv, .vc, .vg, .vi, .vm, .o) {
+    html[data-theme="dark"] .highlight :is(.ni, .o) {
         color: var(--cheryl-text);
     }
 

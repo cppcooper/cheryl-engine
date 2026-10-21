@@ -156,7 +156,8 @@ class PythonCacheTests(TemporaryCase):
 class ProbeTests(TemporaryCase):
     """Use real dist-info discovery; stub only the external packaging parser."""
 
-    imports = ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid")
+    imports = ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid",
+               "tree_sitter", "tree_sitter_cpp")
 
     def setUp(self):
         super().setUp()
@@ -303,7 +304,7 @@ class ProbeTests(TemporaryCase):
 
     def test_missing_import(self):
         self.distribution("Fixture-Doc", "1.0.0")
-        for name in ("breathe", "sphinxcontrib.mermaid"):
+        for name in ("breathe", "sphinxcontrib.mermaid", "tree_sitter", "tree_sitter_cpp"):
             with self.subTest(module=name):
                 module = self.site / f"{name}.py"
                 module.unlink()

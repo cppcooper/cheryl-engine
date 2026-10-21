@@ -33,6 +33,8 @@ MINIMUM_PACKAGES = {
     "myst-parser": "5.1.0",
     "sphinx-rtd-theme": "3.1.0",
     "sphinxcontrib-mermaid": "2.1.1",
+    "tree-sitter": "0.26.0",
+    "tree-sitter-cpp": "0.23.4",
 }
 
 
@@ -180,7 +182,8 @@ try:
             if requirement.specifier and not requirement.specifier.contains(dependency, prereleases=True):
                 raise RuntimeError(f"{name} requires {requirement}, found {dependency}")
             pending.append((requirement.name, frozenset(getattr(requirement, "extras", ()))))
-    for name in ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid"):
+    for name in ("sphinx", "breathe", "exhale", "myst_parser", "sphinx_rtd_theme", "sphinxcontrib.mermaid",
+                 "tree_sitter", "tree_sitter_cpp"):
         importlib.import_module(name)
     print(json.dumps({"versions": versions}))
 except Exception as error:

@@ -1,6 +1,8 @@
 /* Enlarge the RTD theme's type by 20%, including its fixed-size text. */
 html {
     font-size: 120%;
+    --cheryl-monospace: ui-monospace, "Cascadia Code", "Source Code Pro", "DejaVu Sans Mono",
+        "Noto Sans Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 /* Scale prose with the root size. */
@@ -11,8 +13,7 @@ p {
 
 /* Keep inline names close to prose size without the Courier-style fallback. */
 .rst-content :is(code.literal, tt.literal) {
-    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", "DejaVu Sans Mono",
-        "Noto Sans Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-family: var(--cheryl-monospace);
     font-size: 0.9em;
     font-weight: 500;
     padding: 0.05em 0.3em;
@@ -22,7 +23,9 @@ p {
 .rst-content .linenodiv pre,
 .rst-content div[class^="highlight"] pre,
 .rst-content pre.literal-block {
-    font-size: 0.75rem;
+    font-family: var(--cheryl-monospace);
+    font-size: 0.8125rem;
+    line-height: 1.55;
 }
 
 .wy-menu-vertical a {
