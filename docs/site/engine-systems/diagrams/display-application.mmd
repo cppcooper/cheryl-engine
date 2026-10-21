@@ -1,0 +1,46 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Display · application access
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>init_platform()"]):::app
+    k1["Runtime::<br/>Context"]:::neighbor
+    k2(["Application<br/>platform-owner work"]):::app
+    k3["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
+    k4["Platform::<br/>Window"]:::focal
+    k5["Platform::<br/>DisplaySystem"]:::focal
+    k6["Platform::<br/>Monitor"]:::focal
+    k7["Platform::<br/>Dimensions"]:::focal
+    k8["Platform::<br/>WindowMode"]:::focal
+    k9(["Application<br/>update()"]):::app
+    k10["Game::<br/>TickContext"]:::neighbor
+    k11["Platform::<br/>FramebufferSize"]:::focal
+    k12["Rendering::<br/>Camera2D"]:::neighbor
+    k0 --> k1
+    k2 --> k3
+    k2 --> k4
+    k1 --> k5
+    k1 --> k4
+    k5 --> k6
+    k4 --> k7
+    k4 --> k8
+    k9 --> k10
+    k10 --> k11
+    k9 --> k12
+    k12 --> k11
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

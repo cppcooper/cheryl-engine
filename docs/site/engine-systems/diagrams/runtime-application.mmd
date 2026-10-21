@@ -1,0 +1,49 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Runtime · application composition
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>composition"]):::app
+    k1("Application::GLFWOpenGL::<br/>make_context()"):::focal
+    k2["Runtime::<br/>Context"]:::focal
+    k3["Runtime::<br/>GameRuntime"]:::focal
+    k4(["Application-owned game objects"]):::app
+    k5["Game::<br/>AbstractGame"]:::focal
+    k6(["Application<br/>update()"]):::app
+    k7["Game::<br/>TickContext"]:::focal
+    k8(["Application<br/>prepare_render_frame()"]):::app
+    k9["Rendering::<br/>FrameWriter"]:::neighbor
+    k10["Runtime::<br/>ShutdownPolicy"]:::focal
+    k11(["Application<br/>producer"]):::app
+    k12["Runtime::<br/>ShutdownEndpoint"]:::focal
+    k13["Runtime::<br/>RuntimeLifecycle"]:::focal
+    k14(["Application<br/>report"]):::app
+    k0 --> k1
+    k1 --> k2
+    k0 --> k3
+    k4 --> k5
+    k3 --> k5
+    k3 --> k2
+    k6 --> k7
+    k8 --> k9
+    k0 --> k10
+    k11 --> k12
+    k3 --> k12
+    k3 --> k13
+    k14 --> k13
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

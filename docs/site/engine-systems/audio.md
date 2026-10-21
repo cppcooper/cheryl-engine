@@ -37,37 +37,62 @@ shows both entry points.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Audio integration
-    accDescr: The application owns Audio, which plays clips or streamed files on its own output clock; preparation can use Workers.
-    Application -->|owns and controls playback| Audio
-    Audio -->|retains samples| Clips
-    Audio -->|reads| StreamFiles[Stream files]
-    Audio -->|uses output clock| Backend[Device or offline backend]
-    Application -. optional preparation .-> Workers
+Own one selected audio system alongside the game, prepare clips at loading
+boundaries and retain voice handles for playback needing later control. Audio
+progresses on its output clock; its optional event pump is a separate owner task.
+
+```{engine-diagram} audio-application
 ```
+
+The runtime maintenance attachment in this map is optional. Audio-only programs
+need no Context, display or renderer. The [engine dependency map](diagram-explorer.md#audio-internal)
+shows the neutral contracts and miniaudio implementation boundary.
 
 ### Uses
 
-The selected module owns mixing, decoding and output. Workers are an optional
-place for synchronous decode/file preparation; playback advances on the audio
-output clock.
+| Consumer | Dependency | Integration boundary |
+| --- | --- | --- |
+| {cpp:class}`Audio::System <CE::Audio::System>` playback | {cpp:class}`Audio::Clip <CE::Audio::Clip>`, `Audio::Format` and `Audio::PlaybackOptions`, or a streamed file | Retain immutable PCM for independent voices; keep stream files available through playback and restart. The selected module owns decoding/mixing/output. |
+| Outcome publication | [Events](events.md) {cpp:class}`Events::EventBus::Publisher <CE::Events::EventBus::Publisher>` | The designated owner explicitly pumps publication outside audio locks. Immediate listeners run there; queued listeners use their selected delivery adapter. |
+| Miniaudio `pump_with()` | [Runtime](runtime.md) {cpp:class}`Runtime::RuntimeServices <CE::Runtime::RuntimeServices>` and {cpp:class}`Runtime::ServiceAttachment <CE::Runtime::ServiceAttachment>` | Optional platform-maintenance notification pump. It retains weak audio access and does not own output or voice reclamation. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Audio::Clip`<br>{cpp:struct}`CE::Audio::Format`<br>{cpp:struct}`CE::Audio::PlaybackOptions`<br>[`std::filesystem::path`](../runtime/audio.md#clips-and-voices) | [Workers](workers.md) |
+[Workers](workers.md) can run application-owned CPU file decoding. `Audio::System`
+does not depend on an Engine worker pool, and playback does not wait for game
+updates or render-frame publication.
 
 ### Used by
 
-Applications start sound effects and manage music voices. Voices can share a
-clip with independent cursors. Runtime hooks provide useful lifecycle
-boundaries, but the application closes audio explicitly; audio-only programs
-need no display or graphics.
+| Consumer | Audio value/operation | Responsibility |
+| --- | --- | --- |
+| Application sound/music controller | `System::play()` / `stream()` and retained {cpp:class}`Audio::Voice <CE::Audio::Voice>` handles | Trigger prepared sources, control individual voices and explicitly close output after producers stop. Dropping a handle does not stop active playback. |
+| Application state/UI observation | {cpp:struct}`Audio::VoiceSnapshot <CE::Audio::VoiceSnapshot>` and optional {cpp:struct}`Audio::PlaybackEnded <CE::Audio::PlaybackEnded>` | Observe copied state or logical generation outcomes; select simulation delivery when a platform pump must reach simulation-owned state. |
+| Offline processors and tests | `Audio::Miniaudio::System::open_offline()` and `render()` | Explicitly advance the mixer clock with complete output frames; no native device opens. [Output selection](../modules/miniaudio.md#preparation-and-output). |
 
-| Types | Systems |
-| --- | --- |
-| [Application-owned sound/music controllers](../runtime/audio.md#clips-and-voices) | — |
+### Playback, maintenance and notifications
+
+| Operation | What it advances or releases | What the application must arrange |
+| --- | --- | --- |
+| Device output / offline `render()` | Audio playback time. | Choose real device or explicit offline output; opening and initial source preparation can block. |
+| `maintain()` | Reclaims unreferenced inactive voices. | Call regularly while open. It neither advances audio time nor publishes callbacks. |
+| `publish_notifications()` | Observes terminal facts and attempts pending event publication. | Call on the designated owner, or retain the optional `pump_with()` attachment. The attachment does not call `maintain()`. |
+| `close()` | Stops output and retires voices; surviving handles report `Closed`. | Settle producers first. Pump final outcomes explicitly before removing subscriptions and releasing the system. |
+
+### Observe playback outcomes
+
+The optional `Audio::playback_ended_event` reports one logical terminal fact per
+admitted generation: `Completed`, `Stopped`, `Replaced`, `OutputClosed` or
+`Reclaimed`. Restart admits another generation while retaining voice identity;
+pause/resume and loop iterations do not create generations. Miniaudio supports
+this extension; `notification_snapshot().system == 0` means unsupported.
+
+Notifications use bounded storage and one publication attempt per retained
+record. Use {cpp:struct}`Audio::PlaybackNotifications <CE::Audio::PlaybackNotifications>`
+to detect loss and a retained voice's current `snapshot().terminal` to reconcile
+that generation. This does not recover superseded playback history. The
+[playback outcome contract](../runtime/audio.md#playback-outcomes) explains
+identity, reason selection and pump ownership; the
+[miniaudio example](../modules/miniaudio.md#playback-notifications) supplies
+subscription setup and removal.
 
 ## Contracts
 

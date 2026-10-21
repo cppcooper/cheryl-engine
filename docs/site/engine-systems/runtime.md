@@ -43,38 +43,60 @@ instead of live adapter access from another thread. Both modes use the same
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Runtime integration
-    accDescr: The application provides a game and context; Runtime coordinates game hooks and engine services.
-    Application -->|provides game and context| Runtime
-    Runtime -->|calls lifecycle hooks| Game
-    Runtime -->|polls| Input
-    Runtime -->|observes window| Display
-    Runtime -->|plays and presents frames| Rendering
-    Runtime -->|coordinates backend lifetime| Resources
-    Runtime -->|services requests| Dispatch
-    Runtime -->|settles accepted jobs| Workers
+Assemble a compatible adapter set into {cpp:class}`Runtime::Context <CE::Runtime::Context>`,
+implement {cpp:struct}`Game::AbstractGame <CE::Game::AbstractGame>`, then construct
+{cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>` and call `run()` on
+the platform owner. The supplied GLFW/OpenGL factory handles adapter construction;
+[First Game](../getting-started/first-game.md) shows the complete application.
+
+```{engine-diagram} runtime-focus-assembly
 ```
+
+[Explore runtime dependencies and application composition](diagram-explorer.md#runtime-internal),
+including the [tick/frame boundary](diagram-explorer.md#runtime-focus-frame) and
+[shutdown capabilities](diagram-explorer.md#runtime-focus-shutdown).
+
+### Choose the integration point
+
+| Application work | Entry point | Boundary to preserve |
+| --- | --- | --- |
+| Bind devices, upload initial resources, acquire producer endpoints | `AbstractGame::init_platform()` | Platform/graphics owner; retain acquired handles for later work. |
+| Create simulation-owned controllers and UI, attach automatic view following | `AbstractGame::init_simulation()` | Simulation owner, with its initial view established before Ready and the first update. |
+| Advance gameplay | `AbstractGame::update()` with {cpp:struct}`Game::TickContext <CE::Game::TickContext>` | Use immutable input and copied sizes; advance state with the selected simulation delta. |
+| Publish draw commands | Frame preparation with {cpp:class}`Rendering::FrameWriter <CE::Rendering::FrameWriter>` | Publish retained render state. Preparation can be skipped when no frame slot is free. |
+| Run required recurring module work | {cpp:class}`Runtime::RuntimeServices <CE::Runtime::RuntimeServices>` | Attach on the initialized owner and retain the returned `ServiceAttachment`; use events for optional observation. |
+| Request or negotiate shutdown | `tick.request_stop()`, `runtime.stop()`, or {cpp:class}`Runtime::ShutdownEndpoint <CE::Runtime::ShutdownEndpoint>` | Stop is unconditional. Ordinary endpoint requests may be negotiated by the single installed host policy. |
+
+The [game hook contract](../development/consuming-engine.md#game-hooks-and-ownership)
+defines hook ownership and cleanup. The [frame boundary](../runtime/runtime-frame-boundary.md)
+explains when each operation runs in sequential and concurrent modes.
 
 ### Uses
 
-Runtime composes the adapters and coordinates their owners, accepted work and
-shutdown.
+These dependencies supply the session's adapters, data and execution boundaries.
+`Context` owns display, presentation, renderer and resource adapters, and owns or
+explicitly borrows input. `GameRuntime` borrows the context and game.
 
-| Types | Systems |
+| Dependency | Runtime's responsibility |
 | --- | --- |
-| {cpp:struct}`CE::Game::AbstractGame`<br>{cpp:class}`CE::Platform::DisplaySystem`<br>{cpp:class}`CE::Input::System`<br>{cpp:class}`CE::Rendering::PresentationSurface`<br>{cpp:class}`CE::Rendering::Renderer`<br>{cpp:struct}`CE::Rendering::Resources::Provider`<br>{cpp:class}`CE::Workers::Group`<br>{cpp:class}`CE::Runtime::PlatformDispatcher` | [Display](display.md)<br>[Input](input.md)<br>[Rendering](rendering.md)<br>[Resources](resources.md)<br>[Dispatch](dispatch.md)<br>[Workers](workers.md)<br>[Logging](logging.md)<br>[Diagnostics](diagnostics.md) |
+| {cpp:struct}`Game::AbstractGame <CE::Game::AbstractGame>` | Invoke initialization, update, preparation and cleanup hooks on their owners. |
+| {cpp:class}`Platform::DisplaySystem <CE::Platform::DisplaySystem>`, {cpp:class}`Platform::Window <CE::Platform::Window>` | Select copied sizes/focus and sample native close intent on platform. [Display](display.md). |
+| {cpp:class}`Input::System <CE::Input::System>` | Initialize and poll the adapter; transfer complete observations into ticks. [Input](input.md). |
+| {cpp:class}`Rendering::Renderer <CE::Rendering::Renderer>`, {cpp:class}`Rendering::PresentationSurface <CE::Rendering::PresentationSurface>` | Consume complete retained frames, maintain graphics resources and present. [Rendering](rendering.md). |
+| {cpp:struct}`Rendering::Resources::Provider <CE::Rendering::Resources::Provider>` | Keep the resource backend alive through frame and game-resource release. [Resources](resources.md). |
+| {cpp:class}`Events::EventBus <CE::Events::EventBus>` | Route context observations; required view/service work uses owned attachments. [Events](events.md). |
+| {cpp:class}`Runtime::PlatformDispatcher <CE::Runtime::PlatformDispatcher>`, {cpp:class}`Runtime::SimulationDispatcher <CE::Runtime::SimulationDispatcher>` | Open, service and close owner queues. [Dispatch](dispatch.md). |
+| {cpp:class}`Workers::Group <CE::Workers::Group>` | Close and settle context-tracked jobs while required platform work can progress. [Workers](workers.md). |
 
 ### Used by
 
-Applications construct a runtime and provide game hooks. GUI and audio
-integrations cooperate with those lifecycle boundaries while keeping
-application-owned lifetimes.
-
-| Types | Systems |
+| Consumer | How it participates |
 | --- | --- |
-| {cpp:class}`CE::Application::Startup`<br>{cpp:struct}`CE::Application::StartupResult`<br>[`Tutorial::Game`](../getting-started/create-a/character.md) | [GUI](gui.md)<br>[Audio](audio.md) |
+| Application entry point, optionally {cpp:class}`Application::Startup <CE::Application::Startup>` | Select adapters/options, retain game and context, then run one session. [Context assembly](../development/consuming-engine.md#context-assembly). |
+| Application game/controllers | Implement the hooks and read `TickContext`; Runtime supplies no scene or entity model. [Character tutorial](../getting-started/create-a/character.md). |
+| [GUI sessions](gui.md) | Attach required simulation-view sizing and step-time integration where supported; the application retains session lifetime. |
+| [Audio source](audio.md) | Opt into maintenance pumping when desired; audio lifetime remains application-owned. |
+| Host or tooling observer | Retain {cpp:class}`Runtime::RuntimeLifecycle <CE::Runtime::RuntimeLifecycle>` for current/terminal state without borrowing the runtime. [Lifecycle observation](../runtime/runtime-frame-boundary.md#lifecycle-observation). |
 
 ## Contracts
 

@@ -1,0 +1,43 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Rendering · application frame preparation
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>update()"]):::app
+    k1["Rendering::<br/>Camera2D"]:::focal
+    k2(["Application<br/>prepare_render_frame()"]):::app
+    k3["Rendering::<br/>FrameWriter"]:::focal
+    k4["Rendering::<br/>PassWriter"]:::focal
+    k5["Rendering::Submission::<br/>Context2D"]:::focal
+    k6["Rendering::<br/>DrawStyle2D"]:::focal
+    k7("Rendering::Submission::<br/>resolve_sprite()"):::focal
+    k8["Assets::Sprites::<br/>Asset"]:::neighbor
+    k9["Rendering::<br/>DrawPacket2D"]:::focal
+    k0 --> k1
+    k2 --> k1
+    k2 --> k3
+    k3 --> k4
+    k2 --> k5
+    k2 --> k6
+    k2 --> k7
+    k7 --> k8
+    k7 --> k5
+    k7 --> k6
+    k7 --> k9
+    k4 --> k9
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

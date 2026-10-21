@@ -1,0 +1,43 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Workers · application CPU preparation
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>composition"]):::app
+    k1["Runtime::<br/>ExecutionOptions"]:::neighbor
+    k2["Workers::<br/>Pool"]:::focal
+    k3["Runtime::<br/>Context"]:::neighbor
+    k4["Workers::<br/>Group"]:::focal
+    k5(["Application<br/>CPU preparation"]):::app
+    k6["Workers::<br/>GroupOptions"]:::focal
+    k7["Workers::<br/>CpuPolicy"]:::focal
+    k8["Assets::Loading::<br/>Loader"]:::neighbor
+    k9["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
+    k10(["Application<br/>cleanup / quiesce()"]):::app
+    k0 --> k1
+    k1 --> k2
+    k0 --> k3
+    k3 --> k4
+    k3 --> k2
+    k5 --> k4
+    k4 --> k6
+    k6 --> k7
+    k5 --> k8
+    k5 --> k9
+    k10 --> k4
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

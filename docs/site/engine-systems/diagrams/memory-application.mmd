@@ -1,0 +1,41 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Memory · application object storage
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>storage owner"]):::app
+    k1["Memory::Objects::<br/>Pool"]:::focal
+    k2["Memory::Objects::<br/>PoolState"]:::focal
+    k3["Memory::Objects::Constructor::<br/>Context"]:::focal
+    k4["Memory::Objects::<br/>Reservation"]:::focal
+    k5["Memory::Allocators::<br/>ObjectPoolAllocator"]:::focal
+    k6["Memory::<br/>Block"]:::focal
+    k7(["Application<br/>object type"]):::app
+    k8(["Application-owned game objects"]):::app
+    k9(["Application<br/>cleanup / quiesce()"]):::app
+    k0 --> k1
+    k1 --> k2
+    k2 --> k3
+    k0 -.-> k4
+    k4 --> k5
+    k4 --> k6
+    k3 --> k7
+    k4 --> k7
+    k8 --> k7
+    k9 --> k1
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

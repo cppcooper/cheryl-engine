@@ -31,39 +31,64 @@ Types below are in `CE::Diagnostics` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Diagnostics integration
-    accDescr: Applications inspect owner-specific snapshots; Runtime counts require completed execution and reports can use Logging.
-    Application -->|reads copied observations| Diagnostics
-    Diagnostics -->|reads after run completes| Runtime
-    Diagnostics -->|observes activity| Work[Workers, Dispatch and Events]
-    Diagnostics -->|observes publication and retirement| Storage[Assets, Memory and Resources]
-    Diagnostics -. ordinary reports .-> Logging
+Read the service that owns the observation, retain its copied values, then
+interpret them with the operation's result or failure. Diagnostics does not
+create a global monitor that queries every subsystem for the application.
+
+```{engine-diagram} diagnostics-application
 ```
 
-Diagnostics names owner-specific snapshot APIs. Each query follows its owner's
-observation rules.
+The [owner dependency view](diagram-explorer.md#diagnostics-internal) shows
+the available snapshot families and their originating services.
+
+### Choose an observation boundary
+
+| Question | Query/result | When and how to interpret it |
+| --- | --- | --- |
+| How did this session progress? | `Runtime::GameRuntime::diagnostics()` → {cpp:struct}`Runtime::RuntimeStats <CE::Runtime::RuntimeStats>` | Synchronize with `run()` returning or throwing. Unstarted/completed sessions may be sampled; live sampling rejects. |
+| Is worker work queued/running or using fallback policy? | `Workers::Group::status()` → {cpp:struct}`Workers::GroupStatus <CE::Workers::GroupStatus>`; `policy()` → {cpp:struct}`Workers::GroupPolicy <CE::Workers::GroupPolicy>` | Status observes activity/failures; policy reports effective eligibility and preferred fallback. Use each job's future for its result. |
+| Is dispatched work still queued or detached? | Platform/simulation dispatcher `diagnostics()` → {cpp:struct}`Diagnostics::DispatchStats <CE::Diagnostics::DispatchStats>` | `pending` omits detached work; also inspect `running`. A snapshot is not a join. |
+| What happened to event delivery? | `Events::EventBus::diagnostics()` → {cpp:struct}`Events::EventStats <CE::Events::EventStats>` | Registration, invocation, discard and queued-failure observations; no event payload/name sampling. |
+| Did an upload publish anything before failing? | `Assets::Loading::Loader::diagnostics()` → {cpp:struct}`Assets::Loading::UploadStats <CE::Assets::Loading::UploadStats>` | Last-attempt counts/completion can describe partial publication. Keep the original upload error; no batch rollback is implied. |
+| Are cache entries still owned? | `Assets::Cache::Store::diagnostics()` → {cpp:struct}`Assets::Cache::Stats <CE::Assets::Cache::Stats>` | Separates current entries from cumulative publications/replacements; clearing one cache does not drop every asset owner. |
+| Which CPU ranges remain managed? | `Memory::Manager::diagnostics()` → {cpp:struct}`Memory::Stats <CE::Memory::Stats>` | Synchronized byte-domain totals, free bytes, owners and partitions; not live-object or GPU-byte counts. |
+| Are native handles awaiting retirement? | `Rendering::OpenGL::ResourceLifetime::diagnostics()` → {cpp:struct}`Rendering::OpenGL::ResourceStats <CE::Rendering::OpenGL::ResourceStats>` | Compare live/pending/collected ownership on the selected backend; sampling performs no graphics collection. |
+
+Follow the [symptom, evidence and action table](../runtime/subsystem-diagnostics.md#investigate-a-runtime-symptom)
+when deciding what to sample. It connects an observation to the owner whose
+policy or lifetime may need investigation.
 
 ### Uses
 
-Observers read snapshots under each owner's synchronization and observation
-limits. Ordinary summaries use Logging; bounded emergency output preserves
-required failure context independently.
-
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Runtime::RuntimeStats`<br>{cpp:struct}`CE::Workers::GroupStatus`<br>{cpp:struct}`CE::Diagnostics::DispatchStats`<br>{cpp:struct}`CE::Events::EventStats`<br>{cpp:struct}`CE::Assets::Loading::UploadStats`<br>{cpp:struct}`CE::Memory::Stats`<br>{cpp:class}`CE::Logging::Logger` | [Runtime](runtime.md)<br>[Workers](workers.md)<br>[Dispatch](dispatch.md)<br>[Events](events.md)<br>[Assets](assets.md)<br>[Memory](memory.md)<br>[Resources](resources.md)<br>[Logging](logging.md) |
+| Observer | Dependency | Relationship |
+| --- | --- | --- |
+| Application report | The owner-specific snapshot APIs above | Copies observations under each owner's access rules; it does not acquire service ownership through the result. |
+| Runtime/resource/work correlation | {cpp:type}`Diagnostics::DomainId <CE::Diagnostics::DomainId>` | Joins observations from the same process-local owner. IDs are neither addresses nor persistent asset/session keys. |
+| Ordinary formatted report | {cpp:class}`Logging::Logger <CE::Logging::Logger>` | Selects a named destination after sampling, outside containing locks/native callbacks. [Logging](logging.md). |
+| Required native/cleanup failure report | [Bounded emergency output](../runtime/failure-reporting.md#emergency-reporting) | Preserves failure context independently of ordinary logging and leaves the owning exception/future authoritative. |
 
 ### Used by
 
-Subsystem owners use domain identities and expose counters for applications,
-hosts and developers. Acceptance needs observations of the selected behavior;
-quiet, skipped or unselected paths do not establish it.
+| Owner | Diagnostic identity/observation | Useful correlation |
+| --- | --- | --- |
+| [Runtime](runtime.md) | `Runtime::GameRuntime` / `Runtime::Context` domains and completed `RuntimeStats` | Connect a session outcome to update, polling and frame counts. |
+| [Workers](workers.md), [Dispatch](dispatch.md), [Events](events.md) | Pool/group/dispatcher/bus domains and queue/delivery observations | Distinguish admission, pending, detached/running, completion and failure. |
+| [Assets](assets.md) | Prepared batch, `Rendering::Resources::Provider` and cache domains | Connect CPU preparation, provider upload and actual publication without relying on source paths. |
+| [Memory](memory.md), [Resources](resources.md) | Shared byte-domain and native resource-lifetime counts | Separate retained CPU backing from backend-native retirement. |
+| [Display](display.md), [Input](input.md), [Rendering](rendering.md) | Explicit platform/native operational reports | Inspect capabilities, resize/focus epochs or supported debug observations without assuming every native call is traced. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:class}`CE::Workers::Pool`<br>{cpp:class}`CE::Events::EventBus`<br>{cpp:struct}`CE::Rendering::Resources::Provider`<br>{cpp:struct}`CE::Assets::Cache::Store`<br>{cpp:struct}`CE::Memory::Manager` | [Runtime](runtime.md)<br>[Workers](workers.md)<br>[Dispatch](dispatch.md)<br>[Events](events.md)<br>[Assets](assets.md)<br>[Memory](memory.md)<br>[Resources](resources.md)<br>[Display](display.md)<br>[Rendering](rendering.md)<br>[Logging](logging.md) |
+### Retain values, compare domains
+
+A copied snapshot can outlive the observed service. Its values do not keep that
+service alive, refresh themselves or make a query safe during destruction.
+Retain the owner through the query and obey its thread/lifecycle boundary.
+
+Compare counters only within the domain and scope they describe. Memory growth
+facades share the byte bookkeeping domain; worker group and physical pool IDs
+identify different owners. A zero domain means unavailable/exhausted. Counts
+sampled from different owners are not one atomic engine-wide snapshot. The
+[diagnostics guide](../runtime/subsystem-diagnostics.md) defines each family's
+sampling and reporting limits.
 
 ## Contracts
 

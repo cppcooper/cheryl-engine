@@ -30,37 +30,68 @@ Types below are in `CE::Logging` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Logging integration
-    accDescr: Startup configures Logging before producers; named records reach configured sinks, optionally through a private queue.
-    Startup -->|configures and closes after producers| Logging
-    Systems[Engine subsystems] -->|emit named records| Logging
-    Diagnostics -->|writes ordinary summaries| Logging
-    Logging -->|filters and writes| Sinks[Console and file sinks]
-    Logging -. optional async emission .-> Queue[Private logging queue]
+Application composition owns logging lifetime and configures each used category
+before producers begin. Writers use a named
+{cpp:class}`Logging::Logger <CE::Logging::Logger>`; an explicitly owned
+{cpp:class}`Logging::Log <CE::Logging::Log>` is another option when the caller
+needs a separate facade/backend lifetime.
+
+```{engine-diagram} logging-application
 ```
+
+The [engine dependency view](diagram-explorer.md#logging-internal) follows
+subsystem writers into the public logging interfaces.
+
+### Configure, write and finish
+
+| Boundary | Application action | Result or limit |
+| --- | --- | --- |
+| Process setup | Keep {cpp:class}`Logging::ProcessLifetime <CE::Logging::ProcessLifetime>` alive around all producers and diagnostic readers. The supplied Startup already owns a guard. | Nested guards share the lifetime; the last guard closes live logs and joins the private worker. Shutdown is terminal. |
+| Before first category access | Build {cpp:struct}`Logging::Config <CE::Logging::Config>` with `for_logger()` and call `Logger<name>::initialize(handlers, config)`. | Configuration is per category. Repeated explicit initialization rejects, including after lazy creation. |
+| Ordinary writes | Use `CE_LOG_*` or `Logger<name>::write_lazy()` when diagnostic argument preparation is costly or can throw. | Compile policy and runtime gates run before guarded argument preparation; direct severity-call arguments are evaluated first. |
+| Investigation | Read `shared_queue_stats()` and `backend_stats()` on the existing log. | Queue loss spans categories; degradation/failure counters identify the individual log. Neither query proves output completion. |
+| Shutdown/recovery | Stop producers, complete `close()`, then reopen only if recovery is needed and the process lifetime remains active. | A timed-out close leaves Closing intact. `flush()` queues a request; it does not acknowledge file completion or durability. |
+
+Follow [Enable useful output](../runtime/logging.md#enable-useful-output) for a
+complete category configuration. Choose `Block` when waiting for shared queue
+capacity is acceptable, or `DiscardNew` when counting lost new records is
+preferable; the latter can also discard a flush request.
 
 ### Uses
 
-Private backend machinery owns emission, rotation and console/file callbacks.
-Build policy selects compiled severities; bounded failure reporting remains
-available when ordinary logging is closed, stripped or degraded.
+| Consumer | Dependency | Relationship |
+| --- | --- | --- |
+| `Logging::Logger<name>` | `Logging::Log<name>` | Provides lazy named access to centrally registered state keyed by category text across libraries. |
+| `Logging::Log<name>` | {cpp:class}`Logging::LogHandle <CE::Logging::LogHandle>` | Derives the public lifecycle/filtering/observation operations; it is not a `State::Singleton` facade. |
+| `Logging::LogHandle` | `Logging::Config` and {cpp:struct}`Logging::FileEventHandlers <CE::Logging::FileEventHandlers>` | Owns configured backend state and callbacks through final closure. Callback captures protect borrowed targets. |
+| `Logging::Config` | {cpp:enum}`Logging::Profile <CE::Logging::Profile>`, {cpp:enum}`Logging::Level <CE::Logging::Level>` and {cpp:enum}`Logging::OverflowPolicy <CE::Logging::OverflowPolicy>` | Separates initial runtime thresholds and queue admission from the target's compile mask. |
+| Guarded emission and backend failure paths | [Bounded Diagnostics failure reporting](../runtime/failure-reporting.md#emergency-reporting) | Reports required failure context independently of ordinary log filtering or sink health. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Logging::Config`<br>{cpp:struct}`CE::Logging::FileEventHandlers`<br>{cpp:class}`CE::State::Singleton`<br>{cpp:type}`CE::Diagnostics::DomainId` | [State](state.md)<br>[Diagnostics](diagnostics.md) |
+The compiled backend owns its queue, worker and sink graph. Applications do not
+replace native sinks or keep native logger owners through public API handles.
 
 ### Used by
 
-Applications configure categories before producers and can add names. Category
-state is keyed centrally by text across libraries. Explicit engine destinations
-keep their selection; `make_default()` selects Engine's private registry
-default.
+| Consumer | Named destination | What to look for |
+| --- | --- | --- |
+| {cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>`, {cpp:class}`Workers::Pool <CE::Workers::Pool>`, dispatchers and event buses | `Logging::Categories::engine` → `engine.log` | Session timing/lifecycle and explicit work/delivery summaries. [Runtime](runtime.md), [Workers](workers.md), [Dispatch](dispatch.md), [Events](events.md). |
+| {cpp:class}`Platform::GLFW::DisplaySystem <CE::Platform::GLFW::DisplaySystem>` and native input | `Logging::Categories::platform` → `os-platform.log` | Window/context/input capability and focus observations. [Display](display.md), [Input](input.md). |
+| {cpp:class}`Rendering::OpenGL::Renderer <CE::Rendering::OpenGL::Renderer>` and graphics resources | `Logging::Categories::rendering` → `rendering.log` | Renderer, shader and native resource observations. [Rendering](rendering.md), [Resources](resources.md). |
+| {cpp:struct}`Assets::Loading::Loader <CE::Assets::Loading::Loader>` and caches | `Logging::Categories::assets` → `assets.log` | Preparation, upload/publication and reload outcomes. [Assets](assets.md). |
+| {cpp:struct}`Memory::Manager <CE::Memory::Manager>` | `Logging::Categories::memory` → `memory.log` | Explicit preallocation and copied bookkeeping reports. [Memory](memory.md). |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:class}`CE::Platform::GLFW::DisplaySystem`<br>{cpp:class}`CE::Rendering::OpenGL::Renderer`<br>{cpp:struct}`CE::Assets::Loading::Loader`<br>{cpp:struct}`CE::Memory::Manager`<br>{cpp:class}`CE::Workers::Pool` | [Runtime](runtime.md)<br>[Display](display.md)<br>[Rendering](rendering.md)<br>[Assets](assets.md)<br>[Memory](memory.md)<br>[Workers](workers.md)<br>[Diagnostics](diagnostics.md) |
+These files are separate destinations, not an aggregate mirror. Configuring
+`engine` alone does not configure the other categories. The
+[category guide](../runtime/logging.md) owns default paths and custom names.
+
+### Ordinary output and required failure context
+
+Ordinary records can be compiled out, filtered, delayed, discarded or suppressed
+by degraded sinks. Preserve the owning exception/future independently. Native
+callbacks, final deleters and noexcept cleanup use the bounded
+[emergency path](../runtime/failure-reporting.md#emergency-reporting), outside
+ordinary logger acquisition. Keep file callbacks free of logger lifecycle
+reentry and waits for work that needs the backend.
 
 ## Contracts
 

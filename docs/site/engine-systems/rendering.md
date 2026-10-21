@@ -33,34 +33,60 @@ Types below are in `CE::Rendering` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Rendering integration
-    accDescr: Game code prepares frames, Runtime plays them, and Rendering uses retained visual and graphics resources.
-    Game -->|writes frame passes| Rendering
-    Runtime -->|plays completed frames| Rendering
-    Rendering -->|resolves retained visuals| Visuals[Assets, Text and GUI]
-    Rendering -->|retains graphics handles| Resources
-    Rendering -->|presents through its window| Display
+Prepare draws from stable simulation state, then let Runtime publish and play
+the completed frame. The ordinary sprite path needs a retained asset, copied
+draw style and pass values; it needs no native graphics calls in the game hook.
+
+```{engine-diagram} rendering-focus-sprite
 ```
+
+The [frame playback diagram](diagram-explorer.md#rendering-focus-playback)
+follows the completed frame through Runtime to the renderer. The
+[application map](diagram-explorer.md#rendering-application) adds cameras,
+materials and other visual inputs.
+
+### Update, prepare and play
+
+| Stage | Application/engine work | Values crossing the boundary |
+| --- | --- | --- |
+| Game update | Advance authoritative positions, cameras and animation on simulation. | Stable current state for the next preparation call. |
+| `prepare_render_frame()` | Borrow `FrameWriter`, begin passes, resolve complete packets and add them in draw order. | Copied matrices/styles/parameters and retained resource handles. No game-object pointer is needed by playback. |
+| Runtime playback and recycling | Graphics consumes a completed `Frame`, presents it and releases recycled frame owners. | Earlier generations stay alive while any frame, scene or application handle retains them. |
+
+Preparation may be skipped under concurrent backpressure. Advance essential
+state during update so skipped visual preparation cannot stop animation or
+change gameplay. See [frame publication](../runtime/runtime-frame-boundary.md#frame-publication-and-recycling).
 
 ### Uses
 
-Applications resolve assets, text and retained UI scenes into complete packets.
-Resource handles and copied dimensions provide the backend inputs.
-
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Assets::Sprites::Asset`<br>{cpp:struct}`CE::Assets::Tilesets::Asset`<br>{cpp:class}`CE::Text::Rendering::Generation`<br>{cpp:class}`CE::UI::TGUI::Scene`<br>{cpp:class}`CE::UI::RmlUi::Scene`<br>{cpp:class}`CE::Rendering::Resources::Material`<br>{cpp:struct}`CE::Rendering::Geometry::Buffer2D`<br>{cpp:struct}`CE::Platform::FramebufferSize` | [Assets](assets.md)<br>[Text](text.md)<br>[GUI](gui.md)<br>[Resources](resources.md)<br>[Display](display.md) |
+| Consumer | Dependency | Integration boundary |
+| --- | --- | --- |
+| `Submission::resolve_sprite()`, `resolve_tile()` and `resolve_graphic()` | Retained [Assets](assets.md#usage) and {cpp:struct}`Rendering::DrawStyle2D <CE::Rendering::DrawStyle2D>` | Resolve geometry ranges, image bindings, material and copied transform without uploading or advancing playback. |
+| `Submission::resolve_text()` | {cpp:class}`Text::Rendering::Generation <CE::Text::Rendering::Generation>` from [Text](text.md#usage) | Resolve already uploaded glyphs; no font discovery, shaping or rasterization is repeated. |
+| {cpp:struct}`Rendering::DrawPacket2D <CE::Rendering::DrawPacket2D>` | [Resources](resources.md#usage): geometry, material and resolved image/sampler parameters | Retain exact immutable generations, including when the original game object is gone. |
+| Renderer and presentation adapters | {cpp:class}`Rendering::PresentationSurface <CE::Rendering::PresentationSurface>` and [Display](display.md) | Native drawing/presentation stays on the graphics/platform owner with compatible live contexts. |
 
 ### Used by
 
-Game and UI preparation write retained passes; Runtime coordinates frame slots
-and playback. Cameras and object transforms remain application-owned.
+| Consumer | Entry point | Responsibility |
+| --- | --- | --- |
+| Application game implementing {cpp:struct}`Game::AbstractGame <CE::Game::AbstractGame>` | `prepare_render_frame()` and its borrowed {cpp:class}`Rendering::FrameWriter <CE::Rendering::FrameWriter>` | Select visible objects, pass order and copied camera state. Do not retain frame/pass writers. |
+| [GUI](gui.md#usage) `UI::TGUI::Scene` and `UI::RmlUi::Scene` | `Scene::write(frame)` | Append an uploaded UI pass at the application's chosen position. Rendering playback does not query live widgets or documents. |
+| {cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>` | Complete frame publication, renderer playback and recycling | Coordinate execution and resource release across the simulation/graphics boundary. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:struct}`CE::Game::AbstractGame`<br>[`Tutorial::Character`](../getting-started/create-a/character.md)<br>[`Tutorial::UIController`](../getting-started/create-a/ui-controller.md)<br>{cpp:class}`CE::UI::TGUI::Scene`<br>{cpp:class}`CE::UI::RmlUi::Scene` | [Runtime](runtime.md)<br>[GUI](gui.md) |
+### Choose a submission path
+
+| Visual | Normal path | Application choice |
+| --- | --- | --- |
+| Sprite or atlas tile | `resolve_sprite()` / `resolve_tile()` | Current grid cell and per-object style; an empty material uses the asset's retained default. |
+| Whole image | `resolve_graphic()` | Retain `Assets::Graphics::Asset`; use its independent-triangle geometry. |
+| Unicode label | `resolve_text()` | Retain the uploaded text generation. [Positioned text runs](../assets/text-layout.md#positioned-text-runs) are an explicit alternative with a compatible shader contract. |
+| Toolkit UI | `Scene::write(frame)` | Adopt a complete scene before preparation; choose its order relative to world/HUD passes. |
+
+[CPU submission](../rendering/pipelines-and-materials.md#cpu-submission) defines
+image insertion and parameter precedence. Camera dimensionality does not select
+blend, depth or culling policy; those belong to the material's pipeline and pass
+constraints.
 
 ## Contracts
 

@@ -30,36 +30,50 @@ Types below are in `CE::Runtime` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Dispatch integration
-    accDescr: Producers submit owned requests; Runtime drains Dispatch on platform or simulation owners.
-    Producers[Assets, Text, GUI and jobs] -->|submit owned requests| Dispatch
-    Runtime -->|opens, drains and closes| Dispatch
-    Events -. optional owner delivery .-> Dispatch
-    Dispatch -->|runs with live Context| Platform[Platform and graphics callbacks]
-    Dispatch -->|runs before updates| Simulation[Simulation callbacks]
+Save a copyable submission endpoint during initialization. Producers submit owned
+inputs through that endpoint and retain the returned future; a later update
+adopts the result after readiness is observed.
+
+```{engine-diagram} dispatch-application
 ```
+
+[Explore dispatcher ownership and engine consumers](diagram-explorer.md#dispatch-internal).
+
+### Choose the destination
+
+| Work | Queue or service | Execution boundary |
+| --- | --- | --- |
+| Upload resources, mutate/query a native window, perform graphics operations | `engine.platform_dispatcher().submission()` | {cpp:class}`Runtime::PlatformDispatcher <CE::Runtime::PlatformDispatcher>` invokes `work(Runtime::Context&)` on platform with the selected graphics context. |
+| Apply an owned result to simulation state | `runtime.simulation_dispatcher().submission()` | {cpp:class}`Runtime::SimulationDispatcher <CE::Runtime::SimulationDispatcher>` invokes `work()` at the scheduled simulation boundary before update. Posting does not create an early tick. |
+| Decode, shape or otherwise prepare CPU data | {cpp:class}`Workers::Group <CE::Workers::Group>` | Independent CPU capacity; the application arranges later owner upload/adoption. [Workers](workers.md). |
+| Observe an event on a selected owner | `Events::platform_delivery()` / `simulation_delivery()` | Adapt a saved endpoint into event delivery; retain a registration and independent error sink. [Events](events.md#uses). |
+
+Submission always queues, even when the producer is already on the destination
+owner. Capture owned values, keep borrowed targets alive through execution or
+cancellation, and avoid waiting on work that needs the current owner. The
+[complete result-adoption example](../runtime/thread-dispatch.md#submit-and-adopt-a-result)
+shows endpoint storage, readiness checking and error handling.
 
 ### Uses
 
-Runtime opens, drains and closes queues on their selected owners. Submitted
-platform work receives its live Context.
-
-| Types | Systems |
+| Dependency | Dispatch's use |
 | --- | --- |
-| {cpp:class}`CE::Runtime::Context`<br>{cpp:struct}`CE::Diagnostics::DispatchStats`<br>{cpp:type}`CE::Diagnostics::DomainId` | [Runtime](runtime.md)<br>[Diagnostics](diagnostics.md) |
+| {cpp:class}`Runtime::Context <CE::Runtime::Context>` | Supply the platform callback's live adapter/resource access. Simulation callbacks receive no Context argument. [Runtime](runtime.md). |
+| {cpp:struct}`Diagnostics::DispatchStats <CE::Diagnostics::DispatchStats>` | Observe accepted, queued, running, completed and cancelled work. These counters do not replace the request's future. [Diagnostics](diagnostics.md). |
+| [Logging](logging.md) | Report queue lifecycle and high-water observations; callback failures remain with their futures. |
+
+`GameRuntime` controls opening, owner binding, draining and closure. A saved
+endpoint retains queue state, without retaining Context or native adapters.
 
 ### Used by
 
-Consumers send owned uploads or simulation changes to the required owner.
-Platform callbacks may operate Resources or Display through Context. Event
-delivery remains composed outside the bus; general parallel CPU work belongs to
-Workers.
-
-| Types | Systems |
+| Consumer | What it submits |
 | --- | --- |
-| {cpp:type}`CE::Events::EventBus::Delivery`<br>{cpp:class}`CE::UI::TGUI::SceneUploader`<br>{cpp:class}`CE::UI::RmlUi::SceneUploader`<br>[`Tutorial::UIController`](../getting-started/create-a/ui-controller.md) | [Events](events.md)<br>[Assets](assets.md)<br>[Text](text.md)<br>[GUI](gui.md)<br>[Resources](resources.md) |
+| {cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>` | Service owner batches and settle/cancel outstanding work in the session shutdown order. |
+| {cpp:class}`UI::TGUI::SceneUploader <CE::UI::TGUI::SceneUploader>`, {cpp:class}`UI::RmlUi::SceneUploader <CE::UI::RmlUi::SceneUploader>` | Upload owned prepared scene data to the graphics owner. [GUI](gui.md). |
+| [Text updates](../getting-started/how-to/update-text.md) | Prepare away from graphics, submit upload and adopt a ready generation on simulation. |
+| [Event delivery adapters](../runtime/event-delivery.md#optional-queued-delivery) | Transfer optional callbacks through a saved platform/simulation endpoint; the bus itself does not own a dispatcher. |
+| Application asset preparation or jobs | Submit owner-affine follow-up using saved endpoints. A Loader or worker pool does not automatically schedule that orchestration. [Assets](assets.md). |
 
 ## Contracts
 

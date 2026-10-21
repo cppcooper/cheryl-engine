@@ -1,0 +1,40 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Text · simple static label
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>init_platform()"]):::app
+    k1["Text::<br/>FontService"]:::focal
+    k2["Text::<br/>Font"]:::focal
+    k3("Text::<br/>layout_text()"):::focal
+    k4["Text::<br/>ShapedText"]:::focal
+    k5("Text::Rendering::<br/>prepare()"):::focal
+    k6["Text::Rendering::<br/>Prepared"]:::focal
+    k7("Text::Rendering::<br/>upload()"):::focal
+    k8["Rendering::Resources::<br/>Provider"]:::neighbor
+    k9["Text::Rendering::<br/>Generation"]:::focal
+    k0 --> k1
+    k1 --> k2
+    k3 --> k2
+    k3 --> k4
+    k5 --> k4
+    k5 --> k6
+    k7 --> k6
+    k7 --> k8
+    k7 --> k9
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

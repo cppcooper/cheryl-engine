@@ -34,35 +34,62 @@ Types below are in `CE::Assets` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Assets integration
-    accDescr: Games retain shared assets; Assets uses file discovery and Resources to prepare drawable content.
-    Game -->|loads and retains shared assets| Assets
-    Rendering -->|resolves sprites and tiles| Assets
-    Assets -->|discovers files and manifests| Utilities
-    Assets -->|uploads prepared data| Resources
+Load a root during platform initialization, then retain the resulting asset
+handles in application-owned objects. For larger loads, split CPU preparation
+from provider-owned upload; the application selects and schedules that split.
+
+```{engine-diagram} assets-focus-loading
 ```
+
+The [application map](diagram-explorer.md#assets-application) includes the worker
+and dispatch handoff; the [engine dependency map](diagram-explorer.md#assets-internal)
+shows the caches and retained content behind this small loading path.
+
+### Loading stages and results
+
+| Stage | Result and owner | What becomes visible |
+| --- | --- | --- |
+| `Loader::prepare()` or `prepare_graphics(indexes)` | An owned {cpp:struct}`Assets::Loading::Prepared <CE::Assets::Loading::Prepared>` containing definitions, decoded pixels and shader bytes; CPU work can run on a worker. | No cache entries or native resources. Focused preparation decodes only images referenced by the selected indexes. |
+| `Loader::upload()` | Consumes the prepared value on the active provider/loading owner. | Complete entries publish incrementally; only a successful batch replaces the loader's submitted-definition snapshots. Failure can leave earlier entries published. |
+| Manager lookup | A retained sprite, tileset, image or shader/material generation. | The selected handle remains the same generation after later cache changes. Validate missing lookups before building game objects. |
+
+`load_assets(provider)` performs preparation and upload synchronously. Use
+`prepare_graphics(indexes)` when only selected installed packages are needed.
+Keep a prepared copy before moving it into upload if retry needs the exact same
+input. The [loading guide](../assets/asset-loading.md#publication-and-retry)
+owns the failure and shader-replacement rules.
 
 ### Uses
 
-File discovery and manifests supply CPU inputs; Resources uploads and publishes
-them. Applications can place CPU preparation on Workers and transfer owned
-results through Dispatch.
+| Consumer | Dependency | Integration boundary |
+| --- | --- | --- |
+| `Loading::Loader` preparation | {cpp:class}`Files::FileIndex <CE::Files::FileIndex>` from [Utilities](utilities.md), manifest readers and image decoding | Discovers paths and owns the CPU inputs before graphics work begins. `FileRegistry` publishes discovered paths; it is separate from the discovery index. |
+| Loader and asset managers | {cpp:struct}`Rendering::Resources::Provider <CE::Rendering::Resources::Provider>` from [Resources](resources.md) | Upload images/geometry and build compatible materials on the provider owner. Constructing another loader does not create another cache domain. |
+| Loader and cache observation | {cpp:class}`Events::EventBus::Publisher <CE::Events::EventBus::Publisher>` from [Events](events.md) | Optional weak routes report one upload settlement per executed batch and separate committed catalogue changes per key. [Observation contracts](../assets/asset-loading.md#catalogue-changes). |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Files::FileIndex`<br>{cpp:struct}`CE::Rendering::Resources::Provider`<br>{cpp:struct}`CE::Rendering::Resources::Image`<br>{cpp:struct}`CE::Rendering::Geometry::Buffer2D`<br>{cpp:class}`CE::Rendering::Resources::Material`<br>{cpp:struct}`CE::Memory::Objects::Pool` | [Resources](resources.md)<br>[Memory](memory.md)<br>[Utilities](utilities.md)<br>[State](state.md)<br>[Diagnostics](diagnostics.md)<br>[Workers](workers.md)<br>[Dispatch](dispatch.md) |
+[Workers](workers.md) and [Dispatch](dispatch.md) are application composition
+choices for loading. `Loader` itself does not submit CPU jobs or platform requests.
 
 ### Used by
 
-Application-owned objects retain visible assets; submission resolves them into
-draw packets. Tools can inspect prepared manifests without graphics. Text keeps
-its own font-selection/layout path.
+| Consumer | Retained input | Responsibility |
+| --- | --- | --- |
+| Application-owned actors and maps | {cpp:struct}`Assets::Sprites::Asset <CE::Assets::Sprites::Asset>`, {cpp:struct}`Assets::Tilesets::Asset <CE::Assets::Tilesets::Asset>` | Keep position, map cells and animation cursors outside shared definitions. [Asset values and playback](../assets/asset-values-and-playback.md). |
+| [Rendering submission](rendering.md#usage) | Sprite/tile assets or {cpp:struct}`Assets::Graphics::Asset <CE::Assets::Graphics::Asset>` | Resolve selected cells and styles into retained draw packets; resolution does not advance animation. |
+| Loading tools and resource browsers | Prepared definitions, `manifests()` and catalogue snapshots | Inspect CPU metadata and exact-key changes. A successful metadata snapshot is not an atomic view of all caches. |
 
-| Types | Systems |
-| --- | --- |
-| [`Tutorial::Character`](../getting-started/create-a/character.md)<br>[`FirstGame::Game`](../getting-started/first-game.md)<br>{cpp:struct}`CE::Rendering::DrawPacket2D` | [Rendering](rendering.md)<br>[Text](text.md) |
+### Shared assets, independent playback
+
+Give each moving actor its own {cpp:class}`Assets::Sprites::Animation <CE::Assets::Sprites::Animation>`
+while sharing the sprite asset. Advance it during game update, then copy the
+selected cell into frame preparation. A clip entry index selects an animation
+entry; that entry's cell selects atlas geometry. Tile playback similarly wraps
+shared tileset data in an application-owned cursor.
+
+The [playback diagram](diagram-explorer.md#assets-focus-playback) separates
+shared content from per-object state. Follow [animate a sprite](../getting-started/how-to/animate-sprite.md)
+for the complete update and drawing route. Fonts use the separate [Text](text.md)
+selection/layout path.
 
 ## Contracts
 

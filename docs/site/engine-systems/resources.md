@@ -35,35 +35,47 @@ Types below are in `CE::Rendering` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Resources integration
-    accDescr: Uploaders create resources, frames retain their generations, and the provider requires a live graphics backend.
-    Uploaders[Assets, Text and GUI] -->|upload CPU data| Resources
-    Rendering -->|retains exact generations| Resources
-    Context -->|owns provider| Resources
-    Resources -->|requires live graphics domain| Backend
+Most applications receive retained resources through asset, text or UI loading.
+Call the provider directly when creating content outside those loaders. Both
+routes create immutable handles in the same selected graphics domain.
+
+```{engine-diagram} resources-application
 ```
+
+The [engine dependency map](diagram-explorer.md#resources-internal) follows
+materials, pipelines and native handles behind these application entry points.
+
+### Creation, publication and retirement
+
+| Operation | Ownership after the operation | Consequence |
+| --- | --- | --- |
+| Decode CPU input | {cpp:struct}`Assets::Images::Decoded <CE::Assets::Images::Decoded>` owns pixels; geometry upload accepts transient vertices. | CPU preparation can precede graphics initialization. |
+| Create/upload through `Resources::Provider` | A fresh image or geometry handle owns the uploaded generation. | The call copies its transient input. Direct creation does not insert an asset-cache entry. |
+| Publish into a cache, material, scene or frame | Each published owner retains its selected generation. | Replacing a cache entry does not rebind older materials or frames. |
+| Release owners and collect | The last logical release allows native retirement; backend maintenance collects on graphics. | Clearing a cache is insufficient while another owner still retains that generation. Backend shutdown closes native use even if logical handles remain. |
+
+If an object stays resident, check application handles, caches, material/scene
+owners and published frames before investigating the native collector. The
+[residency guide](../resources/resource-residency.md) gives the complete owner
+chain and shutdown contract.
 
 ### Uses
 
-The graphics implementation supplies a compatible live context and native
-retirement domain. CPU data comes from asset, text or UI preparation; managed
-CPU backing follows the separate Memory contract.
-
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Assets::Images::Decoded`<br>{cpp:struct}`CE::Rendering::Geometry::Vertex2D`<br>{cpp:class}`CE::Rendering::PresentationSurface`<br>{cpp:struct}`CE::Assets::Shaders::Builder`<br>{cpp:type}`CE::Diagnostics::DomainId` | [Assets](assets.md)<br>[Rendering](rendering.md)<br>[Diagnostics](diagnostics.md) |
+| Consumer | Dependency | Integration boundary |
+| --- | --- | --- |
+| `Resources::Provider` upload operations | {cpp:struct}`Assets::Images::Decoded <CE::Assets::Images::Decoded>` and {cpp:struct}`Rendering::Geometry::Vertex2D <CE::Rendering::Geometry::Vertex2D>` | CPU inputs are borrowed only through the upload call. The colored-vertex and sampler operations are optional capabilities and reject when unsupported. |
+| Shader/material loading | {cpp:struct}`Assets::Shaders::Builder <CE::Assets::Shaders::Builder>` | A provider may supply this optional borrowed adapter; selected recipes require that capability. [Shader definitions](../assets/asset-manifests.md#shadermaterial-definitions). |
+| Provider/renderer domain observation | {cpp:class}`Rendering::GraphicsDomain <CE::Rendering::GraphicsDomain>` | Domain availability describes native lifetime; native use still requires the original live graphics context and its owner. [OpenGL ownership](../modules/opengl.md). |
+| Catalogue/domain observation | [Events](events.md) and {cpp:type}`Diagnostics::DomainId <CE::Diagnostics::DomainId>` | Weak event routes and copied identities describe changes without retaining the backend. A domain token owns observation state, not native resources. |
 
 ### Used by
 
-Assets, materials and frames retain exact resource generations. Applications can
-call provider operations directly on the correct owner; Runtime preserves
-backend lifetime through accepted work and frame recycling.
-
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Assets::Loading::Loader`<br>{cpp:class}`CE::Rendering::Resources::Material`<br>{cpp:struct}`CE::Rendering::DrawPacket2D`<br>{cpp:class}`CE::Text::Rendering::Generation`<br>{cpp:class}`CE::UI::TGUI::SceneUploader`<br>{cpp:class}`CE::UI::RmlUi::SceneUploader`<br>{cpp:class}`CE::Runtime::Context` | [Assets](assets.md)<br>[Rendering](rendering.md)<br>[Text](text.md)<br>[GUI](gui.md)<br>[Runtime](runtime.md) |
+| Consumer | Resource operation or retained value | Responsibility |
+| --- | --- | --- |
+| [Assets](assets.md#usage) `Loading::Loader` | Creates images, cell geometry and shader/material generations. | Publish entries on the active loading owner; preserve partial-publication semantics. |
+| [Text](text.md#usage) upload and [GUI](gui.md#usage) scene uploaders | Create glyph/UI images, geometry and materials. | Publish a complete replacement generation or scene while earlier ones remain retained. |
+| [Rendering](rendering.md#usage) materials and `DrawPacket2D` | Retain pipeline, geometry and image/sampler bindings. | Use those generations only in their original live graphics domain. |
+| [Runtime](runtime.md#lifecycle) `Context` and `GameRuntime` | Own the provider adapter and coordinate renderer maintenance. | Settle accepted work and recycle frames before backend closure. |
 
 ## Contracts
 

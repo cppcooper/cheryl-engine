@@ -32,33 +32,53 @@ Types below are in `CE::Platform` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Display integration
-    accDescr: Runtime observes Display, Input and presentation use its live window, and Display publishes resize events.
-    Runtime -->|owns adapter and copies dimensions| Display
-    Input -->|borrows live window| Display
-    Presentation -->|uses native window| Display
-    Display -->|publishes resize notifications| Events
+Use the selected window directly during platform initialization or an explicit
+platform-dispatch callback. During updates, use the runtime's copied dimensions;
+that route works in both sequential and concurrent mode.
+
+```{engine-diagram} display-application
 ```
+
+[Explore the engine-side display relationships](diagram-explorer.md#display-internal).
+Arrows point from a consumer to the type it uses.
+
+### Choose a window observation
+
+| Need | Use | What the value means |
+| --- | --- | --- |
+| Size gameplay or a camera for this update | {cpp:struct}`Game::TickContext <CE::Game::TickContext>` | The logical/pixel size pair selected for this simulation tick. |
+| Apply required UI sizing before dependent updates | `engine.simulation_view().watch(...)` | A seeded, simulation-owned selection; retain its {cpp:class}`Runtime::ViewAttachment <CE::Runtime::ViewAttachment>`. |
+| Inspect current copied platform state from another thread | `engine.window_state().snapshot()` | A synchronized {cpp:struct}`Runtime::WindowState <CE::Runtime::WindowState>`, including optional native focus. No native window is retained. |
+| Change mode, size or cursor visibility; query a live window | `engine.window()` on platform | A borrowed {cpp:class}`Platform::Window <CE::Platform::Window>` with native owner requirements. Dispatch explicit requests from other owners. |
+| Observe a raw native framebuffer resize | `Platform::window_resized_event` | Copied pixels plus a borrowed window pointer. Native GLFW publishes on the default `Events::EventSystem` bus. |
+| Observe the runtime's sampled main-window close intent | `Platform::window_close_requested_event` on `engine.events()` | An owned intent fact; negotiation belongs to Runtime's shutdown policy. |
+
+Prefer the selected runtime view for game/UI layout. The raw resize channel and
+Context bus are distinct routes. A raw callback may be followed by another native
+change before runtime selects its view. See
+[committed views](../runtime/display-and-window-contract.md#committed-window-and-simulation-views)
+and [native close intent](../runtime/display-and-window-contract.md#native-close-intent).
 
 ### Uses
 
-The selected platform implementation owns native library/window state and
-publishes resize observations through Events.
-
-| Types | Systems |
+| Dependency | Display's use |
 | --- | --- |
-| {cpp:class}`CE::Events::EventChannel`<br>{cpp:struct}`CE::Platform::Monitor`<br>{cpp:struct}`CE::Platform::Dimensions`<br>{cpp:struct}`CE::Platform::FramebufferSize` | [Events](events.md) |
+| {cpp:struct}`Platform::Monitor <CE::Platform::Monitor>` | Identify entries from this display's monitor inventory when creating windows or querying scale. |
+| {cpp:struct}`Platform::Dimensions <CE::Platform::Dimensions>`, {cpp:struct}`Platform::FramebufferSize <CE::Platform::FramebufferSize>` | Keep logical coordinates and drawable pixels distinct. Zero pixel extent can describe a minimized drawable. |
+| {cpp:struct}`Events::EventSystem <CE::Events::EventSystem>` | Native GLFW dispatches legacy and typed framebuffer-resize observations through the default bus. [Events](events.md#engine-events). |
+
+Native-library state belongs to the selected backend; the portable display
+interface does not choose or own a renderer.
 
 ### Used by
 
-Runtime composes display with input and presentation. Cameras and UI consume
-copied dimensions; live window operations remain on the platform owner.
-
-| Types | Systems |
+| Consumer | Relationship to the window |
 | --- | --- |
-| {cpp:class}`CE::Runtime::Context`<br>{cpp:class}`CE::Input::System`<br>{cpp:class}`CE::Rendering::OpenGL::GLFWContext`<br>{cpp:class}`CE::Rendering::Camera2D`<br>{cpp:class}`CE::UI::TGUI::Session`<br>{cpp:class}`CE::UI::RmlUi::Session` | [Runtime](runtime.md)<br>[Input](input.md)<br>[Rendering](rendering.md)<br>[GUI](gui.md) |
+| {cpp:class}`Runtime::Context <CE::Runtime::Context>`, {cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>` | Context owns the display; Runtime samples its active window and coordinates dependent teardown. [Runtime](runtime.md). |
+| {cpp:class}`Input::System <CE::Input::System>` | Borrow the live window for native callbacks; detach while it is still alive. [Input](input.md). |
+| {cpp:class}`Rendering::OpenGL::GLFWContext <CE::Rendering::OpenGL::GLFWContext>` | Use the compatible native window for presentation/context operations. [OpenGL integration](../modules/opengl.md). |
+| {cpp:class}`Rendering::Camera2D <CE::Rendering::Camera2D>` and application layout | Consume copied drawable dimensions; a camera does not own a native window. [Rendering](rendering.md). |
+| {cpp:class}`UI::TGUI::Session <CE::UI::TGUI::Session>`, {cpp:class}`UI::RmlUi::Session <CE::UI::RmlUi::Session>` | Follow copied simulation dimensions through the supported session integration. [GUI](gui.md). |
 
 ## Contracts
 

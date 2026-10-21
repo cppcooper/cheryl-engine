@@ -35,37 +35,59 @@ Types below are in `CE::Text` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Text integration
-    accDescr: Games and GUI use font and text services; retained text uses Resources, while Updater can handle worker and dispatch boundaries.
-    Game -->|requests labels and dialogue| Text
-    GUI -->|uses shared fonts and rasterization| Text
-    Rendering -->|resolves retained generations| Text
-    Text -->|uploads glyphs and geometry| Resources
-    Text -. Updater CPU preparation .-> Workers
-    Text -. Updater uploads .-> Dispatch
+For a fixed label, retain a font, lay out the string, prepare CPU glyph data and
+upload one immutable generation. Resolve that generation during frame
+preparation. For changing text, `Rendering::Updater` manages replacement work
+while the last successful generation remains visible.
+
+```{engine-diagram} text-focus-static
 ```
+
+The arrows show dependencies, including the owned result types used by each
+operation; the stage order is layout, prepare, upload, then draw resolution.
+See the [updater diagram](diagram-explorer.md#text-focus-updater) for asynchronous
+replacement and the [engine dependency map](diagram-explorer.md#text-internal)
+for the font and resource relationships.
+
+### Choose the text path
+
+| Reader task | Start with | Work the application owns |
+| --- | --- | --- |
+| Static world label or HUD message | `layout_text()`, `Rendering::prepare()` and `Rendering::upload()` | Select the font and layout options; retain and submit the complete generation. [Explicit stages](../assets/text-layout.md#preparation-upload-and-retained-submission). |
+| Score, dialogue or other changing text | {cpp:class}`Text::Rendering::Updater <CE::Text::Rendering::Updater>` | Construct on platform, request content and call `update()` on its serialized simulation owner; inspect `failure()` and explicitly `retry()` an unchanged failed request. [Update task](../getting-started/how-to/update-text.md). |
+| Editable widget/document text | [GUI toolkit session](gui.md#usage) | Author native toolkit UI and route input/focus. Shared Engine fonts do not replace toolkit layout/editing behavior. |
+| Existing ASCII/bitmap content | `Text::Legacy` | Follow the separate [legacy font contract](../resources/legacy-ffont.md); do not infer Unicode shaping from this compatibility path. |
 
 ### Uses
 
-Font discovery and CPU processing precede resource upload and draw resolution.
-`Rendering::Updater` manages those boundaries for changing text. Applications can
-also prepare on Workers and dispatch owned upload requests to graphics directly.
+| Consumer | Dependency | Integration boundary |
+| --- | --- | --- |
+| Font selection and layout | {cpp:class}`Text::FontService <CE::Text::FontService>`, retained {cpp:class}`Text::FontCollection <CE::Text::FontCollection>` and file/system-font discovery | Configure the catalogue before consumers. Layout retains the selected font-byte snapshot rather than borrowing the source string or reopening font files. |
+| `Text::Rendering::upload()` | {cpp:struct}`Rendering::Resources::Provider <CE::Rendering::Resources::Provider>` from [Resources](resources.md) | Upload complete glyph pages/geometry on graphics and retain a compatible default or explicit material. |
+| `Text::Rendering::Updater` | {cpp:class}`Workers::Group <CE::Workers::Group>` and {cpp:class}`Runtime::PlatformDispatcher::Submission <CE::Runtime::PlatformDispatcher::Submission>` | Uses a Context-tracked CPU group and saved platform endpoint. Jobs own requests and borrow neither updater nor game. |
+| Glyph draw resolution | [Rendering](rendering.md#usage) `DrawStyle2D`, pass values and retained resource bindings | Convert an uploaded generation to packets without repeating layout, rasterization or upload. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Text::FontCollection`<br>{cpp:class}`CE::Text::FontRasterizer`<br>{cpp:struct}`CE::Rendering::Resources::Provider`<br>{cpp:class}`CE::Rendering::Resources::Material`<br>{cpp:class}`CE::Runtime::PlatformDispatcher::Submission` | [Assets](assets.md)<br>[Utilities](utilities.md)<br>[Resources](resources.md)<br>[Rendering](rendering.md)<br>[Workers](workers.md)<br>[Dispatch](dispatch.md) |
+The explicit layout/prepare path does not schedule jobs. `Updater` supplies
+scheduling and nonblocking adoption through the worker group and platform
+endpoint above.
 
 ### Used by
 
-Games draw labels, dialogue and HUD text. Toolkit adapters use font
-metrics/rasterization within their own layout; the application selects which
-text path to use.
+| Consumer | Text value/service | Responsibility |
+| --- | --- | --- |
+| Application labels, dialogue and HUDs | {cpp:class}`Text::Rendering::Generation <CE::Text::Rendering::Generation>` | Retain the current complete result and submit it from frame preparation. Old frames may retain older generations. |
+| [Runtime](runtime.md) `Context` | `Text::FontService` | Own the configured catalogue and default font; retained font handles can outlive that service. |
+| [GUI](gui.md) TGUI/RmlUi adapters | {cpp:class}`Text::Font <CE::Text::Font>` and {cpp:class}`Text::FontRasterizer <CE::Text::FontRasterizer>` | Import retained font bytes/metrics while keeping native toolkit layout, mutable atlas and editing state on the UI owner. |
 
-| Types | Systems |
-| --- | --- |
-| [`FirstGame::Game`](../getting-started/first-game.md#put-text-on-screen)<br>{cpp:class}`CE::UI::TGUI::Session`<br>{cpp:class}`CE::UI::RmlUi::Session` | [Rendering](rendering.md)<br>[GUI](gui.md) |
+### Inspect layout before uploading
+
+{cpp:class}`Text::ShapedText <CE::Text::ShapedText>` exposes lines, positioned
+glyphs and source mapping, so CPU layout can be inspected without a graphics
+provider. Local positions are Y-up pixels; `pixel_height` is the font em size.
+A glyph ID belongs to its retained font collection. Source UTF-8 byte ranges,
+Unicode scalar ranges and shaping clusters answer different indexing questions;
+use the [encoding and source-index guide](../assets/text-encoding.md) before
+mapping selection or hit-test state back to an application string.
 
 ## Contracts
 

@@ -1,0 +1,51 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: GUI · application-owned sessions and publication
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application-owned UI"]):::app
+    k1["UI::TGUI::<br/>Session"]:::focal
+    k2["UI::RmlUi::<br/>Session"]:::focal
+    k3["Input::Events::<br/>Record"]:::neighbor
+    k4["Input::Routing::<br/>KeyboardPolicy"]:::neighbor
+    k5["Text::<br/>Font"]:::neighbor
+    k6["UI::TGUI::<br/>RecordedScene"]:::focal
+    k7["UI::RmlUi::<br/>RecordedScene"]:::focal
+    k8(["Application<br/>init_platform()"]):::app
+    k9["UI::TGUI::<br/>SceneUploader"]:::focal
+    k10["UI::RmlUi::<br/>SceneUploader"]:::focal
+    k11["UI::TGUI::<br/>Scene"]:::focal
+    k12["UI::RmlUi::<br/>Scene"]:::focal
+    k13(["Application<br/>prepare_render_frame()"]):::app
+    k14["Rendering::<br/>PassWriter"]:::neighbor
+    k0 -.-> k1
+    k0 -.-> k2
+    k0 --> k3
+    k0 --> k4
+    k0 --> k5
+    k1 --> k6
+    k2 --> k7
+    k8 -.-> k9
+    k8 -.-> k10
+    k9 --> k11
+    k10 --> k12
+    k13 -.-> k11
+    k13 -.-> k12
+    k11 --> k14
+    k12 --> k14
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

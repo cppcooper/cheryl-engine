@@ -10,6 +10,7 @@ guides remain the authority for individual operations and failure cases.
 :maxdepth: 1
 :titlesonly:
 
+Diagram explorer <diagram-explorer>
 Runtime <runtime>
 Display <display>
 Input <input>
@@ -30,6 +31,10 @@ Utilities <utilities>
 ```
 
 ## Ownership and relationships
+
+Use the [Diagram explorer](diagram-explorer.md) to inspect subsystem relationships,
+engine dependencies and application use. Select a type for its declaration and
+source evidence, or compare focused views before opening a detailed guide.
 
 The application owns its game and composes a compatible runtime context. The
 context owns display, presentation, renderer and resource adapters; input can be
@@ -85,10 +90,11 @@ domains.
 Use this table as a topic lookup. The tutorials supply the learning sequence;
 each overview below introduces a system and routes to its detailed owner.
 
-Each system's Usage section starts with a Mermaid diagram. Arrows point from a
-caller or consumer to the system or value it uses; labels explain the interaction.
-Dashed arrows mark optional integration paths. The Uses and Used by tables supply
-the precise types and detailed contracts.
+Each system's Usage section provides an entry diagram and concrete relationships
+in its Uses and Used by tables. Arrows point from the consumer to what it uses;
+dashed arrows mark optional or alternative choices. The
+[Diagram explorer](diagram-explorer.md#overview-systems) adds an engine-only map,
+an application map and focused views for the busiest boundaries.
 
 | System overview | Purpose and details |
 | --- | --- |

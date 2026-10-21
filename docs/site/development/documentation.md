@@ -142,14 +142,15 @@ Write Mermaid directly in an ordinary Markdown code fence:
 ````markdown
 ```mermaid
 flowchart LR
-    Game -->|reads actions| Input
-    Game -->|prepares frames| Rendering
+    Game --> Input
+    Game --> Rendering
 ```
 ````
 
 State and sequence diagrams use the same fence with `stateDiagram-v2` or
-`sequenceDiagram` as the first line. Use labeled arrows and keep the main
-relationships simple; the surrounding prose owns precise contracts. Add
+`sequenceDiagram` as the first line. In dependency maps, point arrows from the
+consumer toward what it uses and leave them unlabeled; the surrounding prose
+owns precise contracts. Add
 `accTitle:` and `accDescr:` for an accessible title and description.
 
 MyST passes these fences to `sphinxcontrib-mermaid`, installed through the normal
@@ -163,6 +164,23 @@ Readers need JavaScript, but no CDN or rendering service.
 Generation uses the extension's `raw` output mode. It needs no Graphviz, Node,
 Mermaid CLI or diagram-specific CI step. Preview changed diagrams in a browser:
 successful Sphinx generation alone does not validate Mermaid syntax.
+
+Engine Systems shares its curated sources with the
+[Diagram explorer](../engine-systems/diagram-explorer.md). Reuse a view in a guide
+with its stable diagram ID:
+
+````markdown
+```{engine-diagram} rendering-focus-sprite
+```
+````
+
+The sources live in `engine-systems/diagrams/*.mmd`. The neighboring
+`catalog.json` owns view questions, notes, symbol identities and source evidence.
+Keep its node order and arrow endpoints aligned with the Mermaid source; the
+generator checks that contract before publishing. Ordinary generation includes
+the explorer, Mermaid downloads and public API links. It renders selected views
+in the browser using the same pinned Mermaid modules as the manual; no rendered
+SVG inventory or separate preview deployment is needed.
 
 ### Incremental rebuilds and full regeneration
 

@@ -31,36 +31,65 @@ Types below are in `CE` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Utilities integration
-    accDescr: Applications and engine systems use local timing, parsing, file discovery and geometry helpers.
-    Application -->|uses time, bits and parsing| Utilities
-    Assets -->|discovers indexed files| Utilities
-    Memory -->|computes addresses and fit| Utilities
-    Visuals[Text and rendering preparation] -->|builds CPU geometry| Utilities
-    Utilities -->|uses| Standard[Standard clocks, filesystem and containers]
+Pick a helper for the local value operation you need. A loading tool can use
+file discovery and elapsed-time measurement without creating a runtime or a
+graphics context; a game update still uses the runtime's selected simulation
+delta for gameplay progression.
+
+```{engine-diagram} utilities-application
 ```
+
+The [engine consumer view](diagram-explorer.md#utilities-internal) shows
+where these helpers participate in loading, allocation and CPU geometry.
+
+### Choose the operation
+
+| Task | Start with | Boundary to keep explicit |
+| --- | --- | --- |
+| Measure a CPU preparation interval | {cpp:class}`Time::DeltaTime <CE::Time::DeltaTime>` | `operator()` returns seconds and starts the next interval; `elapsed()` only observes. This is independent of `tick.delta_seconds`. |
+| Index files by extension | {cpp:class}`Files::FileIndex <CE::Files::FileIndex>` | Own the index, serialize access and construct a fresh one to rescan visited directories. Results borrow the index's containers. |
+| Parse a known numeric syntax | `Text::Numbers::parse_floats()` or `parse_integers()` | Floating and decimal integer syntax differ. Use an explicit parser when format is known; the compatibility selector chooses floats by `.`, `e` or `E`. |
+| Keep compact flags | {cpp:class}`Math::BitArray <CE::Math::BitArray>` | Valid indices and synchronization are caller responsibilities, including different bits sharing a word. Proxies/spans borrow the array. |
+| Calculate capacity/alignment | `Memory::adjust_length()`, {cpp:enum}`Memory::FitPolicy <CE::Memory::FitPolicy>` and pointer helpers | Results describe arithmetic; they do not allocate storage or establish a live object's bounds/lifetime. |
+| Build CPU quad geometry | {cpp:struct}`Rendering::Geometry::Pivot <CE::Rendering::Geometry::Pivot>` and `Rendering::Geometry::Anchor` operations | Supply valid normalized placement and nonzero texture dimensions. Resource upload/rendering is a later owner-bound operation. |
+
+The [utility contract guide](../runtime/utility-contracts.md) owns syntax,
+range, borrowing and failure rules for these choices.
 
 ### Uses
 
-Standard clocks, filesystem/numeric operations and containers supply local
-values. Template arguments and caller-provided storage determine additional
-ownership; ordinary helpers need no runtime, graphics or worker service.
+| Helper | Input/dependency | What it retains or returns |
+| --- | --- | --- |
+| `Time::DeltaTime<Clock>` | Selected clock; steady by default | Retains its last sample and returns local elapsed values; no scheduler or runtime service. |
+| `Files::FileIndex` | Filesystem root | Owns discovery results; no automatic freshness or worker scheduling. |
+| Numeric parsers and capacity helpers | Borrowed text or supplied numeric values/policy | Return parsed/adjusted values; no service lifetime is created. |
+| `Math::BitArray` and address/geometry helpers | Owned bit words or caller-provided values/storage | Borrowed proxies/ranges stay within their owner; address helpers never own the pointees. |
 
-| Types | Systems |
-| --- | --- |
-| [`std::chrono::steady_clock` / durations](../runtime/utility-contracts.md#timing-and-numeric-helpers)<br>[`std::filesystem::path`](../assets/file-and-font-discovery.md#file-index)<br>[Caller-supplied spans / pointers](../runtime/utility-contracts.md#packed-bits-addresses-and-geometry) | — |
+These helpers use standard clocks, filesystem and value machinery internally.
+Their engine-facing dependencies are local values and caller-owned storage,
+rather than a common Utilities manager.
 
 ### Used by
 
-Applications use local bookkeeping and preparation helpers. Assets discovers
-files, Memory uses address/fit operations, and text/rendering preparation uses
-CPU geometry. Runtime simulation timing keeps its own policy.
+| Consumer | Utility | Relationship |
+| --- | --- | --- |
+| {cpp:struct}`Assets::Loading::Loader <CE::Assets::Loading::Loader>` | `Files::FileIndex` | Automatic preparation creates a fresh discovery index before preparing file/manifest metadata. `Assets::Loading::FileRegistry` retains registered paths; it does not own the index. [File discovery](../assets/file-and-font-discovery.md#file-index). |
+| {cpp:struct}`Memory::Manager <CE::Memory::Manager>` | `Memory::adjust_length()` and pointer/alignment helpers | Calculates growth and valid aligned request ranges before storage transactions. [Memory](memory.md). |
+| `Assets::Grids::make_geometry()` and {cpp:struct}`Assets::Graphics::Asset <CE::Assets::Graphics::Asset>` | `Rendering::Geometry::Anchor` / `Rendering::Geometry::Pivot` | Builds CPU vertices from source rectangles and placement. [Asset coordinates](../assets/asset-values-and-playback.md#coordinates-and-grid-geometry). |
+| {cpp:struct}`Text::Legacy::BitmapFont <CE::Text::Legacy::BitmapFont>` preparation | `Rendering::Geometry::Anchor` | Builds the fixed bitmap font's CPU glyph quads before upload. [Text](text.md). |
+| Application tools/components | Timers, parsers, indices and packed bits | Own local preparation/bookkeeping; choose when blocking discovery runs and how results reach another owner. |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:class}`CE::Assets::Loading::FileRegistry`<br>{cpp:struct}`CE::Memory::Manager`<br>{cpp:struct}`CE::Text::Legacy::BitmapFont`<br>[Application-owned loading tools](../assets/file-and-font-discovery.md#file-index) | [Assets](assets.md)<br>[Memory](memory.md)<br>[Text](text.md)<br>[Rendering](rendering.md) |
+### Keep timing and work ownership separate
+
+Use `Time::DeltaTime` to observe how long preparation took. Use
+`tick.delta_seconds` to advance runtime simulation; the runtime may select a
+fixed step, clamp elapsed time or discard accumulated lag according to its
+[timing policy](../runtime/simulation-timing.md).
+
+Filesystem discovery can block. If the application moves it to
+[Workers](workers.md), the job owns its inputs/results and transfers a completed
+result to the appropriate consumer. A helper's local nature does not make its
+borrowed results safe to share or extend them past owner destruction.
 
 ## Contracts
 

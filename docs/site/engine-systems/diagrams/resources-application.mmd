@@ -1,0 +1,49 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Resources · application uploads and retained draws
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>loading work"]):::app
+    k1("Assets::Images::<br/>decode()"):::neighbor
+    k2["Assets::Images::<br/>Decoded"]:::focal
+    k3(["Application<br/>init_platform()"]):::app
+    k4["Runtime::<br/>Context"]:::neighbor
+    k5["Rendering::Resources::<br/>Provider"]:::focal
+    k6(["Application<br/>platform-owner work"]):::app
+    k7["Rendering::Resources::<br/>Image"]:::focal
+    k8["Rendering::Geometry::<br/>Buffer2D"]:::focal
+    k9["Rendering::Resources::<br/>Material"]:::focal
+    k10["Rendering::Resources::<br/>Pipeline"]:::focal
+    k11(["Application<br/>prepare_render_frame()"]):::app
+    k12["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k13(["Application<br/>report"]):::app
+    k14["Rendering::<br/>GraphicsDomain"]:::focal
+    k0 --> k1
+    k1 --> k2
+    k3 --> k4
+    k4 --> k5
+    k6 --> k5
+    k5 --> k2
+    k5 --> k7
+    k5 --> k8
+    k9 --> k10
+    k11 --> k12
+    k12 --> k9
+    k12 --> k8
+    k13 --> k14
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

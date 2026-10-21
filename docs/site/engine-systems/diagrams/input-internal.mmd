@@ -1,0 +1,54 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Input · engine integration
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Runtime::<br/>GameRuntime"]:::neighbor
+    k1["Input::<br/>System"]:::focal
+    k2["Platform::GLFW::<br/>InputSystem"]:::focal
+    k3["Platform::<br/>Window"]:::neighbor
+    k4["Input::Actions::<br/>Bindings"]:::focal
+    k5["Input::Actions::<br/>ContextSubmission"]:::focal
+    k6["Input::Actions::<br/>ContextDefinition"]:::focal
+    k7["Input::Actions::<br/>Context"]:::focal
+    k8["Input::Capture::<br/>Collector"]:::focal
+    k9["Input::Routing::<br/>Manager"]:::focal
+    k10["Input::<br/>PollSnapshot"]:::focal
+    k11["Input::<br/>PollingBacklog"]:::focal
+    k12["Game::<br/>TickContext"]:::neighbor
+    k13["Input::<br/>Tick"]:::focal
+    k14["Input::Actions::<br/>View"]:::focal
+    k15["UI::TGUI::<br/>Session"]:::neighbor
+    k16["UI::RmlUi::<br/>Session"]:::neighbor
+    k0 --> k1
+    k2 --> k1
+    k1 --> k3
+    k1 --> k4
+    k1 --> k5
+    k5 --> k6
+    k5 --> k7
+    k1 --> k8
+    k1 --> k9
+    k1 --> k10
+    k0 --> k11
+    k11 --> k10
+    k12 --> k13
+    k13 --> k14
+    k15 --> k1
+    k16 --> k1
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

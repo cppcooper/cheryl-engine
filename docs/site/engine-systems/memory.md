@@ -36,36 +36,59 @@ implementing storage integration rather than using the default pool.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Memory integration
-    accDescr: Applications and caches use managed CPU storage; returned handles retain the state needed for final release.
-    Application -->|constructs pooled objects| Memory
-    Caches[Assets and legacy text caches] -->|retain CPU storage| Memory
-    Memory -->|acquires and returns ranges| Storage[Allocator and backing storage]
-    Memory -->|captures release state in handles| Release[Retained release context]
+Start with {cpp:struct}`Memory::Objects::Pool <CE::Memory::Objects::Pool>`
+when application objects should be constructed now and released independently.
+The returned handles retain their release state; owning a handle does not
+synchronize the object's members.
+
+```{engine-diagram} memory-application
 ```
+
+The [engine dependency view](diagram-explorer.md#memory-internal) follows
+caches and geometry into their actual storage owners.
+
+### Choose storage and construction together
+
+| Need | Entry point | What the caller retains |
+| --- | --- | --- |
+| Construct every object in a batch now | `Memory::Objects::Pool<T>::retrieve_objects()` | One shared handle per live object; its final release destroys and returns that slot. |
+| Construct selected slots with different arguments | {cpp:class}`Memory::Objects::Reservation <CE::Memory::Objects::Reservation>` | The reservation owns unclaimed slots; claimed handles can outlive it. A failed constructor leaves its slot available to retry. |
+| Integrate an ordinary allocator for a complete batch | {cpp:struct}`Memory::Objects::Factory <CE::Memory::Objects::Factory>` | Element handles release independently; the last handle releases the original whole allocation. |
+| Manage bytes or build a storage adapter | {cpp:struct}`Memory::Manager <CE::Memory::Manager>` and {cpp:struct}`Memory::ByteReleaseContext <CE::Memory::ByteReleaseContext>` | A live facade for acquisition and a captured release context for final returns. Object construction remains a separate responsibility. |
+
+An allocator that supports whole-allocation `allocate`/`deallocate` is not
+necessarily valid for reservations. The default
+{cpp:struct}`Memory::Allocators::ObjectPoolAllocator <CE::Memory::Allocators::ObjectPoolAllocator>`
+supplies retained release state and interior-range return. See the
+[allocation recipes and allocator requirements](../resources/resource-lifetime.md).
 
 ### Uses
 
-Allocators/backing owners supply storage and construction contexts track live
-slots. Synchronization protects bookkeeping; Diagnostics observes copied
-allocation statistics.
-
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Memory::Allocators::ObjectPoolAllocator`<br>{cpp:struct}`CE::Memory::Objects::Constructor <template<typename T> CE::Memory::Objects::Constructor>`<br>{cpp:struct}`CE::Memory::BlockTransactions`<br>{cpp:class}`CE::State::Singleton`<br>{cpp:type}`CE::Diagnostics::DomainId` | [State](state.md)<br>[Utilities](utilities.md)<br>[Diagnostics](diagnostics.md) |
+| Consumer | Dependency | Relationship |
+| --- | --- | --- |
+| `Memory::Objects::Pool<T>` | {cpp:struct}`Memory::Objects::PoolState <CE::Memory::Objects::PoolState>` | Retains the release operations that object handles capture instead of looking up the pool during deletion. |
+| `Memory::Objects::PoolState<T>` | {cpp:struct}`Memory::Objects::Constructor <template<typename T> CE::Memory::Objects::Constructor>` | Retains construction tracking for pooled object lifetime; user constructors/destructors run outside tracking locks. |
+| `Memory::Objects::Reservation<T>` | `Memory::Allocators::ObjectPoolAllocator<T>` and {cpp:struct}`Memory::Block <CE::Memory::Block>` | Tracks only unclaimed ranges and transfers individual slots into handles. |
+| `Memory::Manager` and `Memory::Objects::Pool<T>` | {cpp:class}`State::Singleton <CE::State::Singleton>` | Offer shared facade access. Retained handles do not depend on a later singleton lookup. [State](state.md). |
+| `Memory::Manager` | {cpp:enum}`Memory::FitPolicy <CE::Memory::FitPolicy>` and address/fit helpers | Computes request growth/alignment before bookkeeping checkout. [Utilities](utilities.md). |
+| Byte bookkeeping | {cpp:struct}`Memory::Stats <CE::Memory::Stats>` and {cpp:type}`Diagnostics::DomainId <CE::Diagnostics::DomainId>` | Copies synchronized allocation observations before formatting or reporting. [Diagnostics](diagnostics.md). |
 
 ### Used by
 
-Caches and prepared geometry retain managed CPU backing. Application pools need
-no runtime lifecycle. Resources has a separate native lifetime contract;
-bookkeeping locks do not synchronize arbitrary object contents or authorize
-graphics calls.
+| Consumer | Memory entry point | Why it is used |
+| --- | --- | --- |
+| Application object owners | `Memory::Objects::Pool<T>` or `Memory::Objects::Reservation<T>` | Retain independently released CPU objects without starting a runtime service. |
+| {cpp:struct}`Assets::Cache::Store <CE::Assets::Cache::Store>` | `Memory::Objects::Reservation<T>` / `Memory::Allocators::ObjectPoolAllocator<T>` | Reserves cache object storage and creates handles only for constructed entries. [Assets](assets.md). |
+| {cpp:struct}`Assets::Grids::GeometryData <CE::Assets::Grids::GeometryData>` preparation | {cpp:type}`Memory::ExactManager <CE::Memory::ExactManager>` and retained byte release | Holds CPU vertex backing produced by `Assets::Grids::make_geometry()`. [Grid geometry](../assets/asset-values-and-playback.md#coordinates-and-grid-geometry). |
+| {cpp:struct}`Text::Legacy::AsciiFontData <CE::Text::Legacy::AsciiFontData>` preparation | `Memory::ExactManager` and retained byte release | Supplies CPU glyph vertices while building/uploading the legacy font. [Text](text.md). |
 
-| Types | Systems |
-| --- | --- |
-| {cpp:struct}`CE::Assets::Cache::Store`<br>{cpp:struct}`CE::Assets::Grids::GeometryData`<br>{cpp:struct}`CE::Text::Legacy::AsciiFont`<br>[Application-owned pooled objects](../resources/resource-lifetime.md#pool-ownership) | [Assets](assets.md)<br>[Text](text.md) |
+### CPU release and native retirement
+
+Returning CPU storage and retiring a graphics resource have different owners.
+Release live objects before returning their raw ranges. For GPU-backed assets,
+dropping a CPU handle does not authorize a native deletion call: the
+[resource owner collects native retirement](../resources/resource-residency.md#native-retirement-and-maintenance)
+on the appropriate backend thread/context.
 
 ## Contracts
 

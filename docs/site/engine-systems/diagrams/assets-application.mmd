@@ -1,0 +1,48 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Assets · application loading and playback
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0(["Application<br/>loading work"]):::app
+    k1["Assets::Loading::<br/>Loader"]:::focal
+    k2["Assets::Loading::<br/>Prepared"]:::focal
+    k3(["Application<br/>init_platform()"]):::app
+    k4["Rendering::Resources::<br/>Provider"]:::neighbor
+    k5(["Application-owned game objects"]):::app
+    k6["Assets::Sprites::<br/>Manager"]:::focal
+    k7["Assets::Tilesets::<br/>Manager"]:::focal
+    k8["Assets::Sprites::<br/>Asset"]:::focal
+    k9["Assets::Tilesets::<br/>Asset"]:::focal
+    k10(["Application<br/>update()"]):::app
+    k11["Assets::Sprites::<br/>Animation"]:::focal
+    k12(["Application<br/>prepare_render_frame()"]):::app
+    k13("Rendering::Submission::<br/>resolve_sprite()"):::neighbor
+    k14["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k0 --> k1
+    k1 --> k2
+    k3 --> k4
+    k1 --> k4
+    k5 --> k6
+    k5 --> k7
+    k5 --> k8
+    k5 --> k9
+    k10 --> k11
+    k12 --> k13
+    k13 --> k8
+    k13 --> k14
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

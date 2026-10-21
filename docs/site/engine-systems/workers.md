@@ -31,36 +31,62 @@ Types below are in `CE::Workers` unless another namespace is shown.
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Workers integration
-    accDescr: Context and application jobs share worker capacity, with optional event delivery, topology and dispatched follow-up.
-    Context -->|creates tracked groups| Workers
-    Preparation[Asset, text and audio preparation] -->|submits CPU jobs| Workers
-    Events -. optional serial delivery .-> Workers
-    Workers -. optional CPU policy .-> Topology[Native topology provider]
-    Workers -. jobs post follow-up work .-> Dispatch
+For a running game, create a tracked group through
+`engine.make_worker_group(options)`. Submit CPU-only work with owned inputs and
+retain its future. Runtime settles these groups during shutdown while accepted
+platform dependencies can still progress.
+
+```{engine-diagram} workers-focus-groups
 ```
+
+[Explore application preparation](diagram-explorer.md#workers-application),
+[a pool shared by contexts](diagram-explorer.md#workers-focus-shared), or
+[worker implementation dependencies](diagram-explorer.md#workers-internal).
+
+### Choose pool and group ownership
+
+| Situation | Construction path | Who closes and drains it? |
+| --- | --- | --- |
+| One game's ordinary CPU preparation | Set {cpp:struct}`Runtime::ExecutionOptions <CE::Runtime::ExecutionOptions>`, then `Context::make_worker_group()` | Runtime/Context tracks every resulting group. Owned physical capacity is created lazily; the default is one worker. |
+| Several contexts or services share physical capacity | Supply `ExecutionOptions::shared_pool`, then create each context's groups | Each context closes/drains its groups; the application owns the pool and unrelated groups. |
+| A service runs independently of Runtime | Own {cpp:class}`Workers::Pool <CE::Workers::Pool>` and call `pool.make_group()` | The service stops producers, closes acceptance and services dependencies before drain/join. |
+| CPU/cache policy needs native topology | Set {cpp:struct}`Workers::PoolOptions <CE::Workers::PoolOptions>` with a retained {cpp:class}`Workers::TopologyProvider <CE::Workers::TopologyProvider>` | The pool retains the provider through worker joins. The optional [Workers module](../modules/workers.md) supplies hwloc discovery. |
+
+### Separate capacity from scheduling policy
+
+| Setting | Effect | Decision to make |
+| --- | --- | --- |
+| Pool worker count | Physical CPU threads shared by all groups | Choose total capacity once. Context's owned count must be positive; standalone `PoolOptions` supports explicit automatic capacity with zero. |
+| `GroupOptions::max_concurrency` | Running-job cap, limited to pool capacity; zero uses that capacity | Limit a workload without allocating extra threads. |
+| `weight` and `priority` | Relative selection share among eligible groups | Balance queued work; neither setting guarantees latency, completion order or OS priority. |
+| `GroupOptions::cpu` | Eligible CPUs and optional locality/cache policy | Choose Required rejection or Preferred fallback, then inspect effective policy/capabilities. |
+
+A job's future carries its result or failure. A closed group's `drain()` also
+waits for accepted jobs and capture release; status counters alone are not that
+barrier. The [worker contract](../runtime/worker-execution.md#jobs) defines
+scheduling and [policy limits](../runtime/worker-execution.md#cpu-policy-and-capabilities).
 
 ### Uses
 
-Optional native providers supply CPU/core/cache observations and affinity
-enforcement. Jobs with owner-affine follow-up can request Dispatch; the pool
-itself grants CPU capacity.
-
-| Types | Systems |
+| Dependency | Workers' use |
 | --- | --- |
-| {cpp:class}`CE::Workers::TopologyProvider`<br>{cpp:struct}`CE::Workers::Topology`<br>{cpp:struct}`CE::Workers::CpuPolicy`<br>{cpp:type}`CE::Diagnostics::DomainId` | [Diagnostics](diagnostics.md)<br>[Logging](logging.md)<br>[Dispatch](dispatch.md) |
+| {cpp:class}`Workers::TopologyProvider <CE::Workers::TopologyProvider>`, {cpp:struct}`Workers::Topology <CE::Workers::Topology>` | Optional startup discovery and supported CPU policy application; the neutral pool does not implicitly load a provider. |
+| {cpp:struct}`Workers::CpuPolicy <CE::Workers::CpuPolicy>` | Validate requested eligibility/locality against pool capabilities and verify required native policy before callback entry. |
+| [Diagnostics](diagnostics.md) and [Logging](logging.md) | Identify groups/pools and expose queue, callback and policy observations. |
+
+Graphics follow-up belongs to the application's job workflow through
+[Dispatch](dispatch.md). The pool itself supplies CPU execution and has no
+owner-dispatch dependency.
 
 ### Used by
 
-Runtime may own lazy capacity or retain a supplied shared pool. Applications can
-schedule asset/text/audio preparation, and event delivery can use a serial
-worker stream. Standalone services need no runtime session.
-
-| Types | Systems |
+| Consumer | Relationship to the pool |
 | --- | --- |
-| {cpp:class}`CE::Runtime::Context`<br>{cpp:type}`CE::Events::EventBus::Delivery`<br>[Application-owned job callables](../runtime/worker-execution.md#jobs) | [Runtime](runtime.md)<br>[Assets](assets.md)<br>[Text](text.md)<br>[Events](events.md)<br>[Audio](audio.md) |
+| {cpp:class}`Runtime::Context <CE::Runtime::Context>` | Create tracked groups on lazy owned or supplied shared capacity. [Context ownership](../runtime/worker-execution.md#context-ownership). |
+| `Events::worker_delivery()` | Execute one serial listener stream over a group; separate adapters can run concurrently. [Event delivery](../runtime/event-delivery.md#worker-stream-acceptance-and-cancellation). |
+| {cpp:class}`Text::Rendering::Updater <CE::Text::Rendering::Updater>` | Create a Context-tracked serial preparation group, submit owned text requests, then upload through platform dispatch. [Text updates](../getting-started/how-to/update-text.md). |
+| Application [asset](assets.md) or [audio](audio.md) preparation | Schedule independent CPU operations and retain their results; these services do not automatically submit preparation jobs. |
+| Standalone application service | Share physical capacity without constructing a game session. |
 
 ## Contracts
 

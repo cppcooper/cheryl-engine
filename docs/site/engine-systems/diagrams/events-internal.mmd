@@ -1,0 +1,52 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Events · engine integration
+    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Runtime::<br/>Context"]:::neighbor
+    k1["Events::<br/>EventBus"]:::focal
+    k2["Input::<br/>System"]:::neighbor
+    k3["Events::EventBus::<br/>Publisher"]:::focal
+    k4["Platform::GLFW::<br/>Window"]:::neighbor
+    k5["Events::<br/>EventSystem"]:::focal
+    k6["Runtime::<br/>RuntimeServices"]:::neighbor
+    k7["Events::<br/>EventChannel"]:::focal
+    k8["Events::EventBus::<br/>Registration"]:::focal
+    k9["Events::EventBus::<br/>Delivery"]:::focal
+    k10["Events::EventBus::<br/>ErrorHandler"]:::focal
+    k11("Events::<br/>platform_delivery()"):::focal
+    k12["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
+    k13("Events::<br/>simulation_delivery()"):::focal
+    k14["Runtime::SimulationDispatcher::<br/>Submission"]:::neighbor
+    k15("Events::<br/>worker_delivery()"):::focal
+    k16["Workers::<br/>Group"]:::neighbor
+    k0 --> k1
+    k2 --> k3
+    k4 --> k5
+    k6 --> k1
+    k1 --> k7
+    k1 --> k8
+    k1 --> k9
+    k1 --> k10
+    k11 --> k12
+    k11 --> k9
+    k13 --> k14
+    k13 --> k9
+    k15 --> k16
+    k15 --> k9
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

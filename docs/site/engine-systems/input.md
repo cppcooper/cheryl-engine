@@ -53,35 +53,57 @@ explains this distinction and lists the headers without repeating every key here
 
 ## Usage
 
-```mermaid
-flowchart LR
-    accTitle: Input integration
-    accDescr: Runtime polls Input, game controllers read tick actions, and GUI sessions can request records and focus.
-    Runtime -->|polls and copies snapshots into ticks| Input
-    Game -->|reads actions through the tick| Input
-    GUI -. requests records and focus .-> Input
-    Input -->|borrows live window| Display
+Bind physical controls during platform initialization, then read semantic actions
+through the update's immutable {cpp:class}`Input::Tick <CE::Input::Tick>`. A reusable
+controller retains its own action context so local action IDs and bindings do
+not collide with another controller's.
+
+```{engine-diagram} input-focus-actions
 ```
+
+[Explore the full application path](diagram-explorer.md#input-application),
+[UI capture and focus](diagram-explorer.md#input-focus-capture), or
+[engine input dependencies](diagram-explorer.md#input-internal).
+
+### Choose what to consume
+
+| Reader's task | API path | Setup and ownership |
+| --- | --- | --- |
+| Read a few game-wide actions | {cpp:class}`Input::Actions::Bindings <CE::Input::Actions::Bindings>` → `tick.input.button(id)` | Register direct bindings on platform; retain tokens and remove them during cleanup. [Bind input](../getting-started/how-to/bind-input.md). |
+| Reuse a player/controller mapping | {cpp:struct}`Input::Actions::ContextDefinition <CE::Input::Actions::ContextDefinition>` → {cpp:class}`Input::Actions::Context <CE::Input::Actions::Context>` → `tick.input.actions(context)` | Acquire `action_contexts()` on platform once; attach from the consumer's owner and retain one lease per controller. [Controller tutorial](../getting-started/create-a/controller.md). |
+| Feed a menu or text editor | {cpp:class}`Input::Capture::Lease <CE::Input::Capture::Lease>` and {cpp:class}`Input::Routing::Lease <CE::Input::Routing::Lease>` → tick records | Request Events/Text separately from keyboard focus. Read ordered records on the UI owner, preferably through a [toolkit session](gui.md). |
+| Retain a complete native poll | {cpp:struct}`Input::PollSnapshot <CE::Input::PollSnapshot>` | Acquire after publication on platform; the immutable handle can cross threads and survive later polls. |
+| React to convenience-gamepad availability | `Input::gamepad_availability_changed_event` plus `gamepad_availability()` | Subscribe and read the seed together on platform; select queued delivery for a simulation-owned target. [Availability contract](../runtime/input-state-model.md#gamepad-availability). |
+
+### Actions, capture and focus are independent
+
+Actions describe gameplay meaning. Capture requests activate ordered physical or
+committed-text records; they do not consume a private queue. Focus chooses a
+record recipient and may gate keyboard gameplay. Focusing alone does not request
+Events or Text, and action-context lifetime does not establish UI focus.
+
+Keep capture/focus leases while their UI consumer is active. Each poll latches
+those requests once, so a mid-poll change takes effect on the next poll and
+cannot reassign records already captured. Multiple consumers can inspect the
+same immutable record batch. See [capture and routing](../runtime/input-state-model.md#focus-routing-and-editing-controls).
 
 ### Uses
 
-A concrete adapter borrows a live window and translates device observations into
-complete input polls. Optional gamepad notifications use a weak bus publisher;
-Runtime supplies its Context route.
-
-| Types | Systems |
+| Dependency | Input's use |
 | --- | --- |
-| {cpp:class}`CE::Platform::Window`<br>{cpp:class}`CE::Input::Actions::Bindings`<br>{cpp:class}`CE::Input::Capture::Collector`<br>{cpp:class}`CE::Input::Routing::Manager`<br>{cpp:class}`CE::Events::EventBus::Publisher` | [Display](display.md)<br>[Events](events.md) |
+| {cpp:class}`Platform::Window <CE::Platform::Window>` | A concrete adapter borrows a compatible live window while native callbacks are attached. [Display](display.md). |
+| {cpp:class}`Input::Actions::Bindings <CE::Input::Actions::Bindings>` | Evaluate direct and context-local mappings into immutable action snapshots. |
+| {cpp:class}`Input::Capture::Collector <CE::Input::Capture::Collector>`, {cpp:class}`Input::Routing::Manager <CE::Input::Routing::Manager>` | Collect supported records and latch focus/capture for one complete poll. |
+| {cpp:class}`Events::EventBus::Publisher <CE::Events::EventBus::Publisher>` | Publish optional gamepad observations through a weak route. Runtime selects its Context bus; standalone input opts in. [Events](events.md#engine-events). |
 
 ### Used by
 
-Runtime transfers polls into immutable tick views. Game updates read actions;
-toolkit sessions read ordered records and request keyboard/text focus. Input
-owns neither a simulation scheduler nor a widget tree.
-
-| Types | Systems |
+| Consumer | What it reads or requests |
 | --- | --- |
-| {cpp:class}`CE::Runtime::GameRuntime`<br>{cpp:struct}`CE::Game::TickContext`<br>{cpp:class}`CE::UI::TGUI::Session`<br>{cpp:class}`CE::UI::RmlUi::Session`<br>[`Tutorial::PlayerController`](../getting-started/create-a/controller.md) | [Runtime](runtime.md)<br>[GUI](gui.md) |
+| {cpp:class}`Runtime::GameRuntime <CE::Runtime::GameRuntime>` | Poll on platform and transfer complete polling intervals to immutable tick input. [Runtime](runtime.md). |
+| Application controllers | Read direct or context-local actions from {cpp:struct}`Game::TickContext <CE::Game::TickContext>` without querying live devices. |
+| {cpp:class}`UI::TGUI::Session <CE::UI::TGUI::Session>`, {cpp:class}`UI::RmlUi::Session <CE::UI::RmlUi::Session>` | Request supported record/focus capabilities and feed widgets during their update. [GUI](gui.md). |
+| Standalone host or custom adapter | Drive complete polling/publication explicitly when Runtime is absent. [Adapter publication](../runtime/input-state-model.md#adapter-publication). |
 
 ## Contracts
 

@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block extrahead %}
+{{ super() }}
+<script>document.documentElement.classList.add('engine-explorer-page');</script>
+{% endblock %}
+{% block content %}
+<main class="engine-explorer-shell"
+      data-frame="{{ pathto('_static/engine-diagrams/frame.html', 1) }}"
+      data-systems="{{ pathto('engine-systems/index') }}">
+  <header class="engine-explorer-header">
+    <div>
+      <a class="engine-explorer-breadcrumb" href="{{ pathto('engine-systems/index') }}">Engine Systems</a>
+      <h1>Diagram explorer</h1>
+    </div>
+    <nav class="engine-explorer-links" aria-label="Documentation links">
+      <button id="engine-navigation-toggle" aria-expanded="true">Hide navigation</button>
+      <a class="optional" href="{{ pathto('index') }}">Documentation</a>
+      <a class="optional" href="{{ pathto('api/index') }}">C++ API</a>
+      <a id="engine-system-guide" href="{{ pathto('engine-systems/index') }}">Engine Systems guide ↗</a>
+      <div class="cheryl-appearance" hidden>
+        <label for="cheryl-theme">Theme</label>
+        <select id="cheryl-theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </nav>
+  </header>
+  <div class="engine-explorer-layouts">
+    <nav aria-label="Explorer layout">
+      <span>Layout</span>
+      <button data-engine-layout="shared" aria-pressed="true">Docs navigation</button>
+      <button data-engine-layout="wide" aria-pressed="false">Wide explorer</button>
+    </nav>
+    <span>Consumer → dependency</span>
+  </div>
+  <iframe id="engine-explorer-frame" title="Interactive subsystem diagrams" hidden></iframe>
+  <div class="engine-explorer-fallback rst-content">{{ body }}</div>
+  <footer class="engine-explorer-revision">
+    Source revision
+    <a href="https://github.com/cppcooper/cheryl-engine/tree/{{ source_revision }}">{{ source_revision[:12] }}</a>
+    · <a href="{{ pathto('revision.json', 1) }}">Build details</a>
+    {% if source_dirty %}· Working tree modified{% endif %}
+  </footer>
+</main>
+<script src="{{ pathto('_static/engine-diagrams/shell.js', 1) }}" defer></script>
+{% endblock %}
