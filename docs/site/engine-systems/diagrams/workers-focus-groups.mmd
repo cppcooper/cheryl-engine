@@ -13,14 +13,14 @@ config:
 ---
 flowchart LR
     accTitle: Workers · simple Context-owned groups
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
     k1["Runtime::<br/>ExecutionOptions"]:::neighbor
     k2["Runtime::<br/>Context"]:::neighbor
-    k3["Workers::<br/>Pool"]:::focal
-    k4["Workers::<br/>Group"]:::focal
+    k3["Pool"]:::focal
+    k4["Group"]:::focal
     k5(["Application<br/>CPU preparation"]):::app
-    k6["Workers::<br/>GroupOptions"]:::focal
+    k6["GroupOptions"]:::focal
     k0 --> k1
     k2 --> k1
     k2 --> k3

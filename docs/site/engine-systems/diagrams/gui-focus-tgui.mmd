@@ -13,16 +13,16 @@ config:
 ---
 flowchart LR
     accTitle: GUI · TGUI publication
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit UI::; ambiguous nested namespaces remain qualified. Local names omit UI::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application-owned UI"]):::app
-    k1["UI::TGUI::<br/>Session"]:::focal
+    k1["TGUI::<br/>Session"]:::focal
     k2["Input::<br/>System"]:::neighbor
     k3["Text::<br/>FontService"]:::neighbor
-    k4["UI::TGUI::<br/>RecordedScene"]:::focal
-    k5["UI::TGUI::<br/>SceneUploader"]:::focal
+    k4["TGUI::<br/>RecordedScene"]:::focal
+    k5["TGUI::<br/>SceneUploader"]:::focal
     k6["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
     k7["Rendering::Resources::<br/>Provider"]:::neighbor
-    k8["UI::TGUI::<br/>Scene"]:::focal
+    k8["TGUI::<br/>Scene"]:::focal
     k9(["Application<br/>prepare_render_frame()"]):::app
     k10["Rendering::<br/>PassWriter"]:::neighbor
     k0 --> k1

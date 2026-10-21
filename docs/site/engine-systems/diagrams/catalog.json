@@ -3656,7 +3656,8 @@
         "Game::TickContext",
         "Rendering::FrameWriter",
         "Input::Tick"
-      ]
+      ],
+      "namespace": "Runtime"
     },
     {
       "id": "display-internal",
@@ -4138,7 +4139,8 @@
         "Events::EventSystem",
         "Game::TickContext",
         "Rendering::Camera2D"
-      ]
+      ],
+      "namespace": "Platform"
     },
     {
       "id": "input-internal",
@@ -5187,7 +5189,8 @@
         "Input::Actions::View",
         "UI::TGUI::Session",
         "UI::RmlUi::Session"
-      ]
+      ],
+      "namespace": "Input"
     },
     {
       "id": "assets-internal",
@@ -5771,7 +5774,8 @@
         "Rendering::Submission::resolve_tile()",
         "Assets::Tilesets::Asset",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "namespace": "Assets"
     },
     {
       "id": "resources-internal",
@@ -6652,7 +6656,8 @@
         "Rendering::Resources::Pipeline",
         "Rendering::OpenGL::Pipeline",
         "Rendering::OpenGL::Program"
-      ]
+      ],
+      "namespace": "Rendering::Resources"
     },
     {
       "id": "rendering-internal",
@@ -7320,7 +7325,8 @@
         "Rendering::Submission::resolve_sprite()",
         "Assets::Sprites::Asset",
         "Rendering::Submission::Context2D"
-      ]
+      ],
+      "namespace": "Rendering"
     },
     {
       "id": "text-internal",
@@ -7988,7 +7994,8 @@
         "Runtime::PlatformDispatcher::Submission",
         "UI::TGUI::Session",
         "UI::RmlUi::Session"
-      ]
+      ],
+      "namespace": "Text"
     },
     {
       "id": "gui-internal",
@@ -9044,7 +9051,8 @@
         "UI::TGUI::Scene",
         "UI::RmlUi::Scene",
         "Rendering::PassWriter"
-      ]
+      ],
+      "namespace": "UI"
     },
     {
       "id": "audio-internal",
@@ -9544,7 +9552,8 @@
         "Events::EventBus::Publisher",
         "Runtime::RuntimeServices",
         "Runtime::ServiceAttachment"
-      ]
+      ],
+      "namespace": "Audio"
     },
     {
       "id": "events-internal",
@@ -10116,7 +10125,8 @@
         "Runtime::SimulationDispatcher::Submission",
         "Events::worker_delivery()",
         "Workers::Group"
-      ]
+      ],
+      "namespace": "Events"
     },
     {
       "id": "dispatch-internal",
@@ -10847,7 +10857,8 @@
         "UI::RmlUi::SceneUploader",
         "Events::platform_delivery()",
         "Events::simulation_delivery()"
-      ]
+      ],
+      "namespace": "Runtime"
     },
     {
       "id": "workers-internal",
@@ -11517,7 +11528,8 @@
         "Workers::PolicyStrength",
         "Text::Rendering::Updater",
         "Events::worker_delivery()"
-      ]
+      ],
+      "namespace": "Workers"
     },
     {
       "id": "memory-internal",
@@ -11914,7 +11926,8 @@
         "Memory::ByteReleaseContext",
         "State::Singleton",
         "Memory::Stats"
-      ]
+      ],
+      "namespace": "Memory"
     },
     {
       "id": "state-internal",
@@ -12093,7 +12106,8 @@
         "State::VersionedSnapshot",
         "State::StateTracker",
         "State::StateMachine"
-      ]
+      ],
+      "namespace": "State"
     },
     {
       "id": "logging-internal",
@@ -12633,7 +12647,8 @@
         "Logging::FileEventHandlers",
         "Logging::Level",
         "Logging::OverflowPolicy"
-      ]
+      ],
+      "namespace": "Logging"
     },
     {
       "id": "diagnostics-internal",
@@ -13991,7 +14006,8 @@
       },
       "operation_labels": {
         "Application::GLFWOpenGL::make_context()": "Application::GLFWOpenGL::make_context(const Application::GLFWOpenGL::Options& config): Runtime::Context [unique]"
-      }
+      },
+      "namespace": "Runtime"
     },
     {
       "id": "display-application",
@@ -14527,7 +14543,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Platform"
     },
     {
       "id": "input-application",
@@ -15651,7 +15668,8 @@
       },
       "operation_labels": {
         "Rendering::Submission::resolve_sprite()": "Rendering::Submission::resolve_sprite(const Assets::Sprites::Asset& sprite, Assets::Grids::CellIndex cell, const Rendering::DrawStyle2D& style, const Rendering::Submission::Context2D& context): Rendering::DrawPacket2D"
-      }
+      },
+      "namespace": "Assets"
     },
     {
       "id": "resources-application",
@@ -16184,7 +16202,8 @@
       },
       "operation_labels": {
         "Assets::Images::decode()": "Assets::Images::decode(file): Assets::Images::Decoded"
-      }
+      },
+      "namespace": "Rendering::Resources"
     },
     {
       "id": "rendering-application",
@@ -16568,7 +16587,8 @@
       },
       "operation_labels": {
         "Rendering::Submission::resolve_sprite()": "Rendering::Submission::resolve_sprite(const Assets::Sprites::Asset& sprite, Assets::Grids::CellIndex cell, const Rendering::DrawStyle2D& style, const Rendering::Submission::Context2D& context): Rendering::DrawPacket2D"
-      }
+      },
+      "namespace": "Rendering"
     },
     {
       "id": "text-application",
@@ -17258,7 +17278,8 @@
         "Text::Rendering::prepare()": "Text::Rendering::prepare(Text::ShapedText layout, Text::Rendering::RasterOptions options): Text::Rendering::Prepared",
         "Text::Rendering::upload()": "Text::Rendering::upload(Text::Rendering::Prepared prepared, Rendering::Resources::Provider& provider, const Rendering::Resources::Material material [optional shared]): Text::Rendering::Generation",
         "Rendering::Submission::resolve_text()": "Rendering::Submission::resolve_text(const Text::Rendering::Generation& text, const Rendering::DrawStyle2D& style, const Rendering::Submission::Context2D& context): Rendering::DrawPacket2D[]"
-      }
+      },
+      "namespace": "Text"
     },
     {
       "id": "gui-application",
@@ -17999,7 +18020,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "UI"
     },
     {
       "id": "audio-application",
@@ -18618,7 +18640,8 @@
       },
       "operation_labels": {
         "Audio::Miniaudio::decode_file()": "Audio::Miniaudio::decode_file(file, Audio::Miniaudio::DecodeOptions options): Audio::Clip"
-      }
+      },
+      "namespace": "Audio"
     },
     {
       "id": "events-application",
@@ -19126,7 +19149,8 @@
       },
       "operation_labels": {
         "Events::simulation_delivery()": "Events::simulation_delivery(Runtime::SimulationDispatcher::Submission endpoint): Events::EventBus::Delivery"
-      }
+      },
+      "namespace": "Events"
     },
     {
       "id": "dispatch-application",
@@ -19598,7 +19622,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Runtime"
     },
     {
       "id": "workers-application",
@@ -20032,7 +20057,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Workers"
     },
     {
       "id": "memory-application",
@@ -20193,7 +20219,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Memory"
     },
     {
       "id": "state-application",
@@ -20477,7 +20504,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "State"
     },
     {
       "id": "logging-application",
@@ -21080,7 +21108,8 @@
             "role": "call"
           }
         ]
-      }
+      },
+      "namespace": "Logging"
     },
     {
       "id": "diagnostics-application",
@@ -22330,7 +22359,8 @@
         "Rendering::PresentationSurface",
         "Rendering::Renderer",
         "Rendering::Resources::Provider"
-      ]
+      ],
+      "namespace": "Runtime"
     },
     {
       "id": "runtime-focus-frame",
@@ -22839,7 +22869,8 @@
         "Rendering::Pass",
         "Rendering::DrawPacket2D",
         "Rendering::Renderer"
-      ]
+      ],
+      "namespace": "Runtime"
     },
     {
       "id": "runtime-focus-shutdown",
@@ -23241,7 +23272,8 @@
         "Runtime::RuntimeLifecycle",
         "@report",
         "Runtime::RuntimeLifecycleSnapshot"
-      ]
+      ],
+      "namespace": "Runtime"
     },
     {
       "id": "input-focus-actions",
@@ -23613,7 +23645,8 @@
         "@update",
         "Input::Tick",
         "Input::Actions::ButtonTickState"
-      ]
+      ],
+      "namespace": "Input"
     },
     {
       "id": "input-focus-capture",
@@ -23920,7 +23953,8 @@
         "Input::Routing::KeyboardPolicy",
         "Input::Events::Record",
         "Input::Events::Payload"
-      ]
+      ],
+      "namespace": "Input"
     },
     {
       "id": "assets-focus-loading",
@@ -24180,7 +24214,8 @@
         "@world",
         "Assets::Sprites::Manager",
         "Assets::Sprites::Asset"
-      ]
+      ],
+      "namespace": "Assets"
     },
     {
       "id": "assets-focus-playback",
@@ -24430,7 +24465,8 @@
         "Rendering::Submission::resolve_sprite()",
         "Rendering::DrawStyle2D",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "namespace": "Assets"
     },
     {
       "id": "rendering-focus-playback",
@@ -24623,7 +24659,8 @@
         "Rendering::DrawPacket2D",
         "Rendering::Resources::Material",
         "Rendering::Geometry::Buffer2D"
-      ]
+      ],
+      "namespace": "Rendering"
     },
     {
       "id": "rendering-focus-sprite",
@@ -24855,7 +24892,8 @@
         "Assets::Sprites::Asset",
         "Rendering::DrawStyle2D",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "namespace": "Rendering"
     },
     {
       "id": "text-focus-static",
@@ -25072,7 +25110,8 @@
         "Text::Rendering::upload()",
         "Rendering::Resources::Provider",
         "Text::Rendering::Generation"
-      ]
+      ],
+      "namespace": "Text"
     },
     {
       "id": "text-focus-updater",
@@ -25378,7 +25417,8 @@
         "@prepare",
         "Rendering::Submission::resolve_text()",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "namespace": "Text"
     },
     {
       "id": "gui-focus-tgui",
@@ -25944,7 +25984,8 @@
         "UI::TGUI::Scene",
         "@prepare",
         "Rendering::PassWriter"
-      ]
+      ],
+      "namespace": "UI"
     },
     {
       "id": "gui-focus-rmlui",
@@ -26510,7 +26551,8 @@
         "UI::RmlUi::Scene",
         "@prepare",
         "Rendering::PassWriter"
-      ]
+      ],
+      "namespace": "UI"
     },
     {
       "id": "events-focus-immediate",
@@ -26744,7 +26786,8 @@
         "Events::EventBus::Registration",
         "@callback",
         "@cleanup"
-      ]
+      ],
+      "namespace": "Events"
     },
     {
       "id": "events-focus-delivery",
@@ -26943,7 +26986,8 @@
         "Runtime::SimulationDispatcher::Submission",
         "Workers::Group",
         "Events::EventBus::ErrorHandler"
-      ]
+      ],
+      "namespace": "Events"
     },
     {
       "id": "workers-focus-groups",
@@ -27225,7 +27269,8 @@
         "Workers::Group",
         "@cpu",
         "Workers::GroupOptions"
-      ]
+      ],
+      "namespace": "Workers"
     },
     {
       "id": "workers-focus-shared",
@@ -27731,7 +27776,8 @@
         "Runtime::Context#context B",
         "Workers::Group#group A",
         "Workers::Group#group B"
-      ]
+      ],
+      "namespace": "Workers"
     },
     {
       "id": "overview-systems",

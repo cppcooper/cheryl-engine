@@ -20,11 +20,54 @@ def label_text(value: str, *, markup: bool = False) -> str:
     return re.sub(r"\s+", "", value)
 
 
-def scoped_label(value: str, namespace: str | None) -> str:
+def namespace_collisions(diagram: dict, symbols=None) -> set[str]:
+    """Keep nested namespaces distinct from the Engine's other root namespaces."""
+    namespace = diagram.get("namespace")
+    return {key.split("::", 1)[0] for key in (symbols if symbols is not None else diagram["nodes"])
+            if "::" in key and not key.startswith(str(namespace) + "::")}
+
+
+def scoped_label(value: str, namespace: str | None, collisions=()) -> str:
     """Elide an explicitly named local namespace without changing type identity."""
     if not namespace:
         return value
-    return re.sub(r"(?<![\w:])" + re.escape(namespace) + r"::", "", value)
+    retain = r"(?!(?:" + "|".join(re.escape(name) for name in sorted(collisions)) + r")::)" if collisions else ""
+    return re.sub(r"(?<![\w:])" + re.escape(namespace) + r"::" + retain, "", value)
+
+
+def diagram_signature(value: str, namespace: str | None = None, collisions=()) -> str:
+    """Keep types and bare placeholders in the curated signatures, omitting typed parameter names."""
+    opening = value.find("(")
+    if opening < 0:
+        return scoped_label(value, namespace, collisions)
+    if value[:opening].endswith("operator") and value[opening:opening + 2] == "()":
+        opening = value.find("(", opening + 2)
+    if opening < 0:
+        return scoped_label(value, namespace, collisions)
+    stack, arguments, start = ["("], [], opening + 1
+    pairs = {">": "<", ")": "(", "]": "["}
+    for index in range(start, len(value)):
+        char = value[index]
+        if char in "<([":
+            stack.append(char)
+        elif char in pairs:
+            if not stack or stack.pop() != pairs[char]:
+                raise ValueError(f"Malformed diagram signature: {value}")
+            if not stack:
+                arguments.append(value[start:index].strip())
+                break
+        elif char == "," and stack == ["("]:
+            arguments.append(value[start:index].strip())
+            start = index + 1
+    else:
+        raise ValueError(f"Unclosed diagram signature: {value}")
+    shortened = []
+    for argument in arguments:
+        match = re.fullmatch(r"(.+?)\s+([A-Za-z_]\w*)(\s+\[[^\]]+\])?", argument)
+        if match and not re.fullmatch(r"(?:const|volatile|typename)(?:\s+(?:const|volatile|typename))*", match[1]):
+            argument = match[1] + (match[3] or "")
+        shortened.append(argument)
+    return scoped_label(value[:opening + 1] + ", ".join(shortened) + value[index:], namespace, collisions)
 
 
 def frame_version(directory: Path) -> str:
@@ -57,6 +100,7 @@ def load_catalog(source: Path) -> dict:
             raise ValueError(f"Invalid or duplicate Engine diagram ID: {identity}")
         seen.add(identity)
         namespace = diagram.get("namespace")
+        collisions = namespace_collisions(diagram, symbols)
         if namespace is not None and not re.fullmatch(r"[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*", namespace):
             raise ValueError(f"Invalid local namespace in Engine diagram {identity}")
         keys = diagram["nodes"]
@@ -98,7 +142,7 @@ def load_catalog(source: Path) -> dict:
                     raise ValueError(f"Invalid operation source in {identity}: {name}")
                 if "CE::" in operation["label"] or "std::" in operation["label"]:
                     raise ValueError(f"Invalid operation display type in {identity}: {name}")
-                display = scoped_label(operation["label"], namespace)
+                display = diagram_signature(operation["label"], namespace, collisions)
                 if label_text(display) not in label_text(labels[str(keys.index(key))], markup=True):
                     raise ValueError(f"Engine diagram {identity} omits operation label: {name}")
         for key, label in diagram.get("operation_labels", {}).items():
@@ -106,7 +150,7 @@ def load_catalog(source: Path) -> dict:
                 raise ValueError(f"Invalid operation box in Engine diagram {identity}: {key}")
             if "CE::" in label or "std::" in label:
                 raise ValueError(f"Invalid operation display type in {identity}: {key}")
-            if label_text(scoped_label(label, namespace)) != label_text(labels[str(keys.index(key))], markup=True):
+            if label_text(diagram_signature(label, namespace, collisions)) != label_text(labels[str(keys.index(key))], markup=True):
                 raise ValueError(f"Engine diagram {identity} operation box label differs: {key}")
     for symbol in symbols.values():
         if symbol["label"].startswith("CE::") or "std::" in symbol["label"]:

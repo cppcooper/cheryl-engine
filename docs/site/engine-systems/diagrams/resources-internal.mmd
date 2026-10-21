@@ -13,22 +13,22 @@ config:
 ---
 flowchart LR
     accTitle: Resources · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Rendering::Resources::; ambiguous nested namespaces remain qualified. Local names omit Rendering::Resources::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Runtime::<br/>Context"]:::neighbor
-    k1["Rendering::Resources::<br/>Provider"]:::focal
+    k1["Provider"]:::focal
     k2["Assets::Loading::<br/>Loader"]:::neighbor
     k3["UI::TGUI::<br/>SceneUploader"]:::neighbor
     k4["UI::RmlUi::<br/>SceneUploader"]:::neighbor
     k5("Text::Rendering::<br/>upload()"):::neighbor
     k6["Rendering::OpenGL::<br/>ResourceProvider"]:::focal
-    k7["Rendering::Resources::<br/>Image"]:::focal
+    k7["Image"]:::focal
     k8["Rendering::Geometry::<br/>Buffer2D"]:::focal
-    k9["Rendering::Resources::<br/>Program"]:::focal
+    k9["Program"]:::focal
     k10["Rendering::<br/>GraphicsDomain"]:::focal
     k11["Rendering::OpenGL::<br/>ResourceLifetime"]:::focal
     k12["Rendering::<br/>DrawPacket2D"]:::neighbor
-    k13["Rendering::Resources::<br/>Material"]:::focal
-    k14["Rendering::Resources::<br/>Pipeline"]:::focal
+    k13["Material"]:::focal
+    k14["Pipeline"]:::focal
     k15["Rendering::OpenGL::<br/>Pipeline"]:::focal
     k16["Rendering::OpenGL::<br/>Program"]:::focal
     k0 --> k1

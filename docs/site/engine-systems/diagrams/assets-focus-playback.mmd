@@ -13,12 +13,12 @@ config:
 ---
 flowchart TB
     accTitle: Assets · practical shared sprite, separate playback
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Assets::; ambiguous nested namespaces remain qualified. Local names omit Assets::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application-owned game objects"]):::app
-    k1["Assets::Sprites::<br/>Asset"]:::focal
+    k1["Sprites::<br/>Asset"]:::focal
     k2(["Application<br/>update()"]):::app
-    k3["Assets::Sprites::<br/>Animation"]:::focal
-    k4["Assets::Sprites::<br/>Clip"]:::focal
+    k3["Sprites::<br/>Animation"]:::focal
+    k4["Sprites::<br/>Clip"]:::focal
     k5(["Application<br/>prepare_render_frame()"]):::app
     k6("Rendering::Submission::<br/>resolve_sprite()"):::neighbor
     k7["Rendering::<br/>DrawStyle2D"]:::neighbor

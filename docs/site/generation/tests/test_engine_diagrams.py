@@ -1,6 +1,7 @@
 """Check the source/catalog contract and explorer publication without an Engine build."""
 
 import ast
+from html import escape
 import json
 from pathlib import Path
 import sys
@@ -90,7 +91,7 @@ class CatalogTests(unittest.TestCase):
         method = {**operation(), "label": "notify(Events::EventChannel<Payload>& event)"}
         catalog["diagrams"][0]["operations"] = {"Runtime::Context": [method]}
         source = SOURCE.replace('Runtime::Context"]',
-                                'Runtime::Context<br/>notify(<br/>Events::EventChannel&lt;Payload&gt;&amp; event)"]')
+                                'Runtime::Context<br/>notify(<br/>Events::EventChannel&lt;Payload&gt;&amp;)"]')
         self.write(catalog, source)
         self.assertEqual(load_catalog(self.source), catalog)
         self.write(catalog, source.replace("Payload", "OtherPayload"))
@@ -123,10 +124,44 @@ class CatalogTests(unittest.TestCase):
         diagram["namespace"] = "Runtime"
         diagram["operations"] = {"Runtime::Context": [method]}
         source = SOURCE.replace('Runtime::Context"]',
-                                'Context<br/>attach(Context next, Input::Actions::Context actions): Context"]')
+                                'Context<br/>attach(Context, Input::Actions::Context): Context"]')
         self.write(catalog, source)
         self.assertEqual(load_catalog(self.source), catalog)
         self.write(catalog, source.replace("Input::Actions::Context", "Input::Context"))
+        with self.assertRaisesRegex(ValueError, "omits operation label"):
+            load_catalog(self.source)
+
+    def test_compact_parameters_preserve_types_markers_and_return_expressions(self):
+        cases = [
+            ("update(T next)", "update(T)"),
+            ("submit(Work&& work): Result [future]", "submit(Work&&): Result [future]"),
+            ("upload(const Memory::Block<T>[] blocks [borrowed], count): Memory::Pool<T>&",
+             "upload(const Memory::Block<T>[] [borrowed], count): Memory::Pool<T>&"),
+            ("transition(State from, State to, State::Machine<State, Trigger>::Guard guard)",
+             "transition(State, State, State::Machine<State, Trigger>::Guard)"),
+            ("operator()()", "operator()()"),
+            ("delta(): decltype(current() - previous())", "delta(): decltype(current() - previous())"),
+            ("parse<is_unsigned>(str): Text::Numbers::NumberVariant", "parse<is_unsigned>(str): Text::Numbers::NumberVariant"),
+        ]
+        for full, compact in cases:
+            with self.subTest(signature=full):
+                catalog = fixture()
+                catalog["diagrams"][0]["operations"] = {"Runtime::Context": [{**operation(), "label": full}]}
+                self.write(catalog, SOURCE.replace('Runtime::Context"]', 'Runtime::Context<br/>' + escape(compact) + '"]'))
+                self.assertEqual(load_catalog(self.source), catalog)
+
+    def test_scope_preserves_a_nested_namespace_matching_another_engine_namespace(self):
+        catalog = fixture()
+        catalog["symbols"]["Rendering::FrameWriter"] = {"key": "Rendering::FrameWriter", "label": "Rendering::FrameWriter"}
+        diagram = catalog["diagrams"][0]
+        diagram["namespace"] = "Text"
+        method = {**operation(), "label": "upload(Text::Rendering::Prepared prepared): Text::Rendering::Generation"}
+        diagram["operations"] = {"Runtime::Context": [method]}
+        source = SOURCE.replace('Runtime::Context"]',
+                                'Runtime::Context<br/>upload(Text::Rendering::Prepared): Text::Rendering::Generation"]')
+        self.write(catalog, source)
+        self.assertEqual(load_catalog(self.source), catalog)
+        self.write(catalog, source.replace("Text::Rendering", "Rendering"))
         with self.assertRaisesRegex(ValueError, "omits operation label"):
             load_catalog(self.source)
 

@@ -187,8 +187,9 @@ public methods. Keep these choices specific to the view: usually one to three
 entry points per type, with value types left as values. Each entry records the
 qualified declaration name, short display label, source file/line, purpose and
 `role` (`call` or `override`). Use the declaring base type for inherited methods.
-Include the same labels beneath the owning type in the Mermaid source; label
-checks reject stale metadata. Wrapping markup may change whitespace, but must
+Include the corresponding signatures beneath the owning type in Mermaid,
+omitting parameter names when their types are shown; label checks reject stale
+metadata. Wrapping markup may change whitespace, but must
 preserve type spelling, including template arguments. Mark override groups
 **Implement hooks** to distinguish engine callbacks from application calls. The
 explorer adds method search, source links and unambiguous API links without
@@ -197,8 +198,9 @@ focused views.
 
 Write labels as `method(arguments): QualifiedResultType`. Include relevant
 Engine argument and result types, including public aliases and types without
-their own box. Keep argument names and the declaration's direct `const`, pointer
-and reference qualifiers. Omit defaults, the leading `CE::`, and primitive or
+their own box. Keep argument names in catalog labels for the inspector, and
+omit those names from Mermaid when their types are shown. Preserve the declaration's
+direct `const`, pointer and reference qualifiers. Omit defaults, the leading `CE::`, and primitive or
 `std::` type spellings. Retain names for scalar and library-only arguments;
 include template parameter types where they clarify generic arguments. A
 missing result suffix does not imply `void`: scalar and
@@ -212,11 +214,15 @@ its Mermaid labels. Keep nested namespaces (`Actions::Context`) and other
 namespaces (`Runtime::Context`) explicit. The explorer states this local scope
 beside the view question; retain it in the Mermaid accessibility description
 too. Keep catalog symbol and method labels fully qualified for the inspector,
-search and API links. Label validation applies the same scoped abbreviation.
+search and API links. Preserve a local prefix when shortening it would collide
+with another Engine namespace, such as `Text::Rendering` or `Input::Events`.
+Label validation applies the same namespace and parameter-name abbreviations.
+Mixed views such as diagnostics and utilities keep their namespaces explicit.
 
 For a named free-function box, use the view's `operation_labels` mapping from
 its existing node key to the typed label. Keep the global symbol identity and
-other views' labels unchanged. Match this label in the Mermaid source; its
+other views' labels unchanged. Apply the same parameter-name and namespace
+abbreviations in the Mermaid source; its
 validation also ignores wrapping whitespace while preserving template types.
 
 Connect selected methods to their public Engine argument and result types when

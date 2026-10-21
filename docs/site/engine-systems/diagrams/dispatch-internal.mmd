@@ -13,13 +13,13 @@ config:
 ---
 flowchart LR
     accTitle: Dispatch · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["Runtime::<br/>Context"]:::neighbor
-    k1["Runtime::<br/>PlatformDispatcher"]:::focal
-    k2["Runtime::<br/>GameRuntime"]:::neighbor
-    k3["Runtime::<br/>SimulationDispatcher"]:::focal
-    k4["Runtime::PlatformDispatcher::<br/>Submission"]:::focal
-    k5["Runtime::SimulationDispatcher::<br/>Submission"]:::focal
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Context"]:::neighbor
+    k1["PlatformDispatcher"]:::focal
+    k2["GameRuntime"]:::neighbor
+    k3["SimulationDispatcher"]:::focal
+    k4["PlatformDispatcher::<br/>Submission"]:::focal
+    k5["SimulationDispatcher::<br/>Submission"]:::focal
     k6["Diagnostics::<br/>DispatchStats"]:::neighbor
     k7["Text::Rendering::<br/>Updater"]:::neighbor
     k8["UI::TGUI::<br/>SceneUploader"]:::neighbor

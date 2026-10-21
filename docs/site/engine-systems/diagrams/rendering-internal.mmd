@@ -13,23 +13,23 @@ config:
 ---
 flowchart TB
     accTitle: Rendering · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Rendering::; ambiguous nested namespaces remain qualified. Local names omit Rendering::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Runtime::<br/>GameRuntime"]:::neighbor
-    k1["Rendering::<br/>Renderer"]:::focal
-    k2["Rendering::<br/>PresentationSurface"]:::focal
-    k3["Rendering::<br/>Frame"]:::focal
-    k4["Rendering::OpenGL::<br/>Renderer"]:::focal
-    k5["Rendering::OpenGL::<br/>GLFWContext"]:::focal
-    k6["Rendering::OpenGL::<br/>Context"]:::focal
-    k7["Rendering::<br/>FrameWriter"]:::focal
-    k8["Rendering::<br/>PassWriter"]:::focal
-    k9["Rendering::<br/>DrawPacket2D"]:::focal
-    k10["Rendering::<br/>Pass"]:::focal
-    k11["Rendering::Resources::<br/>Material"]:::neighbor
-    k12["Rendering::Geometry::<br/>Buffer2D"]:::neighbor
-    k13("Rendering::Submission::<br/>resolve_sprite()"):::focal
+    k1["Renderer"]:::focal
+    k2["PresentationSurface"]:::focal
+    k3["Frame"]:::focal
+    k4["OpenGL::<br/>Renderer"]:::focal
+    k5["OpenGL::<br/>GLFWContext"]:::focal
+    k6["OpenGL::<br/>Context"]:::focal
+    k7["FrameWriter"]:::focal
+    k8["PassWriter"]:::focal
+    k9["DrawPacket2D"]:::focal
+    k10["Pass"]:::focal
+    k11["Resources::<br/>Material"]:::neighbor
+    k12["Geometry::<br/>Buffer2D"]:::neighbor
+    k13("Submission::<br/>resolve_sprite()"):::focal
     k14["Assets::Sprites::<br/>Asset"]:::neighbor
-    k15["Rendering::Submission::<br/>Context2D"]:::focal
+    k15["Submission::<br/>Context2D"]:::focal
     k0 --> k1
     k0 --> k2
     k0 --> k3

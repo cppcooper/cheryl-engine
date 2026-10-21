@@ -13,25 +13,25 @@ config:
 ---
 flowchart LR
     accTitle: Assets · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["Assets::Loading::<br/>Loader"]:::focal
-    k1["Assets::Loading::<br/>FileRegistry"]:::focal
+    accDescr: Local names omit Assets::; ambiguous nested namespaces remain qualified. Local names omit Assets::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Loading::<br/>Loader"]:::focal
+    k1["Loading::<br/>FileRegistry"]:::focal
     k2["Files::<br/>FileIndex"]:::neighbor
-    k3["Assets::Loading::<br/>Prepared"]:::focal
+    k3["Loading::<br/>Prepared"]:::focal
     k4["Rendering::Resources::<br/>Provider"]:::neighbor
-    k5["Assets::Sprites::<br/>Manager"]:::focal
-    k6["Assets::Tilesets::<br/>Manager"]:::focal
-    k7["Assets::Cache::<br/>Store"]:::focal
-    k8["Assets::Cache::<br/>AssetCatalogue"]:::focal
+    k5["Sprites::<br/>Manager"]:::focal
+    k6["Tilesets::<br/>Manager"]:::focal
+    k7["Cache::<br/>Store"]:::focal
+    k8["Cache::<br/>AssetCatalogue"]:::focal
     k9["Memory::Objects::<br/>Reservation"]:::neighbor
     k10["Memory::Allocators::<br/>ObjectPoolAllocator"]:::neighbor
     k11["Memory::Objects::<br/>Pool"]:::neighbor
-    k12["Assets::Sprites::<br/>Asset"]:::focal
+    k12["Sprites::<br/>Asset"]:::focal
     k13["Rendering::Resources::<br/>Image"]:::neighbor
     k14["Rendering::Geometry::<br/>Buffer2D"]:::neighbor
     k15("Rendering::Submission::<br/>resolve_sprite()"):::neighbor
     k16("Rendering::Submission::<br/>resolve_tile()"):::neighbor
-    k17["Assets::Tilesets::<br/>Asset"]:::focal
+    k17["Tilesets::<br/>Asset"]:::focal
     k18["Rendering::<br/>DrawPacket2D"]:::neighbor
     k0 --> k1
     k0 --> k2

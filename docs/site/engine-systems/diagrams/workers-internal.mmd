@@ -13,18 +13,18 @@ config:
 ---
 flowchart TB
     accTitle: Workers · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Runtime::<br/>Context"]:::neighbor
     k1["Runtime::<br/>ExecutionOptions"]:::neighbor
-    k2["Workers::<br/>Pool"]:::focal
-    k3["Workers::<br/>Group"]:::focal
-    k4["Workers::<br/>PoolOptions"]:::focal
-    k5["Workers::<br/>TopologyProvider"]:::focal
-    k6["Workers::<br/>Topology"]:::focal
-    k7["Workers::<br/>GroupOptions"]:::focal
-    k8["Workers::<br/>GroupStatus"]:::neighbor
-    k9["Workers::<br/>CpuPolicy"]:::focal
-    k10["Workers::<br/>PolicyStrength"]:::focal
+    k2["Pool"]:::focal
+    k3["Group"]:::focal
+    k4["PoolOptions"]:::focal
+    k5["TopologyProvider"]:::focal
+    k6["Topology"]:::focal
+    k7["GroupOptions"]:::focal
+    k8["GroupStatus"]:::neighbor
+    k9["CpuPolicy"]:::focal
+    k10["PolicyStrength"]:::focal
     k11["Text::Rendering::<br/>Updater"]:::neighbor
     k12("Events::<br/>worker_delivery()"):::neighbor
     k0 --> k1

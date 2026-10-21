@@ -13,17 +13,17 @@ config:
 ---
 flowchart LR
     accTitle: Display · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Platform::; ambiguous nested namespaces remain qualified. Local names omit Platform::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Runtime::<br/>Context"]:::neighbor
-    k1["Platform::<br/>DisplaySystem"]:::focal
-    k2["Platform::GLFW::<br/>DisplaySystem"]:::focal
-    k3["Platform::<br/>Window"]:::focal
-    k4["Platform::GLFW::<br/>Window"]:::focal
+    k1["DisplaySystem"]:::focal
+    k2["GLFW::<br/>DisplaySystem"]:::focal
+    k3["Window"]:::focal
+    k4["GLFW::<br/>Window"]:::focal
     k5["Input::<br/>System"]:::neighbor
     k6["Rendering::OpenGL::<br/>GLFWContext"]:::neighbor
-    k7["Platform::<br/>Dimensions"]:::focal
-    k8["Platform::<br/>FramebufferSize"]:::focal
-    k9["Platform::<br/>WindowResized"]:::focal
+    k7["Dimensions"]:::focal
+    k8["FramebufferSize"]:::focal
+    k9["WindowResized"]:::focal
     k10["Events::<br/>EventSystem"]:::neighbor
     k11["Game::<br/>TickContext"]:::neighbor
     k12["Rendering::<br/>Camera2D"]:::neighbor

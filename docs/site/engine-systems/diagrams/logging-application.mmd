@@ -13,22 +13,22 @@ config:
 ---
 flowchart TB
     accTitle: Logging · application configuration and writers
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Logging::; ambiguous nested namespaces remain qualified. Local names omit Logging::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1["<b>Logging::<br/>ProcessLifetime</b><br/><br/>ProcessLifetime()"]:::focal
-    k2["<b>Logging::<br/>Config</b><br/><br/>for_logger(name, Logging::Profile profile):<br/>Logging::Config"]:::focal
-    k3["<b>Logging::<br/>Log</b><br/><br/>Log(<br/>Logging::FileEventHandlers handlers,<br/>Logging::Config configuration)<br/><br/>info(format, arguments...)<br/><br/>close(timeout)"]:::focal
-    k4["Logging::<br/>Profile"]:::focal
-    k5["Logging::<br/>Level"]:::focal
-    k6["Logging::<br/>OverflowPolicy"]:::focal
-    k7["Logging::<br/>FileEventHandlers"]:::focal
+    k1["<b>ProcessLifetime</b><br/><br/>ProcessLifetime()"]:::focal
+    k2["<b>Config</b><br/><br/>for_logger(name, Profile): Config"]:::focal
+    k3["<b>Log</b><br/><br/>Log(FileEventHandlers, Config)<br/><br/>info(format, arguments...)<br/><br/>close(timeout)"]:::focal
+    k4["Profile"]:::focal
+    k5["Level"]:::focal
+    k6["OverflowPolicy"]:::focal
+    k7["FileEventHandlers"]:::focal
     k8(["Application<br/>producer"]):::app
-    k9["<b>Logging::<br/>Logger</b><br/><br/>initialize(<br/>Logging::FileEventHandlers handlers,<br/>Logging::Config config):<br/>Logging::Log&lt;name&gt;&amp;<br/><br/>info(fmt, args...)<br/><br/>warn(fmt, args...)"]:::focal
+    k9["<b>Logger</b><br/><br/>initialize(FileEventHandlers, Config): Log&lt;name&gt;&amp;<br/><br/>info(fmt, args...)<br/><br/>warn(fmt, args...)"]:::focal
     k10(["Application<br/>report"]):::app
-    k11["<b>Logging::<br/>LogHandle</b><br/><br/>shared_queue_stats(): Logging::QueueStats<br/><br/>backend_stats(): Logging::BackendStats<br/><br/>report_diagnostics()"]:::focal
-    k12["Logging::<br/>QueueStats"]:::neighbor
+    k11["<b>LogHandle</b><br/><br/>shared_queue_stats(): QueueStats<br/><br/>backend_stats(): BackendStats<br/><br/>report_diagnostics()"]:::focal
+    k12["QueueStats"]:::neighbor
     k13(["Application<br/>cleanup / quiesce()"]):::app
-    k14["Logging::<br/>BackendStats"]:::neighbor
+    k14["BackendStats"]:::neighbor
     k0 --> k1
     k0 --> k2
     k0 --> k3

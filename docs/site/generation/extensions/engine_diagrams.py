@@ -42,6 +42,8 @@ class EngineDiagram(Mermaid):
         container = nodes.container(classes=["engine-diagram"])
         container.extend(super().run())
         paragraph = nodes.paragraph(classes=["engine-diagram-caption"])
+        if diagram.get("namespace"):
+            paragraph += nodes.Text("Local names omit " + diagram["namespace"] + ":: where unambiguous. ")
         paragraph += make_refnode(
             env.app.builder, env.docname, EXPLORER, identity,
             nodes.inline(text="Explore this diagram and its other views →"),

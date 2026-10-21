@@ -13,19 +13,19 @@ config:
 ---
 flowchart LR
     accTitle: GUI · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["UI::TGUI::<br/>Session"]:::focal
+    accDescr: Local names omit UI::; ambiguous nested namespaces remain qualified. Local names omit UI::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["TGUI::<br/>Session"]:::focal
     k1["Input::<br/>System"]:::neighbor
-    k2["UI::RmlUi::<br/>Session"]:::focal
+    k2["RmlUi::<br/>Session"]:::focal
     k3["Text::<br/>FontService"]:::neighbor
-    k4["UI::TGUI::<br/>RecordedScene"]:::focal
-    k5["UI::RmlUi::<br/>RecordedScene"]:::focal
-    k6["UI::TGUI::<br/>SceneUploader"]:::focal
-    k7["UI::RmlUi::<br/>SceneUploader"]:::focal
+    k4["TGUI::<br/>RecordedScene"]:::focal
+    k5["RmlUi::<br/>RecordedScene"]:::focal
+    k6["TGUI::<br/>SceneUploader"]:::focal
+    k7["RmlUi::<br/>SceneUploader"]:::focal
     k8["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
     k9["Rendering::Resources::<br/>Provider"]:::neighbor
-    k10["UI::TGUI::<br/>Scene"]:::focal
-    k11["UI::RmlUi::<br/>Scene"]:::focal
+    k10["TGUI::<br/>Scene"]:::focal
+    k11["RmlUi::<br/>Scene"]:::focal
     k12["Rendering::<br/>PassWriter"]:::neighbor
     k0 --> k1
     k2 --> k1

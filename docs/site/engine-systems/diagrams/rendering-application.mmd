@@ -13,17 +13,17 @@ config:
 ---
 flowchart LR
     accTitle: Rendering · application frame preparation
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Rendering::; ambiguous nested namespaces remain qualified. Local names omit Rendering::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>update()"]):::app
-    k1["<b>Rendering::<br/>Camera2D</b><br/><br/>set_framebuffer_size(Platform::FramebufferSize size)<br/><br/>set_view_matrix(const glm::mat4&amp; view)<br/><br/>projection_matrix(): const glm::mat4&amp;<br/><br/>view_matrix(): const glm::mat4&amp;"]:::focal
+    k1["<b>Camera2D</b><br/><br/>set_framebuffer_size(Platform::FramebufferSize)<br/><br/>set_view_matrix(const glm::mat4&amp;)<br/><br/>projection_matrix(): const glm::mat4&amp;<br/><br/>view_matrix(): const glm::mat4&amp;"]:::focal
     k2(["Application<br/>prepare_render_frame()"]):::app
-    k3["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass(<br/>const glm::mat4&amp; projection,<br/>const glm::mat4&amp; view,<br/>Rendering::Pipelines::PassConstraints2D constraints,<br/>Rendering::Parameters::Set parameters):<br/>Rendering::PassWriter [borrowed]"]:::focal
-    k4["<b>Rendering::<br/>PassWriter</b><br/><br/>add(Rendering::DrawPacket2D draw)<br/><br/>semantics(): Rendering::Parameters::PassSemantics<br/><br/>parameters(): const Rendering::Parameters::Set&amp;<br/><br/>constraints():<br/>const Rendering::Pipelines::PassConstraints2D&amp;"]:::focal
-    k5["Rendering::Submission::<br/>Context2D"]:::focal
-    k6["Rendering::<br/>DrawStyle2D"]:::focal
-    k7("Rendering::Submission::resolve_sprite(<br/>const Assets::Sprites::Asset&amp; sprite,<br/>Assets::Grids::CellIndex cell,<br/>const Rendering::DrawStyle2D&amp; style,<br/>const Rendering::Submission::Context2D&amp; context):<br/>Rendering::DrawPacket2D"):::focal
+    k3["<b>FrameWriter</b><br/><br/>begin_pass(<br/>const glm::mat4&amp;,<br/>const glm::mat4&amp;,<br/>Pipelines::PassConstraints2D,<br/>Parameters::Set):<br/>PassWriter [borrowed]"]:::focal
+    k4["<b>PassWriter</b><br/><br/>add(DrawPacket2D)<br/><br/>semantics(): Parameters::PassSemantics<br/><br/>parameters(): const Parameters::Set&amp;<br/><br/>constraints(): const Pipelines::PassConstraints2D&amp;"]:::focal
+    k5["Submission::<br/>Context2D"]:::focal
+    k6["DrawStyle2D"]:::focal
+    k7("Submission::resolve_sprite(<br/>const Assets::Sprites::Asset&amp;,<br/>Assets::Grids::CellIndex,<br/>const DrawStyle2D&amp;,<br/>const Submission::Context2D&amp;):<br/>DrawPacket2D"):::focal
     k8["Assets::Sprites::<br/>Asset"]:::neighbor
-    k9["Rendering::<br/>DrawPacket2D"]:::focal
+    k9["DrawPacket2D"]:::focal
     k0 --> k1
     k2 --> k1
     k2 --> k3

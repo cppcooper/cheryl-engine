@@ -13,13 +13,13 @@ config:
 ---
 flowchart LR
     accTitle: Input · practical UI capture and focus
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Input::; ambiguous nested namespaces remain qualified. Local names omit Input::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application-owned UI"]):::app
-    k1["Input::<br/>System"]:::focal
-    k2["Input::Capture::<br/>Lease"]:::focal
-    k3["Input::Routing::<br/>Manager"]:::focal
-    k4["Input::Routing::<br/>Lease"]:::focal
-    k5["Input::Routing::<br/>KeyboardPolicy"]:::focal
+    k1["System"]:::focal
+    k2["Capture::<br/>Lease"]:::focal
+    k3["Routing::<br/>Manager"]:::focal
+    k4["Routing::<br/>Lease"]:::focal
+    k5["Routing::<br/>KeyboardPolicy"]:::focal
     k6["Input::Events::<br/>Record"]:::focal
     k7["Input::Events::<br/>Payload"]:::focal
     k0 --> k1

@@ -12,14 +12,18 @@ to call. Select a box for each method's purpose, source and available API link;
 search also finds method names.
 
 Signatures use `method(arguments): ResultType`, with qualified Engine types and
-public aliases for arguments and results. They are abridged: a missing result
+public aliases for arguments and results. Diagram signatures omit parameter
+names when their types are shown; the inspector keeps the fuller signatures.
+They are abridged: a missing result
 suffix can mean a scalar or standard-library result and does not imply `void`.
 `[]` marks a collection. Short notes such as `[shared]`, `[unique]`, `[future]`
 and `[borrowed]` retain ownership, asynchronous-result and borrowing information
 when their library wrappers are omitted. The API reference has the full types.
 When a view names a local namespace, its prefix is omitted in the diagram:
 within Input, `Actions::Context` means `Input::Actions::Context`. Other
-namespaces remain explicit, and the inspector retains the full names.
+namespaces remain explicit, as do local names that would collide with another
+namespace, such as `Text::Rendering` and `Input::Events`. Mixed diagnostics
+and utility views keep their namespaces; the inspector retains full names.
 
 Application arrows include the argument and result types used by selected
 methods. In the inspector, **Accepts** and **Returns** connect a method to those

@@ -13,14 +13,14 @@ config:
 ---
 flowchart LR
     accTitle: Workers · practical pool shared by contexts
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1["Workers::<br/>Pool"]:::focal
+    k1["Pool"]:::focal
     k2["Runtime::<br/>ExecutionOptions"]:::neighbor
     k3["Runtime::<br/>Context<br/>(context A)"]:::neighbor
     k4["Runtime::<br/>Context<br/>(context B)"]:::neighbor
-    k5["Workers::<br/>Group<br/>(group A)"]:::focal
-    k6["Workers::<br/>Group<br/>(group B)"]:::focal
+    k5["Group"]:::focal
+    k6["Group"]:::focal
     k0 --> k1
     k0 --> k2
     k2 --> k1

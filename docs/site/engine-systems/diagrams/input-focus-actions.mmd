@@ -13,16 +13,16 @@ config:
 ---
 flowchart LR
     accTitle: Input · simple gameplay actions
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Input::; ambiguous nested namespaces remain qualified. Local names omit Input::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["Input::<br/>System"]:::focal
-    k2["Input::Actions::<br/>Bindings"]:::focal
-    k3["Input::<br/>Control"]:::focal
-    k4["Input::<br/>KeyboardKey"]:::focal
-    k5["Input::<br/>PollSnapshot"]:::focal
+    k1["System"]:::focal
+    k2["Actions::<br/>Bindings"]:::focal
+    k3["Control"]:::focal
+    k4["KeyboardKey"]:::focal
+    k5["PollSnapshot"]:::focal
     k6(["Application<br/>update()"]):::app
-    k7["Input::<br/>Tick"]:::focal
-    k8["Input::Actions::<br/>ButtonTickState"]:::focal
+    k7["Tick"]:::focal
+    k8["Actions::<br/>ButtonTickState"]:::focal
     k0 --> k1
     k1 --> k2
     k2 --> k3

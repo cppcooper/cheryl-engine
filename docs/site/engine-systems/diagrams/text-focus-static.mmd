@@ -13,12 +13,12 @@ config:
 ---
 flowchart LR
     accTitle: Text · simple static label
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Text::; ambiguous nested namespaces remain qualified. Local names omit Text::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["Text::<br/>FontService"]:::focal
-    k2["Text::<br/>Font"]:::focal
-    k3("Text::<br/>layout_text()"):::focal
-    k4["Text::<br/>ShapedText"]:::focal
+    k1["FontService"]:::focal
+    k2["Font"]:::focal
+    k3("layout_text()"):::focal
+    k4["ShapedText"]:::focal
     k5("Text::Rendering::<br/>prepare()"):::focal
     k6["Text::Rendering::<br/>Prepared"]:::focal
     k7("Text::Rendering::<br/>upload()"):::focal

@@ -13,21 +13,21 @@ config:
 ---
 flowchart LR
     accTitle: Assets · application loading and playback
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Assets::; ambiguous nested namespaces remain qualified. Local names omit Assets::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>loading work"]):::app
-    k1["<b>Assets::Loading::<br/>Loader</b><br/><br/>load_assets(Rendering::Resources::Provider&amp; provider)<br/><br/>prepare(): Assets::Loading::Prepared<br/><br/>upload(<br/>Assets::Loading::Prepared prepared,<br/>Rendering::Resources::Provider&amp; provider,<br/>replace_shaders)"]:::focal
-    k2["Assets::Loading::<br/>Prepared"]:::focal
+    k1["<b>Loading::<br/>Loader</b><br/><br/>load_assets(Rendering::Resources::Provider&amp;)<br/><br/>prepare(): Loading::Prepared<br/><br/>upload(<br/>Loading::Prepared,<br/>Rendering::Resources::Provider&amp;,<br/>replace_shaders)"]:::focal
+    k2["Loading::<br/>Prepared"]:::focal
     k3(["Application<br/>init_platform()"]):::app
     k4["Rendering::Resources::<br/>Provider"]:::neighbor
     k5(["Application-owned game objects"]):::app
-    k6["<b>Assets::Sprites::<br/>Manager</b><br/><br/>get_asset(name_space, name):<br/>Assets::Sprites::Manager::Handle [shared]"]:::focal
-    k7["<b>Assets::Tilesets::<br/>Manager</b><br/><br/>get_asset(key):<br/>Assets::Tilesets::Manager::Handle [shared]"]:::focal
-    k8["<b>Assets::Sprites::<br/>Asset</b><br/><br/>animation(animation, facing): Assets::Sprites::Animation"]:::focal
-    k9["<b>Assets::Tilesets::<br/>Asset</b><br/><br/>tile(cell): Assets::Tilesets::Tile<br/><br/>animation(name): Assets::Tilesets::Animation<br/><br/>cell_at(Assets::Grids::CellIndex target, elapsed):<br/>Assets::Grids::CellIndex"]:::focal
+    k6["<b>Sprites::<br/>Manager</b><br/><br/>get_asset(name_space, name):<br/>Sprites::Manager::Handle [shared]"]:::focal
+    k7["<b>Tilesets::<br/>Manager</b><br/><br/>get_asset(key): Tilesets::Manager::Handle [shared]"]:::focal
+    k8["<b>Sprites::<br/>Asset</b><br/><br/>animation(animation, facing): Sprites::Animation"]:::focal
+    k9["<b>Tilesets::<br/>Asset</b><br/><br/>tile(cell): Tilesets::Tile<br/><br/>animation(name): Tilesets::Animation<br/><br/>cell_at(Grids::CellIndex, elapsed): Grids::CellIndex"]:::focal
     k10(["Application<br/>update()"]):::app
-    k11["<b>Assets::Sprites::<br/>Animation</b><br/><br/>advance(elapsed)<br/><br/>cell(): Assets::Grids::CellIndex"]:::focal
+    k11["<b>Sprites::<br/>Animation</b><br/><br/>advance(elapsed)<br/><br/>cell(): Grids::CellIndex"]:::focal
     k12(["Application<br/>prepare_render_frame()"]):::app
-    k13("Rendering::Submission::resolve_sprite(<br/>const Assets::Sprites::Asset&amp; sprite,<br/>Assets::Grids::CellIndex cell,<br/>const Rendering::DrawStyle2D&amp; style,<br/>const Rendering::Submission::Context2D&amp; context):<br/>Rendering::DrawPacket2D"):::neighbor
+    k13("Rendering::Submission::resolve_sprite(<br/>const Sprites::Asset&amp;,<br/>Grids::CellIndex,<br/>const Rendering::DrawStyle2D&amp;,<br/>const Rendering::Submission::Context2D&amp;):<br/>Rendering::DrawPacket2D"):::neighbor
     k14["Rendering::<br/>DrawPacket2D"]:::neighbor
     k0 --> k1
     k1 --> k2

@@ -13,18 +13,18 @@ config:
 ---
 flowchart LR
     accTitle: Dispatch · application owner requests
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["<b>Runtime::<br/>Context</b><br/><br/>platform_dispatcher(): Runtime::PlatformDispatcher&amp;<br/><br/>resources(): Rendering::Resources::Provider&amp;"]:::neighbor
-    k2["<b>Runtime::<br/>PlatformDispatcher</b><br/><br/>submission(): Runtime::PlatformDispatcher::Submission"]:::focal
-    k3["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp; work): Result [future]"]:::focal
+    k1["<b>Context</b><br/><br/>platform_dispatcher(): PlatformDispatcher&amp;<br/><br/>resources(): Rendering::Resources::Provider&amp;"]:::neighbor
+    k2["<b>PlatformDispatcher</b><br/><br/>submission(): PlatformDispatcher::Submission"]:::focal
+    k3["<b>PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp;): Result [future]"]:::focal
     k4(["Application<br/>producer"]):::app
     k5(["Application<br/>platform-owner work"]):::app
-    k6["<b>Rendering::Resources::<br/>Provider</b><br/><br/>create_image(const Assets::Images::Decoded&amp; image):<br/>Rendering::Resources::Image [shared]<br/><br/>upload_geometry(<br/>const Rendering::Geometry::Vertex2D[] vertices<br/>[borrowed],<br/>Rendering::Geometry::Topology topology):<br/>Rendering::Geometry::Buffer2D [shared]"]:::neighbor
+    k6["<b>Rendering::Resources::<br/>Provider</b><br/><br/>create_image(const Assets::Images::Decoded&amp;):<br/>Rendering::Resources::Image [shared]<br/><br/>upload_geometry(<br/>const Rendering::Geometry::Vertex2D[] [borrowed],<br/>Rendering::Geometry::Topology):<br/>Rendering::Geometry::Buffer2D [shared]"]:::neighbor
     k7(["Application<br/>composition"]):::app
-    k8["<b>Runtime::<br/>GameRuntime</b><br/><br/>simulation_dispatcher(): Runtime::SimulationDispatcher&amp;"]:::neighbor
-    k9["<b>Runtime::<br/>SimulationDispatcher</b><br/><br/>submission(): Runtime::SimulationDispatcher::Submission"]:::focal
-    k10["<b>Runtime::SimulationDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp; work): Result [future]"]:::focal
+    k8["<b>GameRuntime</b><br/><br/>simulation_dispatcher(): SimulationDispatcher&amp;"]:::neighbor
+    k9["<b>SimulationDispatcher</b><br/><br/>submission(): SimulationDispatcher::Submission"]:::focal
+    k10["<b>SimulationDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp;): Result [future]"]:::focal
     k11(["Application<br/>simulation-owner work"]):::app
     k12["Game::<br/>TickContext"]:::neighbor
     k0 --> k1

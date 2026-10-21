@@ -13,20 +13,20 @@ config:
 ---
 flowchart TB
     accTitle: GUI · application-owned sessions and publication
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit UI::; ambiguous nested namespaces remain qualified. Local names omit UI::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application-owned UI"]):::app
-    k1["<b>UI::TGUI::<br/>Session</b><br/><br/>gui(): tgui::BackendGui&amp;<br/><br/>handle_input(<br/>const Input::Events::Record[] records [borrowed],<br/>pointer_selected)<br/><br/>request_keyboard_focus(<br/>Input::Routing::KeyboardPolicy routing)<br/><br/>record(): UI::TGUI::RecordedScene"]:::focal
-    k2["<b>UI::RmlUi::<br/>Session</b><br/><br/>context(): Rml::Context&amp;<br/><br/>handle_input(<br/>const Input::Events::Record[] records [borrowed],<br/>pointer_selected)<br/><br/>request_keyboard_focus(<br/>Input::Routing::KeyboardPolicy routing)<br/><br/>record(): UI::RmlUi::RecordedScene"]:::focal
+    k1["<b>TGUI::<br/>Session</b><br/><br/>gui(): tgui::BackendGui&amp;<br/><br/>handle_input(<br/>const Input::Events::Record[] [borrowed],<br/>pointer_selected)<br/><br/>request_keyboard_focus(Input::Routing::KeyboardPolicy)<br/><br/>record(): TGUI::RecordedScene"]:::focal
+    k2["<b>RmlUi::<br/>Session</b><br/><br/>context(): Rml::Context&amp;<br/><br/>handle_input(<br/>const Input::Events::Record[] [borrowed],<br/>pointer_selected)<br/><br/>request_keyboard_focus(Input::Routing::KeyboardPolicy)<br/><br/>record(): RmlUi::RecordedScene"]:::focal
     k3["Input::Events::<br/>Record"]:::neighbor
     k4["Input::Routing::<br/>KeyboardPolicy"]:::neighbor
     k5["Text::<br/>Font"]:::neighbor
-    k6["UI::TGUI::<br/>RecordedScene"]:::focal
-    k7["UI::RmlUi::<br/>RecordedScene"]:::focal
+    k6["TGUI::<br/>RecordedScene"]:::focal
+    k7["RmlUi::<br/>RecordedScene"]:::focal
     k8(["Application<br/>init_platform()"]):::app
-    k9["<b>UI::TGUI::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider&amp; provider,<br/>const UI::TGUI::RecordedScene&amp; recording):<br/>UI::TGUI::Scene<br/><br/>submit(<br/>const Runtime::PlatformDispatcher::Submission&amp;<br/>platform,<br/>UI::TGUI::RecordedScene recording):<br/>UI::TGUI::Scene [future]"]:::focal
-    k10["<b>UI::RmlUi::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider&amp; provider,<br/>const UI::RmlUi::RecordedScene&amp; recording):<br/>UI::RmlUi::Scene<br/><br/>submit(<br/>const Runtime::PlatformDispatcher::Submission&amp;<br/>platform,<br/>UI::RmlUi::RecordedScene recording):<br/>UI::RmlUi::Scene [future]"]:::focal
-    k11["<b>UI::TGUI::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter&amp; frame)"]:::focal
-    k12["<b>UI::RmlUi::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter&amp; frame)"]:::focal
+    k9["<b>TGUI::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider&amp;,<br/>const TGUI::RecordedScene&amp;):<br/>TGUI::Scene<br/><br/>submit(<br/>const Runtime::PlatformDispatcher::Submission&amp;,<br/>TGUI::RecordedScene):<br/>TGUI::Scene [future]"]:::focal
+    k10["<b>RmlUi::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider&amp;,<br/>const RmlUi::RecordedScene&amp;):<br/>RmlUi::Scene<br/><br/>submit(<br/>const Runtime::PlatformDispatcher::Submission&amp;,<br/>RmlUi::RecordedScene):<br/>RmlUi::Scene [future]"]:::focal
+    k11["<b>TGUI::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter&amp;)"]:::focal
+    k12["<b>RmlUi::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter&amp;)"]:::focal
     k13(["Application<br/>prepare_render_frame()"]):::app
     k14["Rendering::<br/>FrameWriter"]:::neighbor
     k0 -.-> k1

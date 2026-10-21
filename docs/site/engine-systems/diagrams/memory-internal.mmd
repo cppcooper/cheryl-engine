@@ -13,21 +13,21 @@ config:
 ---
 flowchart TB
     accTitle: Memory · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Memory::; ambiguous nested namespaces remain qualified. Local names omit Memory::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Assets::Cache::<br/>Store"]:::neighbor
-    k1["Memory::Objects::<br/>Reservation"]:::focal
-    k2["Memory::Allocators::<br/>ObjectPoolAllocator"]:::focal
-    k3["Memory::Objects::<br/>Pool"]:::focal
+    k1["Objects::<br/>Reservation"]:::focal
+    k2["Allocators::<br/>ObjectPoolAllocator"]:::focal
+    k3["Objects::<br/>Pool"]:::focal
     k4("Assets::Grids::<br/>make_geometry()"):::neighbor
-    k5["Memory::<br/>ExactManager"]:::focal
-    k6["Memory::<br/>Manager"]:::focal
-    k7["Memory::Objects::<br/>PoolState"]:::focal
-    k8["Memory::Objects::Constructor::<br/>Context"]:::focal
-    k9["Memory::<br/>Block"]:::focal
-    k10["Memory::<br/>BlockTransactions"]:::focal
-    k11["Memory::<br/>ByteReleaseContext"]:::focal
+    k5["ExactManager"]:::focal
+    k6["Manager"]:::focal
+    k7["Objects::<br/>PoolState"]:::focal
+    k8["Objects::Constructor::<br/>Context"]:::focal
+    k9["Block"]:::focal
+    k10["BlockTransactions"]:::focal
+    k11["ByteReleaseContext"]:::focal
     k12["State::<br/>Singleton"]:::neighbor
-    k13["Memory::<br/>Stats"]:::neighbor
+    k13["Stats"]:::neighbor
     k0 --> k1
     k1 --> k2
     k2 --> k3

@@ -13,18 +13,18 @@ config:
 ---
 flowchart LR
     accTitle: Runtime · practical shutdown and observation
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>producer"]):::app
-    k1["Runtime::<br/>ShutdownEndpoint"]:::focal
-    k2["Runtime::<br/>ShutdownTicket"]:::focal
+    k1["ShutdownEndpoint"]:::focal
+    k2["ShutdownTicket"]:::focal
     k3(["Application<br/>composition"]):::app
-    k4["Runtime::<br/>ShutdownPolicy"]:::focal
-    k5["Runtime::<br/>ShutdownDecision"]:::focal
-    k6["Runtime::<br/>ShutdownRequest"]:::focal
-    k7["Runtime::<br/>GameRuntime"]:::focal
-    k8["Runtime::<br/>RuntimeLifecycle"]:::focal
+    k4["ShutdownPolicy"]:::focal
+    k5["ShutdownDecision"]:::focal
+    k6["ShutdownRequest"]:::focal
+    k7["GameRuntime"]:::focal
+    k8["RuntimeLifecycle"]:::focal
     k9(["Application<br/>report"]):::app
-    k10["Runtime::<br/>RuntimeLifecycleSnapshot"]:::focal
+    k10["RuntimeLifecycleSnapshot"]:::focal
     k0 --> k1
     k1 --> k2
     k3 --> k4

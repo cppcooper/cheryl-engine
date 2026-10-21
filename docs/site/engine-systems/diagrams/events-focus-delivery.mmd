@@ -13,17 +13,17 @@ config:
 ---
 flowchart LR
     accTitle: Events · practical delivery choices
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Events::; ambiguous nested namespaces remain qualified. Local names omit Events::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>listener setup"]):::app
-    k1["Events::<br/>EventBus"]:::focal
-    k2["Events::EventBus::<br/>Delivery"]:::focal
-    k3("Events::<br/>platform_delivery()"):::focal
-    k4("Events::<br/>simulation_delivery()"):::focal
-    k5("Events::<br/>worker_delivery()"):::focal
+    k1["EventBus"]:::focal
+    k2["EventBus::<br/>Delivery"]:::focal
+    k3("platform_delivery()"):::focal
+    k4("simulation_delivery()"):::focal
+    k5("worker_delivery()"):::focal
     k6["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
     k7["Runtime::SimulationDispatcher::<br/>Submission"]:::neighbor
     k8["Workers::<br/>Group"]:::neighbor
-    k9["Events::EventBus::<br/>ErrorHandler"]:::focal
+    k9["EventBus::<br/>ErrorHandler"]:::focal
     k0 --> k1
     k1 --> k2
     k0 -.-> k3

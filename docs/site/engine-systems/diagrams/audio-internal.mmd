@@ -13,16 +13,16 @@ config:
 ---
 flowchart LR
     accTitle: Audio · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["Audio::Miniaudio::<br/>System"]:::focal
-    k1["Audio::<br/>System"]:::focal
-    k2["Audio::<br/>Clip"]:::focal
-    k3["Audio::<br/>PlaybackOptions"]:::focal
-    k4["Audio::<br/>Voice"]:::focal
-    k5["Audio::<br/>VoiceSnapshot"]:::focal
-    k6["Audio::<br/>PlaybackNotifications"]:::focal
-    k7["Audio::<br/>PlaybackEnded"]:::focal
-    k8["Audio::<br/>PlaybackTerminal"]:::focal
+    accDescr: Local names omit Audio::; ambiguous nested namespaces remain qualified. Local names omit Audio::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Miniaudio::<br/>System"]:::focal
+    k1["System"]:::focal
+    k2["Clip"]:::focal
+    k3["PlaybackOptions"]:::focal
+    k4["Voice"]:::focal
+    k5["VoiceSnapshot"]:::focal
+    k6["PlaybackNotifications"]:::focal
+    k7["PlaybackEnded"]:::focal
+    k8["PlaybackTerminal"]:::focal
     k9["Events::EventBus::<br/>Publisher"]:::neighbor
     k10["Runtime::<br/>RuntimeServices"]:::neighbor
     k11["Runtime::<br/>ServiceAttachment"]:::neighbor

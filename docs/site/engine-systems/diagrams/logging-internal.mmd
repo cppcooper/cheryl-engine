@@ -13,19 +13,19 @@ config:
 ---
 flowchart LR
     accTitle: Logging · engine integration
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Logging::; ambiguous nested namespaces remain qualified. Local names omit Logging::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0["Runtime::<br/>GameRuntime"]:::neighbor
-    k1["Logging::<br/>Logger"]:::focal
+    k1["Logger"]:::focal
     k2["Assets::Loading::<br/>Loader"]:::neighbor
     k3["Workers::<br/>Pool"]:::neighbor
     k4["Memory::<br/>Manager"]:::neighbor
-    k5["Logging::<br/>Log"]:::focal
-    k6["Logging::<br/>Config"]:::focal
-    k7["Logging::<br/>LogHandle"]:::focal
-    k8["Logging::<br/>QueueStats"]:::neighbor
-    k9["Logging::<br/>FileEventHandlers"]:::focal
-    k10["Logging::<br/>Level"]:::focal
-    k11["Logging::<br/>OverflowPolicy"]:::focal
+    k5["Log"]:::focal
+    k6["Config"]:::focal
+    k7["LogHandle"]:::focal
+    k8["QueueStats"]:::neighbor
+    k9["FileEventHandlers"]:::focal
+    k10["Level"]:::focal
+    k11["OverflowPolicy"]:::focal
     k0 --> k1
     k2 --> k1
     k3 --> k1

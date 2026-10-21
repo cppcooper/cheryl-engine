@@ -13,20 +13,20 @@ config:
 ---
 flowchart LR
     accTitle: Display · application access
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Platform::; ambiguous nested namespaces remain qualified. Local names omit Platform::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["<b>Runtime::<br/>Context</b><br/><br/>display(): Platform::DisplaySystem&amp;<br/><br/>window(): Platform::Window&amp;<br/><br/>platform_dispatcher(): Runtime::PlatformDispatcher&amp;"]:::neighbor
+    k1["<b>Runtime::<br/>Context</b><br/><br/>display(): DisplaySystem&amp;<br/><br/>window(): Window&amp;<br/><br/>platform_dispatcher(): Runtime::PlatformDispatcher&amp;"]:::neighbor
     k2(["Application<br/>platform-owner work"]):::app
-    k3["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp; work): Result [future]"]:::neighbor
-    k4["<b>Platform::<br/>Window</b><br/><br/>resize(width, height)<br/><br/>set_mode(Platform::WindowMode mode)<br/><br/>hide_cursor(hide)"]:::focal
-    k5["<b>Platform::<br/>DisplaySystem</b><br/><br/>monitors(): const Platform::Monitor[]&amp;<br/><br/>primary_monitor(): const Platform::Monitor&amp;<br/><br/>content_scale(const Platform::Monitor&amp; monitor)"]:::focal
-    k6["Platform::<br/>Monitor"]:::focal
-    k7["Platform::<br/>Dimensions"]:::focal
-    k8["Platform::<br/>WindowMode"]:::focal
+    k3["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp;): Result [future]"]:::neighbor
+    k4["<b>Window</b><br/><br/>resize(width, height)<br/><br/>set_mode(WindowMode)<br/><br/>hide_cursor(hide)"]:::focal
+    k5["<b>DisplaySystem</b><br/><br/>monitors(): const Monitor[]&amp;<br/><br/>primary_monitor(): const Monitor&amp;<br/><br/>content_scale(const Monitor&amp;)"]:::focal
+    k6["Monitor"]:::focal
+    k7["Dimensions"]:::focal
+    k8["WindowMode"]:::focal
     k9(["Application<br/>update()"]):::app
     k10["Game::<br/>TickContext"]:::neighbor
-    k11["Platform::<br/>FramebufferSize"]:::focal
-    k12["<b>Rendering::<br/>Camera2D</b><br/><br/>set_framebuffer_size(Platform::FramebufferSize size)"]:::neighbor
+    k11["FramebufferSize"]:::focal
+    k12["<b>Rendering::<br/>Camera2D</b><br/><br/>set_framebuffer_size(FramebufferSize)"]:::neighbor
     k0 --> k1
     k2 --> k3
     k2 --> k4

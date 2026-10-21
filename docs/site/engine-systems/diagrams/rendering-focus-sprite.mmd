@@ -13,16 +13,16 @@ config:
 ---
 flowchart LR
     accTitle: Rendering · practical one-sprite draw
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Rendering::; ambiguous nested namespaces remain qualified. Local names omit Rendering::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>prepare_render_frame()"]):::app
-    k1["Rendering::<br/>FrameWriter"]:::focal
-    k2["Rendering::<br/>PassWriter"]:::focal
-    k3["Rendering::<br/>Camera2D"]:::focal
-    k4("Rendering::Submission::<br/>resolve_sprite()"):::focal
-    k5["Rendering::Submission::<br/>Context2D"]:::focal
+    k1["FrameWriter"]:::focal
+    k2["PassWriter"]:::focal
+    k3["Camera2D"]:::focal
+    k4("Submission::<br/>resolve_sprite()"):::focal
+    k5["Submission::<br/>Context2D"]:::focal
     k6["Assets::Sprites::<br/>Asset"]:::neighbor
-    k7["Rendering::<br/>DrawStyle2D"]:::focal
-    k8["Rendering::<br/>DrawPacket2D"]:::focal
+    k7["DrawStyle2D"]:::focal
+    k8["DrawPacket2D"]:::focal
     k0 --> k1
     k1 --> k2
     k0 --> k3

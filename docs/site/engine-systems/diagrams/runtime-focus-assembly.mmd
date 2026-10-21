@@ -13,9 +13,9 @@ config:
 ---
 flowchart LR
     accTitle: Runtime · simple adapter assembly
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["Runtime::<br/>GameRuntime"]:::focal
-    k1["Runtime::<br/>Context"]:::focal
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["GameRuntime"]:::focal
+    k1["Context"]:::focal
     k2["Game::<br/>AbstractGame"]:::focal
     k3["Platform::<br/>DisplaySystem"]:::neighbor
     k4["Input::<br/>System"]:::neighbor

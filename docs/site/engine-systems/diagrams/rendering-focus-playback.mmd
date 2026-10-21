@@ -13,13 +13,13 @@ config:
 ---
 flowchart LR
     accTitle: Rendering · simple prepared frame
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
-    k0["Rendering::<br/>Renderer"]:::focal
-    k1["Rendering::<br/>Frame"]:::focal
-    k2["Rendering::<br/>Pass"]:::focal
-    k3["Rendering::<br/>DrawPacket2D"]:::focal
-    k4["Rendering::Resources::<br/>Material"]:::neighbor
-    k5["Rendering::Geometry::<br/>Buffer2D"]:::neighbor
+    accDescr: Local names omit Rendering::; ambiguous nested namespaces remain qualified. Local names omit Rendering::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Renderer"]:::focal
+    k1["Frame"]:::focal
+    k2["Pass"]:::focal
+    k3["DrawPacket2D"]:::focal
+    k4["Resources::<br/>Material"]:::neighbor
+    k5["Geometry::<br/>Buffer2D"]:::neighbor
     k0 --> k1
     k1 --> k2
     k2 --> k3

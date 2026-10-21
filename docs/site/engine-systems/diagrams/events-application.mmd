@@ -13,19 +13,19 @@ config:
 ---
 flowchart LR
     accTitle: Events · application registration and delivery
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Events::; ambiguous nested namespaces remain qualified. Local names omit Events::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>producer"]):::app
-    k1["Events::<br/>EventChannel"]:::focal
-    k2["<b>Events::EventBus::<br/>Publisher</b><br/><br/>notify(<br/>const Events::EventChannel&lt;Payload&gt;&amp; event,<br/>Value&amp;&amp; payload,<br/>const Events::EventBus::ErrorHandler&amp; errors)"]:::focal
+    k1["EventChannel"]:::focal
+    k2["<b>EventBus::<br/>Publisher</b><br/><br/>notify(<br/>const EventChannel&lt;Payload&gt;&amp;,<br/>Value&amp;&amp;,<br/>const EventBus::ErrorHandler&amp;)"]:::focal
     k3(["Application<br/>listener setup"]):::app
-    k4["<b>Runtime::<br/>Context</b><br/><br/>events(): Events::EventBus&amp;"]:::neighbor
-    k5["<b>Events::<br/>EventBus</b><br/><br/>register_listener(<br/>const Events::EventChannel&lt;Payload&gt;&amp; event,<br/>Events::EventChannel&lt;Payload&gt;::Callback callback,<br/>Events::EventBus::Delivery delivery,<br/>Events::EventBus::ErrorHandler errors):<br/>Events::EventBus::Registration<br/><br/>publisher(): Events::EventBus::Publisher<br/><br/>unregister_and_wait(<br/>const Events::EventBus::Registration&amp; registration)"]:::focal
-    k6["<b>Events::EventBus::<br/>Registration</b><br/><br/>disconnect()"]:::focal
+    k4["<b>Runtime::<br/>Context</b><br/><br/>events(): EventBus&amp;"]:::neighbor
+    k5["<b>EventBus</b><br/><br/>register_listener(<br/>const EventChannel&lt;Payload&gt;&amp;,<br/>EventChannel&lt;Payload&gt;::Callback,<br/>EventBus::Delivery,<br/>EventBus::ErrorHandler):<br/>EventBus::Registration<br/><br/>publisher(): EventBus::Publisher<br/><br/>unregister_and_wait(const EventBus::Registration&amp;)"]:::focal
+    k6["<b>EventBus::<br/>Registration</b><br/><br/>disconnect()"]:::focal
     k7(["Application<br/>callback"]):::app
-    k8("Events::simulation_delivery(<br/>Runtime::SimulationDispatcher::Submission endpoint):<br/>Events::EventBus::Delivery"):::focal
+    k8("simulation_delivery(<br/>Runtime::SimulationDispatcher::Submission):<br/>EventBus::Delivery"):::focal
     k9["Runtime::SimulationDispatcher::<br/>Submission"]:::neighbor
-    k10["Events::EventBus::<br/>Delivery"]:::focal
-    k11["Events::EventBus::<br/>ErrorHandler"]:::focal
+    k10["EventBus::<br/>Delivery"]:::focal
+    k11["EventBus::<br/>ErrorHandler"]:::focal
     k12(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
     k0 --> k2

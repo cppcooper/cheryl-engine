@@ -13,14 +13,14 @@ config:
 ---
 flowchart LR
     accTitle: Assets · simple loading and lookup
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Local names omit Assets::; ambiguous nested namespaces remain qualified. Local names omit Assets::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["Assets::Loading::<br/>Loader"]:::focal
-    k2["Assets::Loading::<br/>Prepared"]:::focal
+    k1["Loading::<br/>Loader"]:::focal
+    k2["Loading::<br/>Prepared"]:::focal
     k3["Rendering::Resources::<br/>Provider"]:::neighbor
     k4(["Application-owned game objects"]):::app
-    k5["Assets::Sprites::<br/>Manager"]:::focal
-    k6["Assets::Sprites::<br/>Asset"]:::focal
+    k5["Sprites::<br/>Manager"]:::focal
+    k6["Sprites::<br/>Asset"]:::focal
     k0 --> k1
     k1 --> k2
     k1 --> k3

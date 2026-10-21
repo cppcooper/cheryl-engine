@@ -13,21 +13,21 @@ config:
 ---
 flowchart LR
     accTitle: Input · application actions and controllers
-    accDescr: Local names omit Input::. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Input::; ambiguous nested namespaces remain qualified. Local names omit Input::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
     k1["<b>Runtime::<br/>Context</b><br/><br/>input(): System&amp;"]:::neighbor
     k2["<b>System</b><br/><br/>bindings(): Actions::Bindings&amp;<br/><br/>action_contexts(): Actions::ContextSubmission<br/><br/>keyboard_id(): DeviceId"]:::focal
-    k3["<b>Actions::<br/>Bindings</b><br/><br/>bind_button(<br/>Control control,<br/>Actions::Id action):<br/>Actions::BindingId<br/><br/>bind_axis(<br/>Control axis,<br/>Actions::Id action,<br/>Actions::AxisOptions options):<br/>Actions::BindingId<br/><br/>unbind(Actions::BindingId binding)"]:::focal
+    k3["<b>Actions::<br/>Bindings</b><br/><br/>bind_button(Control, Actions::Id): Actions::BindingId<br/><br/>bind_axis(Control, Actions::Id, Actions::AxisOptions):<br/>Actions::BindingId<br/><br/>unbind(Actions::BindingId)"]:::focal
     k4["Control"]:::focal
     k5["KeyboardKey"]:::focal
     k6(["Application-owned controller"]):::app
     k7["Actions::<br/>ContextDefinition"]:::focal
-    k8["<b>Actions::<br/>ContextSubmission</b><br/><br/>attach(Actions::ContextDefinition definition):<br/>Actions::Context"]:::focal
+    k8["<b>Actions::<br/>ContextSubmission</b><br/><br/>attach(Actions::ContextDefinition): Actions::Context"]:::focal
     k9["<b>Actions::<br/>Context</b><br/><br/>id(): Actions::ContextId<br/><br/>reset()"]:::focal
     k10(["Application<br/>update()"]):::app
     k11["Game::<br/>TickContext"]:::neighbor
-    k12["<b>Tick</b><br/><br/>actions(const Actions::Context&amp; context):<br/>Actions::View [borrowed]<br/><br/>button(Actions::Id action):<br/>Actions::ButtonTickState<br/><br/>axis(Actions::Id action):<br/>Actions::AxisTickState"]:::focal
-    k13["<b>Actions::<br/>View</b><br/><br/>button(Actions::Id action):<br/>Actions::ButtonTickState<br/><br/>axis(Actions::Id action):<br/>Actions::AxisTickState"]:::focal
+    k12["<b>Tick</b><br/><br/>actions(const Actions::Context&amp;):<br/>Actions::View [borrowed]<br/><br/>button(Actions::Id): Actions::ButtonTickState<br/><br/>axis(Actions::Id): Actions::AxisTickState"]:::focal
+    k13["<b>Actions::<br/>View</b><br/><br/>button(Actions::Id): Actions::ButtonTickState<br/><br/>axis(Actions::Id): Actions::AxisTickState"]:::focal
     k2 --> k3
     k3 --> k4
     k4 --> k5

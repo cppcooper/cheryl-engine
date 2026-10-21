@@ -13,25 +13,25 @@ config:
 ---
 flowchart TB
     accTitle: Text · application font and label choices
-    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Text::; ambiguous nested namespaces remain qualified. Local names omit Text::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["<b>Runtime::<br/>Context</b><br/><br/>fonts(): Text::FontService&amp;"]:::neighbor
-    k2["<b>Text::<br/>FontService</b><br/><br/>configure(const Text::FontConfiguration&amp; configuration)<br/><br/>default_font(): Text::Font<br/><br/>get(reference): Text::Font"]:::focal
+    k1["<b>Runtime::<br/>Context</b><br/><br/>fonts(): FontService&amp;"]:::neighbor
+    k2["<b>FontService</b><br/><br/>configure(const FontConfiguration&amp;)<br/><br/>default_font(): Font<br/><br/>get(reference): Font"]:::focal
     k3(["Application-owned UI"]):::app
-    k4["<b>Text::<br/>Font</b><br/><br/>reference()"]:::focal
+    k4["<b>Font</b><br/><br/>reference()"]:::focal
     k5(["Application<br/>loading work"]):::app
-    k6("Text::layout_text(<br/>const Text::Font&amp; font,<br/>text,<br/>const Text::LayoutOptions&amp; options):<br/>Text::ShapedText"):::focal
-    k7["<b>Text::<br/>ShapedText</b><br/><br/>glyphs(): const Text::ShapedGlyph[] [borrowed]<br/><br/>lines(): const Text::TextLine[] [borrowed]"]:::focal
-    k8("Text::Rendering::prepare(<br/>Text::ShapedText layout,<br/>Text::Rendering::RasterOptions options):<br/>Text::Rendering::Prepared"):::focal
+    k6("layout_text(const Font&amp;, text, const LayoutOptions&amp;):<br/>ShapedText"):::focal
+    k7["<b>ShapedText</b><br/><br/>glyphs(): const ShapedGlyph[] [borrowed]<br/><br/>lines(): const TextLine[] [borrowed]"]:::focal
+    k8("Text::Rendering::prepare(<br/>ShapedText,<br/>Text::Rendering::RasterOptions):<br/>Text::Rendering::Prepared"):::focal
     k9["Text::Rendering::<br/>Prepared"]:::focal
-    k10("Text::Rendering::upload(<br/>Text::Rendering::Prepared prepared,<br/>Rendering::Resources::Provider&amp; provider,<br/>const Rendering::Resources::Material material<br/>[optional shared]):<br/>Text::Rendering::Generation"):::focal
+    k10("Text::Rendering::upload(<br/>Text::Rendering::Prepared,<br/>Rendering::Resources::Provider&amp;,<br/>const Rendering::Resources::Material [optional<br/>shared]):<br/>Text::Rendering::Generation"):::focal
     k11["Rendering::Resources::<br/>Provider"]:::neighbor
     k12["Text::Rendering::<br/>Generation"]:::focal
     k13(["Application<br/>update()"]):::app
-    k14["<b>Text::Rendering::<br/>Updater</b><br/><br/>request(Text::Rendering::Request next)<br/><br/>update()<br/><br/>current(): const Text::Rendering::Generation [shared]"]:::focal
+    k14["<b>Text::Rendering::<br/>Updater</b><br/><br/>request(Text::Rendering::Request)<br/><br/>update()<br/><br/>current(): const Text::Rendering::Generation [shared]"]:::focal
     k15["Text::Rendering::<br/>Request"]:::focal
     k16(["Application<br/>prepare_render_frame()"]):::app
-    k17("Rendering::Submission::resolve_text(<br/>const Text::Rendering::Generation&amp; text,<br/>const Rendering::DrawStyle2D&amp; style,<br/>const Rendering::Submission::Context2D&amp; context):<br/>Rendering::DrawPacket2D[]"):::neighbor
+    k17("Rendering::Submission::resolve_text(<br/>const Text::Rendering::Generation&amp;,<br/>const Rendering::DrawStyle2D&amp;,<br/>const Rendering::Submission::Context2D&amp;):<br/>Rendering::DrawPacket2D[]"):::neighbor
     k18["Rendering::<br/>DrawPacket2D"]:::neighbor
     k0 --> k1
     k1 --> k2
