@@ -22,11 +22,11 @@ flowchart LR
     k5["Input::<br/>KeyboardKey"]:::focal
     k6(["Application-owned controller"]):::app
     k7["Input::Actions::<br/>ContextDefinition"]:::focal
-    k8["<b>Input::Actions::<br/>ContextSubmission</b><br/><br/>attach()"]:::focal
+    k8["<b>Input::Actions::<br/>ContextSubmission</b><br/><br/>attach(Input::Actions::ContextDefinition)"]:::focal
     k9["<b>Input::Actions::<br/>Context</b><br/><br/>id()<br/>reset()"]:::focal
     k10(["Application<br/>update()"]):::app
     k11["Game::<br/>TickContext"]:::neighbor
-    k12["<b>Input::<br/>Tick</b><br/><br/>actions(context)<br/>button()<br/>axis()"]:::focal
+    k12["<b>Input::<br/>Tick</b><br/><br/>actions(Input::Actions::Context)<br/>button()<br/>axis()"]:::focal
     k13["<b>Input::Actions::<br/>View</b><br/><br/>button()<br/>axis()"]:::focal
     k2 --> k3
     k3 --> k4
@@ -41,6 +41,8 @@ flowchart LR
     k6 --> k13
     k0 --> k1
     k1 --> k2
+    k8 --> k7
+    k12 --> k9
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

@@ -14879,9 +14879,42 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Input::Actions::ContextSubmission",
+          "target": "Input::Actions::ContextDefinition",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/controls/action-context.h",
+              "line": 72,
+              "member": "CE::Input::Actions::ContextSubmission::attach",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Input::Tick",
+          "target": "Input::Actions::Context",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+              "line": 74,
+              "member": "CE::Input::Tick::actions",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
+        "attach(ContextDefinition) returns a Context lease. Pass that lease to Tick::actions(Context) to obtain an Actions::View; the alternative overload accepts ContextId. ContextDefinition is setup data, not the lookup argument.",
         "Direct binding changes run during platform initialization. Reusable controllers retain a context endpoint and their own lease.",
         "Updates consume semantic actions and copied observations; text input/focus is a separate focused view.",
         "Acquire Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward.",
@@ -14973,10 +15006,10 @@
         "Input::Actions::ContextSubmission": [
           {
             "name": "CE::Input::Actions::ContextSubmission::attach",
-            "label": "attach()",
+            "label": "attach(Input::Actions::ContextDefinition)",
             "file": "projects/engine/include/cheryl/core/controls/action-context.h",
             "line": 72,
-            "brief": "Accept an owned context definition and return its lease; mappings apply at the next input poll, not immediately.",
+            "brief": "Accept an owned Input::Actions::ContextDefinition and return an Input::Actions::Context lease; mappings apply at the next input poll, not immediately.",
             "role": "call"
           }
         ],
@@ -15001,10 +15034,10 @@
         "Input::Tick": [
           {
             "name": "CE::Input::Tick::actions",
-            "label": "actions(context)",
+            "label": "actions(Input::Actions::Context)",
             "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
             "line": 74,
-            "brief": "Select one controller's context-local action namespace; the returned View borrows this update's Tick.",
+            "brief": "Select one controller's namespace using its Input::Actions::Context lease; the ContextId overload accepts the copied namespace identity. The returned View borrows this update's Tick.",
             "role": "call"
           },
           {
