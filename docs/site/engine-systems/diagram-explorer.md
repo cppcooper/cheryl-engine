@@ -13,12 +13,11 @@ search also finds method names.
 
 Signatures use `method(arguments): ResultType`, with qualified Engine types and
 public aliases for arguments and results. Diagram signatures omit parameter
-names when their types are shown; the inspector keeps the fuller signatures.
-They are abridged: a missing result
-suffix can mean a scalar or standard-library result and does not imply `void`.
-`[]` marks a collection. Short notes such as `[shared]`, `[unique]`, `[future]`
-and `[borrowed]` retain ownership, asynchronous-result and borrowing information
-when their library wrappers are omitted. The API reference has the full types.
+names when their types are shown, declaration qualifiers such as `const`,
+pointers/references, and ownership or completion markers. `[]` marks a collection.
+The inspector retains those contract details; the API reference has the full
+types. A missing result suffix can mean a scalar or standard-library result
+and does not imply `void`.
 When a view names a local namespace, its prefix is omitted in the diagram:
 within Input, `Actions::Context` means `Input::Actions::Context`. Other
 namespaces remain explicit, as do local names that would collide with another

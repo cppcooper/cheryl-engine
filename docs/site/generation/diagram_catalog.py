@@ -35,8 +35,15 @@ def scoped_label(value: str, namespace: str | None, collisions=()) -> str:
     return re.sub(r"(?<![\w:])" + re.escape(namespace) + r"::" + retain, "", value)
 
 
+def diagram_type(value: str) -> str:
+    """Show the participating data type, leaving declaration contracts to the inspector."""
+    value = re.sub(r"\s+\[(?:shared|unique|future|borrowed|optional shared|shared elements)\]", "", value)
+    value = re.sub(r"\b(?:const|volatile)\b\s*", "", value).strip()
+    return re.sub(r"\s*(?:[*&]\s*)+$", "", value).strip()
+
+
 def diagram_signature(value: str, namespace: str | None = None, collisions=()) -> str:
-    """Keep types and bare placeholders in the curated signatures, omitting typed parameter names."""
+    """Show participating types and bare placeholders without declaration qualifiers."""
     opening = value.find("(")
     if opening < 0:
         return scoped_label(value, namespace, collisions)
@@ -66,8 +73,11 @@ def diagram_signature(value: str, namespace: str | None = None, collisions=()) -
         match = re.fullmatch(r"(.+?)\s+([A-Za-z_]\w*)(\s+\[[^\]]+\])?", argument)
         if match and not re.fullmatch(r"(?:const|volatile|typename)(?:\s+(?:const|volatile|typename))*", match[1]):
             argument = match[1] + (match[3] or "")
-        shortened.append(argument)
-    return scoped_label(value[:opening + 1] + ", ".join(shortened) + value[index:], namespace, collisions)
+        shortened.append(diagram_type(argument))
+    suffix = value[index + 1:]
+    if suffix.startswith(": "):
+        suffix = ": " + diagram_type(suffix[2:])
+    return scoped_label(value[:opening + 1] + ", ".join(shortened) + ")" + suffix, namespace, collisions)
 
 
 def frame_version(directory: Path) -> str:

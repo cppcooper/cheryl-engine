@@ -13,10 +13,10 @@ config:
 ---
 flowchart TB
     accTitle: Memory · application object storage
-    accDescr: Local names omit Memory::; ambiguous nested namespaces remain qualified. Local names omit Memory::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Memory::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>storage owner"]):::app
-    k1["<b>Objects::<br/>Pool</b><br/><br/>get(): Objects::Pool&lt;T&gt;&amp;<br/><br/>retrieve_objects(N, args...): T[] [shared elements]<br/><br/>cull(age)<br/><br/>release_culled()"]:::focal
-    k2["<b>Objects::<br/>Reservation</b><br/><br/>Reservation(count, Allocator)<br/><br/>emplace(index, args...): T [shared]<br/><br/>remaining_ranges(): const Block&lt;T&gt;[]&amp; [borrowed]"]:::focal
+    k1["<b>Objects::<br/>Pool</b><br/><br/>get(): Objects::Pool&lt;T&gt;<br/><br/>retrieve_objects(N, args...): T[]<br/><br/>cull(age)<br/><br/>release_culled()"]:::focal
+    k2["<b>Objects::<br/>Reservation</b><br/><br/>Reservation(count, Allocator)<br/><br/>emplace(index, args...): T<br/><br/>remaining_ranges(): Block&lt;T&gt;[]"]:::focal
     k3(["Application<br/>object type"]):::app
     k4(["Application-owned game objects"]):::app
     k5(["Application<br/>cleanup / quiesce()"]):::app

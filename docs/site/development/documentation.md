@@ -188,7 +188,8 @@ entry points per type, with value types left as values. Each entry records the
 qualified declaration name, short display label, source file/line, purpose and
 `role` (`call` or `override`). Use the declaring base type for inherited methods.
 Include the corresponding signatures beneath the owning type in Mermaid,
-omitting parameter names when their types are shown; label checks reject stale
+omitting parameter names when their types are shown and declaration qualifiers;
+label checks reject stale
 metadata. Wrapping markup may change whitespace, but must
 preserve type spelling, including template arguments. Mark override groups
 **Implement hooks** to distinguish engine callbacks from application calls. The
@@ -199,15 +200,17 @@ focused views.
 Write labels as `method(arguments): QualifiedResultType`. Include relevant
 Engine argument and result types, including public aliases and types without
 their own box. Keep argument names in catalog labels for the inspector, and
-omit those names from Mermaid when their types are shown. Preserve the declaration's
-direct `const`, pointer and reference qualifiers. Omit defaults, the leading `CE::`, and primitive or
-`std::` type spellings. Retain names for scalar and library-only arguments;
+omit those names from Mermaid when their types are shown. Preserve `const`,
+pointer/reference qualifiers and ownership/completion markers in catalog labels;
+omit them from Mermaid so the diagram shows the participating types. Keep `[]`
+for collections. Omit defaults, the leading `CE::`, and primitive or `std::`
+type spellings. Retain names for scalar and library-only arguments;
 include template parameter types where they clarify generic arguments. A
 missing result suffix does not imply `void`: scalar and
-library-only results are abridged too. Use `[]` for collections, with short
-markers such as `[shared]`, `[unique]`, `[future]` or `[borrowed]` where hiding a
-library wrapper would otherwise obscure ownership, asynchronous completion or
-borrowing. The API reference remains the complete signature.
+library-only results are abridged too. Inspector markers such as `[shared]`,
+`[unique]`, `[future]` or `[borrowed]` retain ownership, asynchronous completion
+and borrowing details from omitted library wrappers. The API reference remains
+the complete signature.
 
 A view can declare `namespace`, such as `"Input"`, to omit that prefix from
 its Mermaid labels. Keep nested namespaces (`Actions::Context`) and other

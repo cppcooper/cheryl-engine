@@ -13,17 +13,17 @@ config:
 ---
 flowchart TB
     accTitle: Runtime · application composition
-    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1("Application::GLFWOpenGL::make_context(<br/>const Application::GLFWOpenGL::Options&amp;):<br/>Context [unique]"):::focal
+    k1("Application::GLFWOpenGL::make_context(<br/>Application::GLFWOpenGL::Options):<br/>Context"):::focal
     k2["Context"]:::focal
     k3["<b>GameRuntime</b><br/><br/>run()<br/><br/>shutdown(): ShutdownEndpoint<br/><br/>lifecycle(): RuntimeLifecycle<br/><br/>set_shutdown_policy(<br/>ShutdownPolicyCallback,<br/>ShutdownPolicyOptions,<br/>Events::EventBus::Delivery):<br/>ShutdownPolicy"]:::focal
     k4(["Application-owned game objects"]):::app
-    k5["<b>Game::<br/>AbstractGame</b><br/><br/>Implement hooks<br/>init_platform()<br/><br/>init_simulation()<br/><br/>update(const Game::TickContext&amp;)<br/><br/>prepare_render_frame(Rendering::FrameWriter&amp;)"]:::focal
+    k5["<b>Game::<br/>AbstractGame</b><br/><br/>Implement hooks<br/>init_platform()<br/><br/>init_simulation()<br/><br/>update(Game::TickContext)<br/><br/>prepare_render_frame(Rendering::FrameWriter)"]:::focal
     k6(["Application<br/>update()"]):::app
     k7["<b>Game::<br/>TickContext</b><br/><br/>request_stop()"]:::focal
     k8(["Application<br/>prepare_render_frame()"]):::app
-    k9["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass(<br/>const glm::mat4&amp;,<br/>const glm::mat4&amp;,<br/>Rendering::Pipelines::PassConstraints2D,<br/>Rendering::Parameters::Set):<br/>Rendering::PassWriter [borrowed]"]:::neighbor
+    k9["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass(<br/>glm::mat4,<br/>glm::mat4,<br/>Rendering::Pipelines::PassConstraints2D,<br/>Rendering::Parameters::Set):<br/>Rendering::PassWriter"]:::neighbor
     k10["<b>ShutdownPolicy</b><br/><br/>reset()"]:::focal
     k11(["Application<br/>producer"]):::app
     k12["<b>ShutdownEndpoint</b><br/><br/>request(ShutdownReason): ShutdownTicket"]:::focal

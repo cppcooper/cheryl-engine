@@ -13,10 +13,10 @@ config:
 ---
 flowchart TB
     accTitle: State · application state choices
-    accDescr: Local names omit State::; ambiguous nested namespaces remain qualified. Local names omit State::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit State::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>state model"]):::app
     k1["<b>StateTracker</b><br/><br/>update(T)<br/><br/>changed()<br/><br/>delta(): decltype(current() - previous())"]:::focal
-    k2["<b>StateMachine</b><br/><br/>add_transition(<br/>State,<br/>Trigger,<br/>State,<br/>StateMachine&lt;State, Trigger&gt;::Guard,<br/>StateMachine&lt;State, Trigger&gt;::Action)<br/><br/>trigger(const Trigger&amp;)<br/><br/>state(): const State&amp;"]:::focal
+    k2["<b>StateMachine</b><br/><br/>add_transition(<br/>State,<br/>Trigger,<br/>State,<br/>StateMachine&lt;State, Trigger&gt;::Guard,<br/>StateMachine&lt;State, Trigger&gt;::Action)<br/><br/>trigger(Trigger)<br/><br/>state(): State"]:::focal
     k3(["Application<br/>state producer"]):::app
     k4["<b>VersionedVariable</b><br/><br/>set(T)<br/><br/>snapshot(): VersionedSnapshot&lt;T&gt;<br/><br/>wait_for_change(since): VersionedSnapshot&lt;T&gt;"]:::focal
     k5["<b>ObservedVariable</b><br/><br/>ObservedVariable(<br/>T,<br/>ObservedVariable&lt;T, Observers&gt;::Callback[])<br/><br/>set(T)<br/><br/>snapshot(): VersionedSnapshot&lt;T&gt;"]:::focal

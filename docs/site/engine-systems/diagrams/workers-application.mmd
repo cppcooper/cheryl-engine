@@ -13,17 +13,17 @@ config:
 ---
 flowchart LR
     accTitle: Workers · application CPU preparation
-    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
     k1["Runtime::<br/>ExecutionOptions"]:::neighbor
     k2["<b>Pool</b><br/><br/>make_group(GroupOptions): Group<br/><br/>shutdown()"]:::focal
     k3["<b>Runtime::<br/>Context</b><br/><br/>make_worker_group(GroupOptions): Group"]:::neighbor
-    k4["<b>Group</b><br/><br/>submit(Work&amp;&amp;): Result [future]<br/><br/>close()<br/><br/>drain()"]:::focal
+    k4["<b>Group</b><br/><br/>submit(Work): Result<br/><br/>close()<br/><br/>drain()"]:::focal
     k5(["Application<br/>CPU preparation"]):::app
     k6["GroupOptions"]:::focal
     k7["CpuPolicy"]:::focal
     k8["<b>Assets::Loading::<br/>Loader</b><br/><br/>prepare(): Assets::Loading::Prepared"]:::neighbor
-    k9["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work&amp;&amp;): Result [future]"]:::neighbor
+    k9["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work): Result"]:::neighbor
     k10(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
     k1 --> k2

@@ -91,7 +91,7 @@ class CatalogTests(unittest.TestCase):
         method = {**operation(), "label": "notify(Events::EventChannel<Payload>& event)"}
         catalog["diagrams"][0]["operations"] = {"Runtime::Context": [method]}
         source = SOURCE.replace('Runtime::Context"]',
-                                'Runtime::Context<br/>notify(<br/>Events::EventChannel&lt;Payload&gt;&amp;)"]')
+                                'Runtime::Context<br/>notify(<br/>Events::EventChannel&lt;Payload&gt;)"]')
         self.write(catalog, source)
         self.assertEqual(load_catalog(self.source), catalog)
         self.write(catalog, source.replace("Payload", "OtherPayload"))
@@ -110,7 +110,7 @@ class CatalogTests(unittest.TestCase):
         method = {**operation(), "label": "events(): Events::EventBus&"}
         catalog["diagrams"][0]["operations"] = {"Runtime::Context": [method]}
         source = SOURCE.replace('Runtime::Context"]',
-                                'Runtime::Context<br/>events():<br/>Events::EventBus&amp;"]')
+                                'Runtime::Context<br/>events():<br/>Events::EventBus"]')
         self.write(catalog, source)
         self.assertEqual(load_catalog(self.source), catalog)
         self.write(catalog, source.replace("Events::EventBus", "Events::EventChannel"))
@@ -131,16 +131,21 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "omits operation label"):
             load_catalog(self.source)
 
-    def test_compact_parameters_preserve_types_markers_and_return_expressions(self):
+    def test_compact_parameters_preserve_types_collections_and_return_expressions(self):
         cases = [
             ("update(T next)", "update(T)"),
-            ("submit(Work&& work): Result [future]", "submit(Work&&): Result [future]"),
+            ("submit(Work&& work): Result [future]", "submit(Work): Result"),
             ("upload(const Memory::Block<T>[] blocks [borrowed], count): Memory::Pool<T>&",
-             "upload(const Memory::Block<T>[] [borrowed], count): Memory::Pool<T>&"),
+             "upload(Memory::Block<T>[], count): Memory::Pool<T>"),
+            ("configure(const Input::Constraints& constraints): const Input::Constraints* const&",
+             "configure(Input::Constraints): Input::Constraints"),
+            ("operator&(const Input::Control& control): Input::Control&",
+             "operator&(Input::Control): Input::Control"),
             ("transition(State from, State to, State::Machine<State, Trigger>::Guard guard)",
              "transition(State, State, State::Machine<State, Trigger>::Guard)"),
             ("operator()()", "operator()()"),
             ("delta(): decltype(current() - previous())", "delta(): decltype(current() - previous())"),
+            ("mask(): decltype(current() & previous())", "mask(): decltype(current() & previous())"),
             ("parse<is_unsigned>(str): Text::Numbers::NumberVariant", "parse<is_unsigned>(str): Text::Numbers::NumberVariant"),
         ]
         for full, compact in cases:
@@ -178,7 +183,7 @@ class PublicationTests(unittest.TestCase):
             diagram["operations"] = {"Runtime::Context": [method]}
             (source / "catalog.json").write_text(json.dumps(catalog))
             (source / "runtime-application.mmd").write_text(SOURCE.replace(
-                'Runtime::Context"]', 'Context<br/>context(): Context&amp;"]'))
+                'Runtime::Context"]', 'Context<br/>context(): Context"]'))
             destination = Path(directory) / "html"
             objects = [("CE::Runtime::Context", "", "class", "api/context", "type", 1),
                        (method["name"], "", "function", "api/context", "method", 1)]
@@ -204,7 +209,7 @@ class PublicationTests(unittest.TestCase):
             catalog["diagrams"].append({**fixture()["diagrams"][0], "id": "runtime-internal"})
             (source / "catalog.json").write_text(json.dumps(catalog))
             (source / "runtime-application.mmd").write_text(SOURCE.replace(
-                "Runtime::Context", "make_context():<br/>Runtime::Context [unique]"))
+                "Runtime::Context", "make_context():<br/>Runtime::Context"))
             (source / "runtime-internal.mmd").write_text(SOURCE.replace("Runtime::Context", "make_context()"))
             destination = Path(directory) / "html"
             write_catalog(source, destination, [], lambda name: name + ".html", "https://example.com")

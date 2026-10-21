@@ -15,10 +15,10 @@ flowchart TB
     accTitle: Utilities · application-local helpers
     accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>loading tool"]):::app
-    k1["<b>Files::<br/>FileIndex</b><br/><br/>FileIndex(const Files::Path&amp;)<br/><br/>get_files_of_type(Files::Extension):<br/>const Files::Path[]&amp; [borrowed]<br/><br/>search_directory(const Files::Path&amp;)"]:::focal
+    k1["<b>Files::<br/>FileIndex</b><br/><br/>FileIndex(Files::Path)<br/><br/>get_files_of_type(Files::Extension): Files::Path[]<br/><br/>search_directory(Files::Path)"]:::focal
     k2["<b>Time::<br/>DeltaTime</b><br/><br/>operator()()<br/><br/>elapsed(): Time::DeltaTime&lt;ClockType&gt;::Duration"]:::focal
     k3(["Application<br/>bit bookkeeping"]):::app
-    k4["<b>Math::<br/>BitArray</b><br/><br/>operator[](index): Math::BitArray&lt;Bits&gt;::Reference<br/><br/>words(): Math::BitArray&lt;Bits&gt;::word_type[] [borrowed]"]:::focal
+    k4["<b>Math::<br/>BitArray</b><br/><br/>operator[](index): Math::BitArray&lt;Bits&gt;::Reference<br/><br/>words(): Math::BitArray&lt;Bits&gt;::word_type[]"]:::focal
     k5(["Application<br/>geometry preparation"]):::app
     k6["<b>Rendering::Geometry::<br/>Anchor</b><br/><br/>MakeQuad(<br/>Rendering::Geometry::Pivot,<br/>texture_width,<br/>texture_height,<br/>width,<br/>height,<br/>x0,<br/>y0):<br/>Rendering::Geometry::Quad<br/><br/>MakeQuadStrip(<br/>Rendering::Geometry::Pivot,<br/>texture_width,<br/>texture_height,<br/>width,<br/>height,<br/>x0,<br/>y0):<br/>Rendering::Geometry::QuadTriangleStrip"]:::focal
     k7["Rendering::Geometry::<br/>Pivot"]:::focal

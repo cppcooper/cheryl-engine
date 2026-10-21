@@ -13,7 +13,7 @@ config:
 ---
 flowchart TB
     accTitle: Logging · application configuration and writers
-    accDescr: Local names omit Logging::; ambiguous nested namespaces remain qualified. Local names omit Logging::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    accDescr: Local names omit Logging::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
     k1["<b>ProcessLifetime</b><br/><br/>ProcessLifetime()"]:::focal
     k2["<b>Config</b><br/><br/>for_logger(name, Profile): Config"]:::focal
@@ -23,7 +23,7 @@ flowchart TB
     k6["OverflowPolicy"]:::focal
     k7["FileEventHandlers"]:::focal
     k8(["Application<br/>producer"]):::app
-    k9["<b>Logger</b><br/><br/>initialize(FileEventHandlers, Config): Log&lt;name&gt;&amp;<br/><br/>info(fmt, args...)<br/><br/>warn(fmt, args...)"]:::focal
+    k9["<b>Logger</b><br/><br/>initialize(FileEventHandlers, Config): Log&lt;name&gt;<br/><br/>info(fmt, args...)<br/><br/>warn(fmt, args...)"]:::focal
     k10(["Application<br/>report"]):::app
     k11["<b>LogHandle</b><br/><br/>shared_queue_stats(): QueueStats<br/><br/>backend_stats(): BackendStats<br/><br/>report_diagnostics()"]:::focal
     k12["QueueStats"]:::neighbor
