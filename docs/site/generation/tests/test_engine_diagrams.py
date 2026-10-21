@@ -1,9 +1,11 @@
 """Check the source/catalog contract and explorer publication without an Engine build."""
 
+import ast
 import json
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 
 GENERATION = Path(__file__).resolve().parents[1]
@@ -100,6 +102,40 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(result["metadata"]["revisionUrl"], "../../revision.json")
             self.assertEqual((destination / "runtime-application.mmd").read_text(), SOURCE)
             self.assertEqual(catalog, fixture(), "Compilation must not change authored metadata")
+
+
+class AnchorTests(unittest.TestCase):
+    def hook(self):
+        extension = GENERATION / "extensions/engine_diagrams.py"
+        tree = ast.parse(extension.read_text())
+        function = next(item for item in tree.body if isinstance(item, ast.FunctionDef) and item.name == "register_targets")
+        scope = {
+            "EXPLORER": "engine-systems/diagram-explorer",
+            "ExtensionError": ValueError,
+            "nodes": SimpleNamespace(Element=object),
+            "source_directory": lambda app: None,
+            "load_catalog": lambda source: {"diagrams": [{"id": "runtime-application", "title": "Runtime"}]},
+        }
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(extension), "exec"), scope)
+        return scope["register_targets"]
+
+    def test_generated_ids_are_checked_myst_slugs(self):
+        heading = (1, "diagram-explorer", "Diagram explorer")
+        metadata = {"engine-systems/diagram-explorer": {"myst_slugs": {"diagram-explorer": heading}}}
+        app = SimpleNamespace(env=SimpleNamespace(docname="engine-systems/diagram-explorer", metadata=metadata))
+        doctree = SimpleNamespace(findall=lambda kind: [{"ids": ["runtime-application"]}])
+        self.hook()(app, doctree)
+        slugs = metadata[app.env.docname]["myst_slugs"]
+        self.assertEqual(slugs["diagram-explorer"], heading)
+        self.assertEqual(slugs["runtime-application"], (None, "runtime-application", "Runtime"))
+
+    def test_missing_real_target_does_not_get_a_fake_slug(self):
+        app = SimpleNamespace(env=SimpleNamespace(
+            docname="engine-systems/diagram-explorer", metadata={"engine-systems/diagram-explorer": {}},
+        ))
+        doctree = SimpleNamespace(findall=lambda kind: [{"ids": ["other-target"]}])
+        with self.assertRaisesRegex(ValueError, "target was not emitted"):
+            self.hook()(app, doctree)
 
 
 if __name__ == "__main__":
