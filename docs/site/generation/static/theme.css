@@ -1,3 +1,18 @@
+/* Give inline names a quiet surface and readable light-theme contrast. */
+.rst-content :is(code.literal, tt.literal) {
+    border-color: #d8dee6;
+    background: #f2f4f7;
+    color: inherit;
+}
+
+.rst-content a :is(code.literal, tt.literal) {
+    color: #1c5a88;
+}
+
+.rst-content a:visited :is(code.literal, tt.literal) {
+    color: #684594;
+}
+
 /* Keep the appearance control available above the page on desktop and mobile. */
 .cheryl-appearance {
     display: flex;
@@ -53,7 +68,6 @@
         --cheryl-link: #8ecaff;
         --cheryl-link-hover: #c3e3ff;
         --cheryl-visited: #d0b2ff;
-        --cheryl-inline-code: #ffca9b;
         --cheryl-focus: #ffda82;
         --cheryl-mark: #594a22;
         scrollbar-color: var(--cheryl-border) var(--cheryl-background);
@@ -209,11 +223,15 @@
     }
 
     html[data-theme="dark"] .rst-content :is(code.literal, tt.literal) {
-        color: var(--cheryl-inline-code);
+        color: inherit;
     }
 
     html[data-theme="dark"] .rst-content a :is(code, tt) {
         color: var(--cheryl-link);
+    }
+
+    html[data-theme="dark"] .rst-content a:visited :is(code.literal, tt.literal) {
+        color: var(--cheryl-visited);
     }
 
     html[data-theme="dark"] .rst-content :is(.guilabel, .menuselection, kbd, .kbd) {

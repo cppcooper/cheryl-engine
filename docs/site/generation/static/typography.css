@@ -3,10 +3,20 @@ html {
     font-size: 120%;
 }
 
-/* Preserve the theme's 16px body and 12px code proportions at the new scale. */
+/* Scale prose with the root size. */
 p {
     font-size: 1rem;
     line-height: 1.5;
+}
+
+/* Keep inline names close to prose size without the Courier-style fallback. */
+.rst-content :is(code.literal, tt.literal) {
+    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", "DejaVu Sans Mono",
+        "Noto Sans Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    font-weight: 500;
+    padding: 0.05em 0.3em;
+    border-radius: 0.2em;
 }
 
 .rst-content .linenodiv pre,
