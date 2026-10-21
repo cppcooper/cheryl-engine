@@ -390,6 +390,18 @@ h1 span {
     font:11px/1.5 ui-monospace,SFMono-Regular,monospace;
     overflow-wrap:anywhere
 }
+.signature-types {
+    display:grid;
+    gap:3px;
+    margin:8px 0;
+}
+.signature-types span {
+    font-size:10px;
+    color:var(--muted);
+}
+.signature-relation code {
+    overflow-wrap:anywhere;
+}
 .return {
     border:1px solid #cdd9ea;
     border-radius:4px;

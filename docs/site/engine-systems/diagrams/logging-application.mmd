@@ -28,6 +28,7 @@ flowchart TB
     k11["<b>Logging::<br/>LogHandle</b><br/><br/>shared_queue_stats()<br/>backend_stats()<br/>report_diagnostics()"]:::focal
     k12["Logging::<br/>QueueStats"]:::neighbor
     k13(["Application<br/>cleanup / quiesce()"]):::app
+    k14["Logging::<br/>BackendStats"]:::neighbor
     k0 --> k1
     k0 --> k2
     k0 --> k3
@@ -41,6 +42,10 @@ flowchart TB
     k11 --> k12
     k13 --> k3
     k0 --> k9
+    k3 --> k2
+    k9 --> k7
+    k9 --> k2
+    k11 --> k14
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

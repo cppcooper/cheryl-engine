@@ -25,12 +25,13 @@ flowchart TB
     k8["<b>Audio::<br/>Voice</b><br/><br/>snapshot()<br/>pause()<br/>resume()<br/>stop()"]:::focal
     k9["Audio::<br/>VoiceSnapshot"]:::focal
     k10(["Application<br/>listener setup"]):::app
-    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener()"]:::neighbor
+    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener()<br/>publisher()"]:::neighbor
     k12["Audio::<br/>PlaybackEnded"]:::focal
     k13(["Application<br/>init_platform()"]):::app
     k14["Runtime::<br/>RuntimeServices"]:::neighbor
     k15["<b>Runtime::<br/>ServiceAttachment</b><br/><br/>reset()"]:::neighbor
     k16(["Application<br/>cleanup / quiesce()"]):::app
+    k17["Events::EventBus::<br/>Publisher"]:::neighbor
     k0 --> k1
     k2 -.-> k4
     k5 --> k6
@@ -48,6 +49,9 @@ flowchart TB
     k16 --> k6
     k2 --> k3
     k3 --> k4
+    k6 --> k7
+    k11 --> k17
+    k1 --> k17
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

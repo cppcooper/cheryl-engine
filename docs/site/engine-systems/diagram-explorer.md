@@ -11,6 +11,13 @@ sequence. **Implement hooks** marks methods your game overrides for the engine
 to call. Select a box for each method's purpose, source and available API link;
 search also finds method names.
 
+Application arrows include the argument and result types used by selected
+methods. In the inspector, **Accepts** and **Returns** connect a method to those
+types in the current view. Select an arrow to see the supporting method
+relationship. Both use the same consumer-to-dependency direction; these arrows
+do not describe data flow. The API reference supplies the complete signature,
+including types omitted from the selected view.
+
 Use **Docs navigation** to keep the documentation sidebar, or **Wide explorer**
 for a subsystem sidebar and more room to inspect a diagram. The selected view
 is preserved when changing layouts or returning from a guide.

@@ -193,6 +193,15 @@ distinguish engine callbacks from application calls. The explorer adds method
 search, source links and unambiguous API links without changing the type's identity
 or adding operation details to the internal and focused views.
 
+Connect selected methods to their public Engine argument and result types when
+those types are shown in the application view. Record signature evidence with
+the exact selected declaration name in `member` and `kind: accepts` or
+`kind: returns`. The explorer uses these records for each method's **Accepts**
+and **Returns** links and the arrow's method explanation. Use explicit parameter
+types in a method label when a short name could refer to multiple shown types.
+Add another type box only when it clarifies an essential application boundary;
+the views remain selective rather than duplicating the complete API inventory.
+
 ### Incremental rebuilds and full regeneration
 
 The first generation performs the complete extraction and site build. Existing

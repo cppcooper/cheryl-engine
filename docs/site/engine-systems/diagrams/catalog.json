@@ -2122,9 +2122,9 @@
       "label": "Rendering::Submission::resolve_text()",
       "name": "CE::Rendering::Submission::resolve_text",
       "kind": "operation",
-      "brief": "Lay out legacy text on the CPU and resolve ordered six-vertex glyph packets.",
+      "brief": "Resolve retained text generations or legacy-font layout into retained CPU draw packets.",
       "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
-      "line": 62,
+      "line": 70,
       "key": "Rendering::Submission::resolve_text()",
       "system": "rendering",
       "instance": ""
@@ -2593,6 +2593,30 @@
       "symbol": "Audio::Miniaudio::decode_file()",
       "key": "Audio::Miniaudio::decode_file()",
       "system": "audio",
+      "instance": ""
+    },
+    "Workers::GroupPolicy": {
+      "name": "CE::Workers::GroupPolicy",
+      "label": "Workers::GroupPolicy",
+      "kind": "struct",
+      "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+      "line": 91,
+      "brief": "Immutable resolved policy reported at group creation, distinct from per-job native observations.",
+      "symbol": "Workers::GroupPolicy",
+      "key": "Workers::GroupPolicy",
+      "system": "workers",
+      "instance": ""
+    },
+    "Logging::BackendStats": {
+      "name": "CE::Logging::BackendStats",
+      "label": "Logging::BackendStats",
+      "kind": "struct",
+      "file": "projects/engine/include/cheryl/core/logging/backend-guard.h",
+      "line": 12,
+      "brief": "Cumulative observations for one Log, including failed openings and all generations.",
+      "symbol": "Logging::BackendStats",
+      "key": "Logging::BackendStats",
+      "system": "logging",
       "instance": ""
     }
   },
@@ -13403,9 +13427,17 @@
               "line": 35,
               "member": "Application::GLFWOpenGL::make_context()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/modules/graphics/opengl/include/cheryl/backends/opengl/glfw-backend.h",
+              "line": 33,
+              "member": "CE::Application::GLFWOpenGL::make_context",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 3
         },
         {
           "source": "@host",
@@ -13762,12 +13794,59 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Runtime::GameRuntime",
+          "target": "Runtime::ShutdownPolicy",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+              "line": 117,
+              "member": "CE::Runtime::GameRuntime::set_shutdown_policy",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Game::AbstractGame",
+          "target": "Game::TickContext",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+              "line": 33,
+              "member": "CE::Game::AbstractGame::update",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Game::AbstractGame",
+          "target": "Rendering::FrameWriter",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+              "line": 34,
+              "member": "CE::Game::AbstractGame::prepare_render_frame",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "The composition role owns Context, the game and GameRuntime. The game supplies init/update/frame/quiesce/deinit hooks.",
-        "Use the supplied compatible factory for the normal native/OpenGL assembly; manual adapters are shown in the focused composition view.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Use the supplied compatible factory for the normal native/OpenGL assembly; manual adapters are shown in the focused composition view."
       ],
       "level": "detailed",
       "refs": [
@@ -14310,15 +14389,22 @@
               "member": "CE::Rendering::Camera2D::recalculate_projection",
               "access": "invalid",
               "via": "libclang AST"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+              "line": 22,
+              "member": "CE::Rendering::CameraBase::set_framebuffer_size",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 3
         }
       ],
       "notes": [
         "Direct window and monitor operations require the platform owner; cross-owner requests use a saved platform endpoint.",
-        "Use copied tick dimensions for simulation layout. Monitor content scale and framebuffer pixels are distinct observations.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Use copied tick dimensions for simulation layout. Monitor content scale and framebuffer pixels are distinct observations."
       ],
       "level": "detailed",
       "refs": [
@@ -14911,14 +14997,29 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Input::System",
+          "target": "Input::Actions::ContextSubmission",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/controls/input-interface.h",
+              "line": 38,
+              "member": "CE::Input::System::action_contexts",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "attach(ContextDefinition) returns a Context lease. Pass that lease to Tick::actions(Context) to obtain an Actions::View; the alternative overload accepts ContextId. ContextDefinition is setup data, not the lookup argument.",
         "Direct binding changes run during platform initialization. Reusable controllers retain a context endpoint and their own lease.",
         "Updates consume semantic actions and copied observations; text input/focus is a separate focused view.",
-        "Acquire Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Acquire Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward."
       ],
       "level": "detailed",
       "refs": [
@@ -15334,9 +15435,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Rendering::Submission::resolve_sprite()",
@@ -15348,9 +15457,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Assets::Sprites::Manager",
@@ -15403,8 +15520,7 @@
       ],
       "notes": [
         "Shared asset metadata stays immutable; application objects own transforms, gameplay and playback state.",
-        "A failed upload may leave earlier successful entries published. Validate looked-up handles and release game copies before backend closure.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "A failed upload may leave earlier successful entries published. Validate looked-up handles and release game copies before backend closure."
       ],
       "level": "detailed",
       "refs": [
@@ -15565,9 +15681,25 @@
               "line": 24,
               "member": "Assets::Images::decode()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/resources/decoded-image.h",
+              "line": 22,
+              "member": "CE::Assets::Images::decode",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/resources/decoded-image.h",
+              "line": 24,
+              "member": "CE::Assets::Images::decode",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 4
         },
         {
           "source": "@init",
@@ -15952,12 +16084,27 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Rendering::Resources::Provider",
+          "target": "Rendering::GraphicsDomain",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+              "line": 59,
+              "member": "CE::Rendering::Resources::Provider::graphics_domain",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Decode may run on CPU workers; native upload must use the initialized provider/loading owner.",
-        "Ordinary sprite/text/UI loading supplies default materials. Direct pipeline/material construction is an advanced option, not a prerequisite.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Ordinary sprite/text/UI loading supplies default materials. Direct pipeline/material construction is an advanced option, not a prerequisite."
       ],
       "level": "detailed",
       "refs": [
@@ -16158,9 +16305,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Rendering::Submission::resolve_sprite()",
@@ -16172,9 +16327,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Rendering::Submission::resolve_sprite()",
@@ -16186,9 +16349,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Rendering::Submission::resolve_sprite()",
@@ -16200,9 +16371,17 @@
               "line": 39,
               "member": "Rendering::Submission::resolve_sprite()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 39,
+              "member": "CE::Rendering::Submission::resolve_sprite",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Rendering::PassWriter",
@@ -16279,8 +16458,7 @@
       ],
       "notes": [
         "Advance camera/gameplay/animation in update. Preparation may be skipped; it only snapshots the chosen appearance.",
-        "Writers borrow one runtime slot for the hook. Native draw/upload work belongs to graphics; loaded assets already supply ordinary materials.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Writers borrow one runtime slot for the hook. Native draw/upload work belongs to graphics; loaded assets already supply ordinary materials."
       ],
       "level": "detailed",
       "refs": [
@@ -16552,9 +16730,17 @@
               "line": 84,
               "member": "Text::layout_text()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/text/layout.h",
+              "line": 84,
+              "member": "CE::Text::layout_text",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Text::layout_text()",
@@ -16572,9 +16758,25 @@
               "line": 84,
               "member": "Text::layout_text()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/text/layout.h",
+              "line": 83,
+              "member": "CE::Text::layout_text",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/text/layout.h",
+              "line": 84,
+              "member": "CE::Text::layout_text",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 4
         },
         {
           "source": "@load",
@@ -16598,9 +16800,17 @@
               "line": 115,
               "member": "Text::Rendering::prepare()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/types/2d/unicode-text.h",
+              "line": 115,
+              "member": "CE::Text::Rendering::prepare",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Text::Rendering::prepare()",
@@ -16612,9 +16822,17 @@
               "line": 115,
               "member": "Text::Rendering::prepare()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/types/2d/unicode-text.h",
+              "line": 115,
+              "member": "CE::Text::Rendering::prepare",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "@init",
@@ -16638,9 +16856,17 @@
               "line": 116,
               "member": "Text::Rendering::upload()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/types/2d/unicode-text.h",
+              "line": 116,
+              "member": "CE::Text::Rendering::upload",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Text::Rendering::upload()",
@@ -16652,9 +16878,17 @@
               "line": 116,
               "member": "Text::Rendering::upload()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/types/2d/unicode-text.h",
+              "line": 116,
+              "member": "CE::Text::Rendering::upload",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Text::Rendering::upload()",
@@ -16666,9 +16900,17 @@
               "line": 116,
               "member": "Text::Rendering::upload()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/types/2d/unicode-text.h",
+              "line": 116,
+              "member": "CE::Text::Rendering::upload",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "@update",
@@ -16848,6 +17090,30 @@
               "line": 70,
               "member": "Rendering::Submission::resolve_text()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 70,
+              "member": "CE::Rendering::Submission::resolve_text",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 2
+        },
+        {
+          "source": "Rendering::Submission::resolve_text()",
+          "target": "Rendering::DrawPacket2D",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/submission/draw2d.h",
+              "line": 70,
+              "member": "CE::Rendering::Submission::resolve_text",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
           "evidence_count": 1
@@ -16855,8 +17121,7 @@
       ],
       "notes": [
         "Static labels explicitly layout, prepare and upload after graphics initialization. Changing labels can use Updater instead of application futures.",
-        "Context supplies an embedded default font. Configure named families/defaults before consumers; changing the catalogue does not rebind existing handles.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Context supplies an embedded default font. Configure named families/defaults before consumers; changing the catalogue does not rebind existing handles."
       ],
       "level": "detailed",
       "refs": [
@@ -16880,7 +17145,8 @@
         "Text::Rendering::Updater",
         "Text::Rendering::Request",
         "@prepare",
-        "Rendering::Submission::resolve_text()"
+        "Rendering::Submission::resolve_text()",
+        "Rendering::DrawPacket2D"
       ],
       "operations": {
         "Runtime::Context": [
@@ -17390,9 +17656,33 @@
               "member": "CE::UI::TGUI::SceneUploader::upload",
               "access": "public",
               "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+              "line": 61,
+              "member": "CE::UI::TGUI::SceneUploader::upload",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+              "line": 63,
+              "member": "CE::UI::TGUI::SceneUploader::submit",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+              "line": 65,
+              "member": "CE::UI::TGUI::SceneUploader::submit",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 4
         },
         {
           "source": "@ui",
@@ -17418,9 +17708,33 @@
               "member": "CE::UI::RmlUi::SceneUploader::upload",
               "access": "public",
               "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+              "line": 56,
+              "member": "CE::UI::RmlUi::SceneUploader::upload",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+              "line": 58,
+              "member": "CE::UI::RmlUi::SceneUploader::submit",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+              "line": 60,
+              "member": "CE::UI::RmlUi::SceneUploader::submit",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 4
         },
         {
           "source": "@ui",
@@ -17433,13 +17747,92 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "UI::TGUI::Session",
+          "target": "Input::Events::Record",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+              "line": 95,
+              "member": "CE::UI::TGUI::Session::handle_input",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+              "line": 99,
+              "member": "CE::UI::TGUI::Session::handle_input",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 2
+        },
+        {
+          "source": "UI::TGUI::Session",
+          "target": "Input::Routing::KeyboardPolicy",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+              "line": 89,
+              "member": "CE::UI::TGUI::Session::request_keyboard_focus",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "UI::RmlUi::Session",
+          "target": "Input::Events::Record",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+              "line": 93,
+              "member": "CE::UI::RmlUi::Session::handle_input",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+              "line": 97,
+              "member": "CE::UI::RmlUi::Session::handle_input",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 2
+        },
+        {
+          "source": "UI::RmlUi::Session",
+          "target": "Input::Routing::KeyboardPolicy",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+              "line": 90,
+              "member": "CE::UI::RmlUi::Session::request_keyboard_focus",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Dashed choices are alternatives: select a toolkit, do not infer a shared Engine widget API. Its widgets/documents remain application-owned.",
         "Application code feeds the complete input batch, selects pointer delivery, requests focus and publishes recordings. Quiesce UI calls before session closure.",
-        "Sessions need view and time updates. Enable automatic_view/automatic_time when constructing a Context-aware session, or call set_view()/update_time() explicitly; both options default off.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Sessions need view and time updates. Enable automatic_view/automatic_time when constructing a Context-aware session, or call set_view()/update_time() explicitly; both options default off."
       ],
       "level": "detailed",
       "refs": [
@@ -17975,13 +18368,68 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Audio::System",
+          "target": "Audio::PlaybackOptions",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/audio/system.h",
+              "line": 75,
+              "member": "CE::Audio::System::play",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/audio/system.h",
+              "line": 77,
+              "member": "CE::Audio::System::stream",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 2
+        },
+        {
+          "source": "Events::EventBus",
+          "target": "Events::EventBus::Publisher",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 184,
+              "member": "CE::Events::EventBus::publisher",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Audio::Miniaudio::System",
+          "target": "Events::EventBus::Publisher",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+              "line": 56,
+              "member": "CE::Audio::Miniaudio::System::publish_events_to",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Output lifetime is independent of Context. Keep the source file available for streaming, and close output after its producers settle.",
         "Dropping a Voice handle does not stop playback. maintain()/notification pumping is explicit and does not advance the audio clock.",
-        "decode_file() is the ordinary whole-file loading path. Clip::from_samples() is the alternative for application-supplied PCM; stream() keeps its source file available.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "decode_file() is the ordinary whole-file loading path. Clip::from_samples() is the alternative for application-supplied PCM; stream() keeps its source file available."
       ],
       "level": "detailed",
       "refs": [
@@ -18004,7 +18452,8 @@
         "@init",
         "Runtime::RuntimeServices",
         "Runtime::ServiceAttachment",
-        "@cleanup"
+        "@cleanup",
+        "Events::EventBus::Publisher"
       ],
       "operations": {
         "Audio::Miniaudio::System": [
@@ -18127,6 +18576,14 @@
             "line": 206,
             "brief": "Register a persistent typed PlaybackEnded listener. Immediate delivery runs on the notification-pump owner; use an explicit delivery adapter for simulation-owned state.",
             "role": "call"
+          },
+          {
+            "name": "CE::Events::EventBus::publisher",
+            "label": "publisher()",
+            "role": "call",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 184,
+            "brief": "Acquire the weak notification endpoint to pass to publish_events_to(); it does not retain the bus."
           }
         ],
         "Runtime::ServiceAttachment": [
@@ -18244,9 +18701,17 @@
               "member": "CE::Events::EventBus::notify",
               "access": "invalid",
               "via": "libclang AST"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 207,
+              "member": "CE::Events::EventBus::register_listener",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 7
+          "evidence_count": 8
         },
         {
           "source": "Events::EventBus",
@@ -18354,9 +18819,17 @@
               "line": 16,
               "member": "Events::simulation_delivery()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/engine/event-delivery.h",
+              "line": 16,
+              "member": "CE::Events::simulation_delivery",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Events::simulation_delivery()",
@@ -18368,9 +18841,17 @@
               "line": 16,
               "member": "Events::simulation_delivery()",
               "via": "operation signature"
+            },
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/engine/event-delivery.h",
+              "line": 16,
+              "member": "CE::Events::simulation_delivery",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "Events::EventBus",
@@ -18394,9 +18875,17 @@
               "line": 260,
               "member": "Events::EventBus::register_channel",
               "via": "API declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 209,
+              "member": "CE::Events::EventBus::register_listener",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 3
+          "evidence_count": 4
         },
         {
           "source": "@listener",
@@ -18481,13 +18970,60 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Events::EventBus::Publisher",
+          "target": "Events::EventChannel",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 168,
+              "member": "CE::Events::EventBus::Publisher::notify",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Events::EventBus::Publisher",
+          "target": "Events::EventBus::ErrorHandler",
+          "optional": true,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 170,
+              "member": "CE::Events::EventBus::Publisher::notify",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Events::EventBus",
+          "target": "Events::EventBus::ErrorHandler",
+          "optional": true,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 210,
+              "member": "CE::Events::EventBus::register_listener",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Immediate callbacks run on the producer. Explicit delivery selects a different owner and requires an independent error sink.",
         "Dropping Registration does not unregister. Invalidate and settle entered callbacks before destroying borrowed targets.",
-        "Context::events() is the normal route for runtime-connected engine observations. An application-owned bus is also valid; the selected producer determines which bus to subscribe to. Registration::disconnect() invalidates entry without waiting; unregister_and_wait() additionally settles entered callbacks, except self-wait rejects.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Context::events() is the normal route for runtime-connected engine observations. An application-owned bus is also valid; the selected producer determines which bus to subscribe to. Registration::disconnect() invalidates entry without waiting; unregister_and_wait() additionally settles entered callbacks, except self-wait rejects."
       ],
       "level": "detailed",
       "refs": [
@@ -18929,8 +19465,7 @@
       ],
       "notes": [
         "Save copyable endpoints during initialization. Platform work receives Context; simulation requests drain at update boundaries.",
-        "Read retained futures only when ready. Never wait on the owner required to finish the request; endpoint lifetime does not extend borrowed captures.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Read retained futures only when ready. Never wait on the owner required to finish the request; endpoint lifetime does not extend borrowed captures."
       ],
       "level": "detailed",
       "refs": [
@@ -19326,12 +19861,59 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Workers::Pool",
+          "target": "Workers::Group",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+              "line": 200,
+              "member": "CE::Workers::Pool::make_group",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Workers::Pool",
+          "target": "Workers::GroupOptions",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+              "line": 200,
+              "member": "CE::Workers::Pool::make_group",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Runtime::Context",
+          "target": "Workers::GroupOptions",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+              "line": 124,
+              "member": "CE::Runtime::Context::make_worker_group",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "The preparation role supplies its own owned job inputs and may post a graphics follow-up. That dependency belongs to the job, not Pool.",
-        "A group cap does not create more physical workers. Context closes its tracked groups; an injected pool can continue serving unrelated groups.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "A group cap does not create more physical workers. Context closes its tracked groups; an injected pool can continue serving unrelated groups."
       ],
       "level": "detailed",
       "refs": [
@@ -19511,8 +20093,7 @@
       ],
       "notes": [
         "Start with pooled retained handles. Reservations are for explicitly selected construction with an allocator that satisfies the release contract.",
-        "Final handles retain release state; this neither synchronizes object contents nor authorizes use of a destroyed pool facade.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Final handles retain release state; this neither synchronizes object contents nor authorizes use of a destroyed pool facade."
       ],
       "level": "detailed",
       "refs": [
@@ -19729,12 +20310,27 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "State::ObservedVariable",
+          "target": "State::VersionedSnapshot",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/templates/observed-variables.h",
+              "line": 50,
+              "member": "CE::State::ObservedVariable::snapshot",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "These are alternatives, not mandatory layers. Trackers/machines need caller synchronization; a versioned snapshot copies value and revision together.",
-        "Observers run on setter threads. Publication coalesces latest values and is not an event history or owner assignment.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Observers run on setter threads. Publication coalesces latest values and is not an event history or owner assignment."
       ],
       "level": "detailed",
       "refs": [
@@ -20269,12 +20865,75 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Logging::Log",
+          "target": "Logging::Config",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/logging/log.h",
+              "line": 119,
+              "member": "CE::Logging::Log::Log",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Logging::Logger",
+          "target": "Logging::FileEventHandlers",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/logging/logger.h",
+              "line": 51,
+              "member": "CE::Logging::Logger::initialize",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Logging::Logger",
+          "target": "Logging::Config",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/core/logging/logger.h",
+              "line": 51,
+              "member": "CE::Logging::Logger::initialize",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Logging::LogHandle",
+          "target": "Logging::BackendStats",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/logging/log.h",
+              "line": 68,
+              "member": "CE::Logging::LogHandle::backend_stats",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Configure used categories before writers; stop/settle producers before flushing and closing. Keep file callback targets alive through final closure.",
-        "Runtime thresholds cannot restore stripped calls. Logging failure handling and required operation failures remain separate.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Runtime thresholds cannot restore stripped calls. Logging failure handling and required operation failures remain separate."
       ],
       "level": "detailed",
       "refs": [
@@ -20294,7 +20953,8 @@
         "@report",
         "Logging::LogHandle",
         "Logging::QueueStats",
-        "@cleanup"
+        "@cleanup",
+        "Logging::BackendStats"
       ],
       "operations": {
         "Logging::ProcessLifetime": [
@@ -20755,12 +21415,27 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Workers::Group",
+          "target": "Workers::GroupPolicy",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+              "line": 169,
+              "member": "CE::Workers::Group::policy",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Query GameRuntime::diagnostics() before run or after synchronizing with its return/throw, never as a live runtime sampler.",
-        "Other snapshots have owner-specific rules. Empty queues/counters do not prove completion, budgets or hardware behavior.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Other snapshots have owner-specific rules. Empty queues/counters do not prove completion, budgets or hardware behavior."
       ],
       "level": "detailed",
       "refs": [
@@ -20777,7 +21452,8 @@
         "Diagnostics::DispatchStats",
         "Events::EventBus",
         "Events::EventStats",
-        "Logging::Logger"
+        "Logging::Logger",
+        "Workers::GroupPolicy"
       ],
       "operations": {
         "Runtime::GameRuntime": [
@@ -20905,9 +21581,17 @@
               "line": 19,
               "member": "Memory::adjust_length()",
               "via": "operation signature"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/math/fit.h",
+              "line": 19,
+              "member": "CE::Memory::adjust_length",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 2
         },
         {
           "source": "@placement",
@@ -20931,9 +21615,25 @@
               "via": "public geometry operation argument",
               "line": 47,
               "member": "CE::Rendering::Geometry::Anchor::MakeQuad"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/math/anchor.h",
+              "line": 46,
+              "member": "CE::Rendering::Geometry::Anchor::MakeQuad",
+              "access": "public",
+              "via": "member declaration"
+            },
+            {
+              "kind": "accepts",
+              "file": "projects/engine/include/cheryl/math/anchor.h",
+              "line": 55,
+              "member": "CE::Rendering::Geometry::Anchor::MakeQuadStrip",
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 1
+          "evidence_count": 3
         },
         {
           "source": "@config",
@@ -20966,8 +21666,7 @@
       ],
       "notes": [
         "File discovery can block and its results do not refresh automatically. Bit proxies and borrowed index views retain their own lifetime/synchronization rules.",
-        "Use tick.delta_seconds for game simulation; DeltaTime measures an independent local elapsed interval.",
-        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
+        "Use tick.delta_seconds for game simulation; DeltaTime measures an independent local elapsed interval."
       ],
       "level": "detailed",
       "refs": [

@@ -127,7 +127,7 @@ window.galleryState = {
             (current.system === 'overview'
                  ? '<p>Each box is a documented responsibility. Click it to open that subsystem. Click an arrow for supporting types.</p>'
                  : '<div class="legend"><span class="swatch"></span>Types in this subsystem</div><div class="legend"><span class="swatch neighbor"></span>Other Engine contracts</div><div class="legend"><span class="swatch app"></span>Illustrative application roles</div><p>Named free functions appear as operation boxes where they form the actual API boundary. Rounded cream boxes are roles, not Engine types.</p>' +
-                       (current.view === 'application' ? '<p>Methods beneath a type name are selected application entry points. “Implement hooks” identifies methods you override for the engine to call. Select the box for method contracts and reference links.</p>' : '')) +
+                       (current.view === 'application' ? '<p>Methods beneath a type name are selected application entry points. “Implement hooks” identifies methods you override for the engine to call. Select the box for method contracts, reference links and Accepts/Returns links to the types shown in this view.</p>' : '')) +
             '<h4>Arrows</h4><p>Consumer → dependency. No chronological order is implied. Dashed arrows mark optional or alternative choices.</p><details><summary>Scope and evidence</summary><p>These are curated maps. Supporting fields/enums and unrelated dependencies are omitted. The C++ API reference supplies the complete declaration contracts.</p><p>All Engine arrows have declaration or implementation evidence. Application wiring is illustrative and follows the subsystem contracts.</p><div class="source">' +
             current.refs.map(sourceLink).join('<br><br>') + '</div><p>Source revision <code>' +
             data.metadata.revision.slice(0, 12) +
@@ -138,6 +138,22 @@ window.galleryState = {
         stage.querySelectorAll('.dim,.selected,.outgoing,.incoming')
             .forEach(el => el.classList.remove('dim', 'selected', 'outgoing', 'incoming'));
         defaultDetails()
+    }
+    function signatureKinds(edge, operation) {
+        return ['accepts', 'returns'].filter(kind => edge.evidence?.some(
+            ref => ref.member === operation.name && ref.kind === kind));
+    }
+    function signatureLinks(node, operation) {
+        return ['accepts', 'returns'].map(kind => {
+            const targets = current.edges.filter(edge => edge.source === node.key &&
+                signatureKinds(edge, operation).includes(kind)).map(edge =>
+                    current.nodes.find(target => target.key === edge.target));
+            if (!targets.length) return '';
+            return '<div class="signature-types"><span>' +
+                (kind === 'accepts' ? 'Accepts' : 'Returns') + '</span>' + targets.map(target =>
+                    '<button class="link-button" data-node="' + esc(target.key) + '">' +
+                    esc(target.label) + '</button>').join('') + '</div>';
+        }).join('');
     }
     function select(key) {
         selected = key;
@@ -181,7 +197,7 @@ window.galleryState = {
         const operations = (node.operations || []).map(operation =>
             '<div class="connection operation"><code>' + esc(operation.label) + '</code>' +
             '<small>' + (operation.role === 'override' ? 'Implement · engine calls this hook' : 'Application calls') +
-            '</small><p>' + esc(operation.brief) + '</p><div class="source">' +
+            '</small><p>' + esc(operation.brief) + '</p>' + signatureLinks(node, operation) + '<div class="source">' +
             (operation.api ? '<a class="api-link operation-api" target="_top" href="' +
                                  esc(data.metadata.docsRoot + operation.api) + '">Method reference ↗</a><br>' : '') +
             sourceLink(operation) + '</div></div>').join('');
@@ -197,6 +213,7 @@ window.galleryState = {
                                  : '') +
                        sourceLink(node) + '</div>') +
             (operations ? '<h4>Application entry points</h4>' + operations : '') +
+            (node.kind === 'operation' ? signatureLinks(node, node) : '') +
             '<h4>Outgoing · ' + outgoing.length + '</h4>' + list(outgoing, true) +
             '<h4>Incoming · ' + incoming.length + '</h4>' + list(incoming, false) +
             '<button class="return" id="back-details">View notes</button>';
@@ -215,6 +232,11 @@ window.galleryState = {
         if (matchMedia('(max-width:800px)').matches) inspect(true);
         const get = k => current.nodes.find(n => n.key === k);
         const s = get(e.source), t = get(e.target);
+        const signatures = [...(s.operations || []), ...(s.kind === 'operation' ? [s] : [])]
+            .flatMap(operation => signatureKinds(e, operation).map(kind =>
+                '<p class="signature-relation"><code>' + esc(operation.label) + '</code> ' +
+                (kind === 'accepts' ? 'accepts ' : 'returns ') + '<code>' + esc(t.label) + '</code>.</p>'))
+            .join('');
         const examples =
             (e.examples || [])
                 .map(x => '<div class="connection"><div class="source">' + esc(x.source) + ' → ' +
@@ -227,7 +249,7 @@ window.galleryState = {
             (s.kind === 'role' || t.kind === 'role'
                  ? 'Illustrative application wiring; the following guide establishes the API and ownership contract.'
                  : 'Selected Engine dependency; source evidence is listed below.') +
-            '</p>' + examples + '<div class="source">' +
+            '</p>' + signatures + examples + '<div class="source">' +
             (e.examples?.length ? '' : e.evidence.map(sourceLink).join('<br><br>')) +
             '</div><button class="return" id="back-details">View notes</button>';
         $('#back-details').onclick = clear;
