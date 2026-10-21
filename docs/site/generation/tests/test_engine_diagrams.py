@@ -30,6 +30,12 @@ def fixture():
 SOURCE = 'flowchart LR\n    k0["Runtime::Context"]\n    k1(["Application"])\n    k1 --> k0\n'
 
 
+def operation():
+    return {"name": "CE::Runtime::Context::events", "label": "events()", "role": "call",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h", "line": 129,
+            "brief": "Access the context-owned event bus."}
+
+
 class CatalogTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="cheryl-diagram-tests-")
@@ -68,6 +74,22 @@ class CatalogTests(unittest.TestCase):
         catalog["diagrams"][0]["id"] = "../elsewhere"
         self.write(catalog)
         with self.assertRaisesRegex(ValueError, "Invalid or duplicate"):
+            load_catalog(self.source)
+
+    def test_method_labels_must_appear_in_the_owning_box(self):
+        catalog = fixture()
+        catalog["diagrams"][0]["operations"] = {"Runtime::Context": [operation()]}
+        self.write(catalog)
+        with self.assertRaisesRegex(ValueError, "omits operation label"):
+            load_catalog(self.source)
+        self.write(catalog, SOURCE.replace('Runtime::Context"]', 'Runtime::Context<br/>events()"]'))
+        self.assertEqual(load_catalog(self.source), catalog)
+
+    def test_unknown_method_owner_is_rejected(self):
+        catalog = fixture()
+        catalog["diagrams"][0]["operations"] = {"Elsewhere": [operation()]}
+        self.write(catalog)
+        with self.assertRaisesRegex(ValueError, "Unknown operation owner"):
             load_catalog(self.source)
 
 
@@ -119,6 +141,34 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(result["metadata"]["revisionUrl"], "../../revision.json")
             self.assertEqual((destination / "runtime-application.mmd").read_text(), SOURCE)
             self.assertEqual(catalog, fixture(), "Compilation must not change authored metadata")
+
+    def test_methods_are_published_only_in_their_selected_view(self):
+        with tempfile.TemporaryDirectory(prefix="cheryl-diagram-methods-") as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            catalog = fixture()
+            callable_operation = {**operation(), "name": "CE::Runtime::Context::operator()", "label": "operator()()"}
+            catalog["diagrams"][0]["operations"] = {"Runtime::Context": [operation(), callable_operation]}
+            other = {**fixture()["diagrams"][0], "id": "runtime-internal"}
+            catalog["diagrams"].append(other)
+            (source / "catalog.json").write_text(json.dumps(catalog))
+            (source / "runtime-application.mmd").write_text(
+                SOURCE.replace('Runtime::Context"]', 'Runtime::Context<br/>events()<br/>operator()()"]'))
+            (source / "runtime-internal.mmd").write_text(SOURCE)
+            objects = [("CE::Runtime::Context::events", "", "function", "api/context", "events", 1),
+                       ("CE::Runtime::Context::operator()", "", "function", "api/context", "invoke", 1)]
+            destination = root / "html"
+            write_catalog(source, destination, objects, lambda name: name + ".html", "https://example.com")
+            result = json.loads((destination / "catalog.json").read_text())
+            application, internal = result["diagrams"]
+            method = application["nodes"][0]["operations"][0]
+            self.assertEqual(method["api"], "api/context.html#events")
+            self.assertEqual(method["brief"], operation()["brief"])
+            self.assertEqual(application["nodes"][0]["operations"][1]["api"], "api/context.html#invoke")
+            self.assertNotIn("operations", internal["nodes"][0])
+            self.assertNotIn("operations", application)
+            self.assertNotIn("operations", catalog["symbols"]["Runtime::Context"])
 
 
 class AnchorTests(unittest.TestCase):

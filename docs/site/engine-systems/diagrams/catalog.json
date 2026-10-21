@@ -2570,6 +2570,30 @@
       "kind": "system",
       "system": "diagnostics",
       "symbol": null
+    },
+    "Rendering::Geometry::Anchor": {
+      "name": "CE::Rendering::Geometry::Anchor",
+      "label": "Rendering::Geometry::Anchor",
+      "kind": "struct",
+      "file": "projects/engine/include/cheryl/math/anchor.h",
+      "line": 45,
+      "brief": "Builds local Y-up CPU quad geometry from a top-left-origin image rectangle and normalized pivot.",
+      "symbol": "Rendering::Geometry::Anchor",
+      "key": "Rendering::Geometry::Anchor",
+      "system": "utilities",
+      "instance": ""
+    },
+    "Audio::Miniaudio::decode_file()": {
+      "name": "CE::Audio::Miniaudio::decode_file",
+      "label": "Audio::Miniaudio::decode_file()",
+      "kind": "operation",
+      "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+      "line": 26,
+      "brief": "CPU-only file decoding into owned immutable PCM without opening output.",
+      "symbol": "Audio::Miniaudio::decode_file()",
+      "key": "Audio::Miniaudio::decode_file()",
+      "system": "audio",
+      "instance": ""
     }
   },
   "diagrams": [
@@ -13742,7 +13766,8 @@
       ],
       "notes": [
         "The composition role owns Context, the game and GameRuntime. The game supplies init/update/frame/quiesce/deinit hooks.",
-        "Use the supplied compatible factory for the normal native/OpenGL assembly; manual adapters are shown in the focused composition view."
+        "Use the supplied compatible factory for the normal native/OpenGL assembly; manual adapters are shown in the focused composition view.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -13764,7 +13789,127 @@
         "Runtime::ShutdownEndpoint",
         "Runtime::RuntimeLifecycle",
         "@report"
-      ]
+      ],
+      "operations": {
+        "Runtime::GameRuntime": [
+          {
+            "name": "CE::Runtime::GameRuntime::run",
+            "label": "run()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 106,
+            "brief": "Run one blocking session on the platform owner; retain Context and game through return or throw.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::GameRuntime::shutdown",
+            "label": "shutdown()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 113,
+            "brief": "Retain a copyable ordinary shutdown-request endpoint; use stop() or tick.request_stop() for unconditional shutdown.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::GameRuntime::lifecycle",
+            "label": "lifecycle()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 112,
+            "brief": "Retain synchronized live and terminal observations without borrowing GameRuntime.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::GameRuntime::set_shutdown_policy",
+            "label": "set_shutdown_policy()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 117,
+            "brief": "Optionally install host shutdown negotiation before run(); retain the returned policy token while its callbacks are wanted.",
+            "role": "call"
+          }
+        ],
+        "Game::AbstractGame": [
+          {
+            "name": "CE::Game::AbstractGame::init_platform",
+            "label": "init_platform()",
+            "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+            "line": 28,
+            "brief": "Override to bind input, upload initial resources and acquire producer endpoints on platform. init_simulation() and cleanup hooks remain available; Runtime invokes all hooks.",
+            "role": "override"
+          },
+          {
+            "name": "CE::Game::AbstractGame::init_simulation",
+            "label": "init_simulation()",
+            "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+            "line": 29,
+            "brief": "Override for simulation-owned setup after the initial view is available; create Context-aware GUI sessions here when they need that view.",
+            "role": "override"
+          },
+          {
+            "name": "CE::Game::AbstractGame::update",
+            "label": "update(tick)",
+            "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+            "line": 33,
+            "brief": "Override to advance simulation using the borrowed TickContext; no native/GPU mutation from the concurrent simulation owner.",
+            "role": "override"
+          },
+          {
+            "name": "CE::Game::AbstractGame::prepare_render_frame",
+            "label": "prepare_render_frame(frame)",
+            "file": "projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+            "line": 34,
+            "brief": "Override to copy render state into the lent frame writer; preparation may be skipped when no slot is free.",
+            "role": "override"
+          }
+        ],
+        "Game::TickContext": [
+          {
+            "name": "CE::Game::TickContext::request_stop",
+            "label": "request_stop()",
+            "file": "projects/engine/include/cheryl/core/game-framework/tick-context.h",
+            "line": 30,
+            "brief": "Request unconditional shutdown; finish or explicitly return from the current update before normal teardown.",
+            "role": "call"
+          }
+        ],
+        "Rendering::FrameWriter": [
+          {
+            "name": "CE::Rendering::FrameWriter::begin_pass",
+            "label": "begin_pass()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 132,
+            "brief": "Copy camera matrices and pass options into a new retained render pass during this preparation call only.",
+            "role": "call"
+          }
+        ],
+        "Runtime::ShutdownPolicy": [
+          {
+            "name": "CE::Runtime::ShutdownPolicy::reset",
+            "label": "reset()",
+            "file": "projects/engine/include/cheryl/core/game-framework/shutdown.h",
+            "line": 122,
+            "brief": "Withdraw the host policy before destroying borrowed callback targets; reset can cancel an unresolved request.",
+            "role": "call"
+          }
+        ],
+        "Runtime::ShutdownEndpoint": [
+          {
+            "name": "CE::Runtime::ShutdownEndpoint::request",
+            "label": "request()",
+            "file": "projects/engine/include/cheryl/core/game-framework/shutdown.h",
+            "line": 76,
+            "brief": "Stage an ordinary request for a safe platform pass; do not wait for its ticket on an owner needed by the policy.",
+            "role": "call"
+          }
+        ],
+        "Runtime::RuntimeLifecycle": [
+          {
+            "name": "CE::Runtime::RuntimeLifecycle::snapshot",
+            "label": "snapshot()",
+            "file": "projects/engine/include/cheryl/core/game-framework/runtime-lifecycle.h",
+            "line": 163,
+            "brief": "Copy synchronized current/terminal lifecycle state from any thread, including after Runtime destruction.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "display-application",
@@ -14172,7 +14317,8 @@
       ],
       "notes": [
         "Direct window and monitor operations require the platform owner; cross-owner requests use a saved platform endpoint.",
-        "Use copied tick dimensions for simulation layout. Monitor content scale and framebuffer pixels are distinct observations."
+        "Use copied tick dimensions for simulation layout. Monitor content scale and framebuffer pixels are distinct observations.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -14192,7 +14338,107 @@
         "Game::TickContext",
         "Platform::FramebufferSize",
         "Rendering::Camera2D"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::display",
+            "label": "display()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 108,
+            "brief": "Borrow monitor/window inventory on the platform owner.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::Context::window",
+            "label": "window()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 109,
+            "brief": "Borrow the selected live window on platform; throws if none exists and does not marshal to that owner.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::Context::platform_dispatcher",
+            "label": "platform_dispatcher()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 115,
+            "brief": "Acquire a platform submission endpoint during initialization for later owner-affine window changes.",
+            "role": "call"
+          }
+        ],
+        "Runtime::PlatformDispatcher::Submission": [
+          {
+            "name": "CE::Runtime::PlatformDispatcher::Submission::submit",
+            "label": "submit()",
+            "file": "projects/engine/include/cheryl/core/engine/platform-dispatcher.h",
+            "line": 63,
+            "brief": "Queue owned window work for platform execution; never synchronously wait from that owner.",
+            "role": "call"
+          }
+        ],
+        "Platform::Window": [
+          {
+            "name": "CE::Platform::Window::resize",
+            "label": "resize()",
+            "file": "projects/engine/include/cheryl/core/display/window-interface.h",
+            "line": 33,
+            "brief": "Request a positive logical size on platform; runtime later copies observed dimensions into ticks.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Platform::Window::set_mode",
+            "label": "set_mode()",
+            "file": "projects/engine/include/cheryl/core/display/window-interface.h",
+            "line": 34,
+            "brief": "Request a backend-supported mode on the platform owner.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Platform::Window::hide_cursor",
+            "label": "hide_cursor()",
+            "file": "projects/engine/include/cheryl/core/display/window-interface.h",
+            "line": 35,
+            "brief": "Change native cursor visibility on platform; this does not request relative pointer capture.",
+            "role": "call"
+          }
+        ],
+        "Platform::DisplaySystem": [
+          {
+            "name": "CE::Platform::DisplaySystem::monitors",
+            "label": "monitors()",
+            "file": "projects/engine/include/cheryl/core/display/display-system-interface.h",
+            "line": 20,
+            "brief": "Borrow current monitor inventory on platform; copy values before handing them to another thread.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Platform::DisplaySystem::primary_monitor",
+            "label": "primary_monitor()",
+            "file": "projects/engine/include/cheryl/core/display/display-system-interface.h",
+            "line": 22,
+            "brief": "Borrow the current primary-monitor snapshot under the display inventory lifetime.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Platform::DisplaySystem::content_scale",
+            "label": "content_scale()",
+            "file": "projects/engine/include/cheryl/core/display/display-system-interface.h",
+            "line": 24,
+            "brief": "Read a recognized monitor snapshot's X/Y scale on platform; no automatic per-window scale following is implied.",
+            "role": "call"
+          }
+        ],
+        "Rendering::Camera2D": [
+          {
+            "name": "CE::Rendering::CameraBase::set_framebuffer_size",
+            "label": "set_framebuffer_size()",
+            "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+            "line": 22,
+            "brief": "Inherited from CameraBase: apply tick.framebuffer_size on the camera's simulation owner; zero extent is retained.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "input-application",
@@ -14201,18 +14447,6 @@
       "title": "Input \u00b7 application actions and controllers",
       "question": "What must initialization bind, and what does each update consume?",
       "edges": [
-        {
-          "source": "@init",
-          "target": "Input::System",
-          "optional": false,
-          "evidence": [
-            {
-              "file": "docs/site/engine-systems/input.md",
-              "via": "illustrative application composition"
-            }
-          ],
-          "evidence_count": 1
-        },
         {
           "source": "Input::System",
           "target": "Input::Actions::Bindings",
@@ -14616,11 +14850,42 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "@init",
+          "target": "Runtime::Context",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/apps/first-game/src/first-game.cpp",
+              "line": 26,
+              "via": "maintained application calls engine_.input() inside init_platform()"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Runtime::Context",
+          "target": "Input::System",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+              "line": 113,
+              "member": "CE::Runtime::Context::input",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Direct binding changes run during platform initialization. Reusable controllers retain a context endpoint and their own lease.",
-        "Updates consume semantic actions and copied observations; text input/focus is a separate focused view."
+        "Updates consume semantic actions and copied observations; text input/focus is a separate focused view.",
+        "Acquire Context::input(), action_contexts() and keyboard_id() on platform during initialization; use retained endpoints and immutable tick actions afterward.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -14628,6 +14893,7 @@
       ],
       "nodes": [
         "@init",
+        "Runtime::Context",
         "Input::System",
         "Input::Actions::Bindings",
         "Input::Control",
@@ -14640,7 +14906,143 @@
         "Game::TickContext",
         "Input::Tick",
         "Input::Actions::View"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::input",
+            "label": "input()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 113,
+            "brief": "Borrow the initialized input adapter during init_platform(); access does not marshal to platform.",
+            "role": "call"
+          }
+        ],
+        "Input::System": [
+          {
+            "name": "CE::Input::System::bindings",
+            "label": "bindings()",
+            "file": "projects/engine/include/cheryl/core/controls/input-interface.h",
+            "line": 36,
+            "brief": "Borrow mutable direct-action bindings on platform; do not mutate from concurrent simulation.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::System::action_contexts",
+            "label": "action_contexts()",
+            "file": "projects/engine/include/cheryl/core/controls/input-interface.h",
+            "line": 38,
+            "brief": "Acquire a retained request endpoint on platform; later attach() calls can run on simulation or other producers.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::System::keyboard_id",
+            "label": "keyboard_id()",
+            "file": "projects/engine/include/cheryl/core/controls/input-interface.h",
+            "line": 40,
+            "brief": "Read the keyboard identity on platform and retain that value for controller definitions.",
+            "role": "call"
+          }
+        ],
+        "Input::Actions::Bindings": [
+          {
+            "name": "CE::Input::Actions::Bindings::bind_button",
+            "label": "bind_button()",
+            "file": "projects/engine/include/cheryl/core/controls/input-bindings.h",
+            "line": 93,
+            "brief": "Map a physical control or chord to a direct action on platform; retain the returned token.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Actions::Bindings::bind_axis",
+            "label": "bind_axis()",
+            "file": "projects/engine/include/cheryl/core/controls/input-bindings.h",
+            "line": 97,
+            "brief": "Map a physical axis with optional modifiers, scale and dead zone on platform.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Actions::Bindings::unbind",
+            "label": "unbind()",
+            "file": "projects/engine/include/cheryl/core/controls/input-bindings.h",
+            "line": 99,
+            "brief": "Remove a direct binding by its retained token on platform during cleanup.",
+            "role": "call"
+          }
+        ],
+        "Input::Actions::ContextSubmission": [
+          {
+            "name": "CE::Input::Actions::ContextSubmission::attach",
+            "label": "attach()",
+            "file": "projects/engine/include/cheryl/core/controls/action-context.h",
+            "line": 72,
+            "brief": "Accept an owned context definition and return its lease; mappings apply at the next input poll, not immediately.",
+            "role": "call"
+          }
+        ],
+        "Input::Actions::Context": [
+          {
+            "name": "CE::Input::Actions::Context::id",
+            "label": "id()",
+            "file": "projects/engine/include/cheryl/core/controls/action-context.h",
+            "line": 57,
+            "brief": "Copy namespace identity if a retained historical action view should outlive the lease.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Actions::Context::reset",
+            "label": "reset()",
+            "file": "projects/engine/include/cheryl/core/controls/action-context.h",
+            "line": 54,
+            "brief": "Request removal at the next poll with exclusive handle access; retained historical ticks are unchanged.",
+            "role": "call"
+          }
+        ],
+        "Input::Tick": [
+          {
+            "name": "CE::Input::Tick::actions",
+            "label": "actions(context)",
+            "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+            "line": 74,
+            "brief": "Select one controller's context-local action namespace; the returned View borrows this update's Tick.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Tick::button",
+            "label": "button()",
+            "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+            "line": 71,
+            "brief": "Read direct/global button activity and observation durations without polling live devices.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Tick::axis",
+            "label": "axis()",
+            "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+            "line": 72,
+            "brief": "Read direct/global absolute values or accumulated relative deltas.",
+            "role": "call"
+          }
+        ],
+        "Input::Actions::View": [
+          {
+            "name": "CE::Input::Actions::View::button",
+            "label": "button()",
+            "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+            "line": 116,
+            "brief": "Read a local button in the selected context; keep the borrowed Tick alive and unmoved.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Input::Actions::View::axis",
+            "label": "axis()",
+            "file": "projects/engine/include/cheryl/core/controls/tick-input.h",
+            "line": 117,
+            "brief": "Read a local axis in the selected context; missing actions return inactive/zero state.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "assets-application",
@@ -14916,11 +15318,60 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Assets::Sprites::Manager",
+          "target": "Assets::Sprites::Asset",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/resources/asset-management/sprite-mgr.h",
+              "line": 30,
+              "member": "CE::Assets::Sprites::Manager::get_asset",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Assets::Tilesets::Manager",
+          "target": "Assets::Tilesets::Asset",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/templates/asset-mgr.h",
+              "line": 149,
+              "member": "CE::Assets::Cache::Store::get_asset",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Assets::Sprites::Asset",
+          "target": "Assets::Sprites::Animation",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/assets/types/2d/sprite.h",
+              "line": 62,
+              "member": "CE::Assets::Sprites::Asset::animation",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Shared asset metadata stays immutable; application objects own transforms, gameplay and playback state.",
-        "A failed upload may leave earlier successful entries published. Validate looked-up handles and release game copies before backend closure."
+        "A failed upload may leave earlier successful entries published. Validate looked-up handles and release game copies before backend closure.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -14942,7 +15393,109 @@
         "@prepare",
         "Rendering::Submission::resolve_sprite()",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "operations": {
+        "Assets::Loading::Loader": [
+          {
+            "name": "CE::Assets::Loading::Loader::load_assets",
+            "label": "load_assets()",
+            "file": "projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h",
+            "line": 115,
+            "brief": "Prepare and upload synchronously on the active provider/loading owner; partial publication is possible on failure.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Assets::Loading::Loader::prepare",
+            "label": "prepare()",
+            "file": "projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h",
+            "line": 112,
+            "brief": "Own a CPU-only batch without publishing caches; the application may run this on a worker.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Assets::Loading::Loader::upload",
+            "label": "upload()",
+            "file": "projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h",
+            "line": 114,
+            "brief": "Consume the prepared batch on the active provider/loading owner. Successful entries can publish before the whole batch completes.",
+            "role": "call"
+          }
+        ],
+        "Assets::Sprites::Manager": [
+          {
+            "name": "CE::Assets::Sprites::Manager::get_asset",
+            "label": "get_asset()",
+            "file": "projects/engine/include/cheryl/core/resources/asset-management/sprite-mgr.h",
+            "line": 30,
+            "brief": "Look up an exact namespace/name pair; returns a retained asset or null without loading.",
+            "role": "call"
+          }
+        ],
+        "Assets::Tilesets::Manager": [
+          {
+            "name": "CE::Assets::Cache::Store::get_asset",
+            "label": "get_asset()",
+            "file": "projects/engine/include/cheryl/templates/asset-mgr.h",
+            "line": 149,
+            "brief": "Inherited Store lookup of an exact qualified namespace:name key. Returns a retained asset or null without loading.",
+            "role": "call"
+          }
+        ],
+        "Assets::Sprites::Asset": [
+          {
+            "name": "CE::Assets::Sprites::Asset::animation",
+            "label": "animation()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/sprite.h",
+            "line": 62,
+            "brief": "Create independent CPU playback from an exact clip name and optional facing; missing or ambiguous selection throws.",
+            "role": "call"
+          }
+        ],
+        "Assets::Tilesets::Asset": [
+          {
+            "name": "CE::Assets::Tilesets::Asset::tile",
+            "label": "tile()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/tileset.h",
+            "line": 78,
+            "brief": "Retain one static grid cell and its resources; invalid cell selection throws.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Assets::Tilesets::Asset::animation",
+            "label": "animation()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/tileset.h",
+            "line": 79,
+            "brief": "Create an independent cursor for a named tile animation.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Assets::Tilesets::Asset::cell_at",
+            "label": "cell_at()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/tileset.h",
+            "line": 85,
+            "brief": "Resolve one original target at nonnegative elapsed milliseconds; this neither advances shared data nor recursively animates the result.",
+            "role": "call"
+          }
+        ],
+        "Assets::Sprites::Animation": [
+          {
+            "name": "CE::Assets::Sprites::Animation::advance",
+            "label": "advance()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/sprite.h",
+            "line": 35,
+            "brief": "Advance the independent cursor on its simulation owner using finite nonnegative elapsed seconds.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Assets::Sprites::Animation::cell",
+            "label": "cell()",
+            "file": "projects/engine/include/cheryl/assets/types/2d/sprite.h",
+            "line": 37,
+            "brief": "Read the current grid cell for draw submission; it differs from the clip-frame ordinal.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "resources-application",
@@ -15370,7 +15923,8 @@
       ],
       "notes": [
         "Decode may run on CPU workers; native upload must use the initialized provider/loading owner.",
-        "Ordinary sprite/text/UI loading supplies default materials. Direct pipeline/material construction is an advanced option, not a prerequisite."
+        "Ordinary sprite/text/UI loading supplies default materials. Direct pipeline/material construction is an advanced option, not a prerequisite.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -15392,7 +15946,55 @@
         "Rendering::DrawPacket2D",
         "@report",
         "Rendering::GraphicsDomain"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::resources",
+            "label": "resources()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 112,
+            "brief": "Borrow the selected resource provider. The getter does not marshal calls to its graphics owner.",
+            "role": "call"
+          }
+        ],
+        "Rendering::Resources::Provider": [
+          {
+            "name": "CE::Rendering::Resources::Provider::create_image",
+            "label": "create_image()",
+            "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+            "line": 66,
+            "brief": "Copy owned decoded RGBA pixels into a fresh immutable image on the backend upload owner/current context.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::Resources::Provider::upload_geometry",
+            "label": "upload_geometry()",
+            "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+            "line": 77,
+            "brief": "Copy transient vertices into immutable geometry on the backend upload owner/current context.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::Resources::Provider::graphics_domain",
+            "label": "graphics_domain()",
+            "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+            "line": 59,
+            "brief": "Copy the retained graphics-domain observation token; empty means unsupported.",
+            "role": "call"
+          }
+        ],
+        "Rendering::GraphicsDomain": [
+          {
+            "name": "CE::Rendering::GraphicsDomain::snapshot",
+            "label": "snapshot()",
+            "file": "projects/engine/include/cheryl/core/rendering/graphics-domain.h",
+            "line": 47,
+            "brief": "Copy native-domain identity, sequence and usability from any thread without retaining native objects.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "rendering-application",
@@ -15644,7 +16246,8 @@
       ],
       "notes": [
         "Advance camera/gameplay/animation in update. Preparation may be skipped; it only snapshots the chosen appearance.",
-        "Writers borrow one runtime slot for the hook. Native draw/upload work belongs to graphics; loaded assets already supply ordinary materials."
+        "Writers borrow one runtime slot for the hook. Native draw/upload work belongs to graphics; loaded assets already supply ordinary materials.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -15661,7 +16264,87 @@
         "Rendering::Submission::resolve_sprite()",
         "Assets::Sprites::Asset",
         "Rendering::DrawPacket2D"
-      ]
+      ],
+      "operations": {
+        "Rendering::Camera2D": [
+          {
+            "name": "CE::Rendering::CameraBase::set_framebuffer_size",
+            "label": "set_framebuffer_size()",
+            "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+            "line": 22,
+            "brief": "Inherited from CameraBase. Update framebuffer pixel extent and projection on the camera owner.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::CameraBase::set_view_matrix",
+            "label": "set_view_matrix()",
+            "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+            "line": 25,
+            "brief": "Inherited from CameraBase. Copy a world-to-view transform on the camera owner.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::CameraBase::projection_matrix",
+            "label": "projection_matrix()",
+            "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+            "line": 28,
+            "brief": "Inherited from CameraBase. Borrow the projection matrix to copy into begin_pass(); exclude concurrent camera mutation.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::CameraBase::view_matrix",
+            "label": "view_matrix()",
+            "file": "projects/engine/include/cheryl/core/rendering/camera.h",
+            "line": 29,
+            "brief": "Inherited from CameraBase. Borrow the view matrix to copy into begin_pass(); exclude concurrent camera mutation.",
+            "role": "call"
+          }
+        ],
+        "Rendering::FrameWriter": [
+          {
+            "name": "CE::Rendering::FrameWriter::begin_pass",
+            "label": "begin_pass()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 132,
+            "brief": "Append a pass with copied camera matrices, constraints and pass parameters during frame preparation.",
+            "role": "call"
+          }
+        ],
+        "Rendering::PassWriter": [
+          {
+            "name": "CE::Rendering::PassWriter::add",
+            "label": "add()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 88,
+            "brief": "Validate and append one packet or a packet list in authored draw order; the writer is borrowed only during frame preparation.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::PassWriter::semantics",
+            "label": "semantics()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 78,
+            "brief": "Copy this pass projection/view semantics for submission resolution.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::PassWriter::parameters",
+            "label": "parameters()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 83,
+            "brief": "Borrow this pass parameter set while creating the submission Context2D; outer frame growth can invalidate references.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::PassWriter::constraints",
+            "label": "constraints()",
+            "file": "projects/engine/include/cheryl/core/rendering/render-frame.h",
+            "line": 84,
+            "brief": "Borrow this pass pipeline constraints to copy into the submission Context2D; keep the frame stable while copying.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "text-application",
@@ -16139,7 +16822,8 @@
       ],
       "notes": [
         "Static labels explicitly layout, prepare and upload after graphics initialization. Changing labels can use Updater instead of application futures.",
-        "Context supplies an embedded default font. Configure named families/defaults before consumers; changing the catalogue does not rebind existing handles."
+        "Context supplies an embedded default font. Configure named families/defaults before consumers; changing the catalogue does not rebind existing handles.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -16164,7 +16848,99 @@
         "Text::Rendering::Request",
         "@prepare",
         "Rendering::Submission::resolve_text()"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::fonts",
+            "label": "fonts()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 114,
+            "brief": "Borrow the Context CPU font catalogue; configure before constructing consumers.",
+            "role": "call"
+          }
+        ],
+        "Text::FontService": [
+          {
+            "name": "CE::Text::FontService::configure",
+            "label": "configure()",
+            "file": "projects/engine/include/cheryl/text/font-service.h",
+            "line": 51,
+            "brief": "Build and publish the catalogue before consumers are created; existing retained fonts and toolkit consumers stay unchanged.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Text::FontService::default_font",
+            "label": "default_font()",
+            "file": "projects/engine/include/cheryl/text/font-service.h",
+            "line": 54,
+            "brief": "Retain the configured default, or embedded fallback when the default is unavailable.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Text::FontService::get",
+            "label": "get()",
+            "file": "projects/engine/include/cheryl/text/font-service.h",
+            "line": 55,
+            "brief": "Look up an exact application font reference; missing references return the default rather than an empty handle.",
+            "role": "call"
+          }
+        ],
+        "Text::Font": [
+          {
+            "name": "CE::Text::Font::reference",
+            "label": "reference()",
+            "file": "projects/engine/include/cheryl/text/font.h",
+            "line": 46,
+            "brief": "Borrow the stable reference to save a selected font choice; keep this nonempty retained font alive.",
+            "role": "call"
+          }
+        ],
+        "Text::ShapedText": [
+          {
+            "name": "CE::Text::ShapedText::glyphs",
+            "label": "glyphs()",
+            "file": "projects/engine/include/cheryl/text/layout.h",
+            "line": 78,
+            "brief": "Inspect visually ordered glyphs and logical shaping-cluster ranges before upload; retain the unmoved layout.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Text::ShapedText::lines",
+            "label": "lines()",
+            "file": "projects/engine/include/cheryl/text/layout.h",
+            "line": 79,
+            "brief": "Inspect accepted line records and glyph ranges before upload; retain the unmoved layout.",
+            "role": "call"
+          }
+        ],
+        "Text::Rendering::Updater": [
+          {
+            "name": "CE::Text::Rendering::Updater::request",
+            "label": "request()",
+            "file": "projects/engine/include/cheryl/text/text-updater.h",
+            "line": 53,
+            "brief": "Own the latest desired content/options on the serialized simulation owner. Work starts only when update() runs.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Text::Rendering::Updater::update",
+            "label": "update()",
+            "file": "projects/engine/include/cheryl/text/text-updater.h",
+            "line": 54,
+            "brief": "Advance and adopt without waiting, retaining the previous complete generation on failure; inspect failure() and explicitly retry() unchanged failures.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Text::Rendering::Updater::current",
+            "label": "current()",
+            "file": "projects/engine/include/cheryl/text/text-updater.h",
+            "line": 57,
+            "brief": "Retain the last complete generation for frame preparation. The empty constructor has no current generation until an update succeeds.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "gui-application",
@@ -16539,56 +17315,98 @@
         },
         {
           "source": "UI::TGUI::Scene",
-          "target": "Rendering::PassWriter",
+          "target": "Rendering::FrameWriter",
           "optional": false,
           "evidence": [
             {
-              "kind": "uses",
-              "file": "projects/modules/ui/tgui/src/scene.cpp",
-              "line": 186,
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+              "line": 43,
               "member": "CE::UI::TGUI::Scene::write",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/modules/ui/tgui/src/scene.cpp",
-              "line": 187,
-              "member": "CE::UI::TGUI::Scene::write",
-              "access": "invalid",
-              "via": "libclang AST"
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 1
         },
         {
           "source": "UI::RmlUi::Scene",
-          "target": "Rendering::PassWriter",
+          "target": "Rendering::FrameWriter",
           "optional": false,
           "evidence": [
             {
-              "kind": "uses",
-              "file": "projects/modules/ui/rmlui/src/scene.cpp",
-              "line": 169,
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+              "line": 39,
               "member": "CE::UI::RmlUi::Scene::write",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/modules/ui/rmlui/src/scene.cpp",
-              "line": 170,
-              "member": "CE::UI::RmlUi::Scene::write",
-              "access": "invalid",
-              "via": "libclang AST"
+              "access": "public",
+              "via": "member declaration"
             }
           ],
-          "evidence_count": 2
+          "evidence_count": 1
+        },
+        {
+          "source": "UI::TGUI::SceneUploader",
+          "target": "UI::TGUI::RecordedScene",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+              "line": 59,
+              "member": "CE::UI::TGUI::SceneUploader::upload",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@ui",
+          "target": "UI::TGUI::SceneUploader",
+          "optional": true,
+          "evidence": [
+            {
+              "file": "docs/site/modules/tgui.md",
+              "via": "illustrative application composition: submit owned recording from UI"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "UI::RmlUi::SceneUploader",
+          "target": "UI::RmlUi::RecordedScene",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "accepts",
+              "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+              "line": 54,
+              "member": "CE::UI::RmlUi::SceneUploader::upload",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@ui",
+          "target": "UI::RmlUi::SceneUploader",
+          "optional": true,
+          "evidence": [
+            {
+              "file": "docs/site/modules/rmlui.md",
+              "via": "illustrative application composition: submit owned recording from UI"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Dashed choices are alternatives: select a toolkit, do not infer a shared Engine widget API. Its widgets/documents remain application-owned.",
-        "Application code feeds the complete input batch, selects pointer delivery, requests focus and publishes recordings. Quiesce UI calls before session closure."
+        "Application code feeds the complete input batch, selects pointer delivery, requests focus and publishes recordings. Quiesce UI calls before session closure.",
+        "Sessions need view and time updates. Enable automatic_view/automatic_time when constructing a Context-aware session, or call set_view()/update_time() explicitly; both options default off.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -16609,8 +17427,134 @@
         "UI::TGUI::Scene",
         "UI::RmlUi::Scene",
         "@prepare",
-        "Rendering::PassWriter"
-      ]
+        "Rendering::FrameWriter"
+      ],
+      "operations": {
+        "UI::TGUI::Session": [
+          {
+            "name": "CE::UI::TGUI::Session::gui",
+            "label": "gui()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+            "line": 72,
+            "brief": "Borrow the native toolkit authoring interface on the UI owner; release native references before session closure.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::TGUI::Session::handle_input",
+            "label": "handle_input()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+            "line": 95,
+            "brief": "Feed the complete ordered input batch once on the UI owner; the application selects pointer delivery.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::TGUI::Session::request_keyboard_focus",
+            "label": "request_keyboard_focus()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+            "line": 89,
+            "brief": "Request session keyboard/text routing for future input polls; native widget or element focus remains separate.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::TGUI::Session::record",
+            "label": "record()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/session.h",
+            "line": 104,
+            "brief": "Create a complete owned CPU recording on the UI owner, without graphics upload.",
+            "role": "call"
+          }
+        ],
+        "UI::TGUI::SceneUploader": [
+          {
+            "name": "CE::UI::TGUI::SceneUploader::upload",
+            "label": "upload()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+            "line": 59,
+            "brief": "Upload a complete CPU recording directly on the original provider owner/current context.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::TGUI::SceneUploader::submit",
+            "label": "submit()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+            "line": 63,
+            "brief": "Submit an owned recording through the matching platform endpoint; no live toolkit object crosses the boundary. Adopt the ready scene explicitly.",
+            "role": "call"
+          }
+        ],
+        "UI::TGUI::Scene": [
+          {
+            "name": "CE::UI::TGUI::Scene::write",
+            "label": "write()",
+            "file": "projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h",
+            "line": 43,
+            "brief": "Append the retained complete scene to the borrowed FrameWriter at the application-selected pass position; no toolkit or upload calls occur.",
+            "role": "call"
+          }
+        ],
+        "UI::RmlUi::Session": [
+          {
+            "name": "CE::UI::RmlUi::Session::context",
+            "label": "context()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+            "line": 74,
+            "brief": "Borrow the native toolkit authoring interface on the UI owner; release native references before session closure.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::RmlUi::Session::handle_input",
+            "label": "handle_input()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+            "line": 93,
+            "brief": "Feed the complete ordered input batch once on the UI owner; the application selects pointer delivery.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::RmlUi::Session::request_keyboard_focus",
+            "label": "request_keyboard_focus()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+            "line": 90,
+            "brief": "Request session keyboard/text routing for future input polls; native widget or element focus remains separate.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::RmlUi::Session::record",
+            "label": "record()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h",
+            "line": 102,
+            "brief": "Create a complete owned CPU recording on the UI owner, without graphics upload.",
+            "role": "call"
+          }
+        ],
+        "UI::RmlUi::SceneUploader": [
+          {
+            "name": "CE::UI::RmlUi::SceneUploader::upload",
+            "label": "upload()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+            "line": 54,
+            "brief": "Upload a complete CPU recording directly on the original provider owner/current context.",
+            "role": "call"
+          },
+          {
+            "name": "CE::UI::RmlUi::SceneUploader::submit",
+            "label": "submit()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+            "line": 58,
+            "brief": "Submit an owned recording through the matching platform endpoint; no live toolkit object crosses the boundary. Adopt the ready scene explicitly.",
+            "role": "call"
+          }
+        ],
+        "UI::RmlUi::Scene": [
+          {
+            "name": "CE::UI::RmlUi::Scene::write",
+            "label": "write()",
+            "file": "projects/modules/ui/rmlui/include/cheryl/ui/rmlui/scene.h",
+            "line": 39,
+            "brief": "Append the retained complete scene to the borrowed FrameWriter at the application-selected pass position; no toolkit or upload calls occur.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "audio-application",
@@ -16634,7 +17578,7 @@
         {
           "source": "@load",
           "target": "Audio::Clip",
-          "optional": false,
+          "optional": true,
           "evidence": [
             {
               "file": "docs/site/engine-systems/audio.md",
@@ -16970,11 +17914,41 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "@load",
+          "target": "Audio::Miniaudio::decode_file()",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "docs/site/modules/miniaudio.md",
+              "via": "illustrative application composition"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Audio::Miniaudio::decode_file()",
+          "target": "Audio::Clip",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+              "line": 26,
+              "member": "CE::Audio::Miniaudio::decode_file",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Output lifetime is independent of Context. Keep the source file available for streaming, and close output after its producers settle.",
-        "Dropping a Voice handle does not stop playback. maintain()/notification pumping is explicit and does not advance the audio clock."
+        "Dropping a Voice handle does not stop playback. maintain()/notification pumping is explicit and does not advance the audio clock.",
+        "decode_file() is the ordinary whole-file loading path. Clip::from_samples() is the alternative for application-supplied PCM; stream() keeps its source file available.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -16984,6 +17958,7 @@
         "@host",
         "Audio::Miniaudio::System",
         "@load",
+        "Audio::Miniaudio::decode_file()",
         "Audio::Clip",
         "@audio",
         "Audio::System",
@@ -16997,7 +17972,141 @@
         "Runtime::RuntimeServices",
         "Runtime::ServiceAttachment",
         "@cleanup"
-      ]
+      ],
+      "operations": {
+        "Audio::Miniaudio::System": [
+          {
+            "name": "CE::Audio::Miniaudio::System::open_device",
+            "label": "open_device()",
+            "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+            "line": 43,
+            "brief": "Open native output at a loading boundary; preparation may block. Playback then advances on the device clock.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Miniaudio::System::publish_events_to",
+            "label": "publish_events_to()",
+            "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+            "line": 56,
+            "brief": "Select a weak event publication route on the designated notification owner before pumping.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Miniaudio::System::pump_with",
+            "label": "pump_with()",
+            "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+            "line": 59,
+            "brief": "Optionally attach notification publication to platform maintenance on its initialized owner. Retain the attachment; it neither maintains voices nor advances audio time.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Miniaudio::System::publish_notifications",
+            "label": "publish_notifications()",
+            "file": "projects/modules/audio/miniaudio/include/cheryl/backends/miniaudio.h",
+            "line": 57,
+            "brief": "Publish queued outcomes on the designated notification owner, manually or for final outcomes after close(); this does not reclaim voices or advance playback.",
+            "role": "call"
+          }
+        ],
+        "Audio::Clip": [
+          {
+            "name": "CE::Audio::Clip::from_samples",
+            "label": "from_samples()",
+            "file": "projects/engine/include/cheryl/audio/clip.h",
+            "line": 38,
+            "brief": "Create immutable owned interleaved float PCM without opening a device; decoding an audio file uses Miniaudio::decode_file() instead.",
+            "role": "call"
+          }
+        ],
+        "Audio::System": [
+          {
+            "name": "CE::Audio::System::play",
+            "label": "play()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 75,
+            "brief": "Admit an independent voice retaining the prepared clip; dropping the voice handle does not stop playback.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::System::stream",
+            "label": "stream()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 77,
+            "brief": "Open an independent streamed voice; keep its source file available through playback and restart.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::System::maintain",
+            "label": "maintain()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 82,
+            "brief": "Regularly reclaim unreferenced inactive voices; this does not advance playback or publish notifications.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::System::close",
+            "label": "close()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 83,
+            "brief": "Close output after producers settle. Pump any final notifications before removing subscriptions and releasing the system.",
+            "role": "call"
+          }
+        ],
+        "Audio::Voice": [
+          {
+            "name": "CE::Audio::Voice::snapshot",
+            "label": "snapshot()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 52,
+            "brief": "Copy synchronized voice state and current-generation outcome; surviving handles report Closed after output closure.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Voice::pause",
+            "label": "pause()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 53,
+            "brief": "Pause a playing voice while preserving its playback position.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Voice::resume",
+            "label": "resume()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 54,
+            "brief": "Resume a paused voice; stopped or finished voices need restart() instead.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Audio::Voice::stop",
+            "label": "stop()",
+            "file": "projects/engine/include/cheryl/audio/system.h",
+            "line": 55,
+            "brief": "Stop terminally until restart(); dropping the voice handle alone does not stop active playback.",
+            "role": "call"
+          }
+        ],
+        "Events::EventBus": [
+          {
+            "name": "CE::Events::EventBus::register_listener",
+            "label": "register_listener()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 206,
+            "brief": "Register a persistent typed PlaybackEnded listener. Immediate delivery runs on the notification-pump owner; use an explicit delivery adapter for simulation-owned state.",
+            "role": "call"
+          }
+        ],
+        "Runtime::ServiceAttachment": [
+          {
+            "name": "CE::Runtime::ServiceAttachment::reset",
+            "label": "reset()",
+            "file": "projects/engine/include/cheryl/core/engine/runtime-services.h",
+            "line": 60,
+            "brief": "Detach optional notification pumping after final outcomes are handled; keep the attachment alive while pumping is wanted.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "events-application",
@@ -17021,18 +18130,6 @@
         {
           "source": "@producer",
           "target": "Events::EventBus::Publisher",
-          "optional": false,
-          "evidence": [
-            {
-              "file": "docs/site/engine-systems/events.md",
-              "via": "illustrative application composition"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
-          "source": "@listener",
-          "target": "Events::EventBus",
           "optional": false,
           "evidence": [
             {
@@ -17291,11 +18388,73 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "@listener",
+          "target": "Runtime::Context",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "docs/site/runtime/event-delivery.md",
+              "line": 137,
+              "via": "documented application listener setup through engine.events().register_listener(...)"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Runtime::Context",
+          "target": "Events::EventBus",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+              "line": 116,
+              "member": "CE::Runtime::Context::events",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Events::EventBus",
+          "target": "Events::EventBus::Publisher",
+          "optional": false,
+          "evidence": [
+            {
+              "kind": "returns",
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 184,
+              "member": "CE::Events::EventBus::publisher",
+              "access": "public",
+              "via": "member declaration"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@cleanup",
+          "target": "Events::EventBus",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+              "line": 249,
+              "member": "CE::Events::EventBus::unregister_and_wait",
+              "access": "public",
+              "via": "explicit application cleanup operation; waits for already-entered callbacks"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Immediate callbacks run on the producer. Explicit delivery selects a different owner and requires an independent error sink.",
-        "Dropping Registration does not unregister. Invalidate and settle entered callbacks before destroying borrowed targets."
+        "Dropping Registration does not unregister. Invalidate and settle entered callbacks before destroying borrowed targets.",
+        "Context::events() is the normal route for runtime-connected engine observations. An application-owned bus is also valid; the selected producer determines which bus to subscribe to. Registration::disconnect() invalidates entry without waiting; unregister_and_wait() additionally settles entered callbacks, except self-wait rejects.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -17306,6 +18465,7 @@
         "Events::EventChannel",
         "Events::EventBus::Publisher",
         "@listener",
+        "Runtime::Context",
         "Events::EventBus",
         "Events::EventBus::Registration",
         "@callback",
@@ -17314,7 +18474,65 @@
         "Events::EventBus::Delivery",
         "Events::EventBus::ErrorHandler",
         "@cleanup"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::events",
+            "label": "events()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 116,
+            "brief": "Borrow this context's bus for its runtime-connected producer observations; raw GLFW resize uses a separate default bus.",
+            "role": "call"
+          }
+        ],
+        "Events::EventBus::Publisher": [
+          {
+            "name": "CE::Events::EventBus::Publisher::notify",
+            "label": "notify()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 167,
+            "brief": "Publish an exact-type observation without propagating notification failures; this weak endpoint retains no bus or Context.",
+            "role": "call"
+          }
+        ],
+        "Events::EventBus": [
+          {
+            "name": "CE::Events::EventBus::register_listener",
+            "label": "register_listener()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 206,
+            "brief": "Register an exact channel and retain the persistent registration; optional queued delivery requires an independent, nonthrowing error sink.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Events::EventBus::publisher",
+            "label": "publisher()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 184,
+            "brief": "Acquire a copyable weak route for producers without retaining the bus facade.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Events::EventBus::unregister_and_wait",
+            "label": "unregister_and_wait()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 249,
+            "brief": "Invalidate and wait for entered callbacks before destroying borrowed targets; never wait from that listener's own callback.",
+            "role": "call"
+          }
+        ],
+        "Events::EventBus::Registration": [
+          {
+            "name": "CE::Events::EventBus::Registration::disconnect",
+            "label": "disconnect()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 143,
+            "brief": "Prevent fresh callback entry without borrowing the bus; already-entered callbacks may still finish.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "dispatch-application",
@@ -17678,7 +18896,8 @@
       ],
       "notes": [
         "Save copyable endpoints during initialization. Platform work receives Context; simulation requests drain at update boundaries.",
-        "Read retained futures only when ready. Never wait on the owner required to finish the request; endpoint lifetime does not extend borrowed captures."
+        "Read retained futures only when ready. Never wait on the owner required to finish the request; endpoint lifetime does not extend borrowed captures.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -17698,7 +18917,95 @@
         "Runtime::SimulationDispatcher::Submission",
         "@sim",
         "Game::TickContext"
-      ]
+      ],
+      "operations": {
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::platform_dispatcher",
+            "label": "platform_dispatcher()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 115,
+            "brief": "Acquire the runtime-controlled platform queue facade while Context lives.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Runtime::Context::resources",
+            "label": "resources()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 112,
+            "brief": "Borrow compatible resource upload services inside platform-owned work with the graphics context current.",
+            "role": "call"
+          }
+        ],
+        "Runtime::PlatformDispatcher": [
+          {
+            "name": "CE::Runtime::PlatformDispatcher::submission",
+            "label": "submission()",
+            "file": "projects/engine/include/cheryl/core/engine/platform-dispatcher.h",
+            "line": 95,
+            "brief": "Retain a copyable endpoint while the dispatcher lives; acquiring it does not open queue acceptance.",
+            "role": "call"
+          }
+        ],
+        "Runtime::PlatformDispatcher::Submission": [
+          {
+            "name": "CE::Runtime::PlatformDispatcher::Submission::submit",
+            "label": "submit()",
+            "file": "projects/engine/include/cheryl/core/engine/platform-dispatcher.h",
+            "line": 63,
+            "brief": "Queue owned work(Context&) for later platform execution; retain its future and adopt only after readiness.",
+            "role": "call"
+          }
+        ],
+        "Rendering::Resources::Provider": [
+          {
+            "name": "CE::Rendering::Resources::Provider::create_image",
+            "label": "create_image()",
+            "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+            "line": 66,
+            "brief": "Upload owned decoded pixels on the backend's graphics/loading owner; the returned immutable image retains no input buffer.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::Resources::Provider::upload_geometry",
+            "label": "upload_geometry()",
+            "file": "projects/engine/include/cheryl/assets/resources/resource-provider.h",
+            "line": 77,
+            "brief": "Upload transient vertices on the backend owner and retain the returned geometry handle.",
+            "role": "call"
+          }
+        ],
+        "Runtime::GameRuntime": [
+          {
+            "name": "CE::Runtime::GameRuntime::simulation_dispatcher",
+            "label": "simulation_dispatcher()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 119,
+            "brief": "Acquire the runtime-controlled simulation queue before producers need to post owner work.",
+            "role": "call"
+          }
+        ],
+        "Runtime::SimulationDispatcher": [
+          {
+            "name": "CE::Runtime::SimulationDispatcher::submission",
+            "label": "submission()",
+            "file": "projects/engine/include/cheryl/core/engine/simulation-dispatcher.h",
+            "line": 95,
+            "brief": "Retain a producer endpoint independent of dispatcher lifetime; runtime opens/closes the session queue.",
+            "role": "call"
+          }
+        ],
+        "Runtime::SimulationDispatcher::Submission": [
+          {
+            "name": "CE::Runtime::SimulationDispatcher::Submission::submit",
+            "label": "submit()",
+            "file": "projects/engine/include/cheryl/core/engine/simulation-dispatcher.h",
+            "line": 63,
+            "brief": "Queue owned work() for a simulation update boundary; never wait for the result on simulation.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "workers-application",
@@ -17990,7 +19297,8 @@
       ],
       "notes": [
         "The preparation role supplies its own owned job inputs and may post a graphics follow-up. That dependency belongs to the job, not Pool.",
-        "A group cap does not create more physical workers. Context closes its tracked groups; an injected pool can continue serving unrelated groups."
+        "A group cap does not create more physical workers. Context closes its tracked groups; an injected pool can continue serving unrelated groups.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -18008,7 +19316,83 @@
         "Assets::Loading::Loader",
         "Runtime::PlatformDispatcher::Submission",
         "@cleanup"
-      ]
+      ],
+      "operations": {
+        "Workers::Pool": [
+          {
+            "name": "CE::Workers::Pool::make_group",
+            "label": "make_group()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 200,
+            "brief": "Create a standalone service workload on this shared physical pool; use Context::make_worker_group() for runtime-tracked work.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Workers::Pool::shutdown",
+            "label": "shutdown()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 209,
+            "brief": "Close, drain and join application-owned physical capacity after dependent owners can progress; never call from a worker in this pool.",
+            "role": "call"
+          }
+        ],
+        "Runtime::Context": [
+          {
+            "name": "CE::Runtime::Context::make_worker_group",
+            "label": "make_worker_group()",
+            "file": "projects/engine/include/cheryl/core/engine/engine-context.h",
+            "line": 124,
+            "brief": "Create a runtime-tracked CPU group on lazy owned or configured shared capacity; Runtime settles these groups before game resources are released.",
+            "role": "call"
+          }
+        ],
+        "Workers::Group": [
+          {
+            "name": "CE::Workers::Group::submit",
+            "label": "submit()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 140,
+            "brief": "Queue an owned CPU-only callable and retain its result future; arrange owner-affine follow-up explicitly.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Workers::Group::close",
+            "label": "close()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 165,
+            "brief": "Reject new submissions without cancelling accepted jobs; Runtime also closes its tracked groups during teardown.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Workers::Group::drain",
+            "label": "drain()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 166,
+            "brief": "After close(), wait for accepted jobs and captures; never on the same pool or while blocking an owner needed by a job. Runtime settles tracked groups after quiesce().",
+            "role": "call"
+          }
+        ],
+        "Assets::Loading::Loader": [
+          {
+            "name": "CE::Assets::Loading::Loader::prepare",
+            "label": "prepare()",
+            "file": "projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h",
+            "line": 112,
+            "brief": "Prepare owned asset data on CPU without publishing caches; upload later on the serialized loading/graphics owner.",
+            "role": "call"
+          }
+        ],
+        "Runtime::PlatformDispatcher::Submission": [
+          {
+            "name": "CE::Runtime::PlatformDispatcher::Submission::submit",
+            "label": "submit()",
+            "file": "projects/engine/include/cheryl/core/engine/platform-dispatcher.h",
+            "line": 63,
+            "brief": "Post the job's owned upload data for platform work; Pool itself has no dispatch dependency.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "memory-application",
@@ -18030,134 +19414,9 @@
           "evidence_count": 1
         },
         {
-          "source": "Memory::Objects::Pool",
-          "target": "Memory::Objects::PoolState",
-          "optional": false,
-          "evidence": [
-            {
-              "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
-              "line": 45,
-              "member": "Memory::Objects::Pool::release_context_type",
-              "via": "API declaration"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
-          "source": "Memory::Objects::PoolState",
-          "target": "Memory::Objects::Constructor::Context",
-          "optional": false,
-          "evidence": [
-            {
-              "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
-              "line": 19,
-              "via": "retained public nested construction context"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
           "source": "@storage",
           "target": "Memory::Objects::Reservation",
           "optional": true,
-          "evidence": [
-            {
-              "file": "docs/site/engine-systems/memory.md",
-              "via": "illustrative application composition"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
-          "source": "Memory::Objects::Reservation",
-          "target": "Memory::Allocators::ObjectPoolAllocator",
-          "optional": false,
-          "evidence": [
-            {
-              "kind": "defaults",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 52,
-              "via": "template default"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
-          "source": "Memory::Objects::Reservation",
-          "target": "Memory::Block",
-          "optional": false,
-          "evidence": [
-            {
-              "kind": "stores",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 72,
-              "member": "CE::Memory::Objects::Reservation::remaining_",
-              "access": "private",
-              "via": "member declaration"
-            },
-            {
-              "kind": "returns",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 99,
-              "member": "CE::Memory::Objects::Reservation::remaining_ranges",
-              "access": "public",
-              "via": "member declaration"
-            },
-            {
-              "kind": "stores",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 72,
-              "member": "CE::Memory::Objects::Reservation::remaining_",
-              "access": "private",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 80,
-              "member": "CE::Memory::Objects::Reservation::Reservation<T, Allocator>",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 83,
-              "member": "CE::Memory::Objects::Reservation::Reservation<T, Allocator>",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 90,
-              "member": "CE::Memory::Objects::Reservation::Reservation<T, Allocator>",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "uses",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 94,
-              "member": "CE::Memory::Objects::Reservation::~Reservation<T, Allocator>",
-              "access": "invalid",
-              "via": "libclang AST"
-            },
-            {
-              "kind": "returns",
-              "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
-              "line": 99,
-              "member": "CE::Memory::Objects::Reservation::remaining_ranges",
-              "access": "public",
-              "via": "libclang AST"
-            }
-          ],
-          "evidence_count": 19
-        },
-        {
-          "source": "Memory::Objects::Constructor::Context",
-          "target": "@objects",
-          "optional": false,
           "evidence": [
             {
               "file": "docs/site/engine-systems/memory.md",
@@ -18193,7 +19452,7 @@
         {
           "source": "@cleanup",
           "target": "Memory::Objects::Pool",
-          "optional": false,
+          "optional": true,
           "evidence": [
             {
               "file": "docs/site/engine-systems/memory.md",
@@ -18201,11 +19460,26 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "Memory::Objects::Pool",
+          "target": "@objects",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
+              "via": "pooled construction of caller-selected T",
+              "line": 51,
+              "member": "CE::Memory::Objects::Pool::retrieve_objects"
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Start with pooled retained handles. Reservations are for explicitly selected construction with an allocator that satisfies the release contract.",
-        "Final handles retain release state; this neither synchronizes object contents nor authorizes use of a destroyed pool facade."
+        "Final handles retain release state; this neither synchronizes object contents nor authorizes use of a destroyed pool facade.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -18214,15 +19488,73 @@
       "nodes": [
         "@storage",
         "Memory::Objects::Pool",
-        "Memory::Objects::PoolState",
-        "Memory::Objects::Constructor::Context",
         "Memory::Objects::Reservation",
-        "Memory::Allocators::ObjectPoolAllocator",
-        "Memory::Block",
         "@objects",
         "@world",
         "@cleanup"
-      ]
+      ],
+      "operations": {
+        "Memory::Objects::Pool": [
+          {
+            "name": "CE::State::Singleton::get",
+            "label": "get()",
+            "file": "projects/engine/include/cheryl/templates/singleton.h",
+            "line": 64,
+            "brief": "Inherited entry point: acquire the shared Pool<T> facade before retrieving objects.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Memory::Objects::Pool::retrieve_objects",
+            "label": "retrieve_objects()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
+            "line": 51,
+            "brief": "Construct a batch now; each returned handle independently retains release state.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Memory::Objects::Pool::cull",
+            "label": "cull()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
+            "line": 57,
+            "brief": "Optional storage maintenance: queue complete free owners old enough for release.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Memory::Objects::Pool::release_culled",
+            "label": "release_culled()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/pool.h",
+            "line": 58,
+            "brief": "Finish optional culling by releasing still-complete queued backing owners; live handles remain valid.",
+            "role": "call"
+          }
+        ],
+        "Memory::Objects::Reservation": [
+          {
+            "name": "CE::Memory::Objects::Reservation::Reservation",
+            "label": "Reservation()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
+            "line": 77,
+            "brief": "Reserve unconstructed slots and retain release state; count zero creates an empty reservation.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Memory::Objects::Reservation::emplace",
+            "label": "emplace()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
+            "line": 102,
+            "brief": "Construct one unclaimed logical slot; failed construction leaves that slot available to retry.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Memory::Objects::Reservation::remaining_ranges",
+            "label": "remaining_ranges()",
+            "file": "projects/engine/include/cheryl/core/resources/objects/object-reservation.hpp",
+            "line": 99,
+            "brief": "Borrow the remaining unclaimed partition; emplace, move and destruction can invalidate its contents.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "state-application",
@@ -18338,11 +19670,38 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "@reader",
+          "target": "State::VersionedVariable",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/templates/versioned-variable.h",
+              "via": "public application entry point",
+              "line": 51
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@reader",
+          "target": "State::ObservedVariable",
+          "optional": true,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/templates/observed-variables.h",
+              "via": "public application entry point",
+              "line": 50
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "These are alternatives, not mandatory layers. Trackers/machines need caller synchronization; a versioned snapshot copies value and revision together.",
-        "Observers run on setter threads. Publication coalesces latest values and is not an event history or owner assignment."
+        "Observers run on setter threads. Publication coalesces latest values and is not an event history or owner assignment.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -18358,7 +19717,113 @@
         "State::VersionedSnapshot",
         "@reader",
         "@hooks"
-      ]
+      ],
+      "operations": {
+        "State::StateTracker": [
+          {
+            "name": "CE::State::StateTracker::update",
+            "label": "update()",
+            "file": "projects/engine/include/cheryl/templates/state-tracker.h",
+            "line": 20,
+            "brief": "Shift the current sample into previous and install the next sample; caller serializes access.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::StateTracker::changed",
+            "label": "changed()",
+            "file": "projects/engine/include/cheryl/templates/state-tracker.h",
+            "line": 27,
+            "brief": "Compare current and previous samples; this is not a latched unread-change flag.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::StateTracker::delta",
+            "label": "delta()",
+            "file": "projects/engine/include/cheryl/templates/state-tracker.h",
+            "line": 33,
+            "brief": "Subtract previous from current using the sampled type's units.",
+            "role": "call"
+          }
+        ],
+        "State::StateMachine": [
+          {
+            "name": "CE::State::StateMachine::add_transition",
+            "label": "add_transition()",
+            "file": "projects/engine/include/cheryl/templates/state-machine.h",
+            "line": 38,
+            "brief": "Append an ordered state/trigger rule with optional guard and transition action.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::StateMachine::trigger",
+            "label": "trigger()",
+            "file": "projects/engine/include/cheryl/templates/state-machine.h",
+            "line": 47,
+            "brief": "Run the first eligible transition; caller serializes access and avoids recursive trigger calls.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::StateMachine::state",
+            "label": "state()",
+            "file": "projects/engine/include/cheryl/templates/state-machine.h",
+            "line": 45,
+            "brief": "Borrow the current state; copy it for an independently retained sample.",
+            "role": "call"
+          }
+        ],
+        "State::VersionedVariable": [
+          {
+            "name": "CE::State::VersionedVariable::set",
+            "label": "set()",
+            "file": "projects/engine/include/cheryl/templates/versioned-variable.h",
+            "line": 40,
+            "brief": "Publish a changed value and advance its revision; equal values leave the revision unchanged.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::VersionedVariable::snapshot",
+            "label": "snapshot()",
+            "file": "projects/engine/include/cheryl/templates/versioned-variable.h",
+            "line": 51,
+            "brief": "Copy the value and revision together under one storage lock.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::VersionedVariable::wait_for_change",
+            "label": "wait_for_change()",
+            "file": "projects/engine/include/cheryl/templates/versioned-variable.h",
+            "line": 66,
+            "brief": "Wait for a revision different from a retained one; updates coalesce and there is no timeout/cancellation.",
+            "role": "call"
+          }
+        ],
+        "State::ObservedVariable": [
+          {
+            "name": "CE::State::ObservedVariable::ObservedVariable",
+            "label": "ObservedVariable()",
+            "file": "projects/engine/include/cheryl/templates/observed-variables.h",
+            "line": 32,
+            "brief": "Supply the initial value and owned fixed observer list; construction invokes no observer.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::ObservedVariable::set",
+            "label": "set()",
+            "file": "projects/engine/include/cheryl/templates/observed-variables.h",
+            "line": 40,
+            "brief": "Publish then invoke observers on the setter's thread, even for equal values; callbacks protect their own targets.",
+            "role": "call"
+          },
+          {
+            "name": "CE::State::ObservedVariable::snapshot",
+            "label": "snapshot()",
+            "file": "projects/engine/include/cheryl/templates/observed-variables.h",
+            "line": 50,
+            "brief": "Copy a consistent stored value/revision pair without invoking observers.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "logging-application",
@@ -18758,11 +20223,25 @@
             }
           ],
           "evidence_count": 1
+        },
+        {
+          "source": "@host",
+          "target": "Logging::Logger",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/core/logging/logger.h",
+              "via": "public application entry point",
+              "line": 51
+            }
+          ],
+          "evidence_count": 1
         }
       ],
       "notes": [
         "Configure used categories before writers; stop/settle producers before flushing and closing. Keep file callback targets alive through final closure.",
-        "Runtime thresholds cannot restore stripped calls. Logging failure handling and required operation failures remain separate."
+        "Runtime thresholds cannot restore stripped calls. Logging failure handling and required operation failures remain separate.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -18783,7 +20262,107 @@
         "Logging::LogHandle",
         "Logging::QueueStats",
         "@cleanup"
-      ]
+      ],
+      "operations": {
+        "Logging::ProcessLifetime": [
+          {
+            "name": "CE::Logging::ProcessLifetime::ProcessLifetime",
+            "label": "ProcessLifetime()",
+            "file": "projects/engine/include/cheryl/core/logging/process-lifetime.h",
+            "line": 18,
+            "brief": "Keep an outer guard alive until all logging callers and diagnostic readers finish; final shutdown is terminal.",
+            "role": "call"
+          }
+        ],
+        "Logging::Config": [
+          {
+            "name": "CE::Logging::Config::for_logger",
+            "label": "for_logger()",
+            "file": "projects/engine/include/cheryl/core/logging/config.h",
+            "line": 48,
+            "brief": "Choose the category/profile runtime threshold defaults before its first explicit initialization.",
+            "role": "call"
+          }
+        ],
+        "Logging::Log": [
+          {
+            "name": "CE::Logging::Log::Log",
+            "label": "Log()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 119,
+            "brief": "Construct an independently owned named logger with handlers and configuration; requires a live process guard.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::LogHandle::info",
+            "label": "info()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 92,
+            "brief": "Inherited writer: format and submit an informational record only when compiled and admitted by runtime filtering.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::LogHandle::close",
+            "label": "close()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 73,
+            "brief": "Inherited lifecycle operation: close after producer quiescence; a timed close may be incomplete.",
+            "role": "call"
+          }
+        ],
+        "Logging::Logger": [
+          {
+            "name": "CE::Logging::Logger::initialize",
+            "label": "initialize()",
+            "file": "projects/engine/include/cheryl/core/logging/logger.h",
+            "line": 51,
+            "brief": "Explicitly configure the shared named category before lazy access or writers; repeated explicit initialization rejects.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::Logger::info",
+            "label": "info()",
+            "file": "projects/engine/include/cheryl/core/logging/logger.h",
+            "line": 121,
+            "brief": "Emit an informational record through the shared named category.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::Logger::warn",
+            "label": "warn()",
+            "file": "projects/engine/include/cheryl/core/logging/logger.h",
+            "line": 129,
+            "brief": "Emit a warning through the shared named category; keep the original operation error authoritative.",
+            "role": "call"
+          }
+        ],
+        "Logging::LogHandle": [
+          {
+            "name": "CE::Logging::LogHandle::shared_queue_stats",
+            "label": "shared_queue_stats()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 67,
+            "brief": "Copy observations of the shared Cheryl queue; counts include flush requests and are not a completion barrier.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::LogHandle::backend_stats",
+            "label": "backend_stats()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 68,
+            "brief": "Observe backend health and destination activity for this logger.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Logging::LogHandle::report_diagnostics",
+            "label": "report_diagnostics()",
+            "file": "projects/engine/include/cheryl/core/logging/log.h",
+            "line": 69,
+            "brief": "Emit an explicit logging summary outside containing subsystem locks and callbacks.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "diagnostics-application",
@@ -19147,7 +20726,8 @@
       ],
       "notes": [
         "Query GameRuntime::diagnostics() before run or after synchronizing with its return/throw, never as a live runtime sampler.",
-        "Other snapshots have owner-specific rules. Empty queues/counters do not prove completion, budgets or hardware behavior."
+        "Other snapshots have owner-specific rules. Empty queues/counters do not prove completion, budgets or hardware behavior.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -19165,7 +20745,67 @@
         "Events::EventBus",
         "Events::EventStats",
         "Logging::Logger"
-      ]
+      ],
+      "operations": {
+        "Runtime::GameRuntime": [
+          {
+            "name": "CE::Runtime::GameRuntime::diagnostics",
+            "label": "diagnostics()",
+            "file": "projects/engine/include/cheryl/core/game-framework/game-runtime.h",
+            "line": 111,
+            "brief": "Copy unstarted or completed-session observations after synchronization with run(); live sampling rejects.",
+            "role": "call"
+          }
+        ],
+        "Workers::Group": [
+          {
+            "name": "CE::Workers::Group::status",
+            "label": "status()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 168,
+            "brief": "Copy workload activity and failure counters; a snapshot is not a completion barrier.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Workers::Group::policy",
+            "label": "policy()",
+            "file": "projects/engine/include/cheryl/core/engine/worker-pool.h",
+            "line": 169,
+            "brief": "Copy the requested/effective policy and preferred fallback recorded at creation.",
+            "role": "call"
+          }
+        ],
+        "Runtime::PlatformDispatcher": [
+          {
+            "name": "CE::Runtime::PlatformDispatcher::diagnostics",
+            "label": "diagnostics()",
+            "file": "projects/engine/include/cheryl/core/engine/platform-dispatcher.h",
+            "line": 103,
+            "brief": "Observe pending, running and cumulative activity; pending alone excludes detached work.",
+            "role": "call"
+          }
+        ],
+        "Events::EventBus": [
+          {
+            "name": "CE::Events::EventBus::diagnostics",
+            "label": "diagnostics()",
+            "file": "projects/engine/include/cheryl/core/subsystems/event-bus.h",
+            "line": 253,
+            "brief": "Copy registration and delivery counters; closure and counters do not drain callbacks.",
+            "role": "call"
+          }
+        ],
+        "Logging::Logger": [
+          {
+            "name": "CE::Logging::Logger::info",
+            "label": "info()",
+            "file": "projects/engine/include/cheryl/core/logging/logger.h",
+            "line": 121,
+            "brief": "Format the application's copied observations outside owner locks/native callbacks; filtering may suppress the report.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "utilities-application",
@@ -19211,18 +20851,6 @@
           "evidence_count": 1
         },
         {
-          "source": "@placement",
-          "target": "Rendering::Geometry::Pivot",
-          "optional": false,
-          "evidence": [
-            {
-              "file": "docs/site/engine-systems/utilities.md",
-              "via": "illustrative application composition"
-            }
-          ],
-          "evidence_count": 1
-        },
-        {
           "source": "@storage",
           "target": "Memory::adjust_length()",
           "optional": false,
@@ -19249,13 +20877,55 @@
           "evidence_count": 1
         },
         {
-          "source": "@config",
-          "target": "Text::Numbers::string_to_number()",
+          "source": "@placement",
+          "target": "Rendering::Geometry::Anchor",
           "optional": false,
           "evidence": [
             {
               "file": "docs/site/engine-systems/utilities.md",
-              "via": "illustrative application composition"
+              "via": "illustrative application geometry preparation"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "Rendering::Geometry::Anchor",
+          "target": "Rendering::Geometry::Pivot",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/math/anchor.h",
+              "via": "public geometry operation argument",
+              "line": 47,
+              "member": "CE::Rendering::Geometry::Anchor::MakeQuad"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@config",
+          "target": "Text::Numbers::parse_integers()",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/math/string-numbers.h",
+              "via": "explicit application parser choice",
+              "line": 51,
+              "member": "CE::Text::Numbers::parse_integers"
+            }
+          ],
+          "evidence_count": 1
+        },
+        {
+          "source": "@config",
+          "target": "Text::Numbers::parse_floats()",
+          "optional": false,
+          "evidence": [
+            {
+              "file": "projects/engine/include/cheryl/math/string-numbers.h",
+              "via": "explicit application parser choice",
+              "line": 24,
+              "member": "CE::Text::Numbers::parse_floats"
             }
           ],
           "evidence_count": 1
@@ -19263,7 +20933,8 @@
       ],
       "notes": [
         "File discovery can block and its results do not refresh automatically. Bit proxies and borrowed index views retain their own lifetime/synchronization rules.",
-        "Use tick.delta_seconds for game simulation; DeltaTime measures an independent local elapsed interval."
+        "Use tick.delta_seconds for game simulation; DeltaTime measures an independent local elapsed interval.",
+        "Methods beneath type names are selected application entry points, not complete inventories. Implement hooks marks engine-invoked overrides. Select a box for method contracts and declaration links."
       ],
       "level": "detailed",
       "refs": [
@@ -19276,13 +20947,97 @@
         "@bits",
         "Math::BitArray",
         "@placement",
+        "Rendering::Geometry::Anchor",
         "Rendering::Geometry::Pivot",
         "@storage",
         "Memory::adjust_length()",
         "Memory::FitPolicy",
         "@config",
-        "Text::Numbers::string_to_number()"
-      ]
+        "Text::Numbers::parse_integers()",
+        "Text::Numbers::parse_floats()"
+      ],
+      "operations": {
+        "Files::FileIndex": [
+          {
+            "name": "CE::Files::FileIndex::FileIndex",
+            "label": "FileIndex()",
+            "file": "projects/engine/include/cheryl/core/resources/fileio/file-mgr.h",
+            "line": 23,
+            "brief": "Scan an explicitly supplied root; construct a new index to rescan previously visited directories.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Files::FileIndex::get_files_of_type",
+            "label": "get_files_of_type()",
+            "file": "projects/engine/include/cheryl/core/resources/fileio/file-mgr.h",
+            "line": 27,
+            "brief": "Borrow an extension bucket using a leading dot; a missing extension inserts an empty bucket.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Files::FileIndex::search_directory",
+            "label": "search_directory()",
+            "file": "projects/engine/include/cheryl/core/resources/fileio/file-mgr.h",
+            "line": 25,
+            "brief": "Add an unvisited directory tree; discovery can block and may leave a partial index on failure.",
+            "role": "call"
+          }
+        ],
+        "Time::DeltaTime": [
+          {
+            "name": "CE::Time::DeltaTime::operator()",
+            "label": "operator()()",
+            "file": "projects/engine/include/cheryl/templates/delta.h",
+            "line": 34,
+            "brief": "Return elapsed seconds and start the next interval at the same clock sample; use runtime tick delta for gameplay.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Time::DeltaTime::elapsed",
+            "label": "elapsed()",
+            "file": "projects/engine/include/cheryl/templates/delta.h",
+            "line": 41,
+            "brief": "Observe the native clock duration without starting a new interval.",
+            "role": "call"
+          }
+        ],
+        "Math::BitArray": [
+          {
+            "name": "CE::Math::BitArray::operator[]",
+            "label": "operator[]()",
+            "file": "projects/engine/include/cheryl/math/binary.h",
+            "line": 79,
+            "brief": "Read or write one valid bit index; the mutable proxy borrows the array and access requires caller synchronization.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Math::BitArray::words",
+            "label": "words()",
+            "file": "projects/engine/include/cheryl/math/binary.h",
+            "line": 82,
+            "brief": "Borrow native packed words; their representation is not portable serialization.",
+            "role": "call"
+          }
+        ],
+        "Rendering::Geometry::Anchor": [
+          {
+            "name": "CE::Rendering::Geometry::Anchor::MakeQuad",
+            "label": "MakeQuad()",
+            "file": "projects/engine/include/cheryl/math/anchor.h",
+            "line": 46,
+            "brief": "Create six CPU vertices from a normalized pivot and pixel rectangle; require finite valid pivot and nonzero texture size.",
+            "role": "call"
+          },
+          {
+            "name": "CE::Rendering::Geometry::Anchor::MakeQuadStrip",
+            "label": "MakeQuadStrip()",
+            "file": "projects/engine/include/cheryl/math/anchor.h",
+            "line": 55,
+            "brief": "Create a four-vertex CPU quad strip using the same coordinate and dimension requirements.",
+            "role": "call"
+          }
+        ]
+      }
     },
     {
       "id": "runtime-focus-assembly",

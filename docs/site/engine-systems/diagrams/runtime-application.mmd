@@ -11,23 +11,23 @@ config:
     rankSpacing: 38
     padding: 12
 ---
-flowchart LR
+flowchart TB
     accTitle: Runtime · application composition
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
     k1("Application::GLFWOpenGL::<br/>make_context()"):::focal
     k2["Runtime::<br/>Context"]:::focal
-    k3["Runtime::<br/>GameRuntime"]:::focal
+    k3["<b>Runtime::<br/>GameRuntime</b><br/><br/>run()<br/>shutdown()<br/>lifecycle()<br/>set_shutdown_policy()"]:::focal
     k4(["Application-owned game objects"]):::app
-    k5["Game::<br/>AbstractGame"]:::focal
+    k5["<b>Game::<br/>AbstractGame</b><br/><br/>Implement hooks<br/>init_platform()<br/>init_simulation()<br/>update(tick)<br/>prepare_render_frame(frame)"]:::focal
     k6(["Application<br/>update()"]):::app
-    k7["Game::<br/>TickContext"]:::focal
+    k7["<b>Game::<br/>TickContext</b><br/><br/>request_stop()"]:::focal
     k8(["Application<br/>prepare_render_frame()"]):::app
-    k9["Rendering::<br/>FrameWriter"]:::neighbor
-    k10["Runtime::<br/>ShutdownPolicy"]:::focal
+    k9["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass()"]:::neighbor
+    k10["<b>Runtime::<br/>ShutdownPolicy</b><br/><br/>reset()"]:::focal
     k11(["Application<br/>producer"]):::app
-    k12["Runtime::<br/>ShutdownEndpoint"]:::focal
-    k13["Runtime::<br/>RuntimeLifecycle"]:::focal
+    k12["<b>Runtime::<br/>ShutdownEndpoint</b><br/><br/>request()"]:::focal
+    k13["<b>Runtime::<br/>RuntimeLifecycle</b><br/><br/>snapshot()"]:::focal
     k14(["Application<br/>report"]):::app
     k0 --> k1
     k1 --> k2

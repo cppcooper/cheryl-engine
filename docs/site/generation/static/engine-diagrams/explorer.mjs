@@ -126,7 +126,8 @@ window.galleryState = {
             current.notes.map(p => '<p>' + esc(p) + '</p>').join('') + '<h4>Read the boxes</h4>' +
             (current.system === 'overview'
                  ? '<p>Each box is a documented responsibility. Click it to open that subsystem. Click an arrow for supporting types.</p>'
-                 : '<div class="legend"><span class="swatch"></span>Types in this subsystem</div><div class="legend"><span class="swatch neighbor"></span>Other Engine contracts</div><div class="legend"><span class="swatch app"></span>Illustrative application roles</div><p>Named free functions appear as operation boxes where they form the actual API boundary. Rounded cream boxes are roles, not Engine types.</p>') +
+                 : '<div class="legend"><span class="swatch"></span>Types in this subsystem</div><div class="legend"><span class="swatch neighbor"></span>Other Engine contracts</div><div class="legend"><span class="swatch app"></span>Illustrative application roles</div><p>Named free functions appear as operation boxes where they form the actual API boundary. Rounded cream boxes are roles, not Engine types.</p>' +
+                       (current.view === 'application' ? '<p>Methods beneath a type name are selected application entry points. “Implement hooks” identifies methods you override for the engine to call. Select the box for method contracts and reference links.</p>' : '')) +
             '<h4>Arrows</h4><p>Consumer → dependency. No chronological order is implied. Dashed arrows mark optional or alternative choices.</p><details><summary>Scope and evidence</summary><p>These are curated maps. Supporting fields/enums and unrelated dependencies are omitted. The C++ API reference supplies the complete declaration contracts.</p><p>All Engine arrows have declaration or implementation evidence. Application wiring is illustrative and follows the subsystem contracts.</p><div class="source">' +
             current.refs.map(sourceLink).join('<br><br>') + '</div><p>Source revision <code>' +
             data.metadata.revision.slice(0, 12) +
@@ -177,6 +178,13 @@ window.galleryState = {
                       })
                       .join('')
                 : '<p>No connections in this selected view.</p>';
+        const operations = (node.operations || []).map(operation =>
+            '<div class="connection operation"><code>' + esc(operation.label) + '</code>' +
+            '<small>' + (operation.role === 'override' ? 'Implement · engine calls this hook' : 'Application calls') +
+            '</small><p>' + esc(operation.brief) + '</p><div class="source">' +
+            (operation.api ? '<a class="api-link operation-api" target="_top" href="' +
+                                 esc(data.metadata.docsRoot + operation.api) + '">Method reference ↗</a><br>' : '') +
+            sourceLink(operation) + '</div></div>').join('');
         $('#details').innerHTML =
             '<h3>' + esc(node.label) + '</h3><span class="kind">' + esc(node.kind) + '</span>' +
             (node.instance ? '<span class="kind">' + esc(node.instance) + '</span>' : '') +
@@ -188,6 +196,7 @@ window.galleryState = {
                                        '">Open API reference ↗</a></p>'
                                  : '') +
                        sourceLink(node) + '</div>') +
+            (operations ? '<h4>Application entry points</h4>' + operations : '') +
             '<h4>Outgoing · ' + outgoing.length + '</h4>' + list(outgoing, true) +
             '<h4>Incoming · ' + incoming.length + '</h4>' + list(incoming, false) +
             '<button class="return" id="back-details">View notes</button>';
@@ -286,7 +295,8 @@ window.galleryState = {
             el.dataset.key = n.key;
             el.setAttribute('role', 'button');
             el.setAttribute('tabindex', '0');
-            el.setAttribute('aria-label', n.label);
+            el.setAttribute('aria-label', n.label + (n.operations?.length ? '. ' + n.operations.map(
+                operation => (operation.role === 'override' ? 'Implement ' : '') + operation.label).join(', ') : ''));
             el.onclick = e => {
                 e.stopPropagation();
                 if (!moved)
@@ -437,6 +447,9 @@ window.galleryState = {
         zoom(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top)
     }, {passive : false});
     window.addEventListener('resize', fit);
+    const matches = (d, q) => (d.title + ' ' + d.question).toLowerCase().includes(q) ||
+        d.nodes.some(n => n.label.toLowerCase().includes(q) ||
+            n.operations?.some(operation => (operation.name + ' ' + operation.label).toLowerCase().includes(q)));
     $('#search').oninput = () => {
         const q = $('#search').value.toLowerCase().trim(), out = $('#search-results');
         out.innerHTML = '';
@@ -445,8 +458,7 @@ window.galleryState = {
         if (!q)
             return;
         for (const d of data.diagrams
-                 .filter(d => (d.title + ' ' + d.question).toLowerCase().includes(q) ||
-                              d.nodes.some(n => n.label.toLowerCase().includes(q)))
+                 .filter(d => matches(d, q))
                  .slice(0, 18)) {
             const b = document.createElement('button');
             b.innerHTML = esc(d.title) + '<small>' + esc(viewName(d)) + '</small>';
@@ -476,8 +488,7 @@ window.galleryState = {
         if (!q)
             return;
         for (const d of data.diagrams
-                 .filter(d => (d.title + ' ' + d.question).toLowerCase().includes(q) ||
-                              d.nodes.some(n => n.label.toLowerCase().includes(q)))
+                 .filter(d => matches(d, q))
                  .slice(0, 18)) {
             const b = document.createElement('button');
             b.innerHTML = esc(d.title) + '<small>' + esc(viewName(d)) + '</small>';

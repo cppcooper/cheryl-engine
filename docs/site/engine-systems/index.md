@@ -94,7 +94,9 @@ Each system's Usage section provides an entry diagram and concrete relationships
 in its Uses and Used by tables. Arrows point from the consumer to what it uses;
 dashed arrows mark optional or alternative choices. The
 [Diagram explorer](diagram-explorer.md#overview-systems) adds an engine-only map,
-an application map and focused views for the busiest boundaries.
+an application map and focused views for the busiest boundaries. Application
+maps show selected public methods beneath their owning types; **Implement hooks**
+identifies callbacks your game supplies for the engine to invoke.
 
 | System overview | Purpose and details |
 | --- | --- |

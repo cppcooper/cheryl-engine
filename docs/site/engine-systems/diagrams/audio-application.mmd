@@ -11,40 +11,43 @@ config:
     rankSpacing: 38
     padding: 12
 ---
-flowchart LR
+flowchart TB
     accTitle: Audio · application-owned playback and outcomes
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1["Audio::Miniaudio::<br/>System"]:::focal
+    k1["<b>Audio::Miniaudio::<br/>System</b><br/><br/>open_device()<br/>publish_events_to()<br/>pump_with()<br/>publish_notifications()"]:::focal
     k2(["Application<br/>loading work"]):::app
-    k3["Audio::<br/>Clip"]:::focal
-    k4(["Application<br/>sound controller"]):::app
-    k5["Audio::<br/>System"]:::focal
-    k6["Audio::<br/>PlaybackOptions"]:::focal
-    k7["Audio::<br/>Voice"]:::focal
-    k8["Audio::<br/>VoiceSnapshot"]:::focal
-    k9(["Application<br/>listener setup"]):::app
-    k10["Events::<br/>EventBus"]:::neighbor
-    k11["Audio::<br/>PlaybackEnded"]:::focal
-    k12(["Application<br/>init_platform()"]):::app
-    k13["Runtime::<br/>RuntimeServices"]:::neighbor
-    k14["Runtime::<br/>ServiceAttachment"]:::neighbor
-    k15(["Application<br/>cleanup / quiesce()"]):::app
+    k3("Audio::<br/>Miniaudio::decode_file()"):::focal
+    k4["<b>Audio::<br/>Clip</b><br/><br/>from_samples()"]:::focal
+    k5(["Application<br/>sound controller"]):::app
+    k6["<b>Audio::<br/>System</b><br/><br/>play()<br/>stream()<br/>maintain()<br/>close()"]:::focal
+    k7["Audio::<br/>PlaybackOptions"]:::focal
+    k8["<b>Audio::<br/>Voice</b><br/><br/>snapshot()<br/>pause()<br/>resume()<br/>stop()"]:::focal
+    k9["Audio::<br/>VoiceSnapshot"]:::focal
+    k10(["Application<br/>listener setup"]):::app
+    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener()"]:::neighbor
+    k12["Audio::<br/>PlaybackEnded"]:::focal
+    k13(["Application<br/>init_platform()"]):::app
+    k14["Runtime::<br/>RuntimeServices"]:::neighbor
+    k15["<b>Runtime::<br/>ServiceAttachment</b><br/><br/>reset()"]:::neighbor
+    k16(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
-    k2 --> k3
-    k4 --> k5
-    k4 --> k6
-    k5 --> k3
+    k2 -.-> k4
+    k5 --> k6
     k5 --> k7
-    k4 --> k7
-    k7 --> k8
-    k9 --> k10
-    k9 --> k11
-    k12 --> k1
-    k1 --> k13
+    k6 --> k4
+    k6 --> k8
+    k5 --> k8
+    k8 --> k9
+    k10 --> k11
+    k10 --> k12
+    k13 --> k1
     k1 --> k14
-    k12 --> k14
-    k15 --> k5
+    k1 --> k15
+    k13 --> k15
+    k16 --> k6
+    k2 --> k3
+    k3 --> k4
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

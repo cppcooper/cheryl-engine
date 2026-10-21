@@ -13,18 +13,18 @@ config:
 ---
 flowchart LR
     accTitle: Dispatch · application owner requests
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["Runtime::<br/>Context"]:::neighbor
-    k2["Runtime::<br/>PlatformDispatcher"]:::focal
-    k3["Runtime::PlatformDispatcher::<br/>Submission"]:::focal
+    k1["<b>Runtime::<br/>Context</b><br/><br/>platform_dispatcher()<br/>resources()"]:::neighbor
+    k2["<b>Runtime::<br/>PlatformDispatcher</b><br/><br/>submission()"]:::focal
+    k3["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit()"]:::focal
     k4(["Application<br/>producer"]):::app
     k5(["Application<br/>platform-owner work"]):::app
-    k6["Rendering::Resources::<br/>Provider"]:::neighbor
+    k6["<b>Rendering::Resources::<br/>Provider</b><br/><br/>create_image()<br/>upload_geometry()"]:::neighbor
     k7(["Application<br/>composition"]):::app
-    k8["Runtime::<br/>GameRuntime"]:::neighbor
-    k9["Runtime::<br/>SimulationDispatcher"]:::focal
-    k10["Runtime::SimulationDispatcher::<br/>Submission"]:::focal
+    k8["<b>Runtime::<br/>GameRuntime</b><br/><br/>simulation_dispatcher()"]:::neighbor
+    k9["<b>Runtime::<br/>SimulationDispatcher</b><br/><br/>submission()"]:::focal
+    k10["<b>Runtime::SimulationDispatcher::<br/>Submission</b><br/><br/>submit()"]:::focal
     k11(["Application<br/>simulation-owner work"]):::app
     k12["Game::<br/>TickContext"]:::neighbor
     k0 --> k1

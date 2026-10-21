@@ -182,6 +182,17 @@ the explorer, Mermaid downloads and public API links. It renders selected views
 in the browser using the same pinned Mermaid modules as the manual; no rendered
 SVG inventory or separate preview deployment is needed.
 
+Application views can add an `operations` mapping from a node key to its selected
+public methods. Keep these choices specific to the view: usually one to three
+entry points per type, with value types left as values. Each entry records the
+qualified declaration name, short display label, source file/line, purpose and
+`role` (`call` or `override`). Use the declaring base type for inherited methods.
+Include the same labels beneath the owning type in the Mermaid source; label
+checks reject stale metadata. Mark override groups **Implement hooks** to
+distinguish engine callbacks from application calls. The explorer adds method
+search, source links and unambiguous API links without changing the type's identity
+or adding operation details to the internal and focused views.
+
 ### Incremental rebuilds and full regeneration
 
 The first generation performs the complete extraction and site build. Existing

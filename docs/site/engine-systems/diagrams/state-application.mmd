@@ -11,15 +11,15 @@ config:
     rankSpacing: 38
     padding: 12
 ---
-flowchart LR
+flowchart TB
     accTitle: State · application state choices
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>state model"]):::app
-    k1["State::<br/>StateTracker"]:::focal
-    k2["State::<br/>StateMachine"]:::focal
+    k1["<b>State::<br/>StateTracker</b><br/><br/>update()<br/>changed()<br/>delta()"]:::focal
+    k2["<b>State::<br/>StateMachine</b><br/><br/>add_transition()<br/>trigger()<br/>state()"]:::focal
     k3(["Application<br/>state producer"]):::app
-    k4["State::<br/>VersionedVariable"]:::focal
-    k5["State::<br/>ObservedVariable"]:::focal
+    k4["<b>State::<br/>VersionedVariable</b><br/><br/>set()<br/>snapshot()<br/>wait_for_change()"]:::focal
+    k5["<b>State::<br/>ObservedVariable</b><br/><br/>ObservedVariable()<br/>set()<br/>snapshot()"]:::focal
     k6["State::<br/>VersionedSnapshot"]:::focal
     k7(["Application<br/>snapshot reader"]):::app
     k8(["Application<br/>transition / observer hooks"]):::app
@@ -31,6 +31,8 @@ flowchart LR
     k7 --> k6
     k5 --> k8
     k2 --> k8
+    k7 --> k4
+    k7 -.-> k5
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

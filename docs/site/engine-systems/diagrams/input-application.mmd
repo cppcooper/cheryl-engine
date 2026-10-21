@@ -13,32 +13,34 @@ config:
 ---
 flowchart LR
     accTitle: Input · application actions and controllers
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>init_platform()"]):::app
-    k1["Input::<br/>System"]:::focal
-    k2["Input::Actions::<br/>Bindings"]:::focal
-    k3["Input::<br/>Control"]:::focal
-    k4["Input::<br/>KeyboardKey"]:::focal
-    k5(["Application-owned controller"]):::app
-    k6["Input::Actions::<br/>ContextDefinition"]:::focal
-    k7["Input::Actions::<br/>ContextSubmission"]:::focal
-    k8["Input::Actions::<br/>Context"]:::focal
-    k9(["Application<br/>update()"]):::app
-    k10["Game::<br/>TickContext"]:::neighbor
-    k11["Input::<br/>Tick"]:::focal
-    k12["Input::Actions::<br/>View"]:::focal
-    k0 --> k1
-    k1 --> k2
+    k1["<b>Runtime::<br/>Context</b><br/><br/>input()"]:::neighbor
+    k2["<b>Input::<br/>System</b><br/><br/>bindings()<br/>action_contexts()<br/>keyboard_id()"]:::focal
+    k3["<b>Input::Actions::<br/>Bindings</b><br/><br/>bind_button()<br/>bind_axis()<br/>unbind()"]:::focal
+    k4["Input::<br/>Control"]:::focal
+    k5["Input::<br/>KeyboardKey"]:::focal
+    k6(["Application-owned controller"]):::app
+    k7["Input::Actions::<br/>ContextDefinition"]:::focal
+    k8["<b>Input::Actions::<br/>ContextSubmission</b><br/><br/>attach()"]:::focal
+    k9["<b>Input::Actions::<br/>Context</b><br/><br/>id()<br/>reset()"]:::focal
+    k10(["Application<br/>update()"]):::app
+    k11["Game::<br/>TickContext"]:::neighbor
+    k12["<b>Input::<br/>Tick</b><br/><br/>actions(context)<br/>button()<br/>axis()"]:::focal
+    k13["<b>Input::Actions::<br/>View</b><br/><br/>button()<br/>axis()"]:::focal
     k2 --> k3
     k3 --> k4
-    k5 --> k6
-    k5 --> k7
-    k7 --> k8
-    k5 --> k8
-    k9 --> k10
+    k4 --> k5
+    k6 --> k7
+    k6 --> k8
+    k8 --> k9
+    k6 --> k9
     k10 --> k11
     k11 --> k12
-    k5 --> k12
+    k12 --> k13
+    k6 --> k13
+    k0 --> k1
+    k1 --> k2
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

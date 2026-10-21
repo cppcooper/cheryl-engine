@@ -13,12 +13,12 @@ config:
 ---
 flowchart LR
     accTitle: Rendering · application frame preparation
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>update()"]):::app
-    k1["Rendering::<br/>Camera2D"]:::focal
+    k1["<b>Rendering::<br/>Camera2D</b><br/><br/>set_framebuffer_size()<br/>set_view_matrix()<br/>projection_matrix()<br/>view_matrix()"]:::focal
     k2(["Application<br/>prepare_render_frame()"]):::app
-    k3["Rendering::<br/>FrameWriter"]:::focal
-    k4["Rendering::<br/>PassWriter"]:::focal
+    k3["<b>Rendering::<br/>FrameWriter</b><br/><br/>begin_pass()"]:::focal
+    k4["<b>Rendering::<br/>PassWriter</b><br/><br/>add()<br/>semantics()<br/>parameters()<br/>constraints()"]:::focal
     k5["Rendering::Submission::<br/>Context2D"]:::focal
     k6["Rendering::<br/>DrawStyle2D"]:::focal
     k7("Rendering::Submission::<br/>resolve_sprite()"):::focal

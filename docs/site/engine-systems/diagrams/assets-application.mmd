@@ -13,19 +13,19 @@ config:
 ---
 flowchart LR
     accTitle: Assets · application loading and playback
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>loading work"]):::app
-    k1["Assets::Loading::<br/>Loader"]:::focal
+    k1["<b>Assets::Loading::<br/>Loader</b><br/><br/>load_assets()<br/>prepare()<br/>upload()"]:::focal
     k2["Assets::Loading::<br/>Prepared"]:::focal
     k3(["Application<br/>init_platform()"]):::app
     k4["Rendering::Resources::<br/>Provider"]:::neighbor
     k5(["Application-owned game objects"]):::app
-    k6["Assets::Sprites::<br/>Manager"]:::focal
-    k7["Assets::Tilesets::<br/>Manager"]:::focal
-    k8["Assets::Sprites::<br/>Asset"]:::focal
-    k9["Assets::Tilesets::<br/>Asset"]:::focal
+    k6["<b>Assets::Sprites::<br/>Manager</b><br/><br/>get_asset()"]:::focal
+    k7["<b>Assets::Tilesets::<br/>Manager</b><br/><br/>get_asset()"]:::focal
+    k8["<b>Assets::Sprites::<br/>Asset</b><br/><br/>animation()"]:::focal
+    k9["<b>Assets::Tilesets::<br/>Asset</b><br/><br/>tile()<br/>animation()<br/>cell_at()"]:::focal
     k10(["Application<br/>update()"]):::app
-    k11["Assets::Sprites::<br/>Animation"]:::focal
+    k11["<b>Assets::Sprites::<br/>Animation</b><br/><br/>advance()<br/>cell()"]:::focal
     k12(["Application<br/>prepare_render_frame()"]):::app
     k13("Rendering::Submission::<br/>resolve_sprite()"):::neighbor
     k14["Rendering::<br/>DrawPacket2D"]:::neighbor
@@ -41,6 +41,9 @@ flowchart LR
     k12 --> k13
     k13 --> k8
     k13 --> k14
+    k6 --> k8
+    k7 --> k9
+    k8 --> k11
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

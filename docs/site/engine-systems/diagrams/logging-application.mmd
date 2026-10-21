@@ -11,21 +11,21 @@ config:
     rankSpacing: 38
     padding: 12
 ---
-flowchart LR
+flowchart TB
     accTitle: Logging · application configuration and writers
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
-    k1["Logging::<br/>ProcessLifetime"]:::focal
-    k2["Logging::<br/>Config"]:::focal
-    k3["Logging::<br/>Log"]:::focal
+    k1["<b>Logging::<br/>ProcessLifetime</b><br/><br/>ProcessLifetime()"]:::focal
+    k2["<b>Logging::<br/>Config</b><br/><br/>for_logger()"]:::focal
+    k3["<b>Logging::<br/>Log</b><br/><br/>Log()<br/>info()<br/>close()"]:::focal
     k4["Logging::<br/>Profile"]:::focal
     k5["Logging::<br/>Level"]:::focal
     k6["Logging::<br/>OverflowPolicy"]:::focal
     k7["Logging::<br/>FileEventHandlers"]:::focal
     k8(["Application<br/>producer"]):::app
-    k9["Logging::<br/>Logger"]:::focal
+    k9["<b>Logging::<br/>Logger</b><br/><br/>initialize()<br/>info()<br/>warn()"]:::focal
     k10(["Application<br/>report"]):::app
-    k11["Logging::<br/>LogHandle"]:::focal
+    k11["<b>Logging::<br/>LogHandle</b><br/><br/>shared_queue_stats()<br/>backend_stats()<br/>report_diagnostics()"]:::focal
     k12["Logging::<br/>QueueStats"]:::neighbor
     k13(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
@@ -40,6 +40,7 @@ flowchart LR
     k10 --> k11
     k11 --> k12
     k13 --> k3
+    k0 --> k9
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

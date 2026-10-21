@@ -13,27 +13,19 @@ config:
 ---
 flowchart TB
     accTitle: Memory · application object storage
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>storage owner"]):::app
-    k1["Memory::Objects::<br/>Pool"]:::focal
-    k2["Memory::Objects::<br/>PoolState"]:::focal
-    k3["Memory::Objects::Constructor::<br/>Context"]:::focal
-    k4["Memory::Objects::<br/>Reservation"]:::focal
-    k5["Memory::Allocators::<br/>ObjectPoolAllocator"]:::focal
-    k6["Memory::<br/>Block"]:::focal
-    k7(["Application<br/>object type"]):::app
-    k8(["Application-owned game objects"]):::app
-    k9(["Application<br/>cleanup / quiesce()"]):::app
+    k1["<b>Memory::Objects::<br/>Pool</b><br/><br/>get()<br/>retrieve_objects()<br/>cull()<br/>release_culled()"]:::focal
+    k2["<b>Memory::Objects::<br/>Reservation</b><br/><br/>Reservation()<br/>emplace()<br/>remaining_ranges()"]:::focal
+    k3(["Application<br/>object type"]):::app
+    k4(["Application-owned game objects"]):::app
+    k5(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
-    k1 --> k2
+    k0 -.-> k2
     k2 --> k3
-    k0 -.-> k4
-    k4 --> k5
-    k4 --> k6
-    k3 --> k7
-    k4 --> k7
-    k8 --> k7
-    k9 --> k1
+    k4 --> k3
+    k5 -.-> k1
+    k1 --> k3
     classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
     classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
     classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3

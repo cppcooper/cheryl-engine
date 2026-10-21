@@ -13,17 +13,17 @@ config:
 ---
 flowchart LR
     accTitle: Workers · application CPU preparation
-    accDescr: Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
     k0(["Application<br/>composition"]):::app
     k1["Runtime::<br/>ExecutionOptions"]:::neighbor
-    k2["Workers::<br/>Pool"]:::focal
-    k3["Runtime::<br/>Context"]:::neighbor
-    k4["Workers::<br/>Group"]:::focal
+    k2["<b>Workers::<br/>Pool</b><br/><br/>make_group()<br/>shutdown()"]:::focal
+    k3["<b>Runtime::<br/>Context</b><br/><br/>make_worker_group()"]:::neighbor
+    k4["<b>Workers::<br/>Group</b><br/><br/>submit()<br/>close()<br/>drain()"]:::focal
     k5(["Application<br/>CPU preparation"]):::app
     k6["Workers::<br/>GroupOptions"]:::focal
     k7["Workers::<br/>CpuPolicy"]:::focal
-    k8["Assets::Loading::<br/>Loader"]:::neighbor
-    k9["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
+    k8["<b>Assets::Loading::<br/>Loader</b><br/><br/>prepare()"]:::neighbor
+    k9["<b>Runtime::PlatformDispatcher::<br/>Submission</b><br/><br/>submit()"]:::neighbor
     k10(["Application<br/>cleanup / quiesce()"]):::app
     k0 --> k1
     k1 --> k2

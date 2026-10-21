@@ -386,6 +386,10 @@ h1 span {
     font-size:9px;
     margin-top:4px
 }
+.operation code {
+    font:11px/1.5 ui-monospace,SFMono-Regular,monospace;
+    overflow-wrap:anywhere
+}
 .return {
     border:1px solid #cdd9ea;
     border-radius:4px;

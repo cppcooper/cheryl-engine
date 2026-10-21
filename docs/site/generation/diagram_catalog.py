@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from copy import deepcopy
 import hashlib
+from html import unescape
 import json
 from pathlib import Path
 import re
@@ -65,6 +66,21 @@ def load_catalog(source: Path) -> dict:
             raise ValueError(f"Engine diagram {identity} arrows differ from its catalog")
         if re.search(r"--?>\s*\||--\s+uses\b", text):
             raise ValueError(f"Engine diagram {identity} must not label dependency arrows")
+        labels = dict(re.findall(r'^\s*k(\d+)[\[(].*?"(.*?)"', text, re.MULTILINE))
+        for key, operations in diagram.get("operations", {}).items():
+            if key not in keys or symbols[key].get("kind") in {"role", "system"}:
+                raise ValueError(f"Unknown operation owner in Engine diagram {identity}: {key}")
+            names = set()
+            for operation in operations:
+                name = operation["name"]
+                if name in names or not name.startswith("CE::") or operation["role"] not in {"call", "override"}:
+                    raise ValueError(f"Invalid or duplicate application operation in {identity}: {name}")
+                names.add(name)
+                path = Path(operation["file"])
+                if path.is_absolute() or ".." in path.parts or operation["line"] < 1:
+                    raise ValueError(f"Invalid operation source in {identity}: {name}")
+                if operation["label"] not in unescape(labels[str(keys.index(key))]):
+                    raise ValueError(f"Engine diagram {identity} omits operation label: {name}")
     for symbol in symbols.values():
         if symbol["label"].startswith("CE::") or "std::" in symbol["label"]:
             raise ValueError(f"Unqualified Engine diagram label policy: {symbol['label']}")
@@ -87,12 +103,16 @@ def write_catalog(source: Path, destination: Path, objects, get_target_uri, sour
     for diagram in output["diagrams"]:
         diagram["source"] = (source / (diagram["id"] + ".mmd")).read_text(encoding="utf-8")
         diagram["nodes"] = [deepcopy(catalog["symbols"][key]) for key in diagram["nodes"]]
+        operations = diagram.pop("operations", {})
         for node in diagram["nodes"]:
-            name = re.sub(r"\s+", "", node.get("name", "")).removesuffix("()")
-            target = targets.get(name)
-            if target:
-                document, anchor = target
-                node["api"] = get_target_uri(document) + ("#" + anchor if anchor else "")
+            if node["key"] in operations:
+                node["operations"] = operations[node["key"]]
+            for item in [node, *node.get("operations", [])]:
+                name = re.sub(r"\s+", "", item.get("name", ""))
+                target = targets.get(name)
+                if target:
+                    document, anchor = target
+                    item["api"] = get_target_uri(document) + ("#" + anchor if anchor else "")
     del output["symbols"]
     output["metadata"] = {
         "docsRoot": "../../",
