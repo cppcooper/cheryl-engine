@@ -1,8 +1,9 @@
 # Settings milestone decisions
 
-These are proposed engineering choices for the first consumer, not implemented
-features or direct user preferences. Reviewed source:
-`3542f883391d4225329dab8d5d61a5987e69c8f0`, branch `feat/settings`.
+SETTINGS-U1 implements app-private value/file portions of SET-002/006/007.
+Editor, input, and runtime Apply choices remain proposed engineering policy,
+not direct user preferences. Design checkpoint:
+`157c75736bf5d325c8ea5174430b5dbbd75a2ae4`, branch `feat/settings`.
 [Agent notes](agent-notes.md) carry the matching IDs, contracts, alternatives,
 source/history provenance, counterevidence, and acceptance limits.
 
@@ -17,12 +18,12 @@ in scope fit, with native interaction still unverified.
 
 ## SET-002 — Keep typed active and draft values in the game
 
-The game owns one typed active value; the editor copies it into a draft and
-validates a complete candidate before adoption. Cancel discards only the draft.
-This gives clear lifetime and failure boundaries without a global registry or
-widget-to-live setters. The tradeoff is application-specific code before reuse
-is demonstrated. Design confidence is high; archived v3 provides medium support
-for typed caller setup, not confirmed application-ownership preference.
+U1 provides app-private `GameSettings` and one validator used by loading and saving.
+The later editor will own a draft and adopt only a valid complete value. This
+keeps ownership explicit without a global registry; it costs application-specific
+code before reuse is demonstrated. Confidence is high in this boundary, and
+reversal is cheap before UI callers exist. Archived v3 supports typed caller
+setup moderately, not application ownership as a personal preference.
 
 ## SET-003 — Combine Exclusive focus with a modal gameplay gate
 
@@ -56,20 +57,20 @@ establish sufficiency.
 
 ## SET-006 — Store one complete, strictly validated JSON snapshot
 
-Use a caller-selected absolute file path and version-1 JSON with all three values
-required. Missing files use defaults; invalid or unreadable files use complete
-defaults plus diagnostics and remain untouched until deliberate Apply. Reuse
-existing JSON headers privately, with shared typed/file validation. Strict
-rejection sacrifices tolerant forward compatibility for predictable recovery.
-Confidence is medium-high as engineering policy; history establishes no JSON or
-recovery-format preference.
+U1 fixes the caller's path and acquires at most 64 KiB plus one byte. A shallow
+SAX reader rejects raw NUL, duplicate/unknown/missing fields, wrong types/versions,
+and invalid values without a nested DOM. Absence selects defaults; invalid,
+unreadable, or symlink files recover wholly with diagnostics. Strict rejection
+costs tolerant compatibility; schema changes require versioning. Focused Linux
+checks support high confidence in this bounded policy. History establishes no
+JSON or recovery-format preference.
 
 ## SET-007 — Commit the file before nonthrowing active adoption
 
-Prepare valid serialized bytes and any replacement context, write/check/close
-an exclusively created sibling temporary file, then rename once over the target.
-Before that commit point, failure preserves the old file, active values, context,
-and editable draft. Afterwards adopt with nonthrowing assignments/moves. Synchronous
-Apply accepts brief owner latency and promises no power-loss or multi-process
-transaction. Ordering confidence is high; filesystem failure behavior still needs
-implementation and acceptance evidence.
+U1 validates and serializes before exclusive sibling `.pending` creation, then
+writes, flushes, closes, and renames once. Collision or pre-rename failure preserves
+old bytes; cleanup owns only this attempt. No fallible work follows rename.
+Later Apply will adopt state separately. Synchronous I/O and visible stale-file
+collisions trade convenience for explicit failure. Focused Linux checks support
+high confidence; durability, other platforms, and multi-process guarantees remain
+outside scope.

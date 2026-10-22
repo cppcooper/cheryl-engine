@@ -1,11 +1,32 @@
 # Settings milestone: design and evidence
 
-Prepared on `feat/settings` against source commit
-`3542f883391d4225329dab8d5d61a5987e69c8f0`. The initial index and working tree
-were clean, including untracked files. This record, [decisions](decisions.md),
-and [next unit](next.md) are the entire change in this phase. All behavior below
-is proposed unless identified as source inspection. No feature, build, native
-test, download, installation, or runtime acceptance was executed.
+The original design was prepared against source commit
+`3542f883391d4225329dab8d5d61a5987e69c8f0` and saved in checkpoint
+`157c75736bf5d325c8ea5174430b5dbbd75a2ae4` on `feat/settings`. SETTINGS-U1
+implements only the app-private value, shared validator, and file boundary in
+SET-002/006/007. The editor, input queries/contexts, and runtime Apply transaction
+below remain proposed. [Decisions](decisions.md) distinguish those boundaries;
+[next.md](next.md) records actual commands, results, limits, and the next unit.
+
+## U1 caller and implemented boundary
+
+Include the app-private `src/settings.h`; no JSON type enters that header:
+
+```cpp
+Tutorial::SettingsFile file("tutorial-settings.json"); // resolves once against cwd
+auto loaded = file.load_or_defaults();                // value, status, issue
+auto candidate = loaded.value;
+candidate.camera_pan_speed = 200;
+Tutorial::validate_settings(candidate);               // invalid_argument; no mutation
+file.save(candidate);                                // synchronous file commit only
+```
+
+`Missing` and `Recovered` both supply the entire default value; `Recovered` also
+supplies a path and field/operation diagnostic. `Loaded` supplies the complete
+valid snapshot. Saving never adopts application state or changes input mappings.
+U1 registers settings source in both app and test cases, with private JSON includes.
+Its 21 settings cases and five existing gameplay cases pass in the selected Linux
+Release runner; graphical and full-feature behavior remain outside that evidence.
 
 The requested consumer is the existing `tutorial-game` with its existing TGUI
 session. It exposes exactly two game settings and one rebindable gameplay action:
@@ -16,9 +37,9 @@ session. It exposes exactly two game settings and one rebindable gameplay action
 | `show_health` | `true` | Boolean; shows/hides the existing health bar without changing health. |
 | `add_score` binding | physical `Space` | One permitted unmodified keyboard key; a new press adds one point to the existing score. |
 
-Settings open through a native TGUI button. The panel has speed, health visibility,
-Rebind, Defaults, Apply, Cancel, and a status message. Defaults changes only the
-draft; Escape cancels the panel, or just the current rebind operation when
+The planned editor opens through a native TGUI button. The panel has speed,
+health visibility, Rebind, Defaults, Apply, Cancel, and a status message. Defaults
+changes only the draft; Escape cancels the panel, or just the current rebind operation when
 listening. Closing the panel/window discards uncommitted edits. Engine options
 requiring restart, asynchronous option setters, additional settings, gamepad/mouse
 rebinding, and a general settings registry remain later work.
@@ -26,9 +47,9 @@ rebinding, and a general settings registry remain later work.
 ## Proposed caller sequence
 
 This is an API sketch for app-private code, not an available Engine API or a
-compiled example. `SettingsFile`, `SettingsEditor`, and `ScoreInput` are proposed
-application helpers. The proposed Engine additions are immutable snapshot queries
-for context membership and the published device gate.
+compiled example. `SettingsFile` is the U1 helper; `SettingsEditor`, `ScoreInput`,
+and their integration remain proposed. The proposed Engine additions are immutable
+snapshot queries for context membership and the published device gate.
 
 ```cpp
 // main, before runtime.run(): choose the data path once, independently of assets.
@@ -80,8 +101,12 @@ native usability remains unverified.
 
 ## SET-002 — Own typed active and draft values in the application
 
-`GameSettings` is an ordinary owned value containing the two settings and the
-portable key enum. `Game` owns the active value, file adapter, score context, and
+U1's `GameSettings` is an ordinary owned value containing the two settings and the
+portable key enum. `validate_settings` rejects invalid speed/key values without
+changing its argument. Callers can construct invalid typed candidates, but save
+validates again before any file effects. This API is private to the application.
+The remaining ownership below belongs to the later consumer:
+`Game` owns the active value, file adapter, score context, and
 editor. The editor owns an optional draft seeded from active values, with separate
 speed-editing text so invalid intermediate text never enters `GameSettings`.
 Validation converts the complete draft into a valid candidate without modifying
@@ -100,6 +125,8 @@ rollback policy before a second consumer exists. Binding widget setters directly
 to live values would make Cancel unreliable. Confidence is high for the scope;
 typed caller-supplied setup has medium historical preference support [H1], while
 application ownership itself is an engineering choice, not a confirmed taste.
+Reversal cost is currently small because no runtime or UI caller depends on the
+new helpers; no general Engine registry has been introduced.
 
 ## SET-003 — Runtime polls; a modal gate owns gameplay admission
 
@@ -255,12 +282,14 @@ confirm it is sufficient with the installation/removal/retry cases [E02].
 
 ## SET-006 — Use one explicit, versioned settings file and strict validation
 
-The application selects an absolute `tutorial-settings.json` path once from its
-starting working directory; relative injected paths resolve at construction.
-Restart acceptance uses that same resolved path. Tests inject paths under their
-own disposable directory. Do not put preferences in the asset registry, engine
-startup configuration, or a sibling feature's data. OS user-directory discovery,
-profiles, cloud storage, migration, and hot reload are deferred.
+U1's `SettingsFile` resolves its path once with `absolute` and lexical
+normalization; empty/NUL-containing paths reject as invalid arguments. The
+future application selects `tutorial-settings.json` from its starting directory;
+the file boundary itself does not select a global path or write during setup.
+Restart acceptance uses the same resolved path. Tests inject clone-local disposable
+paths. Asset registries, Engine startup configuration, sibling data, OS preference
+directory discovery, profiles, migration, hot reload, and cloud storage stay outside
+this unit.
 
 The complete version-1 document is:
 
@@ -274,36 +303,43 @@ The complete version-1 document is:
 ```
 
 Require the root object and all fields shown; order is immaterial. Reject
-duplicate/unknown keys at every object level, wrong types (including numeric
-booleans), unsupported/noninteger version, missing fields, malformed/trailing
-JSON, files larger than 64 KiB, nonfinite/out-of-range speed, and unsupported or
-reserved key tokens. Share value validation between typed construction, parsing,
-and Apply. Accept both JSON integer and floating speed numbers, with checked
-conversion to the finite float range. Numeric editing text must parse completely
-without locale-specific separators; do not silently clamp or accept a prefix.
+duplicate/unknown keys at every level, wrong types (including numeric booleans),
+unsupported/noninteger version, missing fields, malformed/trailing JSON, raw NUL,
+files larger than 64 KiB, nonfinite/out-of-range speed, and unsupported/reserved
+key tokens. Explicit typed validation, parsing, and save share one validator.
+Both JSON integer and floating speed numbers are accepted, with range checking before
+conversion to float. Numeric editing text and Apply validation remain later work;
+they must parse completely without locale-specific separators or silent clamping.
 
-Load into a temporary value and return an owned result: `missing` selects defaults
-without writing; `loaded` selects the entire valid snapshot; `recovered` selects
-all defaults plus a diagnostic containing path, field/operation, and reason.
-Malformed/invalid, future-version, and operational read failures are explicit
-recovery outcomes. Allocation/programming failures propagate. Never partially
-adopt a document, silently repair it, or save during load/shutdown. Preserve a
-rejected file until a deliberate successful Apply; show that Apply will replace
-the rejected file, including an unsupported-version file. Cancel preserves it.
+U1 acquires at most 64 KiB plus one detection byte into a fixed buffer. Its SAX
+reader permits only root/bindings objects and schema scalars; arrays/deeper objects
+reject before constructing any DOM. Duplicate names compare after JSON escape
+decoding. Reject every raw NUL before parsing because pinned JSON 3.11.3 treats it
+as EOF even in strict mode. Ordinary trailing bytes/documents also reject. A DOM
+is used only to serialize the fixed, validated schema.
 
-Use the repository's pinned nlohmann JSON headers, once available, privately in
-the app's `.cpp`. Engine's private include does not propagate to this consumer
-[E06]; a later unit
-must add a private app/test include from the existing checkout, without changing
-dependency pins, downloading, exporting JSON types, or linking Workers for its
-parser. Reuse the validation pattern, not the worker configuration schema/API.
+Load produces an owned result: `Missing` selects all defaults without writing;
+`Loaded` selects the entire valid snapshot; `Recovered` selects all defaults plus
+a diagnostic containing path, field/operation, and reason. Inspection/open/read
+failures are distinct from genuine absence. Directory and symlink leaves,
+including dangling symlinks, recover as errors rather than following a target.
+Only settings data/I/O errors recover; allocation and programming errors propagate.
+There is no partial adoption, automatic repair, or save during load/destruction.
+The later editor must retain rejected bytes until deliberate successful Apply,
+including unsupported-version files, and explain that replacement to the player.
 
-Alternatives: a tiny handwritten JSON parser would create unnecessary escaping,
-number, and duplicate-key risks. INI could suffice, but the repository already
-uses versioned JSON configuration. Field-by-field recovery hides stale mixtures;
-strict rejection costs forward compatibility and intentionally requires a new
-version for extension. Confidence is medium-high as a design; neither JSON nor
-this recovery policy is an established personal preference [H2–H3].
+The populated pinned nlohmann headers are private to `.cpp` files. App and
+case targets each receive the private include, because Engine's include is not
+transitive [E06]. `settings.cpp` is registered in both, with existing gameplay
+cases preserved. There are no pin, Workers, or public Engine API changes.
+
+Alternatives: handwritten JSON would add escaping/number/duplicate-key risks;
+INI could suffice, but the repository already uses versioned JSON configuration.
+Field-by-field recovery hides stale mixtures. Strict rejection costs tolerant
+forward compatibility; changing persisted meaning requires a schema version.
+Confidence is high for this bounded policy after focused native checks, not a
+personal preference claim [H2–H3]. SAX is an engineering choice for bounded input;
+a private parser/API swap is inexpensive before runtime callers exist.
 
 ## SET-007 — Make successful Apply a saved, nonthrowing adoption
 
@@ -323,6 +359,13 @@ preparation. Sequential execution briefly stops polling during that call;
 concurrent execution can queue polls. This latency is accepted for the first
 consumer; asynchronous persistence requires a later contract.
 
+U1's `SettingsFile::save` implements only the file portion of this planned Apply
+transaction. Validation and complete serialization precede opening
+`<resolved-path>.pending` in exclusive binary mode. Its deterministic name makes
+stale/conflicting attempts visible: fail once without touching that file instead
+of retrying names or deleting another attempt. This private engineering choice
+is cheap to reverse if later consumers need unique attempt names.
+
 Write only a newly and exclusively created same-directory temporary file owned
 by this attempt. Write all bytes, check write/flush/close, then replace the target
 with a single rename operation. Never truncate/remove the old target first and
@@ -330,7 +373,12 @@ never reuse/delete a temporary file belonging to another attempt. On any failure
 before rename, leave the old target bytes and active model/old context intact,
 drop the candidate lease, retain the draft, and show the operation/path error.
 Clean only this attempt's temporary file; if cleanup fails, retain its path in
-the diagnostic. A failed replacement has no remove-and-retry fallback.
+the diagnostic. A failed replacement has no remove-and-retry fallback. The borrowed
+app-private `Detail::SettingsFileOperations` seam exposes operations for failure
+injection and must outlive `SettingsFile`. Close consumes its stream even on error;
+replacement must not throw after committing. Ordinary save I/O failures become
+`SettingsFileError`; invalid typed saves throw `invalid_argument` without creating
+a temporary. Unexpected exceptions propagate after owned cleanup.
 
 Successful rename is the commit point. All fallible allocation/serialization and
 context installation precedes it. Afterwards only nonthrowing value assignment,
@@ -352,8 +400,10 @@ other hosts need replacement behavior checked before claiming support.
 Alternatives: save-after-live-apply is simpler but creates accepted values that
 may not survive restart; independent asynchronous setters require rollback and
 completion semantics expressly deferred by the brief. Confidence is high in the
-transaction ordering, medium in the file replacement implementation until its
-failure paths are exercised. No existing general settings saver was found [E05].
+bounded file implementation based on U1's focused Linux tests. These cover real
+replacement, all injected I/O failures, collision, cleanup failure, and unexpected
+exceptions. Runtime adoption remains unimplemented. No
+existing general settings saver was found in the baseline [E05].
 
 ## Source evidence at the reviewed baseline
 
@@ -371,7 +421,13 @@ baseline files; line numbers describe `3542f883391d4225329dab8d5d61a5987e69c8f0`
 | E07 | [Tutorial Game](../projects/apps/tutorial-game/src/game.cpp), lines 22–34 binds Space directly and creates scoped player inputs; lines 89–95 hardcodes pan speed 100 and increments score before UI. [Hud](../projects/apps/tutorial-game/src/hud.h), lines 23–27 and 51–59 owns and updates the visible health bar. Settings hooks/setters described above do not yet exist. |
 | E08 | [PlatformDispatcher::Submission](../projects/engine/include/cheryl/core/engine/platform-dispatcher.h), `submit`, always defers, transports values/exceptions, and exposes closure cancellation through the future. [Runtime](../projects/engine/src/core/game-framework/game-runtime.cpp), lines 520–530 and 976–995 drains platform work before polling; a callback cannot overlap a platform pump. [TGUI scene adoption](../projects/modules/ui/tgui/src/scene.cpp), lines 169–195 is a concrete submit/readiness-check consumer. Reuse that nonblocking progress pattern for the post-release watermark. |
 
-Current tests corroborate intended contracts but were only inspected:
+U1 evidence, added after the reviewed baseline: [settings declarations](../projects/apps/tutorial-game/src/settings.h),
+[value/parser/file implementation](../projects/apps/tutorial-game/src/settings.cpp),
+[focused value/file tests](../projects/apps/tutorial-game/tests/settings.cpp), and
+[tutorial registration](../projects/apps/tutorial-game/CMakeLists.txt). These are
+app-private additions; they do not change the historical preference evidence.
+
+Baseline tests corroborate intended contracts but were only inspected:
 [action_contexts](../projects/engine/tests/unit/src/action-contexts.cpp) covers
 `poll_boundary`, `latched_departure`, `focus_gate`, `attach_under_focus`,
 `lifetime`, `validation`, and `retry`;
@@ -456,7 +512,7 @@ git show -s --format=fuller 8854ef84f360fafa3572b58ee5440b5aabc0e67c
 
 ## Smallest coherent implementation sequence
 
-1. **Private value and file boundary** (the sole [next unit](next.md)): defaults,
+1. **U1 private value and file boundary** (implemented; [checks/handoff](next.md)): defaults,
    shared validation, strict parse/load, complete serialization, replacement save,
    and CPU/file failure tests. No GUI or input mutation yet. This settles data
    recovery and save preservation without accumulating callers.
@@ -473,9 +529,10 @@ git show -s --format=fuller 8854ef84f360fafa3572b58ee5440b5aabc0e67c
    focused checks and then the selected native consumer acceptance when execution
    is authorized. Update both decision views if evidence changes a choice.
 
-No implementation phase begins as part of this design task. Each later unit needs
-its selected task and applicable source/API/testing instructions. Future builds
-must use the workspace's allowance/build-lock rules; this record grants none.
+The U1 assignment activates only step 1 and focused checks. Steps 2–3 remain
+later coordinator assignments, not work activated by this record. Current build
+and test work uses the resource-gated shared-lock wrapper and one job. Exit 75
+means checkpoint idle rather than an unchanged retry or an unrestricted fallback.
 
 ## Observable acceptance proposed for the completed consumer
 
@@ -491,22 +548,25 @@ must use the workspace's allowance/build-lock rules; this record grants none.
 | Rebind identity | Repeat, release, Text, modifiers, another device/target, stale epochs, and reserved keys cannot select a binding. Queued old-session Text/widget input cannot change draft values or Apply during Listening. A fresh permitted physical press changes only the draft; Cancel keeps the prior mapping. |
 | Ownership/lifecycle | Focus preemption does not erase a newer owner's lease; cancel pending apply and close while editing/listening without autosave, deadlock, or calls after session/input teardown. Retained scene behavior remains intact. |
 
-These cases are designs, not written or executed new tests. Existing tests were
-read only. This task's verification is source/history tracing, record consistency,
-local-link/provenance checks, and Git diff review; no runtime claim follows.
+This table remains whole-consumer acceptance. U1 executes the focused value/file
+cases reported in [next.md](next.md). Those results do not establish the future
+editor, runtime Apply, input isolation, context replacement, or GUI presentation.
 
 ## Material questions retained for the next phase
 
-No routine user decision is needed to start the next unit. The implementation must
-establish replacement behavior on the selected local filesystem, including
-failure injection; that is evidence still missing, not a claimed guarantee.
-The snapshot queries must preserve final-release membership and historical
-device-gate semantics, and be shown sufficient under delayed/failed/queued polls
-before the editor depends on them. The existing JSON dependency is pinned but
-unpopulated in this clone: `git submodule status -- extern/json` reports
-`-b36f4c477c40356a0ae1204b567cca3c2a57d201`. Native parser compilation needs that
-dependency supplied under a later task's authority; no retrieval occurred here.
-The archived squash cannot recover finer authorship or design intent; stronger
-personal-preference claims remain unsupported. Cross-platform replacement,
-power-loss durability, OS preference directories, and reusable settings APIs
-remain later design scope rather than implicit promises.
+There is no U1 prerequisite blocker after the selected native checks pass. The
+coordinator populated JSON at unchanged pin
+`b36f4c477c40356a0ae1204b567cca3c2a57d201` and resolved the initial missing
+`assets/fonts/DejaVuSans.ttf` by initializing assets at unchanged pin
+`98453b2a6e0edfcfba22eea3fde801526d72b861`. No font substitution or dependency
+pin change was used. The configure warning about a disconnected Gainput HIDAPI
+source directory did not block the selected Engine-based runner; it does not
+establish building the graphical/native/TGUI targets.
+
+File replacement evidence is bounded to the Linux host/filesystem in [next.md](next.md).
+Power-loss durability/fsync, multi-process writers, network filesystems, OS
+preference directories, other platforms, and reusable settings APIs remain later
+scope. The snapshot queries must still preserve final-release membership and
+historical device gates under delayed/failed/queued polls before an editor can
+depend on them. The archived squash cannot recover finer authorship or design
+intent; stronger personal-preference claims remain unsupported.
