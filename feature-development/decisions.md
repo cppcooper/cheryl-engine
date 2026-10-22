@@ -1,24 +1,25 @@
 # Tilemap milestone decisions
 
-These are proposed branch-local design choices, not accepted runtime behavior or
-user-confirmed API preferences. The matching IDs in [agent-notes.md](agent-notes.md)
+U1 implements CPU values and visible ranges; rendering and the first graphical
+consumer remain proposals. These choices are not user-confirmed API preferences.
+The matching IDs in [agent-notes.md](agent-notes.md)
 hold contracts, alternatives, provenance and pending acceptance. Each entry below
 states the outcome, reason, tradeoff and confidence. The proposed next unit is
-described in [next.md](next.md); implementation has not started.
+described in [next.md](next.md), which records actual checks and acceptance limits.
 
 ## TM-001
 
-Use a finite CPU-owned dense map with fixed dimensions/layer count and independent
-mutable cell storage. This keeps ordinary construction and editing independent
-of a renderer, asset cache or level owner, while letting two instances coexist.
-Dense storage costs memory proportional to every cell and defers sparse worlds.
-Confidence is high from the requested scope and current ownership boundaries;
-v3 offers little evidence of a preferred map representation.
+Own finite dense CPU cells, independent of renderers and levels. Deep copies and
+whole-value assignments own independent storage; assignment may replace dimensions
+without a resize API. Moves transfer data and leave a safely rejected zero-state
+source; self-assignment preserves values. This makes coexistence and ownership
+predictable, at the cost of dense allocation and copy work. Engineering confidence
+is high; the representation remains a proposal about taste, with little v3 evidence.
 
 ## TM-002
 
-Store application-defined logical tile IDs, reserving zero for empty, and resolve
-nonzero IDs through separate retained tileset/target bindings. This distinguishes
+Store application-defined logical tile IDs, reserving zero for empty, and plan to
+resolve nonzero IDs through separate retained tileset/target bindings. This distinguishes
 an empty map cell from drawable atlas cell zero and avoids copying resource
 handles into every cell. The extra binding step can fail for unregistered IDs;
 it does not define a save format. Engineering confidence is medium, and personal
@@ -26,23 +27,23 @@ API preference confidence is low.
 
 ## TM-003
 
-Use checked column/row coordinates increasing right/down and half-open map
-bounds, with explicit top-left world placement converted to existing Y-up asset
-geometry. Reject invalid edits rather than wrapping. This makes row-major
-authoring predictable and keeps atlas coordinates distinct from map positions.
-The tradeoff is a documented coordinate conversion, including pivot adjustment.
-Confidence is medium: source constrains geometry, while this map convention is
-our reversible proposal.
+Use signed 64-bit points and layer indices, checked against nonzero uint32 map
+dimensions and layer count before indexing. Columns/rows increase right/down
+within half-open bounds; invalid edits reject without mutation. This makes
+negative external input safe and keeps atlas coordinates separate. Future drawing
+must convert to Y-up geometry and adjust pivots. Engineering confidence is high
+for checked access, medium for the reversible coordinate choice; personal-preference
+evidence remains low.
 
 ## TM-004
 
-Compute visible cell ranges by intersecting a finite map-local rectangle before
-floor/ceil conversion to half-open cell bounds. Empty/touching regions emit
-nothing, and malformed rectangles reject. This avoids negative-to-unsigned
-errors and scans only potentially visible cells. The caller must supply the
-camera-to-map conversion; selection itself does not clip pixels. Engineering
-confidence is high, supported by existing positive-area overlap semantics rather
-than a known user preference.
+Intersect the view with the finite map, then binary-search computed double grid
+edges for half-open cell bounds. Exact touching edges are excluded without an
+epsilon, including decimal sizes where bare floor/ceil division misclassifies
+edges. Empty regions return nothing and malformed inputs reject. Logarithmic
+search costs more comparisons than raw division but avoids rounded-index repairs.
+Engineering confidence is high; an executed independent intersection oracle covers
+the boundary risk, while personal-preference confidence stays low.
 
 ## TM-005
 
@@ -55,13 +56,13 @@ from the brief and current rendering contracts; exact layer naming remains provi
 
 ## TM-006
 
-Apply edits immediately on the simulation owner and regenerate visible packets
-from current cells. Advance each instance's elapsed time during update, resolving
-animation from original targets during preparation. This avoids shared tileset
-mutation and stale edit caches, including when frames are skipped. Repeated CPU
-resolution costs more than cached meshes. Compatibility confidence is high;
-confidence that recomputation is sufficient remains medium until the small
-consumer is exercised.
+Apply CPU edits immediately on the caller's owner; no allocation, palette check or
+notification accompanies a cell replacement. Future rendering will regenerate
+visible packets and resolve animation using independently updated instance clocks.
+This separates map mutation from shared asset state and avoids stale edit caches,
+at the cost of repeated resolution. Confidence is high for CPU ownership and
+existing playback compatibility, medium for future rendering cost, and low for
+inferred personal taste.
 
 ## TM-007
 

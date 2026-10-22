@@ -1,33 +1,46 @@
-# First tilemap milestone: proposed contracts
+# Tilemap milestone: CPU U1 and proposed consumer
 
-This is a branch-local design record for the next feature worker. No tilemap
-implementation or executable acceptance is claimed. The reader summary is
-[decisions.md](decisions.md); the single next unit is [next.md](next.md).
+This branch implements U1's CPU map values and visible-cell range helper. The
+rendering adapter and first graphical consumer remain proposals. Executable
+acceptance and current verification limits are recorded in [next.md](next.md).
+The reader summary is [decisions.md](decisions.md); the next handoff is
+[next.md](next.md).
 Decision IDs TM-001 through TM-010 identify the same choices in both views.
 
-The inspected baseline is `3542f883391d4225329dab8d5d61a5987e69c8f0` on
-`feat/tilemap`. Initial index and working tree were clean, with no pre-existing
-work to extend. This investigation owns only this clone. Workspace authority is
-the parent `AGENTS.md`, `coordination/autonomy-policy.md`, and the tilemap brief
-in `coordination/feature-briefs.md`; the explicit assignment stops after these
-records and a local commit. Source inspection and record checks are the evidence
-for this phase. Builds, dependency retrieval, native tests, visual acceptance,
-published documentation, and feature implementation remain unperformed.
+The design inspected source baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`;
+U1 starts at design checkpoint `2e74a09ccd56f55d6256699ed69668ba6dbd7c00` on
+`feat/tilemap`, with a clean index and tree. Workspace authority remains the
+parent `AGENTS.md`, `coordination/autonomy-policy.md`, tilemap feature brief and
+the bounded TILEMAP-U1 assignment. Only this clone is owned. No palettes, native
+draw submission, demo controls, persistence, resizing or chunking are implemented.
 
-The coordinator resolved the read-only `.git` runner conflict that blocked the
-earlier local checkpoint.
-Record review checked matching decision IDs, decision lengths, local links and
-the cited source paths. This is static evidence only.
+## CPU caller implemented in U1
+
+The new header is included first, with no asset, renderer or runtime includes:
+
+```cpp
+#include <cheryl/maps/tilemap.h>
+
+CE::Tilemaps::Map map({3, 2}, 2);
+map.set({1}, {2, 1}, {42});
+const auto tile = map.get({1}, {2, 1});
+const auto visible = CE::Tilemaps::visible_cells(
+    map.extent(), {0.1, 0.1}, {0.0, 0.0, 0.2, 0.1});
+```
+
+`TileId{0}` erases a cell; every other uint32 value is valid without a palette.
+The `tilemap.caller` case exercises this shape. Exact new naming remains a
+reversible engineering choice with low personal-preference confidence.
 
 ## Proposed caller sequence
 
-All `Tilemaps`, `TilemapBindings`, `TilemapView`, and `resolve_tilemap_layer`
-names below are proposals, not existing APIs or compiled examples. `FrameWriter`,
-`Context2D`, and asset handles follow the current engine. Exact new naming has low
+The broader consumer below remains a proposal. `Tilemaps` CPU values now exist;
+`TilemapBindings`, `TilemapView`, and `resolve_tilemap_layer` are not implemented.
+`FrameWriter`, `Context2D`, and asset handles follow the current engine. Exact new naming has low
 preference confidence and should stay local to one consumer until exercised.
 
 ```cpp
-namespace Maps = CE::Tilemaps;                    // proposed CPU domain
+namespace Maps = CE::Tilemaps;                    // implemented CPU domain
 namespace Submit = CE::Rendering::Submission;    // existing submission domain
 constexpr Maps::LayerIndex ground{0}, detail{1};
 constexpr Maps::TileId empty{0}, floor{1}, marker{2}, animated{3};
@@ -87,11 +100,20 @@ release retained asset bindings during platform cleanup before backend teardown
 **Own finite map values separately from resources.** `CE::Tilemaps::Map` owns one
 dense, layer-major, row-major `TileId` vector; its index is
 `(layer * rows + row) * columns + column`. Dimensions and layer count are fixed
-after construction. Construction initializes every cell to empty, requires
-nonzero axes/layers, and checks every count multiplication and `vector::max_size`
+between whole-value assignments. Construction initializes every cell to empty,
+requires nonzero axes/layers, and checks every count multiplication and `vector::max_size`
 before allocating. Invalid dimensions/storage counts throw `invalid_args`;
-allocation failure propagates. Copying gives independent cells; no mutable cell
-references or renderer pointers escape.
+allocation failure propagates. Copy construction gives independent cells; copy
+assignment copies before changing any members, preserving the destination if
+allocation fails. Assignment may replace dimensions/layers without an in-place
+resize API. No mutable cell references or renderer pointers escape.
+
+Move construction/assignment are noexcept, transfer the value, and leave the
+source at `Extent{0,0}` and zero layers. Both `get` and `set` then reject with
+`bad_request` before indexing storage. Copying/assigning that empty value is safe;
+assigning a newly constructed map restores ordinary use. Self-copy and self-move
+preserve the value. The sole zero-dimension state is obtained through moves or
+whole-value copies/assignments of moved-from values, never ordinary construction.
 
 One simulation owner mutates a map and reads it during frame preparation; no
 concurrent mutation, retained cell view, background jobs, or synchronization API
@@ -106,14 +128,14 @@ requiring callers to hold vector addresses.
 
 ## TM-002
 
-**Separate logical tile IDs, atlas cells, and retained bindings.** A proposed
-strong `TileId` wraps `uint32_t`; zero denotes empty and never submits a draw.
+**Separate logical tile IDs, atlas cells, and retained bindings.** The implemented
+strong `TileId` wraps `uint32_t`; zero denotes empty (a later adapter will skip it).
 Atlas cell zero remains an ordinary drawable cell. Nonzero IDs are application
 identities within a palette domain, not global asset IDs, terrain labels, vertex
 offsets, or animation frames. `Map::get` returns a `TileId` by value. The CPU map
 accepts every representable ID; it cannot validate a renderer's palette.
 
-Setup-owned `Submission::TilemapBindings` maps an ID to a retained
+For U2, proposed setup-owned `Submission::TilemapBindings` maps an ID to a retained
 `shared_ptr<const Tilesets::Asset>` plus an original `Grids::CellIndex`. `add`
 rejects zero IDs, duplicate bindings, null assets, and out-of-grid targets with
 `invalid_args`, preserving existing bindings. Bindings remain stable during
@@ -133,10 +155,10 @@ asset identities plus original targets, not serialize shared pointers or assume
 ## TM-003
 
 **Use checked integer map coordinates and an explicit placement conversion.**
-`Extent` is `{columns, rows}` with `uint32_t` axes; `LayerIndex` is a distinct
-zero-based index. `Point` uses signed 64-bit `{column, row}` so negative input
-is checked before any unsigned cast. Legal cells satisfy
-`0 <= column < columns`, `0 <= row < rows`, and `layer < layer_count`.
+`Extent` is `{columns, rows}` with `uint32_t` axes and the layer count is uint32.
+`LayerIndex::value` and `Point::{column,row}` are signed 64-bit values, allowing
+negative external inputs to reject before any unsigned cast. Legal cells satisfy
+`0 <= column < columns`, `0 <= row < rows`, and `0 <= layer < layer_count`.
 `get`/`set` throw `bad_request` for invalid points/layers without changing cells;
 there is no wrap or clamp on edits. The constructor's checked storage count makes
 the subsequent linear index representable.
@@ -175,13 +197,23 @@ footprint products first. Invalid extents, inverted/NaN/infinite inputs or
 overflowing footprint products throw `invalid_args`; zero-area input and a
 rectangle merely touching or outside the map return an empty range.
 
-Intersect with the map footprint before dividing or converting to integers.
-For a positive intersection, begin is `floor(min/size)` and exclusive end is
-`ceil(max/size)`, clamped to each dimension. Intersecting first prevents negative
-coordinates from becoming huge unsigned indices and prevents huge external
-rectangles from overflowing casts. Do not add an epsilon that includes a tile
-lying entirely beyond an exact boundary. Use double precision for these helper
-inputs/intermediates; this does not promise arbitrary-scale rendering precision.
+Intersect with the map footprint using comparisons before searching its edges.
+Define each grid edge by the actual double multiplication `edge(i)=double(i)*size`,
+including the final footprint edge. For a positive clipped intersection, binary
+search finds the first edge strictly greater than its minimum (begin is that
+edge's index minus one) and the first edge greater than or equal to its maximum
+(exclusive end). All searches stay in bounded integer indices; there are no
+floating-to-integer casts and no epsilon. Work is O(log columns + log rows),
+with no allocation. Input multiplication/comparison uses ordinary double precision;
+this does not promise arbitrary-scale rendering precision.
+
+This corrects the original design's bare floor/ceil division: with size 0.1,
+`floor((43*size)/size)` can be 42 and `ceil((3*size)/size)` can be 4. Comparing
+computed grid edges preserves exact touching-edge exclusion and distinguishes
+both adjacent `nextafter` values. The independent test oracle enumerates complete
+cell rectangles and checks positive-area intersections; it shares no search or
+division formula with production code. Sizes include decimal, fractional,
+subnormal and very large finite values.
 
 For an 8×6 map with 16-unit cells, expected ranges include:
 
@@ -202,11 +234,21 @@ are consumer responsibilities. Selection is culling, not a scissor: a partially
 visible cell is emitted whole and the existing viewport/optional clip cuts pixels.
 
 Alternatives are scanning every cell against `Math::overlaps`, an inclusive
-maximum index, or having the map inspect a live camera. The existing positive-area
+maximum index, floor/ceil candidates corrected against grid edges, or having the
+map inspect a live camera. Binary edge searches make the boundary predicates
+direct with a bounded logarithmic cost. The existing positive-area
 overlap helper (S11) is useful as an independent test oracle, but a computed range
 avoids O(total cells) traversal and camera coupling. Confidence: high engineering
-confidence; coordinate preference remains medium. No implementation or boundary
-test has run yet.
+confidence; coordinate preference remains medium. U1 implements this algorithm;
+written tests and actual execution are distinguished in [next.md](next.md).
+
+Reversal costs remain bounded to U1's new header/source and its focused cases:
+the edge-search implementation can change while preserving the computed-edge
+contract and independent oracle. Changing public integer widths, value layout
+or the vector-backed map representation requires consumer recompilation; no
+save format or downstream renderer depends on those layouts yet. Confidence in
+the engineering boundary is high, while personal API-preference confidence
+remains low. No stable cross-toolchain binary ABI is promised by these values.
 
 ## TM-005
 
@@ -235,7 +277,8 @@ all preceding owner-thread edits; packets already prepared keep their old values
 Setting the same value is harmless. Invalid edits preserve the map. Consumer
 selection/highlights are separate state, not a third logical layer.
 
-Each visible nonempty binding supplies its original target to
+The remaining rendering/time behavior is proposed for U2/U3. Each visible
+nonempty binding supplies its original target to
 `tileset.cell_at(target, view.elapsed)` before packet resolution. Each instance's
 nonnegative elapsed milliseconds are advanced by update, even when the runtime
 skips preparation. No tilemap-owned thread, clock, or animation cursor is needed.
@@ -318,8 +361,9 @@ Reuse current image/tileset loading and the existing runtime/input/render path
 (S9, S12). For the art sample, load the existing Puny World manifest, find entry
 `overworld`, and retrieve its actual qualified `definition.id()`; do not guess its
 namespace. Source demo requests cells 0 and 1 and animated target 309. The assets
-submodule is uninitialized here, so those manifest contents/artwork were not
-independently inspected. Validate required cells/clips and report an unavailable
+submodule was uninitialized during design; the coordinator later initialized its
+unchanged pin for U1's required embedded font. Tile artwork and these targets
+were not independently validated by U1. Validate required cells/clips and report an unavailable
 fixture explicitly; an optional-demo skip does not count as acceptance.
 
 Unit acceptance uses synthetic retained geometry/image/material fixtures from
@@ -354,8 +398,9 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 
 ## Source evidence at the inspected baseline
 
-These are source observations, not executed acceptance. Line spans refer to
-`3542f883391d4225329dab8d5d61a5987e69c8f0`; links resolve in this clone.
+These are source observations, not executed acceptance. S1–S12 line spans refer
+to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
+branch-local files. Links resolve in this clone.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -371,6 +416,7 @@ These are source observations, not executed acceptance. Line spans refer to
 | S10 | [CPU submission cases](../projects/engine/tests/all-tests/src/assets/submission.cpp), lines 18–69 and 226–297, supply synthetic resources and trace selected tile -> animation -> packet retention with zero native calls asserted. [Selection cases](../projects/engine/tests/unit/src/tileset-selection.cpp), lines 60–95 and 121–168, specify timing, non-recursion, bounds and negative time. [Frame cases](../projects/engine/tests/all-tests/src/assets/render-frame.cpp), lines 104–201, specify copied state, order, recycling and invalid group preservation. Cases were read, not run. |
 | S11 | [Rectangle overlap](../projects/engine/include/cheryl/math/collision.h), lines 7–38. Existing Y-up positive-area overlap excludes touching edges; it does not compute a cell range or convert map/camera coordinates. |
 | S12 | [Game hooks](../projects/engine/include/cheryl/core/game-framework/abstract-game.h), lines 9–34 and 64–102. Upload/binding setup belongs to platform init, updates/preparation share simulation ownership, preparation may be skipped, writers are borrowed, cleanup waits for frames. |
+| S13 | U1's current [CPU header](../projects/engine/include/cheryl/maps/tilemap.h), [implementation](../projects/engine/src/maps/tilemap.cpp) and [focused cases](../projects/engine/tests/unit/src/tilemap.cpp). These own map values, assignment/move invariants and computed-edge visibility; current command outcomes are in next.md. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -410,17 +456,20 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-This design assignment ends here. These units describe subsequent work; they do
-not activate implementation or resource-heavy checks now.
+TILEMAP-U1 activates only CPU values/ranges and focused verification. U2/U3 remain
+future coordinator assignments; U1's actual acceptance status is in next.md.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
-| U1 — next | CPU map values, checked edits/queries, and visible-range math only; focused tests for TM-001/003/004/006. Proposed owners: `include/cheryl/maps/tilemap.h`, `src/maps/tilemap.cpp`, `tests/unit/src/tilemap.cpp` under `projects/engine/`. No rendering/assets dependency. See [next.md](next.md). |
+| U1 — implemented source | CPU map values, checked edits/queries, assignment/move invariants and computed-edge visible ranges; 15 focused cases. Owners: `include/cheryl/maps/tilemap.h`, `src/maps/tilemap.cpp`, `tests/unit/src/tilemap.cpp` under `projects/engine/`. No rendering/assets dependency in the CPU API. See [next.md](next.md) for actual verification limits. |
 | U2 | Stable retained bindings and `Submission::resolve_tilemap_layer` in a separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, placement, order, snapshot retention, invalid groups and animation. Exercise the small caller shape before adding other callers. |
 | U3 | Dedicated existing-demo sample helper: authored fixture, two instances, two layers, paint/erase/show/pan controls using existing input contexts; actual visual checks once authorized prerequisites are available. Keep optional UI modules unnecessary. |
 
-Acceptance remains entirely pending. The following observations must eventually
-be made, not inferred from this record:
+U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
+computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
+commands and the LeakSanitizer limitation are in next.md. The downstream
+rendering/editor observations below remain unimplemented, so the first graphical
+consumer's acceptance is still pending:
 
 | Check | Required observable result |
 | --- | --- |
@@ -438,5 +487,5 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. No native build, test,
-artwork validation, performance measurement, or visual consumer ran in this phase.
+registration. Presence in that runner is not a test run. U1's exact commands,
+sanitizer status and public-header/ABI limits are recorded in [next.md](next.md).
