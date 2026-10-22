@@ -4,7 +4,8 @@ These utilities do not choose runtime threads, input devices or graphics policy.
 Their public headers state their ownership and preconditions; value types still
 retain or borrow external objects according to the caller's chosen type.
 `CE::State` owns sampled state and publication, `CE::Time` owns clock/duration
-helpers, and `CE::Math` owns mathematical representations such as packed bits.
+helpers, and `CE::Math` owns rectangle overlap tests and mathematical
+representations such as packed bits.
 Allocation policy and address operations belong to `CE::Memory`; numeric text
 parsing belongs to `CE::Text::Numbers`, and drawable geometry to
 `CE::Rendering::Geometry`. Header paths remain stable across these logical owners.
@@ -22,6 +23,7 @@ individual overload contracts.
 | Parse a number or size an allocation | [Parse numbers](#parse-numbers), [size CPU allocations](#size-cpu-allocations) | [Numeric parsing](../../../projects/engine/include/cheryl/math/string-numbers.h), [fit arithmetic](../../../projects/engine/include/cheryl/math/fit.h), [byte formatting](../../../projects/engine/include/cheryl/math/bytes.h). |
 | Work with packed bits or addresses | [Packed bits, addresses and geometry](#packed-bits-addresses-and-geometry) | [BitArray](../../../projects/engine/include/cheryl/math/binary.h), [pointer helpers](../../../projects/engine/include/cheryl/math/pointers.h). |
 | Build an anchored quad | [Build geometry](#build-geometry) | [Anchor](../../../projects/engine/include/cheryl/math/anchor.h). |
+| Test rectangle collisions | [Test rectangle overlap](#test-rectangle-overlap) | [Overlap helper](../../../projects/engine/include/cheryl/math/collision.h). |
 | Discover source files | [File discovery](#file-discovery) | [FileIndex](../../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h). |
 
 ## Choose a state representation
@@ -171,6 +173,27 @@ overloads require six writable `CE::Rendering::Geometry::Vertex2D` entries or th
 Case-sensitive two-letter anchor names include CL/ML and CR/MR aliases; unknown
 names/enum values select center. The [asset coordinate contract](../assets/asset-values-and-playback.md#coordinates-and-grid-geometry)
 defines grid geometry and normalized UV ownership.
+
+### Test rectangle overlap
+
+Include `<cheryl/math/collision.h>` or `<cheryl/cemath.h>` and call
+`CE::Math::overlaps(p1, p2, d1, d2)` with `glm::vec2` positions and full width/height
+vectors in the same Y-up coordinates and units. This inline `constexpr` helper
+returns a `bool` without creating engine resources:
+
+```cpp
+const bool colliding = CE::Math::overlaps({0, 0}, {3, 0}, {4, 4}, {4, 4}); // true
+```
+
+Each position identifies its rectangle's anchor. Optional fifth and sixth
+`CE::Rendering::Geometry::Pivot` arguments select independent anchors, both
+defaulting to `{0.5f, 0.5f}`. Anchors use the same normalized top-left origin as
+the geometry builders: `{0, 0}` places the rectangle to the right of and below its
+position in Y-up coordinates. The {cpp:func}`CE::Math::overlaps` reference
+owns the exact input preconditions and boundary rules. Touching edges/corners and
+nonpositive dimensions return `false`; containment returns `true`. Supply finite
+values and representable edges, and apply any scaling or coordinate conversion
+before calling. This tests axis-aligned bounds; rotated shapes need another test.
 
 ### Retain blocks and format values
 

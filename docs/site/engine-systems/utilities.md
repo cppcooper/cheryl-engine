@@ -16,6 +16,7 @@ Types below are in `CE` unless another namespace is shown.
 | --- |
 | {cpp:class}`Time::DeltaTime <CE::Time::DeltaTime>` and duration helpers<br>Measure local wall-clock intervals and convert duration units. [Timing helpers](../runtime/utility-contracts.md#timing-and-numeric-helpers). |
 | {cpp:class}`Math::BitArray <CE::Math::BitArray>`<br>Own packed bits with borrowed proxies/native word spans. [Packed bit representation](../runtime/utility-contracts.md#packed-bits-addresses-and-geometry). |
+| `CE::Math::overlaps()`<br>Test two axis-aligned rectangles from positions, dimensions and optional anchors. [Rectangle overlap](../runtime/utility-contracts.md#test-rectangle-overlap). |
 | `CE::Text::Numbers` parsing functions<br>Parse floating/signed/unsigned numeric text with explicit syntax and range failures. [Numeric parsing](../runtime/utility-contracts.md#timing-and-numeric-helpers); [declarations](../../../projects/engine/include/cheryl/math/string-numbers.h). |
 | {cpp:class}`Files::FileIndex <CE::Files::FileIndex>`<br>Own normalized file-discovery results without automatic refresh. [File index](../assets/file-and-font-discovery.md#file-index). |
 | `CE::Memory::Pointers` and fit/byte helpers<br>Calculate addresses/alignment, growth and byte formatting without owning storage. [Address preconditions](../runtime/utility-contracts.md#packed-bits-addresses-and-geometry); [fit arithmetic](../runtime/utility-contracts.md#timing-and-numeric-helpers). |
