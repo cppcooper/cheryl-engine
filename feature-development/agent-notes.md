@@ -1,43 +1,49 @@
 # First map-storage milestone
 
-This is a design checkpoint, dated 2026-10-22, for a future CPU-only command-line
-round trip. No storage implementation or executable acceptance is supplied here.
-The reader summary is [decisions.md](decisions.md); the single next implementation
-unit is [next.md](next.md).
+U1 implements private owning CPU snapshots and a bounded memory-stream JSON codec.
+Its standalone Debug runner passed 86 focused cases on 2026-10-22. File loading,
+replacement and CLI publication remain later units; this is not acceptance of
+the full persistence milestone. The reader summary is [decisions.md](decisions.md);
+actual commands/results and the next unit are in [next.md](next.md).
 
 The inspected baseline is `3542f883391d4225329dab8d5d61a5987e69c8f0` on
-`feat/map-storage`, matching the workspace's recorded source snapshot. The index
-and working tree were clean before this task; `feature-development/` did not
-exist. Only these three requested internal records belong to this change.
+`feat/map-storage`, matching the workspace's recorded source snapshot. Design
+checkpoint `20cd3f74dd94932d18745b1e0d90eb68538378f7` contains the initial records.
+U1 started from that clean checkpoint. Its changes are confined to the private
+`projects/tests/map-storage/` implementation/tests/build entry and these records.
 
 The [workspace instructions](../../../AGENTS.md),
 [autonomy policy](../../../coordination/autonomy-policy.md), and
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
-and Git instructions were read, including `docs/AGENTS.md`. The explicit current
-assignment stops at reviewed, locally committed design records. Protected source
-workspaces and sibling implementations are not prerequisites or execution sites.
+and Git instructions were read, including `docs/AGENTS.md`. The current assignment
+authorizes U1 implementation, focused native verification and its local commit,
+and stops before U2. Protected source workspaces and sibling implementations are
+not prerequisites or execution sites.
 
-All decisions below are agent proposals under delegated authority. Confidence in
-a requirement or observed contract does not establish the user's personal taste.
+Implemented U1 contracts and future U2/U3 proposals are distinguished below. These
+are engineering choices under delegated authority; confidence in a requirement
+or observed contract does not establish the user's personal taste.
 
 ## MS-001 CPU boundary
 
-Use a private finite-map snapshot, a CPU codec, and an explicit-path file adapter.
-The first consumer writes and reconstructs two logical tile layers and a named
-spawn, then compares values. It creates no engine Context, game, provider, window,
+U1 uses a private finite-map snapshot and CPU codec. It reconstructs two logical
+tile layers and a named spawn from memory, then compares values. An explicit-path
+file adapter and the CLI are future units. U1 creates no engine Context, game,
+provider, window,
 image cache, or asset loader. Discovery may locate content in a later application;
 it does not own persistence, select an output path, or make a write transactional.
 
-Proposed private namespace: `MapFixture`, aliased as `MF` below. These are design
-fragments, not existing APIs or compiled examples. `Snapshot` owns strings,
-dimensions, ordered layers, optional tile keys, and spawn records; all constituent
-types support value equality. The CLI's round-trip body would be:
+The private namespace is `MapFixture`, aliased as `MF` below. `Snapshot` owns
+strings, dimensions, ordered layers, optional tile keys, and spawn records; all
+constituent types support value equality. This caller fragment uses the
+implemented API from `codec.h` plus `<sstream>`; the corresponding complete
+fixture and comparisons run in `codec-tests.cpp`:
 
 ```cpp
 namespace MF = MapFixture;
 
-int round_trip(const std::filesystem::path& destination) {
+bool memory_round_trip() {
     const MF::Snapshot original{
         .id = "fixture:two-layers", .width = 3, .height = 2,
         .layers = {
@@ -50,17 +56,15 @@ int round_trip(const std::filesystem::path& destination) {
         },
         .spawns = {{.name = "entry", .layer = "ground", .x = 1, .y = 1}}
     };
-    MF::save(destination, original);       // returns only after replacement
-    const auto restored = MF::load(destination); // owns newly decoded values
-    if (restored != original)
-        return 3;
-    std::cout << "map=fixture:two-layers layers=2 spawn=entry round-trip=ok\n";
-    return 0;
+    const auto bytes = MF::encode(original);
+    std::istringstream input(bytes);
+    const auto restored = MF::parse(input, "memory:two-layers");
+    return restored == original;
 }
 ```
 
 The eventual CLI takes an explicit file under a caller-created disposable
-directory. `round-trip <file>` uses the sequence above; `verify <file>` only loads
+directory. Planned `round-trip <file>` will save then load; `verify <file>` only loads
 and compares against the literal fixture, including in a fresh process. Its outer
 boundary prints operation/path/field diagnostics: exit 0 for success, 2 for a
 storage rejection, 3 for a value mismatch, 64 for usage, and 1 for an unexpected
@@ -70,11 +74,12 @@ Extending `FileIndex` or `FileRegistry` with map state would mix discovery and
 serialization and would not supply publication guarantees. Extending graphics
 `Loader::upload()` would introduce native ownership and its partial effects.
 Evidence: E01-E04, E07, H01-H04. **Confidence: high** in the required CPU boundary;
-medium in the private API shape. No historical persistence preference is proven.
+medium in the private API shape. Reversal affects only private codec/tests and
+records; no public callers exist. No historical persistence preference is proven.
 
 ## MS-002 Logical identity and coordinates
 
-| Value | Proposed identity and meaning |
+| Value | Private identity and meaning |
 | --- | --- |
 | Map | Owned qualified key `fixture:two-layers`; independent of filename or runtime instance address. Loading twice creates independent values with the same content identity. |
 | Layer | Map-local key, such as `ground` or `overlay`. Unique within that map. Vector order is authored order and must survive storage. |
@@ -105,7 +110,10 @@ but keep this experiment small and independent. A later palette can preserve
 these identities; changing their meaning requires explicit migration.
 Evidence: E05-E06, E09, H02-H04. **Confidence: medium** in semantic keys and dense
 ordered layers; low as a claim about personal taste. Coordinates are a reversible
-fixture convention, not an agreement with the sibling tilemap branch.
+fixture convention, not an agreement with the sibling tilemap branch. U1's value
+comparisons and independent copies pass. Changing semantic identity or coordinate
+meaning would require a deliberate format change once files acquire consumers;
+at present the reversal affects only this private codec and fixtures.
 
 ## MS-003 Format and version
 
@@ -114,7 +122,8 @@ Use one UTF-8 JSON object with `format: "cheryl.map-fixture"` and integer
 graphics manifest version `"2.0"` nor a universal application/save-game schema.
 The file extension `.map.json` is a hint; the header controls interpretation.
 No graphics index, `$schema` fetch, filesystem reference, or asset discovery is
-needed. Proposed exact fixture:
+needed. The codec accepts this fixture; the executable golden encoding uses the
+same values with fixed two-space field indentation and compact cell arrays:
 
 ```json
 {
@@ -144,17 +153,20 @@ they preserve both array orders. Deterministic encoding is useful for review,
 but round-trip acceptance compares values, not arbitrary input whitespace.
 
 Readers accept exactly the supported format and version. A recognizable different
-format yields `UnsupportedFormat`; another integer version, including 0 or 2,
-yields `UnsupportedVersion`. Missing/wrongly typed headers are invalid data.
+format yields `UnsupportedFormat`; another nonnegative uint32 integer version,
+including 0 or 2, yields `UnsupportedVersion`. Missing/wrongly typed headers or
+out-of-range integer encodings are invalid data.
 There is no inferred version, downgrade, automatic rewrite, or migration in this
 milestone. An incompatible field or semantic change needs a new version and a
 separately selected reader/migration. Unknown properties in version 1 reject.
 
-Reuse the already declared nlohmann/json dependency privately, with no public JSON
-types or new dependency/pin changes. The baseline gitlink is
-`b36f4c477c40356a0ae1204b567cca3c2a57d201`; its header is absent in this clone at
-this checkpoint. Nothing was retrieved. Availability and parser facilities remain
-implementation checks, not demonstrated build readiness.
+The codec uses the already declared nlohmann/json dependency privately, with no
+public JSON types or pin changes. The coordinator populated gitlink
+`b36f4c477c40356a0ae1204b567cca3c2a57d201`; the build uses its private header path
+and statically requires version 3.11.3. The parser uses public SAX events with a
+bounded DOM builder. Encoding validates first, then appends known schema syntax
+and validated ASCII identifiers into a bounded string, avoiding an oversized
+temporary serialization. No system JSON header or newer strict-NUL macro is used.
 
 JSON aids hand inspection and uses an existing authored-input vocabulary. Binary
 encoding would add byte-order/layout and inspection work; a new ad hoc text grammar
@@ -163,16 +175,22 @@ introduce semantics absent from this consumer. The existing graphics schema
 describes atlas assets, not world cells/spawns. None is ruled out for later needs.
 Evidence: E03, E05, E08, H02-H03. **Confidence: medium** in a reversible JSON
 prototype; low in any inference that the user prefers it for all persistence.
+Changing the private representation remains cheap before U2 creates persisted
+files; changing an accepted format later requires explicit version handling.
 
 ## MS-004 Validation and load publication
 
 Read bounded bytes, parse one complete object, validate a candidate, and return a
 new owning `Snapshot` only on complete success. No caller-provided map is mutated.
-Input I/O failures report `Read`; byte/depth limits can reject before syntax or
-header checks. EOF inside a JSON token/container is malformed/truncated input.
-Trailing non-whitespace, comments, invalid encoding, or a second document reject. Syntax
-errors precede header interpretation; once syntax is valid, check format/version
-before interpreting version-specific content. No default/empty map masks failure.
+Acquisition consumes at most 8 MiB plus one detection byte and rejects every raw
+NUL before parsing, including after a valid document. This guards JSON 3.11.3's
+raw-NUL-as-EOF behavior. Signaled stream failures report `Read`. SAX limits and
+decoded duplicate names can reject before a later syntax error; syntax/UTF-8
+errors and numeric token overflow carry the parser's one-based byte offset.
+After a complete bounded parse, check format/version, then version-specific
+structure/semantics. No global error ordering is promised across these phases.
+Truncated tokens/containers, trailing non-whitespace, comments, invalid UTF-8 and
+a second document reject. No default/empty map masks failure.
 
 Version 1 validation requires:
 
@@ -186,15 +204,24 @@ Version 1 validation requires:
 - Valid bounded keys, unique layer IDs, and unique spawn names. Every cell is
   `null` or a valid tile key. Each spawn references an existing layer and satisfies
   `0 <= x < width`, `0 <= y < height`; no numeric coercion is allowed.
-- At most 8 MiB of document bytes, nesting depth at most 16 (root object is depth
-  1; each nested array/object adds one), and the key limit from MS-002. Enforce
-  byte/depth limits while consuming input, before building an unbounded DOM;
-  check collection limits before constructing the snapshot.
+- At most 8 MiB of document bytes and nesting depth 16 (root container is depth
+  1; nested containers add one). Every decoded JSON string/member name is capped
+  at 128 bytes. Before inserting DOM entries, cap any array at 262144 elements,
+  each object at 256 members, and total nodes at 300000, counting every value,
+  container and decoded member name. Per-object name sets compare decoded keys,
+  including escaped equivalents; each sibling object gets a fresh set. Violations
+  throw `Error`; a DOM callback returning false is not used to discard fields.
+- Validate width/height/layer products with division guards before Snapshot
+  allocation. All numeric fields require nonnegative uint32 integer encodings;
+  booleans, fractions, exponents and overflows reject without narrowing. Capacity
+  violations report `LimitExceeded`; wrong types/ranges/semantics report
+  `InvalidValue`. Depth/node boundaries can pass SAX admission but still fail
+  the map schema, since a valid v1 map is shallower and has fewer nodes.
 
 The encoder revalidates mutable aggregates, enforces the same limits and the
-encoded-byte cap, and finishes all serialization before opening an output staging
-file. A semantically valid snapshot whose encoding exceeds the byte cap rejects
-without touching the destination. The limits are local operational choices,
+encoded-byte cap while appending; it never produces more than 8 MiB. The codec
+opens no output file. A semantically valid snapshot whose encoding would exceed
+the byte cap rejects without changing the input. The limits are local operational choices,
 not historical preference rules or an infinite-world capacity claim.
 
 Asset existence, atlas bounds, collision, and spawn occupancy are intentionally
@@ -203,47 +230,52 @@ resolver reports an unresolved binding without silently turning it into empty.
 Permissive loading or dropping unknown fields would hide misspellings and lose
 future data on rewrite. Strict rejection trades convenience for explicit changes.
 Evidence: E03-E06 and the acceptance brief. **Confidence: high** in complete
-validation and unchanged caller state; medium in these initial budgets. Duplicate
-member detection and bounded parsing need focused implementation coverage; the
-current manifest parser does not by itself establish those guarantees.
+validation and unchanged caller state; medium in these initial budgets. U1's
+executed cases cover these limits, duplicate handling and preservation. Budgets
+are bounds on acquired bytes and logical DOM growth, not an exact heap-byte or
+latency guarantee. They remain private constants: revising them costs focused
+boundary tests and record updates. The current manifest parser alone would not
+have supplied these guarantees.
 
 ## MS-005 Ownership and failure reporting
 
-Proposed private operations:
+Implemented private operations:
 
 ```cpp
 Snapshot parse(std::istream& input, const std::filesystem::path& origin);
 std::string encode(const Snapshot& snapshot);
-Snapshot load(const std::filesystem::path& source);
-void save(const std::filesystem::path& destination, const Snapshot& snapshot);
 ```
 
 Streams and snapshot inputs are borrowed only through the call. Returned snapshots
 and encoded bytes own all data; no iterators, JSON views, registry references,
 native handles, or callbacks escape. `origin` supplies diagnostic context only.
-Paths are explicit; file operations resolve relative paths against the working
-directory once at entry. The snapshot stores no absolute path or stream lifetime.
+`origin` is copied for diagnostics without opening/resolving it. The snapshot
+stores no absolute path or stream lifetime. The parser consumes stream-buffer
+bytes directly and preserves flags/exception masks, so `bad_alloc` and programming
+exceptions from a stream buffer are not swallowed by an istream catch-all. An
+unreadable initial state or a signaled `ios_base::failure` becomes `Read`; an EOF
+reported by the buffer is treated as EOF. Silent device errors are outside this
+memory-stream unit. Future path-based load/save remain U2 proposals.
 Parsing and encoding perform no filesystem discovery or registry publication.
 
 All operations run synchronously on the calling CPU thread. Independent values
 can be used independently, with no singleton or hidden cache. The caller keeps
-borrowed streams/snapshots stable, serializes calls affecting the same file, and
+borrowed streams/snapshots stable, serializes access to the same input object, and
 settles calls before destroying inputs. No job acceptance/completion split,
 asynchronous cancellation, game thread, or shutdown pump is introduced.
 
-Use an owning private `Error` derived from `std::runtime_error` for anticipated
-storage failures, carrying a category, operation, origin/destination, field path
-or parse byte offset, and an OS error when applicable. Proposed categories are
-`Open`, `Read`, `Malformed`, `UnsupportedFormat`, `UnsupportedVersion`,
-`InvalidValue`, `LimitExceeded`, `Write`, `Replace`, and `UnsupportedPlatform`.
+The owning private `Error` derives from `std::runtime_error` and carries a `Code`,
+operation, diagnostic origin, field location, optional one-based byte offset,
+and an I/O error code when a stream signals one. U1 categories are `Read`,
+`Malformed`, `UnsupportedFormat`, `UnsupportedVersion`, `InvalidValue` and
+`LimitExceeded`. Encoding diagnostics use origin `<snapshot>`.
 Messages distinguish malformed bytes from an unsupported version and identify
 the failing field. Unexpected allocation errors can propagate normally. Cleanup
 must not replace the primary failure or throw from a destructor.
 
-Loads have no effects on existing snapshots. Failed saves preserve the input
-value and, under MS-006's supported file profile, the prior destination bytes.
-An absent input file is an explicit open failure, not a request to create defaults.
-The CLI owns process exit handling and prints diagnostics; the codec does not log
+Failed parsing/assignment leaves existing snapshots intact; encoding also
+preserves its input. File preservation remains MS-006's future requirement.
+The future CLI owns process exit handling and prints diagnostics; the codec does not log
 to global engine services. A caller can adopt a successful return by moving it
 into its own state after validation.
 
@@ -254,6 +286,9 @@ Reusing private engine exceptions would add unnecessary Engine coupling; empty
 returns would obscure failures. Evidence: E01-E04, E07, H02-H04.
 **Confidence: medium** in this private error shape; high in ownership isolation.
 It is an engineering choice, not a recovered personal error-handling rule.
+Injected I/O, allocation and programming failures and retained diagnostics passed
+the focused checks. Changing error style affects only the private caller/tests
+now; no general result abstraction or public exception hierarchy is selected.
 
 ## MS-006 Failed-write preservation
 
@@ -302,13 +337,18 @@ backup rotation or a database adds recovery policy without a present consumer.
 Evidence: the acceptance brief; E01-E04/H01-H05 establish no existing transaction
 to reuse. **Confidence: high** in the preservation requirement and publication
 sequence; medium in the initial platform choice, unverified by execution.
+Changing the platform replacement mechanism is isolated to the future adapter;
+the CPU codec and logical format need not change.
 
 ## MS-007 Integration and implementation placement
 
-Keep the first implementation private under `projects/tests/map-storage/` with
-namespace `MapFixture`. Its CPU targets should need only the standard library
-and the repository-declared JSON headers, without linking Engine or a native
-module. The current Engine target has additional dependency edges (E08), so an
+The implementation is private under `projects/tests/map-storage/` with namespace
+`MapFixture`. Its standalone CMake entry compiles C++23 codec/tests and pinned
+gtest/gtest_main, using the repository JSON header privately. Generated compile
+commands list only codec, tests, gtest-all and gtest_main sources. The executable
+link edge contains only the codec and gtest archives, with no Engine or native
+module. This boundary passed native Debug checks. The current Engine target has
+additional dependency edges (E08), so an
 Engine-linked headless process alone would not establish this smaller boundary.
 Do not export a new SDK component before the caller and failure checks work.
 
@@ -324,7 +364,8 @@ reviewed. Private duplication costs a later adapter/extraction, but leaves both
 branches independently demonstrable. Promote only the proven reusable boundary
 after the CLI and fault cases, keeping internal decision IDs current. Evidence:
 E05-E09, H02-H05 and the workspace brief. **Confidence: high** in independence
-and deferred lifecycle policy; medium in this private placement. Final public
+and deferred lifecycle policy; medium in this private placement. Relocating these
+private targets is cheap; public extraction remains deferred. Final public
 names, integration ownership, and save-game composition remain unselected.
 
 ## Source evidence
@@ -332,7 +373,8 @@ names, integration ownership, and save-game composition remain unselected.
 Current-source references E01-E09 describe inspection at
 `3542f883391d4225329dab8d5d61a5987e69c8f0`. They are compatibility facts, not
 evidence of personal preference, even where Git lists the established author
-identity. No tests cited here were executed.
+identity. The baseline manifest tests below were not executed; U1 implementation
+and executed-test evidence are identified separately as E10.
 
 | ID | Exact source locations and observed contract |
 | --- | --- |
@@ -343,8 +385,9 @@ identity. No tests cited here were executed.
 | E05 | [Tileset definition](../projects/engine/include/cheryl/assets/definitions/tileset.h), lines 35-55, 87-101; [ID implementation](../projects/engine/src/assets/definitions/tileset.cpp), lines 4-14; [manager](../projects/engine/src/core/resources/asset-management/tileset-mgr.cpp), lines 15-60. Definition IDs are `namespace:name`; cells belong to a grid; Wang hashes are lookup helpers. Manager resolves uploaded textures/materials, builds geometry and publishes absent cache IDs, so it is not a CPU map loader. |
 | E06 | [CPU selector](../projects/engine/include/cheryl/assets/selection/tile-selection.h), lines 18-43, 55-79; [runtime tileset](../projects/engine/include/cheryl/assets/types/2d/tileset.h), lines 19-24, 63-98. Application owns world coordinates/sampler and time; selector returns a source-cell result or an ordinary unresolved result. Runtime tile values retain uploaded resources. These supply neither world storage nor persistent instance IDs. |
 | E07 | [First-game consumer](../projects/apps/first-game/src/first-game.cpp), lines 35-56; [tutorial consumer](../projects/apps/tutorial-game/src/game.cpp), lines 37-54; [asset demo](../projects/apps/demo/src/asset-demo.cpp), lines 73-100; [audio demo](../projects/apps/demo/src/audio-demo.cpp), lines 32-44. Games upload then retrieve named assets; demo can parse an explicit manifest, then load resources. Audio opens/streams a discovered path separately. Discovery, parsing, and native realization have different owners. |
-| E08 | [Engine build declarations](../projects/engine/CMakeLists.txt), lines 21-45; [.gitmodules](../.gitmodules), lines 28-30; baseline tree gitlink `extern/json` at `b36f4c477c40356a0ae1204b567cca3c2a57d201`. Engine uses C++23 and private JSON includes, with other dependency links. The JSON header was checked and is absent. This is configuration inspection only; no configure, retrieval or build ran. |
+| E08 | [Engine build declarations](../projects/engine/CMakeLists.txt), lines 21-45; [.gitmodules](../.gitmodules), lines 28-30; baseline tree gitlink `extern/json` at `b36f4c477c40356a0ae1204b567cca3c2a57d201`. Engine uses C++23 and private JSON includes, with other dependency links. The header was absent at the design checkpoint; it is now populated by the coordinator. Engine itself was not configured/built for U1. |
 | E09 | [Status](../docs/STATUS.md), lines 100-103; [manifest metadata gaps](../docs/planning/long-term/asset-manifest-metadata.md); [discovery guide](../docs/site/assets/file-and-font-discovery.md), lines 16-62. Documented intent distinguishes save serialization from manifest parsing and defers world storage. Missing semantic artwork metadata must not be invented. The current task selects this narrow experiment without reconciling published roadmaps. |
+| E10 | U1 [values](../projects/tests/map-storage/snapshot.h), [private API](../projects/tests/map-storage/codec.h), [codec](../projects/tests/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -386,12 +429,14 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-These are proposed future units, not authorization to start them in this task.
+U1 is complete within this assignment. U2/U3 require a later coordinator
+assignment and have not started.
 
-1. **U1 — CPU value and codec.** Implement private snapshot types, equality,
-   validation, bounded JSON parse/encode, and focused memory-stream checks under
-   `projects/tests/map-storage/`. Use only the declared JSON dependency and the
-   standard library. [next.md](next.md) owns its detailed scope and checks.
+1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
+   validation, bounded JSON parse/encode and 86 passing focused checks under
+   `projects/tests/map-storage/`. Its codec uses only standard C++ and private
+   declared JSON headers; the test runner adds pinned gtest. [next.md](next.md)
+   owns reproducible commands and verification limits.
 2. **U2 — File publication adapter.** Add explicit-path load/save, same-directory
    exclusive staging and Linux replacement, with a narrow private file-operations
    seam for deterministic failures. Check real filesystem publication and target
@@ -403,14 +448,18 @@ These are proposed future units, not authorization to start them in this task.
    extraction. No rendering, game startup, sibling merge, or artwork is needed.
 
 Each unit keeps the decision summary and next action consistent with actual
-evidence. Future executable work must use its selected assignment's resource
-authority and the shared build lock; this preparation performs no builds,
-dependency retrieval, installs, native tests, or documentation generation.
+evidence. The completed pre-interruption checks used the then-current shared
+wrapper and clone-local Debug output, with four compilation jobs. The memory
+continuation now permits only one compilation/test job through the wrapper;
+unchanged passing native checks were not repeated. No dependency retrieval,
+system installation, device run or documentation generation was performed.
 
 ## Observable acceptance
 
-Every row is **proposed and unexecuted**. Source inspection and a record review
-cannot complete these executable requirements.
+This table retains the full milestone requirements. U1 demonstrates the
+in-memory portions of A3/A4 and codec isolation in A7, plus memory round-trip,
+ownership and deterministic encoding. CLI observations in A1/A2, all file effects
+in A5/A6, and the CLI portion of A7 remain unimplemented/unexecuted.
 
 | Check | Required observation |
 | --- | --- |
@@ -422,12 +471,12 @@ cannot complete these executable requirements.
 | A6 — Successful replacement | Saving B succeeds, then a new load reads B with no mixture of A/B. Repeat with an absent target; precommit failures leave it absent. Temp-name collisions never overwrite another file; cleanup touches only the operation's own staging file. Cleanup failure retains the primary diagnostic and does not damage A. |
 | A7 — CPU isolation | Codec and CLI target dependency/source inspection plus actual headless execution show no Engine startup, graphics/platform module, provider, global asset manager, renderer, active game or sibling branch requirement. An Engine-linked stub or mocked CLI is insufficient evidence. |
 
-Material open points are the JSON header/toolchain prerequisites, duplicate-key
-and bounded-input parser behavior at the declared pin, local filesystem
-replacement/error semantics, future Windows/durability support, and future
+Material open points are local filesystem replacement/error semantics, future
+Windows/durability support, additional toolchain acceptance, and future
 tilemap/asset binding and level adoption contracts. The API and budgets are
 deliberately private so findings can revise them before public callers accumulate.
 
-The preparation's verification is limited to source/history inspection, static
-caller/contract review, and checks of these three records and their Git diff.
-No CLI exists yet and no acceptance row has passed by execution.
+U1's actual verification is the standalone Debug build, 86 executed codec cases,
+generated source/link inspection and record/diff review. No CLI or filesystem
+publication exists yet. Successful U1 checks and its commit do not establish the
+full map-storage feature's acceptance.
