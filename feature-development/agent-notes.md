@@ -3,9 +3,10 @@
 U1 implements validated immutable CPU definitions on `feat/storytelling`, from
 clean design checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978` (original source
 baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`). The definition implementation
-and 16 unit cases pass syntax checks; native acceptance is blocked by the missing
-fallback font described in [next.md](next.md). Sessions and the console encounter
-remain proposed. The companion
+and 16 unit cases pass syntax checks and compile into the native runner. The
+pinned fallback font is now present and configuration succeeds, but post-link
+discovery failed; native assertions remain unexecuted. See [next.md](next.md).
+Sessions and the console encounter remain proposed. The companion
 [decisions](decisions.md) use the same `ST-001` through `ST-007` IDs;
 [next](next.md) selects one subsequent implementation unit.
 
@@ -68,7 +69,8 @@ EXPECT_EQ(choice->text, "Ask to enter");
 
 This caller and the other cases in
 [dialogue-definition.cpp](../projects/engine/tests/unit/src/dialogue-definition.cpp)
-have passed warning-enabled C++23 syntax checking, not native execution.
+have passed warning-enabled C++23 syntax checking and native compilation/linking;
+their assertions have not yet executed successfully.
 [dialogue.h](../projects/engine/include/cheryl/core/game-framework/dialogue.h)
 exposes only CPU values, standard-library facilities and Engine visibility macros.
 [dialogue.cpp](../projects/engine/src/core/game-framework/dialogue.cpp) supplies
@@ -375,7 +377,7 @@ UI would consume copied views and send scoped selections to simulation.
 
 | Unit, in dependency order | Coherent deliverable and gate |
 | --- | --- |
-| U1: validated CPU definition | Source and 16 focused cases implemented; all pass warning-enabled syntax checking. Private construction and a deep copy close the mutable-alias boundary. Native verification remains blocked on the baseline fallback-font input; see next.md before claiming U1 accepted. |
+| U1: validated CPU definition | Source and 16 focused cases implemented; syntax checks and native compilation/linking succeeded. Private construction and a deep copy close the mutable-alias boundary. Post-link discovery failed, so no assertions establish native acceptance; see next.md. |
 | U2: explicit session | View, scoped selection, application handlers, checked progression, failure state and value snapshot/resume. Gate: both routes, rejection without effects, independent lifetimes, stale selections, throwing handlers and paired resume/no replay cases. Reassess the nonthrowing post-effect path before any extra API callers. |
 | U3: console acceptance | Branch-local console app/fixture, versioned JSON envelope, save/resume commands and focused codec/transcript cases. Wire only needed targets/dependencies, then run permitted checks when this unit is assigned. Gate: actual console outcomes and resumed effect count, malformed/mismatched saves, safe adoption and explicit I/O failures. |
 
@@ -420,8 +422,11 @@ Material uncertainties: modern API taste is largely unproven; manual revision
 discipline cannot detect same-ID/revision content changes; generic effects can
 partially mutate before throwing; JSON/console target wiring and the nonthrowing
 commit/adoption path still need implementation evidence. U1's source immutability
-and diagnostic cases are syntax-checked but not accepted by native execution:
-the prescribed configuration fails because `assets/fonts/DejaVuSans.ttf` is absent,
-and CTest selected zero tests (error exit 8). No asset substitution, dependency pin
-change or alternate native runner was used. Actual commands, source registration,
-coverage and the prerequisite recovery action are recorded in [next.md](next.md).
+and diagnostic cases are syntax-checked and compiled/linked, but native assertions
+remain unexecuted. The coordinator restored `assets/fonts/DejaVuSans.ttf` at the
+recorded asset pin; the assigned Debug configuration now succeeds. The serial
+build failed during post-link GoogleTest discovery. Generated listing metadata
+contains all 16 expected dialogue cases but is not an executed acceptance result.
+No asset substitution, dependency pin change or alternate native runner was used.
+Actual commands, registration evidence, coverage and recovery action are recorded
+in [next.md](next.md).

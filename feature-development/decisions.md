@@ -5,9 +5,9 @@ Definition choices implemented in U1 from design checkpoint
 These are agent engineering choices,
 not confirmed personal API preferences. Detailed contracts, alternatives,
 provenance and acceptance are in [agent-notes.md](agent-notes.md);
-[next.md](next.md) records U1 checks and the next unit. Native acceptance is
-blocked by a missing baseline fallback-font input; syntax checks alone do not
-accept U1 or the console milestone.
+[next.md](next.md) records U1 checks and the next unit. The font prerequisite is
+resolved and configuration succeeds; post-link discovery failed. Compilation
+and syntax checks alone do not accept U1 or the console milestone.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -36,7 +36,7 @@ storage. Definition copying/moving is disabled, handles retain it, and ordered
 observations borrow its lifetime. This closes the ownership gap left by
 shared_ptr<const> alone. Copies cost allocation; linear lookup avoids premature
 index machinery. Confidence is high in the source boundary, with native lifetime
-verification still blocked. Session ownership remains a later choice.
+verification incomplete. Session ownership remains a later choice.
 
 ## ST-004 — Keep condition and effect meaning in the application
 
@@ -66,7 +66,7 @@ definition or owned diagnostics with code, authored positions, field and value.
 Deterministic traversal makes multiple errors actionable; cycles are valid and
 reachability warnings are excluded. Allocation failures remain exceptions. The
 tradeoff is eager validation and diagnostic allocation. Confidence is high in the
-source contract; native acceptance awaits the missing build input.
+source contract; native acceptance awaits successful runner discovery and assertions.
 
 ## ST-007 — Save progress and application flags as one boundary
 
