@@ -37,10 +37,6 @@ jobs:
       - name: Select documentation cache directory
         run: |
           printf 'CHERYL_DOCS_CACHE_DIR=%s/cheryl-engine/docs-tools\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
-      - name: Check documentation tooling
-        run: |
-          python .github/scripts/test_sync_docs_stable.py
-          python -m unittest discover -s docs/site/generation/tests -p 'test_*.py'
       - name: Identify documentation tool cache
         id: tool-cache
         run: python -c 'import sys; sys.path.insert(0, "docs/site/generation"); from bootstrap import environment_identity; print("identity=" + environment_identity())' >> "$GITHUB_OUTPUT"
@@ -55,6 +51,10 @@ jobs:
           key: ${{ steps.environment.outputs.environment-prefix }}-tools-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/site/generation/requirements.txt', 'docs/site/generation/native-tools.json', 'docs/site/generation/bootstrap.py') }}
       - name: Prepare pinned documentation tools
         run: python docs/site/generation/bootstrap.py setup --force-pinned
+      - name: Check documentation tooling
+        run: |
+          python .github/scripts/test_sync_docs_stable.py
+          python docs/site/generation/bootstrap.py exec --force-pinned -- python -m unittest discover -s docs/site/generation/tests -p 'test_*.py'
       - name: Save shared documentation tools
         if: steps.environment.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
