@@ -24,6 +24,7 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
+#include <testing/material-builder.h>
 
 #include <array>
 #include <atomic>
@@ -240,7 +241,7 @@ namespace {
         explicit OneTickGame(CE::Input::System& input, const bool capture = false)
         : input_(input), capture_(capture) {}
 
-        void init() override {
+        void init_platform() override {
             ++initializations;
             (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action);
             if (capture_) {
@@ -257,7 +258,7 @@ namespace {
                 on_quiesce();
         }
 
-        void deinit() override {
+        void deinit_platform() override {
             ++shutdowns;
             focus_.reset();
             text_.reset();
@@ -385,6 +386,7 @@ namespace {
     /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
     class MemoryProvider final : public CE::Rendering::Resources::Provider {
     public:
+        CE::Rendering::GraphicsDomain domain;
         std::uint32_t uploaded_vertices = 0;
         std::thread::id resource_thread;
         int atlas_uploads = 0;
@@ -398,7 +400,12 @@ namespace {
         std::vector<CE::Rendering::Geometry::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
+        CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
+        bool builtin_support = true;
 
+        CE::Rendering::GraphicsDomain graphics_domain() const noexcept override { return domain; }
+
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return builtin_support ? &builder : nullptr; }
         [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image> load_image(const std::filesystem::path&) override {
             if (on_load_image)
                 return on_load_image();
@@ -506,7 +513,7 @@ namespace {
         UiProbeGame(CE::Runtime::Context& engine, MemoryInput& input)
         : engine_(engine), input_(input) {}
 
-        void init() override {
+        void init_platform() override {
             (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, keyboard_action);
             (void)input_.bindings().bind_button({input_.gamepad_id(), test_button}, controller_action);
             events_ = input_.capture(CE::Input::Capture::Channel::Events);
@@ -604,7 +611,7 @@ namespace {
             pass.add(CE::Rendering::Submission::resolve_text(*font_, "UI:" + edited_text, style, context));
         }
 
-        void deinit() override {
+        void deinit_platform() override {
             ++shutdowns;
             focus_.reset();
             text_.reset();
@@ -636,6 +643,7 @@ namespace {
     /** Records frame handoff while the test supplies its own display and input. */
     class MemoryRenderer final : public CE::Rendering::Renderer {
     public:
+        std::shared_ptr<CE::Rendering::GraphicsDomainOwner> domain_owner;
         std::function<void()> on_render;
         std::function<void(const CE::Rendering::Frame&)> on_frame;
         std::function<void()> on_maintenance;
@@ -656,16 +664,26 @@ namespace {
         int clears = 0;
         int renders = 0;
 
+        CE::Rendering::GraphicsDomain graphics_domain() const noexcept override {
+            return domain_owner ? domain_owner->token() : CE::Rendering::GraphicsDomain{};
+        }
+
         void initialize() override {
             ++initializations;
             if (on_initialize)
                 on_initialize();
+            if (domain_owner)
+                domain_owner->make_available();
+            publish_graphics_domain_changes();
         }
 
         void deinitialize() override {
             ++shutdowns;
             if (on_deinitialize)
                 on_deinitialize();
+            if (domain_owner)
+                domain_owner->shutdown();
+            publish_graphics_domain_changes();
         }
         void maintain_resources() override {
             ++maintenance_calls;
@@ -921,8 +939,8 @@ TEST(runtime_adapter, game_init_failure) {
             ADD_FAILURE() << "Unexpected initialization exception type";
         }
         const auto diagnostics = ::testing::internal::GetCapturedStderr();
-        EXPECT_NE(diagnostics.find("game deinit: cleanup also failed"), std::string::npos);
-        EXPECT_NE(diagnostics.find("operation=game_init outcome=failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("game platform deinit: cleanup also failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("operation=game_platform_init outcome=failed"), std::string::npos);
         EXPECT_NE(diagnostics.find("domain=" + std::to_string(runtime.diagnostics().domain)), std::string::npos);
         EXPECT_EQ(runtime.diagnostics().updates, 0u);
         EXPECT_EQ(game.initializations, 1);
@@ -1206,6 +1224,45 @@ TEST(platform_requests, shutdown_cancellation) {
     }
 }
 
+TEST(asset_upload_event, cancelled_platform_request) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        CE::Assets::Loading::Loader loader("cancelled-upload-root");
+        loader.publish_events_to(engine->events().publisher());
+        int settlements = 0;
+        const auto id = engine->events().register_listener(
+            CE::Assets::Loading::asset_upload_settled_event,
+            [&](const CE::Assets::Loading::AssetUploadSettled&) { ++settlements; }
+        );
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::future<void> request;
+        game.on_init = [&] { runtime.stop(); };
+        // Concurrent shutdown may service accepted requests until simulation
+        // exits. Queue after that join, with no CPU work left to require pumping.
+        game.on_quiesce = [&] {
+            request = engine->platform_dispatcher().submit([&](CE::Runtime::Context& platform) {
+                loader.upload({}, platform.resources());
+            });
+        };
+        runtime.run();
+        EXPECT_EQ(engine->platform_dispatcher().diagnostics().cancelled, 1u);
+        ASSERT_EQ(request.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        try {
+            request.get();
+            FAIL() << "The unexecuted upload must be cancelled";
+        } catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+        EXPECT_EQ(settlements, 0);
+        EXPECT_FALSE(loader.diagnostics().completed);
+        EXPECT_TRUE(engine->events().unregister_and_wait(id));
+    }
+}
+
 TEST(runtime_adapter, concurrent_frame) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1349,6 +1406,11 @@ TEST(runtime_adapter, shared_sprite_grid) {
     auto shader = CE::Assets::Shaders::ProgramCache::get().get_asset(program);
     ASSERT_TRUE(sprite);
     ASSERT_TRUE(shader);
+    ASSERT_TRUE(sprite->material);
+    const auto standard = CE::Rendering::Submission::resolve_sprite(*sprite, 1, {}, {});
+    EXPECT_EQ(standard.material, sprite->material);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(standard.parameters.at("image")).unit, 0u);
+    EXPECT_EQ(provider.builder.requests.size(), 1u);
 
     CE::Rendering::Frame frame;
     CE::Rendering::FrameWriter writer(frame);
@@ -1358,7 +1420,7 @@ TEST(runtime_adapter, shared_sprite_grid) {
         std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::TriangleStrip, true),
         {{"image", CE::Rendering::Parameters::ImageBinding{sprite->texture, 3}}}
     });
-    const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+    const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints(), std::nullopt};
     pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 0, style, context));
     pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 1, style, context));
 
@@ -1384,6 +1446,12 @@ TEST(graphic, whole_image) {
     // Loading one image gives the graphic a pixel-sized six-vertex quad and
     // covers the complete texture, including its top-right UV corner.
     auto graphic = CE::Assets::Graphics::Asset::load(std::filesystem::path{"ui/panel.png"}, provider);
+    ASSERT_TRUE(graphic.material);
+    EXPECT_EQ(graphic.material, provider.builder.values.at(CE::Rendering::Materials::Builtin2D::Textured));
+    const auto standard = CE::Rendering::Submission::resolve_graphic(graphic, {}, {});
+    EXPECT_EQ(standard.material, graphic.material);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(standard.parameters.at("image")).unit, 0u);
+    EXPECT_EQ(provider.builder.requests.size(), 1u); // CPU submission creates no resources.
     ASSERT_EQ(provider.uploaded_vertices, 6u);
     EXPECT_EQ(provider.uploaded_topology, CE::Rendering::Geometry::Topology::Triangles);
     ASSERT_EQ(provider.uploaded_geometry.size(), std::size_t{6});
@@ -1398,7 +1466,7 @@ TEST(graphic, whole_image) {
         std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true),
         {{"image", CE::Rendering::Parameters::ImageBinding{graphic.texture, 0}}}
     });
-    const auto packet = CE::Rendering::Submission::resolve_graphic(graphic, style, {});
+    const auto packet = CE::Rendering::Submission::resolve_graphic(graphic, style, {.image = std::nullopt});
     EXPECT_EQ(packet.first_vertex, 0u);
     EXPECT_EQ(packet.vertex_count, 6u);
     EXPECT_EQ(packet.geometry, graphic.geometry);
@@ -1408,6 +1476,35 @@ TEST(graphic, whole_image) {
     EXPECT_TRUE(image->bound_units.empty());
     EXPECT_EQ(provider.geometry->bind_count(), 0u);
     EXPECT_EQ(provider.shader->uses, 0);
+}
+
+TEST(graphic, material_override) {
+    MemoryProvider provider;
+    const auto custom = std::make_shared<CE::Rendering::Resources::Material>(
+        CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true), {}}
+    );
+    auto image = std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{8, 8});
+    provider.builtin_support = false; // Explicit handles also work without a built-in builder.
+    const auto graphic = CE::Assets::Graphics::Asset::from_image(image, provider, {}, custom);
+    EXPECT_TRUE(provider.builder.requests.empty());
+    const auto selected = CE::Rendering::Submission::resolve_graphic(graphic, {}, {});
+    EXPECT_EQ(selected.material, custom);
+    CE::Rendering::DrawStyle2D style;
+    style.material = provider.builder.values.at(CE::Rendering::Materials::Builtin2D::Textured);
+    EXPECT_EQ(CE::Rendering::Submission::resolve_graphic(graphic, style, {}).material, style.material);
+    EXPECT_EQ(graphic.material, custom);
+}
+
+TEST(graphic, default_failure) {
+    MemoryProvider provider;
+    auto image = std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{8, 8});
+    provider.builtin_support = false;
+    EXPECT_THROW(static_cast<void>(CE::Assets::Graphics::Asset::from_image(image, provider)), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.uploaded_vertices, 0u);
+    provider.builtin_support = true;
+    provider.builder.missing = true;
+    EXPECT_THROW(static_cast<void>(CE::Assets::Graphics::Asset::from_image(image, provider)), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.uploaded_vertices, 0u);
 }
 
 TEST(material_cache, program_reload_lifetime) {
@@ -2433,6 +2530,7 @@ TEST(resource_maintenance, retirement_under_backpressure) {
     for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
         MemoryInput input;
         int polls = 0;
+        int backpressured_passes = 0;
         input.on_poll = [&] { ++polls; };
         MemoryRenderer* renderer = nullptr;
         MemorySurface* surface = nullptr;
@@ -2442,16 +2540,19 @@ TEST(resource_maintenance, retirement_under_backpressure) {
         timing.variable_interval = std::chrono::hours{1};
         CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
         renderer->on_maintenance = [&] {
-            if (renderer->maintenance_calls == 2) {
-                // Lockstep capacity is full, and no simulation deadline/frame is
-                // available to wake the platform. The bounded maintenance wait must.
-                EXPECT_EQ(polls, 1);
-                EXPECT_EQ(renderer->renders, 0);
+            // Startup can run maintenance before the first poll fills the backlog.
+            if (polls == 0 || backpressured_passes == 2)
+                return;
+            EXPECT_EQ(polls, 1);
+            EXPECT_EQ(renderer->renders, 0);
+            if (++backpressured_passes == 2) {
+                // No simulation deadline/frame can wake the full lockstep backlog;
+                // the bounded maintenance wait must permit another pass.
                 runtime.stop();
             }
         };
         runtime.run();
-        EXPECT_GE(renderer->maintenance_calls, 2);
+        EXPECT_EQ(backpressured_passes, 2);
         EXPECT_EQ(renderer->maintenance_thread, std::this_thread::get_id());
         EXPECT_EQ(game.updates, 0);
         EXPECT_EQ(game.draws, 0);
@@ -2516,6 +2617,83 @@ TEST(asset_cache, strong_residency) {
     retained.reset();
     EXPECT_TRUE(destroyed);
     EXPECT_TRUE(observed.expired());
+}
+
+TEST(asset_cache, runtime_domain_eviction) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        renderer->domain_owner = std::make_shared<CE::Rendering::GraphicsDomainOwner>();
+        auto& provider = dynamic_cast<MemoryProvider&>(engine->resources());
+        provider.domain = renderer->graphics_domain();
+        auto& images = CE::Assets::Images::Manager::get();
+        std::shared_ptr<CE::Rendering::Resources::Image> retained;
+        const auto font = engine->fonts().default_font();
+        OneTickGame game(input);
+        game.on_init = [&] {
+            images.load({"runtime-domain.png"}, provider);
+            retained = images.get_asset("runtime-domain.png");
+        };
+        game.on_deinit = [&] { EXPECT_EQ(images.size(), 1u); };
+        engine->events().register_listener(
+            CE::Rendering::graphics_domain_state_changed_event,
+            [](const CE::Rendering::GraphicsDomainStateChanged&) { throw std::runtime_error("observer failure"); }
+        );
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        game.on_tick = [&] { runtime.stop(); };
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(images.size(), 0u);
+        EXPECT_FALSE(CE::Assets::Cache::Context::is_bound_to(provider));
+        ASSERT_TRUE(retained);
+        EXPECT_EQ(retained->pixel_size().width, 32u);
+        EXPECT_EQ(engine->fonts().default_font(), font);
+        EXPECT_EQ(provider.domain.snapshot().reason, CE::Rendering::GraphicsDomainReason::Shutdown);
+    }
+}
+
+TEST(asset_cache, domain_invalidation) {
+    using CE::Assets::Cache::Context;
+    using CE::Rendering::GraphicsDomainOwner;
+    using CE::Rendering::GraphicsDomainStateChanged;
+    auto& textures = CE::Assets::Images::Manager::get();
+    CE::Text::FontService fonts;
+    const auto font = fonts.default_font();
+    GraphicsDomainOwner first_domain;
+    first_domain.make_available();
+    auto first = std::make_unique<MemoryProvider>();
+    first->domain = first_domain.token();
+    textures.load({"old-domain.png"}, *first);
+    const auto retained = textures.get_asset("old-domain.png");
+    ASSERT_TRUE(retained);
+    EXPECT_FALSE(Context::evict_graphics_domain({first->domain.snapshot(), first->domain}));
+    GraphicsDomainOwner second_domain;
+    second_domain.make_available();
+    MemoryProvider second;
+    second.domain = second_domain.token();
+    second_domain.shutdown();
+    EXPECT_FALSE(Context::evict_graphics_domain({second.domain.snapshot(), second.domain}));
+    EXPECT_EQ(textures.size(), 1u);
+    first_domain.shutdown();
+    const GraphicsDomainStateChanged stopped{first->domain.snapshot(), first->domain};
+    EXPECT_FALSE(std::async(std::launch::async, [&] { return Context::evict_graphics_domain(stopped); }).get());
+    EXPECT_THROW(textures.load({"old-domain.png"}, *first), CE::Exceptions::failed_operation);
+    EXPECT_EQ(textures.size(), 1u);
+    EXPECT_TRUE(Context::evict_graphics_domain(stopped));
+    EXPECT_EQ(textures.size(), 0u);
+    EXPECT_FALSE(Context::is_bound_to(*first));
+    EXPECT_EQ(retained->pixel_size().width, 32u);
+    EXPECT_EQ(fonts.default_font(), font);
+
+    GraphicsDomainOwner replacement_domain;
+    replacement_domain.make_available();
+    second.domain = replacement_domain.token();
+    textures.load({"replacement.png"}, second);
+    EXPECT_FALSE(Context::evict_graphics_domain(stopped));
+    first.reset();
+    EXPECT_EQ(textures.size(), 1u);
+    EXPECT_TRUE(Context::is_bound_to(second));
 }
 
 TEST(material_cache, recipe_reload_generations) {

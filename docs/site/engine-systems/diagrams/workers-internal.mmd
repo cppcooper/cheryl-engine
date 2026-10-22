@@ -1,0 +1,48 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Workers · engine integration
+    accDescr: Local names omit Workers::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Runtime::<br/>Context"]:::neighbor
+    k1["Runtime::<br/>ExecutionOptions"]:::neighbor
+    k2["Pool"]:::focal
+    k3["Group"]:::focal
+    k4["PoolOptions"]:::focal
+    k5["TopologyProvider"]:::focal
+    k6["Topology"]:::focal
+    k7["GroupOptions"]:::focal
+    k8["GroupStatus"]:::neighbor
+    k9["CpuPolicy"]:::focal
+    k10["PolicyStrength"]:::focal
+    k11["Text::Rendering::<br/>Updater"]:::neighbor
+    k12("Events::<br/>worker_delivery()"):::neighbor
+    k0 --> k1
+    k1 --> k2
+    k0 --> k2
+    k0 --> k3
+    k2 --> k4
+    k2 --> k3
+    k2 --> k5
+    k5 --> k6
+    k3 --> k7
+    k3 --> k8
+    k7 --> k9
+    k9 --> k10
+    k11 --> k3
+    k12 --> k3
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

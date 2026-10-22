@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/diagnostics.h>
 #include <backends/native-glfw/diagnostics.h>
 
@@ -7,11 +9,11 @@ namespace CE::Platform::GLFW::Detail {
         static thread_local unsigned int depth_;
 
     public:
-        NativeCallbackScope() noexcept { ++depth_; }
-        ~NativeCallbackScope() { --depth_; }
+        CE_NATIVE_GLFW_API NativeCallbackScope() noexcept;
+        CE_NATIVE_GLFW_API ~NativeCallbackScope();
         NativeCallbackScope(const NativeCallbackScope&) = delete;
         NativeCallbackScope& operator=(const NativeCallbackScope&) = delete;
-        [[nodiscard]] static bool active() noexcept { return depth_ != 0; }
+        [[nodiscard]] CE_NATIVE_GLFW_API static bool active() noexcept;
     };
     struct GlfwDiagnostics {
         ::CE::Diagnostics::DomainId domain = 0;
@@ -21,7 +23,7 @@ namespace CE::Platform::GLFW::Detail {
     };
     // Lifecycle/main thread installs before init and restores after termination.
     // Callback captures bounded numeric metadata and chains the borrowed host.
-    void install_glfw_diagnostics() noexcept;
-    void restore_glfw_diagnostics() noexcept;
-    [[nodiscard]] GlfwDiagnostics glfw_diagnostics() noexcept;
+    CE_NATIVE_GLFW_API void install_glfw_diagnostics() noexcept;
+    CE_NATIVE_GLFW_API void restore_glfw_diagnostics() noexcept;
+    [[nodiscard]] CE_NATIVE_GLFW_API GlfwDiagnostics glfw_diagnostics() noexcept;
 }

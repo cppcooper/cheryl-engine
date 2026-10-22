@@ -1,10 +1,25 @@
 #pragma once
+
+/** @file
+ * @brief Object-pool template definitions; include pool.h for the facade and retained release-state declarations.
+ * @see [CPU memory lifetime](cheryl-guide:resources/resource-lifetime)
+ */
 //#include <core/resources/allocators.h>
 #include <memory>
 //#include <core/resources/memory/allocators/object-pool-allocator.hpp>
 #include "object-construction.hpp"
 
 namespace CE::Memory::Objects {
+    /** Construct an independent batch and return one final owner per completed object.
+     * @param N Requested object count; zero returns an empty vector.
+     * @param args Stored arguments repeatedly forwarded to each constructor; moving from them can affect later elements.
+     * @return Per-slot shared handles retaining this PoolState and its construction tracker.
+     * This state must already have shared ownership (normally through Pool or an
+     * allocator); shared_from_this failure propagates. Construction/allocation
+     * failure releases completed handles and returns the unconstructed tail.
+     * Final handle release destroys its tracked object then returns exactly one
+     * slot; cleanup failure reports and terminates instead of escaping a deleter.
+     */
     template <typename T>
     template <typename... Args>
     std::vector<std::shared_ptr<T>> PoolState<T>::retrieve_objects(std::size_t N, Args... args) {
@@ -47,6 +62,12 @@ namespace CE::Memory::Objects {
         return objects;
     }
 
+    /** Return a known owned slot range from a final deleter without facade lookup.
+     * @param p First slot after object destruction is complete.
+     * @param length Positive number of slots released exactly once.
+     * Invalid bookkeeping or allocation/locking failure is reported and terminates;
+     * ordinary recoverable range validation belongs to return_objects().
+     */
     template <typename T> void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
         try {
             return_objects(p, length);
@@ -56,6 +77,12 @@ namespace CE::Memory::Objects {
         }
     }
 
+    /** Check out unconstructed T slots from the per-T pool, allocating byte backing outside locks if needed.
+     * @param N Positive minimum slot count; zero throws bad_request.
+     * @return Block retaining its backing owner and construction/byte return contexts.
+     * Growth can provide extra slots; all lengths count T objects. Overflow or
+     * allocation failures propagate before a partial logical checkout is published.
+     */
     template <typename T>::CE::Memory::Block<T> PoolState<T>::retrieve_block(std::size_t N) {
         if (N == 0) {
             throw ::CE::Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
@@ -65,12 +92,23 @@ namespace CE::Memory::Objects {
         });
     }
 
+    /** Return one positive current slot subrange, merging neighboring free sections.
+     * @param p First T slot in a current checked-out range.
+     * @param length In-bounds slot count, not bytes; users/constructed lifetimes must already be finished.
+     * @throws CE::Exceptions::bad_request For unknown, already-pooled or out-of-bounds ranges.
+     * Bookkeeping is transactional; this operation itself does not destroy objects.
+     */
     template <typename T> void PoolState<T>::return_objects(T* p, std::size_t length) {
         if (!::CE::Memory::BlockTransactions<T>::return_range(this->state_, p, length)) {
             throw ::CE::Exceptions::bad_request(CE_HERE, "Cannot return an unknown, pooled, or out-of-bounds object range.");
         }
     }
 
+    /** Return exact current Block metadata to the typed free pool.
+     * @param returned Complete checked-out range whose users/lifetimes have ended.
+     * Unknown/already-free/invalid ranges throw failed_operation. No user destructor
+     * runs under bookkeeping locks; backing is retained for reuse/culling.
+     */
     template <typename T> void PoolState<T>::return_block(const ::CE::Memory::Block<T>& returned) {
         if (!::CE::Memory::BlockTransactions<T>::return_block(this->state_, returned)) {
             throw ::CE::Exceptions::failed_operation(CE_HERE, "Object pool was returned an unknown or active block.");

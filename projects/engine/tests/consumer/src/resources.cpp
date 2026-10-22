@@ -1,4 +1,6 @@
 #include <cheryl/assets/resources/resource-provider.h>
+#include <cheryl/core/resources/asset-management/asset-loader.h>
+#include <cheryl/core/resources/asset-management/texture-mgr.h>
 
 #include <memory>
 #include <stdexcept>
@@ -38,8 +40,44 @@ namespace {
 }
 
 bool exercise_resources() {
+    CE::Rendering::GraphicsDomain retained;
+    {
+        CE::Rendering::GraphicsDomainOwner owner;
+        retained = owner.token();
+        owner.make_available();
+        owner.shutdown();
+    }
+    if (retained.snapshot().reason != CE::Rendering::GraphicsDomainReason::Shutdown)
+        return false;
     MemoryProvider provider;
     const CE::Assets::Images::Decoded pixels{{1, 1}, {255, 0, 0, 255}};
     const auto image = provider.create_image(pixels);
-    return image->pixel_size().width == 1 && image->pixel_size().height == 1;
+    CE::Events::EventBus events;
+    provider.publish_events_to(events.publisher());
+    CE::Assets::Loading::Loader loader("consumer-upload");
+    loader.publish_events_to(events.publisher());
+    bool settled = false;
+    const auto registration = events.register_listener(
+        CE::Assets::Loading::asset_upload_settled_event,
+        [&](const CE::Assets::Loading::AssetUploadSettled& event) {
+            settled = event.source == loader.source_id() && event.attempt != 0 &&
+                      event.outcome == CE::Assets::Loading::UploadOutcome::Succeeded;
+        }
+    );
+    loader.upload({}, provider);
+    events.unregister_and_wait(registration);
+    auto& images = CE::Assets::Images::Manager::get();
+    bool published = false;
+    const auto catalogue_registration = events.register_listener(
+        CE::Assets::Cache::asset_catalogue_changed_event<CE::Rendering::Resources::Image, std::filesystem::path>,
+        [&](const CE::Assets::Cache::AssetCatalogueChanged<CE::Rendering::Resources::Image, std::filesystem::path>& change) {
+            const auto current = images.asset_snapshot("consumer-image");
+            published = change.kind == CE::Assets::Cache::CatalogueChangeKind::Published &&
+                change.key == "consumer-image" && current.asset && current.generation &&
+                current.generation->generation == change.current->generation &&
+                change.current->graphics_domain.snapshot().id == 0;
+        });
+    images.upload("consumer-image", pixels, provider);
+    catalogue_registration.disconnect();
+    return image->pixel_size().width == 1 && image->pixel_size().height == 1 && settled && published;
 }

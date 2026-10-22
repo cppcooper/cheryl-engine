@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/pipeline.h>
 
 #include <backends/opengl/texture.h>

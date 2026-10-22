@@ -48,3 +48,10 @@ namespace CE::Assets::Images {
         }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Images::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

@@ -1,6 +1,6 @@
 #include "first-game.h"
 
-#include <cheryl/backends/opengl/startup.h>
+#include <cheryl/modules/startup.h>
 #include <CLI/CLI.hpp>
 
 #include <exception>
@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     try {
         // [startup]
         std::string asset_root = CHERYL_FIRST_GAME_ASSETS;
-        auto startup = CE::Application::GLFWOpenGL::make_startup(
+        auto startup = CE::Application::make_startup(
             "Cheryl first game", {.width = 640, .height = 360, .title = "First game: arrows move, Space changes cell, Escape quits"}
         );
         startup.add_application_options([&asset_root](CLI::App& options) {

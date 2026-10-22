@@ -1,6 +1,5 @@
 #include "rmlui-demo.h"
 
-#include <backends/opengl/resource-provider.h>
 #include <core/engine/engine-context.h>
 #include <internals/exceptions.h>
 #include <ui/rmlui/session.h>
@@ -18,31 +17,6 @@
 #include <utility>
 
 namespace {
-    CE::UI::RmlUi::Materials materials(CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root) {
-        auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
-        if (!native)
-            throw CE::Exceptions::invalid_args(CE_HERE, "The demo UI requires an OpenGL material provider");
-        CE::Rendering::Pipelines::Definition definition;
-        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
-        definition.state = {
-            CE::Rendering::Pipelines::Blend::PremultipliedAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
-            CE::Rendering::Pipelines::Cull::None
-        };
-        definition.parameters = {
-            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
-        };
-        // These application shaders multiply vertex/image RGBA for both toolkits.
-        // RmlUi's pipeline preserves its premultiplied output through blending.
-        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
-        const CE::Rendering::OpenGL::PipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
-        CE::UI::RmlUi::Materials result;
-        result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
-        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
-        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
-        const CE::Rendering::OpenGL::PipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
-        result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
-        return result;
-    }
 
     class Callback final : public Rml::EventListener {
         std::function<void()> action_;
@@ -62,12 +36,10 @@ namespace {
 }
 
 struct DemoRmlUi::RmlUiState {
-    CE::Input::System& input;
+    CE::Runtime::Context& engine;
     CE::Runtime::PlatformDispatcher::Submission platform;
     CE::UI::RmlUi::SceneUploader uploader;
-    CE::UI::RmlUi::Materials materials;
     const std::filesystem::path root;
-    const std::filesystem::path font;
     std::unique_ptr<CE::UI::RmlUi::Session> session;
     Rml::ElementDocument* document = nullptr;
     Rml::Element* panel = nullptr;
@@ -83,13 +55,8 @@ struct DemoRmlUi::RmlUiState {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    RmlUiState(CE::Runtime::Context& engine, const std::filesystem::path& root, std::filesystem::path font)
-    : input(engine.input()),
-      platform(engine.platform_dispatcher().submission()),
-      uploader(engine.resources()),
-      materials(::materials(engine.resources(), root)),
-      root(root),
-      font(std::move(font)) {}
+    RmlUiState(CE::Runtime::Context& engine, const std::filesystem::path& root)
+    : engine(engine), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()), root(root) {}
 
     ~RmlUiState() {
         // Runtime has joined simulation. Listeners use SDK observer storage and
@@ -109,11 +76,8 @@ struct DemoRmlUi::RmlUiState {
             session->close_after_quiescence();
     }
 
-    void create_widgets(const CE::Game::TickContext& tick) {
-        session = std::make_unique<CE::UI::RmlUi::Session>(input, 3);
-        if (!session->load_font(font, "demo"))
-            throw CE::Exceptions::failed_operation(CE_HERE, "Cannot load the demo RmlUi font");
-        session->set_view(tick.logical_size, tick.framebuffer_size);
+    void create_widgets() {
+        session = std::make_unique<CE::UI::RmlUi::Session>(engine, 3, CE::UI::RmlUi::SessionOptions{.automatic_view = true});
         const auto source = (root / "graphics/ui/demo.rml").u8string();
         document = session->context().LoadDocument(Rml::String(source.begin(), source.end()));
         if (!document)
@@ -185,17 +149,17 @@ struct DemoRmlUi::RmlUiState {
     }
 };
 
-DemoRmlUi::DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root, std::filesystem::path font)
-: rmlui_state_(std::make_unique<RmlUiState>(engine, asset_root, std::move(font))) {}
+DemoRmlUi::DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root)
+: rmlui_state_(std::make_unique<RmlUiState>(engine, asset_root)) {}
 
 DemoRmlUi::~DemoRmlUi() = default;
 
+void DemoRmlUi::init_simulation() {
+    rmlui_state_->create_widgets();
+}
+
 bool DemoRmlUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& rmlui = *rmlui_state_;
-    if (!rmlui.session)
-        rmlui.create_widgets(tick);
-    else
-        rmlui.session->set_view(tick.logical_size, tick.framebuffer_size);
     rmlui.session->update_time(tick.delta_seconds);
     rmlui.handle_input(tick);
     rmlui.status_label->SetInnerRML(
@@ -205,7 +169,7 @@ bool DemoRmlUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& st
         if (CE::UI::RmlUi::adopt_scene(rmlui.pending, rmlui.scene))
             rmlui.upload_error.clear();
         if (!rmlui.pending.valid())
-            rmlui.pending = rmlui.uploader.submit(rmlui.platform, rmlui.session->record(), rmlui.materials);
+            rmlui.pending = rmlui.uploader.submit(rmlui.platform, rmlui.session->record());
     } catch (const std::exception& error) {
         rmlui.upload_error = error.what();
     }

@@ -45,6 +45,7 @@ namespace CE::Memory::Objects {
      * out a slot and gives its handle the release context; the handle may outlive
      * this reservation. Failed construction leaves the slot reserved, while the
      * destructor returns remaining contiguous ranges to the manager.
+     * Move construction transfers the reservation; copying and both assignment forms are deleted.
      */
     template <typename T, typename Allocator = ::CE::Memory::Allocators::ObjectPoolAllocator<T>>
         requires ReservationAllocator<Allocator, T>
@@ -98,10 +99,6 @@ namespace CE::Memory::Objects {
         [[nodiscard]] const std::vector<::CE::Memory::Block<T>>& remaining_ranges() const noexcept { return remaining_; }
         [[nodiscard]] std::size_t size() const noexcept { return count_; }
 
-        /**
-         * Construct one slot and transfer it to a handle retaining the release
-         * context. If construction fails, the slot stays in remaining_ranges().
-         */
         template <typename... Args> std::shared_ptr<T> emplace(std::size_t index, Args&&... args) {
             if (index >= count_)
                 throw ::CE::Exceptions::bad_request(CE_HERE, "Object reservation index is out of range.");
@@ -154,3 +151,44 @@ namespace CE::Memory::Objects {
         }
     };
 }
+
+/**
+ * @fn template<typename T, typename Allocator> CE::Memory::Objects::Reservation<T, Allocator>::Reservation(std::size_t count, Allocator allocator)
+ * @brief Reserve unconstructed storage and retain its pool release context.
+ * @tparam T Reserved object type; its final destruction must not throw.
+ * @tparam Allocator ReservationAllocator exposing a retained context for T.
+ * @param count Logical slot count; zero creates an empty reservation without checkout.
+ * @param allocator Copied only to capture the retained context.
+ * Allocation/checkout errors propagate without constructing T objects. The reservation is caller-owned and unsynchronized; do not race emplace(), move or destruction.
+ */
+
+/**
+ * @fn template<typename T, typename Allocator> CE::Memory::Objects::Reservation<T, Allocator>::Reservation(Reservation&& other) noexcept
+ * @brief Transfer context and unclaimed ranges, leaving other empty with size zero. Previously claimed object handles remain independent; caller excludes concurrent operations.
+ */
+
+/**
+ * @fn template<typename T, typename Allocator> CE::Memory::Objects::Reservation<T, Allocator>::~Reservation() noexcept
+ * @brief Return remaining unclaimed contiguous ranges without touching already claimed objects.
+ * Claimed handles retain the release context and may outlive this reservation/facade. Invalid final-return bookkeeping terminates under release_owned() rules; this is not a destructor for unconstructed slots.
+ */
+
+/**
+ * @fn template<typename T, typename Allocator> auto CE::Memory::Objects::Reservation<T, Allocator>::remaining_ranges() const noexcept -> const std::vector<CE::Memory::Block<T>>&
+ * @return Borrowed unclaimed partition; emplace()/move/destruction can invalidate references/iterators or change its contents. Retain and exclusively own the reservation while inspecting it.
+ */
+
+/**
+ * @fn template<typename T, typename Allocator> std::size_t CE::Memory::Objects::Reservation<T, Allocator>::size() const noexcept
+ * @return Original logical slot count, not remaining unclaimed slots; moved-from reservations report zero.
+ */
+
+/**
+ * @fn template<typename T, typename Allocator> template<typename... Args> std::shared_ptr<T> CE::Memory::Objects::Reservation<T, Allocator>::emplace(std::size_t index, Args&&... args)
+ * @brief Construct one unclaimed slot and transfer it to an independently retained owner.
+ * @param index Zero-based index below size(), not an index into remaining_ranges().
+ * @param args Perfect-forwarded constructor arguments used only for this object.
+ * @return Aliasing shared_ptr whose final release destroys T once and returns exactly one slot through the retained context.
+ * Out-of-range/already-claimed indices throw bad_request. Allocation or constructor failure leaves that slot reserved and the partition unchanged; retry is permitted. No other slot is constructed. Returned objects may outlive the reservation/pool facade; caller synchronizes object access and supplies nonthrowing destruction.
+ * @see [CPU memory lifetime](cheryl-guide:resources/resource-lifetime)
+ */

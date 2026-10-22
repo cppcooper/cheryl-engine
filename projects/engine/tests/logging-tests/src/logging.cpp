@@ -3,7 +3,7 @@
 #include <core/logging.h>
 #include <internals/compile-time-logging.hpp>
 #include <internals/exceptions.h>
-#include <spdlog/formatter.h>
+#include "../backend-access.h"
 
 #include <atomic>
 #include <chrono>
@@ -25,6 +25,7 @@
 
 using namespace CE;
 using namespace std::chrono_literals;
+namespace Backend = CE::Logging::Testing;
 
 namespace {
     namespace fs = std::filesystem;
@@ -62,6 +63,9 @@ namespace {
     constexpr char untouched_name[] = "logging-untouched";
     constexpr char open_reentry_name[] = "logging-open-reentry";
     constexpr char graph_name[] = "logging-graph";
+    constexpr char process_name[] = "logging-process-scopes";
+    constexpr char central_name[] = "logging-central-category";
+    constexpr char central_alias[] = "logging-central-category";
     constexpr std::size_t queue_capacity = 8192;
 
     struct LogDirectory {
@@ -113,18 +117,18 @@ namespace {
     template <const char* name> class TestLog final : public CE::Logging::Log<name> {
     public:
         explicit TestLog(
-            spdlog::file_event_handlers event_handlers = {},
+            CE::Logging::FileEventHandlers event_handlers = {},
             CE::Logging::Config config = CE::Logging::Config::for_logger(name)
         )
         : CE::Logging::Log<name>(std::move(event_handlers), std::move(config)) {}
 
-        [[nodiscard]] std::shared_ptr<spdlog::logger> retain_logger() const { return this->m_logger.load(); }
+        [[nodiscard]] std::shared_ptr<Backend::NativeLogger> retain_logger() const { return Backend::get(name); }
 
-        [[nodiscard]] spdlog::level logger_level() const { return this->m_logger.load()->log_level(); }
+        [[nodiscard]] CE::Logging::Level logger_level() const { return retain_logger()->log_level(); }
 
-        [[nodiscard]] spdlog::level file_level() const { return this->m_file.load()->log_level(); }
+        [[nodiscard]] CE::Logging::Level file_level() const { return retain_logger()->sinks()[1]->log_level(); }
 
-        [[nodiscard]] spdlog::level console_level() const { return this->m_console.load()->log_level(); }
+        [[nodiscard]] CE::Logging::Level console_level() const { return retain_logger()->sinks()[0]->log_level(); }
     };
 
     struct BackendGate {
@@ -145,7 +149,7 @@ namespace {
         ~BackendRelease() { gate->unblock(); }
     };
 
-    class HeldFormatter final : public spdlog::formatter {
+    class HeldFormatter final : public Backend::Formatter {
         std::shared_ptr<BackendGate> gate;
         bool first = true;
 
@@ -153,20 +157,20 @@ namespace {
         explicit HeldFormatter(std::shared_ptr<BackendGate> gate)
         : gate(std::move(gate)) {}
 
-        void format(const spdlog::details::log_msg& message, spdlog::memory_buf_t& output) override {
+        void format(const std::string_view message, std::string& output) override {
             if (first) {
                 first = false;
                 gate->entered.set_value();
                 gate->released.wait();
             }
-            output.append(message.payload.begin(), message.payload.end());
+            output.append(message.begin(), message.end());
             output.push_back('\n');
         }
 
-        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<HeldFormatter>(gate); }
+        std::unique_ptr<Backend::Formatter> clone() const override { return std::make_unique<HeldFormatter>(gate); }
     };
 
-    class CallbackFormatter final : public spdlog::formatter {
+    class CallbackFormatter final : public Backend::Formatter {
         const std::function<void()> callback;
         bool first = true;
 
@@ -174,38 +178,38 @@ namespace {
         explicit CallbackFormatter(std::function<void()> callback)
         : callback(std::move(callback)) {}
 
-        void format(const spdlog::details::log_msg& message, spdlog::memory_buf_t& output) override {
+        void format(const std::string_view message, std::string& output) override {
             if (std::exchange(first, false))
                 callback();
-            output.append(message.payload.begin(), message.payload.end());
+            output.append(message.begin(), message.end());
             output.push_back('\n');
         }
 
-        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<CallbackFormatter>(callback); }
+        std::unique_ptr<Backend::Formatter> clone() const override { return std::make_unique<CallbackFormatter>(callback); }
     };
 
-    class FailingFormatter final : public spdlog::formatter {
+    class FailingFormatter final : public Backend::Formatter {
         const bool nonstandard;
 
     public:
         explicit FailingFormatter(bool nonstandard)
         : nonstandard(nonstandard) {}
 
-        void format(const spdlog::details::log_msg&, spdlog::memory_buf_t&) override {
+        void format(std::string_view, std::string&) override {
             if (nonstandard)
                 throw 42;
             throw std::runtime_error("injected formatter failure");
         }
 
-        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<FailingFormatter>(nonstandard); }
+        std::unique_ptr<Backend::Formatter> clone() const override { return std::make_unique<FailingFormatter>(nonstandard); }
     };
 
     CE::Logging::Config queue_config(const char* name, const std::filesystem::path& directory) {
         auto config = CE::Logging::Config::for_logger(name);
         config.directory = directory;
         config.rotate_on_open = false;
-        config.logger_level = config.file_level = spdlog::level::warn;
-        config.console_level = spdlog::level::off;
+        config.logger_level = config.file_level = CE::Logging::Level::warn;
+        config.console_level = CE::Logging::Level::off;
         return config;
     }
 
@@ -220,7 +224,7 @@ namespace {
     }
 
     class DefaultLoggerGuard final {
-        std::shared_ptr<spdlog::logger> original = spdlog::default_logger();
+        std::shared_ptr<Backend::NativeLogger> original = Backend::default_logger();
         bool restored = false;
 
     public:
@@ -229,7 +233,7 @@ namespace {
                 return;
             }
 
-            spdlog::set_default_logger(original);
+            Backend::set_default_logger(original);
             restored = true;
         }
 
@@ -247,17 +251,17 @@ TEST(logging, close_completes_file) {
     remove_current_log_file(file_barrier_name);
 
     std::atomic<int> close_events = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t&) { ++close_events; };
+    CE::Logging::FileEventHandlers handlers;
+    handlers.after_close = [&close_events](const std::filesystem::path&) { ++close_events; };
 
     TestLog<file_barrier_name> log{handlers};
     const auto path = log.get_file_path();
 
     // Configure deterministic file-only output, then exercise every ordinary severity path.
     log.set_pattern("%v");
-    log.set_level_logger(spdlog::level::trace);
-    log.set_level_filesink(spdlog::level::trace);
-    log.set_level_stdsink(spdlog::level::off);
+    log.set_level_logger(CE::Logging::Level::trace);
+    log.set_level_filesink(CE::Logging::Level::trace);
+    log.set_level_stdsink(CE::Logging::Level::off);
     log.trace("trace-message");
     log.debug("debug-message");
     log.info("info-message");
@@ -288,8 +292,8 @@ TEST(logging, destructor_closes_file) {
     remove_current_log_file(destructor_close_name);
 
     std::atomic<int> close_events = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t&) { ++close_events; };
+    CE::Logging::FileEventHandlers handlers;
+    handlers.after_close = [&close_events](const std::filesystem::path&) { ++close_events; };
 
     DefaultLoggerGuard default_guard;
     std::filesystem::path path;
@@ -297,20 +301,20 @@ TEST(logging, destructor_closes_file) {
         TestLog<destructor_close_name> log{handlers};
         path = log.get_file_path();
         log.set_pattern("%v");
-        log.set_level_stdsink(spdlog::level::off);
+        log.set_level_stdsink(CE::Logging::Level::off);
         log.make_default();
         log.info("destructor-close-message");
 
         EXPECT_EQ(close_events.load(), 0);
-        EXPECT_NE(spdlog::get(destructor_close_name), nullptr);
+        EXPECT_NE(Backend::get(destructor_close_name), nullptr);
     }
 
     // Leaving scope invokes Log's destructor. Under ordinary ownership it must reach the same
     // completed file-close boundary as close(), then remove both real and fallback registrations.
     EXPECT_EQ(close_events.load(), 1);
-    EXPECT_EQ(spdlog::get(destructor_close_name), nullptr);
-    EXPECT_EQ(spdlog::get(std::format("{}-closed", destructor_close_name)), nullptr);
-    EXPECT_EQ(spdlog::default_logger(), nullptr);
+    EXPECT_EQ(Backend::get(destructor_close_name), nullptr);
+    EXPECT_EQ(Backend::get(std::format("{}-closed", destructor_close_name)), nullptr);
+    EXPECT_EQ(Backend::default_logger(), nullptr);
     expect_level(read_file(path), "destructor-close-message", CE::Logging::Compile::INFO_);
 
     default_guard.restore();
@@ -323,9 +327,9 @@ TEST(logging, console_routing) {
     // Suppress file output so this test isolates osink routing. close() then provides the async
     // completion barrier before either captured stream is inspected.
     log.set_pattern("%v");
-    log.set_level_logger(spdlog::level::trace);
-    log.set_level_filesink(spdlog::level::off);
-    log.set_level_stdsink(spdlog::level::trace);
+    log.set_level_logger(CE::Logging::Level::trace);
+    log.set_level_filesink(CE::Logging::Level::off);
+    log.set_level_stdsink(CE::Logging::Level::trace);
 
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
@@ -369,9 +373,9 @@ TEST(logging, closed_state) {
     EXPECT_THROW(log.set_pattern("%v"), Exceptions::bad_request);
     EXPECT_THROW(log.set_pattern_filesink("%v"), Exceptions::bad_request);
     EXPECT_THROW(log.set_pattern_stdsink("%v"), Exceptions::bad_request);
-    EXPECT_THROW(log.set_level_logger(spdlog::level::debug), Exceptions::bad_request);
-    EXPECT_THROW(log.set_level_filesink(spdlog::level::debug), Exceptions::bad_request);
-    EXPECT_THROW(log.set_level_stdsink(spdlog::level::debug), Exceptions::bad_request);
+    EXPECT_THROW(log.set_level_logger(CE::Logging::Level::debug), Exceptions::bad_request);
+    EXPECT_THROW(log.set_level_filesink(CE::Logging::Level::debug), Exceptions::bad_request);
+    EXPECT_THROW(log.set_level_stdsink(CE::Logging::Level::debug), Exceptions::bad_request);
 }
 
 TEST(logging, levels_after_reopen) {
@@ -380,15 +384,15 @@ TEST(logging, levels_after_reopen) {
 
     // Distinct values, including the legitimate `off` level, catch accidental all-or-nothing
     // restoration and prove each resource carries its own reopen state.
-    log.set_level_logger(spdlog::level::debug);
-    log.set_level_filesink(spdlog::level::off);
-    log.set_level_stdsink(spdlog::level::err);
+    log.set_level_logger(CE::Logging::Level::debug);
+    log.set_level_filesink(CE::Logging::Level::off);
+    log.set_level_stdsink(CE::Logging::Level::err);
     log.close();
     EXPECT_NO_THROW(log.reopen());
 
-    EXPECT_EQ(log.logger_level(), spdlog::level::debug);
-    EXPECT_EQ(log.file_level(), spdlog::level::off);
-    EXPECT_EQ(log.console_level(), spdlog::level::err);
+    EXPECT_EQ(log.logger_level(), CE::Logging::Level::debug);
+    EXPECT_EQ(log.file_level(), CE::Logging::Level::off);
+    EXPECT_EQ(log.console_level(), CE::Logging::Level::err);
 
     // Reopening an already open logger is explicitly a no-op.
     EXPECT_NO_THROW(log.reopen());
@@ -397,7 +401,7 @@ TEST(logging, levels_after_reopen) {
 TEST(logging, timed_close) {
     remove_current_log_file(timed_close_name);
     TestLog<timed_close_name> log;
-    log.set_level_logger(spdlog::level::off);
+    log.set_level_logger(CE::Logging::Level::off);
 
     // Retaining the real logger keeps its sinks alive after Cheryl drops its own references. This
     // gives the timeout and Closing-state paths a deterministic lifetime dependency.
@@ -462,8 +466,8 @@ TEST(logging, opening_state) {
     std::promise<void> release_open_promise;
     const auto release_open = release_open_promise.get_future().share();
 
-    spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t&) {
+    CE::Logging::FileEventHandlers handlers;
+    handlers.before_open = [&](const std::filesystem::path&) {
         if (!block_open.load(std::memory_order_acquire)) {
             return;
         }
@@ -496,8 +500,8 @@ TEST(logging, failed_reopen) {
     remove_current_log_file(failed_reopen_name);
 
     std::atomic<bool> fail_next_open = false;
-    spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t&) {
+    CE::Logging::FileEventHandlers handlers;
+    handlers.before_open = [&](const std::filesystem::path&) {
         if (fail_next_open.exchange(false, std::memory_order_acq_rel)) {
             throw std::runtime_error("injected logging open failure");
         }
@@ -509,25 +513,25 @@ TEST(logging, failed_reopen) {
 
     // Opening failure must roll back to a coherent Closed state with no registered real logger.
     EXPECT_THROW(log.reopen(), std::runtime_error);
-    EXPECT_EQ(spdlog::get(failed_reopen_name), nullptr);
+    EXPECT_EQ(Backend::get(failed_reopen_name), nullptr);
     EXPECT_THROW(log.flush(), Exceptions::bad_request);
     EXPECT_NO_THROW(log.info("discarded-after-open-failure"));
 
     // The same object remains recoverable; no separate Failed state is required for this path.
     EXPECT_NO_THROW(log.reopen());
-    EXPECT_NE(spdlog::get(failed_reopen_name), nullptr);
+    EXPECT_NE(Backend::get(failed_reopen_name), nullptr);
 }
 
 TEST(logging, close_failures) {
     LogDirectory directory;
     std::atomic<int> before = 0;
     std::atomic<int> after = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.before_close = [&](const spdlog::filename_t&, std::FILE*) {
+    CE::Logging::FileEventHandlers handlers;
+    handlers.before_close = [&](const std::filesystem::path&, std::FILE*) {
         ++before;
         throw 42;
     };
-    handlers.after_close = [&](const spdlog::filename_t&) {
+    handlers.after_close = [&](const std::filesystem::path&) {
         ++after;
         throw std::runtime_error("injected after_close failure");
     };
@@ -547,16 +551,16 @@ TEST(logging, startup_failure) {
     LogDirectory directory;
     bool fail = true;
     int closed = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.after_open = [&](const spdlog::filename_t&, std::FILE*) {
+    CE::Logging::FileEventHandlers handlers;
+    handlers.after_open = [&](const std::filesystem::path&, std::FILE*) {
         if (fail)
             throw std::runtime_error("original startup failure");
     };
-    handlers.before_close = [&](const spdlog::filename_t&, std::FILE*) {
+    handlers.before_close = [&](const std::filesystem::path&, std::FILE*) {
         if (fail)
             throw 42;
     };
-    handlers.after_close = [&](const spdlog::filename_t&) { ++closed; };
+    handlers.after_close = [&](const std::filesystem::path&) { ++closed; };
     const auto config = queue_config(startup_failure_name, directory.path);
     testing::internal::CaptureStderr();
     try {
@@ -567,7 +571,7 @@ TEST(logging, startup_failure) {
     }
     const auto output = testing::internal::GetCapturedStderr();
     EXPECT_EQ(closed, 1);
-    EXPECT_EQ(spdlog::get(startup_failure_name), nullptr);
+    EXPECT_EQ(Backend::get(startup_failure_name), nullptr);
     expect_contains(output, "before_close callback");
     fail = false;
     TestLog<startup_failure_name> retry{handlers, config};
@@ -607,7 +611,7 @@ TEST(logging, degraded_reopen) {
 TEST(logging, console_failure) {
     LogDirectory directory;
     auto config = queue_config(console_failure_name, directory.path);
-    config.console_level = spdlog::level::warn;
+    config.console_level = CE::Logging::Level::warn;
     TestLog<console_failure_name> log{{}, config};
     const auto path = log.get_file_path();
     testing::internal::CaptureStderr();
@@ -635,7 +639,7 @@ TEST(logging, backend_reentry) {
     TestLog<reentry_target_name> target{{}, queue_config(reentry_target_name, directory.path)};
     const auto callback = [&] {
         try {
-            spdlog::get(reentry_target_name)->warn("native-recursive");
+            Backend::get(reentry_target_name)->warn("native-recursive");
             log.warn("owned-recursive");
             CE_LOG_WARN(untouched_name, "{}", ++prepared);
             UWARN(untouched_name) << ++prepared;
@@ -648,8 +652,8 @@ TEST(logging, backend_reentry) {
             };
             reject([&] { log.close(close_timeout); });
             reject([&] { log.flush(); });
-            reject([&] { spdlog::get(reentry_target_name)->flush(); });
-            reject([&] { spdlog::get(reentry_target_name)->set_pattern("%v"); });
+            reject([&] { Backend::get(reentry_target_name)->flush(); });
+            reject([&] { Backend::get(reentry_target_name)->set_pattern("%v"); });
             reject([&] { (void)CE::Logging::Logger<untouched_name>::get(); });
         } catch (...) {
             callback_complete.set_exception(std::current_exception());
@@ -677,8 +681,8 @@ TEST(logging, backend_reentry) {
 TEST(logging, open_reentry) {
     LogDirectory directory;
     int rejected = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t&) {
+    CE::Logging::FileEventHandlers handlers;
+    handlers.before_open = [&](const std::filesystem::path&) {
         try {
             (void)CE::Logging::Logger<open_reentry_name>::get();
         } catch (const Exceptions::bad_request&) {
@@ -699,9 +703,9 @@ TEST(logging, fixed_graph) {
     {
         auto native = log.retain_logger();
         const auto graph = native->sinks();
-        native->sinks().push_back(std::make_shared<spdlog::sinks::null_sink_mt>());
+        native->append_null_sink();
         native->warn("rejected-graph-record");
-        native->sinks() = graph;
+        native->restore_sinks(graph);
         native->warn("restored-graph-record");
         auto clone = native->clone("logging-clone");
         clone->warn("clone-record");
@@ -720,17 +724,17 @@ TEST(logging, default_after_reopen) {
     DefaultLoggerGuard default_guard;
 
     log.make_default();
-    EXPECT_EQ(spdlog::default_logger()->name(), default_restore_name);
+    EXPECT_EQ(Backend::default_logger()->name(), default_restore_name);
 
     // Closing the preferred default substitutes its null fallback. Reopening restores the real
     // logger only because nobody replaced that fallback in the meantime.
     log.close();
-    EXPECT_EQ(spdlog::default_logger()->name(), std::format("{}-closed", default_restore_name));
-    EXPECT_EQ(spdlog::get(default_restore_name), nullptr);
+    EXPECT_EQ(Backend::default_logger()->name(), std::format("{}-closed", default_restore_name));
+    EXPECT_EQ(Backend::get(default_restore_name), nullptr);
 
     log.reopen();
-    EXPECT_EQ(spdlog::default_logger()->name(), default_restore_name);
-    EXPECT_EQ(spdlog::get(std::format("{}-closed", default_restore_name)), nullptr);
+    EXPECT_EQ(Backend::default_logger()->name(), default_restore_name);
+    EXPECT_EQ(Backend::get(std::format("{}-closed", default_restore_name)), nullptr);
 
     default_guard.restore();
 }
@@ -745,13 +749,13 @@ TEST(logging, replaced_default_after_reopen) {
     preferred.make_default();
     preferred.close();
     replacement.make_default();
-    EXPECT_EQ(spdlog::default_logger()->name(), alternate_default_name);
+    EXPECT_EQ(Backend::default_logger()->name(), alternate_default_name);
 
     // The old logger remembers that it used to be default, but that preference is conditional:
     // another explicit choice made while it was closed must win.
     preferred.reopen();
-    EXPECT_EQ(spdlog::default_logger()->name(), alternate_default_name);
-    EXPECT_EQ(spdlog::get(std::format("{}-closed", default_replaced_name)), nullptr);
+    EXPECT_EQ(Backend::default_logger()->name(), alternate_default_name);
+    EXPECT_EQ(Backend::get(std::format("{}-closed", default_replaced_name)), nullptr);
 
     default_guard.restore();
 }
@@ -761,8 +765,8 @@ TEST(logging, wrapper_timeout_and_writes) {
 
     // Touch the facade first so its underlying singleton is constructed, then retain the real
     // spdlog logger externally to force Logger<name>::close(timeout) down the timeout path.
-    CE::Logging::Logger<wrapper_name>::set_level_logger(spdlog::level::off);
-    auto retained_logger = spdlog::get(wrapper_name);
+    CE::Logging::Logger<wrapper_name>::set_level_logger(CE::Logging::Level::off);
+    auto retained_logger = Backend::get(wrapper_name);
     EXPECT_NE(retained_logger, nullptr);
     EXPECT_THROW(CE::Logging::Logger<wrapper_name>::close(5ms), Exceptions::failed_operation);
 
@@ -784,12 +788,12 @@ TEST(logging, filtered_args) {
     auto& log = CE::Logging::Logger<filtered_args_name>::get();
     const auto path = log.get_file_path();
     log.set_pattern("%v");
-    log.set_level_logger(spdlog::level::trace);
-    log.set_level_filesink(spdlog::level::off);
-    log.set_level_stdsink(spdlog::level::off);
+    log.set_level_logger(CE::Logging::Level::trace);
+    log.set_level_filesink(CE::Logging::Level::off);
+    log.set_level_stdsink(CE::Logging::Level::off);
     int arguments = 0;
     int alternatives = 0;
-    EXPECT_FALSE(log.should_log(spdlog::level::warn));
+    EXPECT_FALSE(log.should_log(CE::Logging::Level::warn));
     CE_LOG_WARN(filtered_args_name, "formatted-{}", ++arguments);
     UWARN(filtered_args_name) << "streamed-" << ++arguments;
     if (false)
@@ -804,7 +808,7 @@ TEST(logging, filtered_args) {
     EXPECT_EQ(alternatives, 1);
 
     // Enabling just the file must admit records even with the console off.
-    log.set_level_filesink(spdlog::level::trace);
+    log.set_level_filesink(CE::Logging::Level::trace);
     CE_LOG_WARN(filtered_args_name, "formatted-{}", ++arguments);
     UWARN(filtered_args_name) << "streamed-" << ++arguments;
     EXPECT_EQ(arguments, CE::Logging::Compile::enabled(CE::Logging::Compile::WARNING_) ? 2 : 0);
@@ -816,9 +820,9 @@ TEST(logging, filtered_args) {
 
 TEST(logging, compiled_args) {
     auto& log = CE::Logging::Logger<compiled_args_name>::get();
-    log.set_level_logger(spdlog::level::trace);
-    log.set_level_filesink(spdlog::level::trace);
-    log.set_level_stdsink(spdlog::level::off);
+    log.set_level_logger(CE::Logging::Level::trace);
+    log.set_level_filesink(CE::Logging::Level::trace);
+    log.set_level_stdsink(CE::Logging::Level::off);
     int arguments = 0;
     CE_LOG_TRACE(compiled_args_name, "{}", ++arguments);
     UTRACE(compiled_args_name) << ++arguments;
@@ -828,9 +832,9 @@ TEST(logging, compiled_args) {
 
 TEST(logging, lazy_failure) {
     auto& log = CE::Logging::Logger<lazy_failure_name>::get();
-    log.set_level_logger(spdlog::level::trace);
-    log.set_level_filesink(spdlog::level::trace);
-    log.set_level_stdsink(spdlog::level::off);
+    log.set_level_logger(CE::Logging::Level::trace);
+    log.set_level_filesink(CE::Logging::Level::trace);
+    log.set_level_stdsink(CE::Logging::Level::off);
     int arguments = 0;
     const auto prepare = [&]() -> int {
         ++arguments;
@@ -874,10 +878,10 @@ TEST(logging, partial_stream) {
 
 TEST(logging, runtime_defaults) {
     TestLog<defaults_name> log;
-    const auto expected = CE::Logging::Compile::profile == 2 ? spdlog::level::info : spdlog::level::debug;
+    const auto expected = CE::Logging::Compile::profile == 2 ? CE::Logging::Level::info : CE::Logging::Level::debug;
     EXPECT_EQ(log.logger_level(), expected);
     EXPECT_EQ(log.file_level(), expected);
-    EXPECT_EQ(log.console_level(), CE::Logging::Compile::profile == 0 ? spdlog::level::info : spdlog::level::warn);
+    EXPECT_EQ(log.console_level(), CE::Logging::Compile::profile == 0 ? CE::Logging::Level::info : CE::Logging::Level::warn);
     EXPECT_TRUE(log.initial_configuration().directory.is_absolute());
     EXPECT_EQ(log.initial_configuration().rotation_bytes, 10u * 1024u * 1024u);
     EXPECT_EQ(log.initial_configuration().retained_files, 5u);
@@ -887,18 +891,37 @@ TEST(logging, runtime_defaults) {
     const auto developer = CE::Logging::Config::for_logger("memory", CE::Logging::Profile::Developer);
     const auto support = CE::Logging::Config::for_logger("memory", CE::Logging::Profile::Support);
     const auto release = CE::Logging::Config::for_logger("memory", CE::Logging::Profile::Release);
-    EXPECT_EQ(developer.logger_level, spdlog::level::info);
-    EXPECT_EQ(developer.file_level, spdlog::level::info);
-    EXPECT_EQ(developer.console_level, spdlog::level::info);
+    EXPECT_EQ(developer.logger_level, CE::Logging::Level::info);
+    EXPECT_EQ(developer.file_level, CE::Logging::Level::info);
+    EXPECT_EQ(developer.console_level, CE::Logging::Level::info);
     EXPECT_EQ(developer.overflow_policy, CE::Logging::OverflowPolicy::Block);
-    EXPECT_EQ(support.logger_level, spdlog::level::info);
-    EXPECT_EQ(support.file_level, spdlog::level::info);
-    EXPECT_EQ(support.console_level, spdlog::level::warn);
+    EXPECT_EQ(support.logger_level, CE::Logging::Level::info);
+    EXPECT_EQ(support.file_level, CE::Logging::Level::info);
+    EXPECT_EQ(support.console_level, CE::Logging::Level::warn);
     EXPECT_EQ(support.overflow_policy, CE::Logging::OverflowPolicy::Block);
-    EXPECT_EQ(release.logger_level, spdlog::level::warn);
-    EXPECT_EQ(release.file_level, spdlog::level::warn);
-    EXPECT_EQ(release.console_level, spdlog::level::warn);
+    EXPECT_EQ(release.logger_level, CE::Logging::Level::warn);
+    EXPECT_EQ(release.file_level, CE::Logging::Level::warn);
+    EXPECT_EQ(release.console_level, CE::Logging::Level::warn);
     EXPECT_EQ(release.overflow_policy, CE::Logging::OverflowPolicy::Block);
+}
+
+TEST(logging, shared_category) {
+    const LogDirectory directory;
+    auto config = queue_config(central_name, directory.path);
+    EXPECT_EQ(CE::Logging::Logger<central_alias>::get_existing(), nullptr);
+    auto& first = CE::Logging::Logger<central_name>::initialize({}, config);
+    ASSERT_NE(CE::Logging::Logger<central_alias>::get_existing(), nullptr);
+    EXPECT_EQ(CE::Logging::Logger<central_alias>::get_existing(), CE::Logging::Logger<central_name>::get_existing());
+    auto& alias = CE::Logging::Logger<central_alias>::get();
+    EXPECT_EQ(first.get_log_id(), alias.get_log_id());
+    EXPECT_EQ(first.get_file_path(), alias.get_file_path());
+    EXPECT_THROW(static_cast<void>(CE::Logging::Logger<central_alias>::initialize()), Exceptions::bad_request);
+    first.set_level_filesink(CE::Logging::Level::off);
+    EXPECT_FALSE(alias.should_log(CE::Logging::Level::warn));
+    alias.set_level_filesink(CE::Logging::Level::warn);
+    alias.warn("shared-category-record");
+    first.close(close_timeout);
+    expect_level(read_file(directory.path / "logging-central-category.log"), "shared-category-record", CE::Logging::Compile::WARNING_);
 }
 
 TEST(logging, config_reopen) {
@@ -914,10 +937,10 @@ TEST(logging, config_reopen) {
     config.rotation_bytes = 1024;
     config.retained_files = 2;
     config.rotate_on_open = false;
-    config.logger_level = spdlog::level::trace;
-    config.file_level = spdlog::level::info;
-    config.console_level = spdlog::level::off;
-    TestLog<config_name> log{spdlog::file_event_handlers{}, config};
+    config.logger_level = CE::Logging::Level::trace;
+    config.file_level = CE::Logging::Level::info;
+    config.console_level = CE::Logging::Level::off;
+    TestLog<config_name> log{CE::Logging::FileEventHandlers{}, config};
     EXPECT_EQ(log.get_file_path(), expected_path);
     log.set_pattern("%v");
     log.info("configured-message");
@@ -925,7 +948,7 @@ TEST(logging, config_reopen) {
     // raising its destination threshold; flush submission is not acknowledgement.
     log.close();
     log.reopen();
-    log.set_level_filesink(spdlog::level::err);
+    log.set_level_filesink(CE::Logging::Level::err);
     log.close();
     {
         // This process-wide change is scoped after producers stop and the file
@@ -934,9 +957,9 @@ TEST(logging, config_reopen) {
         std::filesystem::current_path(directory.path);
         log.reopen();
         EXPECT_EQ(log.get_file_path(), expected_path);
-        EXPECT_EQ(log.logger_level(), spdlog::level::trace);
-        EXPECT_EQ(log.file_level(), spdlog::level::err);
-        EXPECT_EQ(log.console_level(), spdlog::level::off);
+        EXPECT_EQ(log.logger_level(), CE::Logging::Level::trace);
+        EXPECT_EQ(log.file_level(), CE::Logging::Level::err);
+        EXPECT_EQ(log.console_level(), CE::Logging::Level::off);
         log.close();
     }
     const auto output = read_file(expected_path);
@@ -947,8 +970,8 @@ TEST(logging, config_reopen) {
 TEST(logging, invalid_config) {
     const LogDirectory directory;
     int opens = 0;
-    spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t&) { ++opens; };
+    CE::Logging::FileEventHandlers handlers;
+    handlers.before_open = [&](const std::filesystem::path&) { ++opens; };
     auto config = CE::Logging::Config::for_logger(bad_config_name);
     config.directory = directory.path / "unopened";
     config.rotation_bytes = 0;
@@ -957,30 +980,58 @@ TEST(logging, invalid_config) {
     config.retained_files = 200001;
     EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
     config.retained_files = 0; // Zero backup retention is supported by the rotating sink.
-    config.file_level = static_cast<spdlog::level>(-1);
+    config.file_level = static_cast<CE::Logging::Level>(-1);
     EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
-    config.file_level = spdlog::level::info;
+    config.file_level = CE::Logging::Level::info;
     config.overflow_policy = static_cast<CE::Logging::OverflowPolicy>(-1);
     EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
     config.overflow_policy = CE::Logging::OverflowPolicy::Block;
     EXPECT_THROW((TestLog<bad_path_name>{handlers, config}), Exceptions::invalid_args);
     EXPECT_EQ(opens, 0);
     EXPECT_FALSE(std::filesystem::exists(config.directory));
-    EXPECT_EQ(spdlog::get(bad_config_name), nullptr);
-    EXPECT_EQ(spdlog::get(bad_path_name), nullptr);
+    EXPECT_EQ(Backend::get(bad_config_name), nullptr);
+    EXPECT_EQ(Backend::get(bad_path_name), nullptr);
 }
 
 TEST(logging, host_pool) {
     // Construct directly even when the compatibility singleton was already used.
     // The old constructor replaced this global pool on every construction.
-    const auto original = spdlog::thread_pool();
+    const auto original = Backend::thread_pool();
     {
-        const CE::Logging::Detail::ThreadPoolInit owned;
-        ASSERT_NE(owned.tp, nullptr);
-        EXPECT_NE(owned.tp, original);
-        EXPECT_EQ(spdlog::thread_pool(), original);
+        const auto owned = Backend::make_pool();
+        ASSERT_NE(owned, nullptr);
+        EXPECT_NE(owned, original);
+        EXPECT_EQ(Backend::thread_pool(), original);
     }
-    EXPECT_EQ(spdlog::thread_pool(), original);
+    EXPECT_EQ(Backend::thread_pool(), original);
+}
+
+TEST(logging, process_scopes) {
+    const LogDirectory directory;
+    auto config = CE::Logging::Config::for_logger(process_name);
+    config.directory = directory.path;
+    config.console_level = CE::Logging::Level::off;
+    TestLog<process_name> log{{}, config};
+    const std::weak_ptr<void> pool = Backend::owned_pool();
+    {
+        const CE::Logging::ProcessLifetime nested;
+        {
+            const CE::Logging::ProcessLifetime inner;
+            log.warn("nested-scope-record");
+        }
+        EXPECT_NO_THROW(static_cast<void>(log.get_file_path()));
+        EXPECT_FALSE(pool.expired());
+        log.warn("after-inner-scope");
+    }
+    // The common runner owns the outermost guard until all tests finish.
+    EXPECT_NO_THROW(static_cast<void>(log.get_file_path()));
+    EXPECT_FALSE(pool.expired());
+    log.warn("after-nested-scope");
+    log.close(close_timeout);
+    const auto content = read_file(directory.path / std::format("{}.log", process_name));
+    expect_level(content, "nested-scope-record", CE::Logging::Compile::WARNING_);
+    expect_level(content, "after-inner-scope", CE::Logging::Compile::WARNING_);
+    expect_level(content, "after-nested-scope", CE::Logging::Compile::WARNING_);
 }
 
 TEST(logging, discard_queue) {
@@ -988,10 +1039,10 @@ TEST(logging, discard_queue) {
         GTEST_SKIP() << "Queue submission requires a compiled severity";
 
     const LogDirectory directory;
-    TestLog<queue_hold_name> holder{spdlog::file_event_handlers{}, queue_config(queue_hold_name, directory.path)};
+    TestLog<queue_hold_name> holder{CE::Logging::FileEventHandlers{}, queue_config(queue_hold_name, directory.path)};
     auto config = queue_config(discard_name, directory.path);
     config.overflow_policy = CE::Logging::OverflowPolicy::DiscardNew;
-    TestLog<discard_name> log{spdlog::file_event_handlers{}, config};
+    TestLog<discard_name> log{CE::Logging::FileEventHandlers{}, config};
     const auto path = log.get_file_path();
 
     for (int generation = 0; generation < 2; ++generation) {
@@ -1057,8 +1108,8 @@ TEST(logging, blocking_queue) {
     const LogDirectory directory;
     auto config = queue_config(queue_hold_name, directory.path);
     config.overflow_policy = CE::Logging::OverflowPolicy::DiscardNew;
-    TestLog<queue_hold_name> holder{spdlog::file_event_handlers{}, config};
-    TestLog<blocking_name> log{spdlog::file_event_handlers{}, queue_config(blocking_name, directory.path)};
+    TestLog<queue_hold_name> holder{CE::Logging::FileEventHandlers{}, config};
+    TestLog<blocking_name> log{CE::Logging::FileEventHandlers{}, queue_config(blocking_name, directory.path)};
     const auto path = log.get_file_path();
     const auto holder_path = holder.get_file_path();
     holder.set_pattern("%v");

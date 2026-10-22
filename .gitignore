@@ -7,9 +7,8 @@ cmake-build*/
 __pycache__/
 
 # Generated documentation, including legacy API output
-/docs/generation/generated/
-/docs/generated/
-/docs/api/generated/
+/docs/site/generation/generated/
+
 
 .git/
 .idea/
@@ -23,17 +22,5 @@ notes/
 *.png
 *.wav
 
-assets/**
-!assets/**/
-!assets/**/*.rml
-!assets/**/*.json
-!assets/**/*.frag
-!assets/**/*.vert
-!assets/fonts/*
-assets/sfx
-assets/graphics/**/*.txt
-
-!assets/graphics/ui/quadrants.png
-!assets/graphics/ui/quadrants-alt.png
 !/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png
 !/projects/apps/first-game/assets/graphics/textures/actor.png

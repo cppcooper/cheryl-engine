@@ -1,4 +1,5 @@
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <assets/types/2d/stbfont.h>
 #include <assets/types/primitives/vertex.h>
 #include "font-upload-internal.h"
@@ -139,16 +140,19 @@ namespace CE::Text::Legacy {
         const std::span<const unsigned char> alpha,
         const CE::Rendering::Geometry::PixelSize atlas_size,
         const std::array<float, ascii_character_count>& advances,
-        const float line_height
+        const float line_height,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
     ) {
         constexpr auto vertex_count = static_cast<std::uint32_t>(ascii_character_count * CE::Rendering::Geometry::vertices_per_quad);
         auto geometry = provider.upload_geometry(std::move(vertices), vertex_count, CE::Rendering::Geometry::Topology::Triangles);
         auto atlas = provider.create_font_atlas(alpha, atlas_size);
-        return {std::move(geometry), std::move(atlas), advances, line_height};
+        if (!material)
+            material = CE::Assets::Shaders::build_builtin_material(provider, CE::Rendering::Materials::Builtin2D::Textured);
+        return {std::move(geometry), std::move(atlas), advances, line_height, std::move(material)};
     }
 
     AsciiFont::AsciiFont(AsciiFontData data)
-    : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
+    : Font({data.geometry, data.texture}, std::move(data.material)), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }
@@ -162,16 +166,21 @@ namespace CE::Text::Legacy {
         return result;
     }
 
-    AsciiFontData
-    AsciiFont::load_font(const std::filesystem::path& font_path, const int font_size, CE::Rendering::Resources::Provider& provider) {
-        return Detail::load_font_with_resource(font_path, font_size, provider, *std::pmr::new_delete_resource());
+    AsciiFontData AsciiFont::load_font(
+        const std::filesystem::path& font_path,
+        const int font_size,
+        CE::Rendering::Resources::Provider& provider,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
+    ) {
+        return Detail::load_font_with_resource(font_path, font_size, provider, *std::pmr::new_delete_resource(), std::move(material));
     }
 
     AsciiFontData Detail::load_font_with_resource(
         const std::filesystem::path& font_path,
         const int font_size,
         CE::Rendering::Resources::Provider& provider,
-        std::pmr::memory_resource& memory
+        std::pmr::memory_resource& memory,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
     ) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
@@ -223,7 +232,9 @@ namespace CE::Text::Legacy {
         return Detail::upload_baked_font(
             provider, std::move(vertices), atlas.pixels,
             CE::Rendering::Geometry::PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)}, advances,
-            line_height
+            line_height, std::move(material)
         );
     }
 }
+
+CE::Text::Legacy::Font::~Font() = default;

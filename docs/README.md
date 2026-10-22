@@ -1,87 +1,90 @@
 # Cheryl Engine documentation
 
-Choose an entry point for the work you are doing:
+Choose the entry point for your work:
 
 | Task | Start here |
 | --- | --- |
-| Check implemented, partial, planned or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
-| Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
-| Write a game | [First-game walkthrough](getting-started/first-game.md), then [application composition and game hooks](development/consuming-engine.md) |
-| Browse the generated API or build the manual | [API entry points](api/index.md) and [documentation tooling and publishing](development/documentation.md) |
-| Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
-| Run checks | [Test selection](development/testing.md) and [pending checks and QA](testing-requests.md) |
-| Extend the repository | [Module authoring](development/modules.md), [UI adapters](development/ui-adapters.md) and [contributing](development/contributing.md) |
-| Pick up planned work | [Planning catalogue](planning/README.md) |
+| Look up a declaration | [C++ API](site/api/index.md) |
+| Set up a game project | [Project setup](site/getting-started/project-setup.md) |
+| Follow a complete example | [Tutorials](site/getting-started/create-a/index.md): First Game, actor/player/AI controllers, Character, and shared UIController/HUD |
+| Find an operation | [Task index](site/getting-started/how-to/index.md) |
+| Browse a subject | [Guides by topic](site/guides/index.md) |
+| Understand system responsibilities and public types | [Engine Systems](site/engine-systems/index.md) |
+| Change or extend Cheryl | [Contributing](site/development/contributing.md) and [Module authoring](site/development/modules.md) |
+| Check capabilities or planned work | [Status inventory](STATUS.md) and [planning catalogue](planning/README.md) |
 
-The system references below describe API contracts, ownership, units and failure
-behavior. Read the relevant subject rather than the whole documentation tree.
+## Source layout
 
-## Runtime
+| Location | Owner and audience |
+| --- | --- |
+| `site/` | Canonical sources for the published manual and module references. |
+| `site/generation/` | Generator, configuration, theme assets and tooling checks. Local HTML is written to `site/generation/generated/html/`. |
+| `for-agents/` | Focused agent work instructions, indexed by root `AGENTS.md`: Git, investigation, design, implementation, testing and documentation. |
+| `planning/`, `STATUS.md`, `testing-requests.md` | Repository-only plans, investigation follow-up, status and pending acceptance. |
 
-- [Runtime architecture and backend boundaries](runtime/runtime-architecture.md)
-- [Frame ownership and runtime lifecycle](runtime/runtime-frame-boundary.md)
-- [Display and window ownership](runtime/display-and-window-contract.md)
-- [Native callbacks and failure reporting](runtime/failure-reporting.md)
-- [Input actions, state, events, text, and focus](runtime/input-state-model.md)
-- [Audio ownership and playback](runtime/audio.md)
-- [Simulation timing and recovery](runtime/simulation-timing.md)
-- [State, timing and math utilities](runtime/utility-contracts.md)
-- [Thread dispatch](runtime/thread-dispatch.md)
-- [Event buses and persistent registration](runtime/event-delivery.md)
-- [Worker pools, topology providers and C++/JSON settings](runtime/worker-execution.md)
-- [Logging configuration and emission](runtime/logging.md)
-- [Subsystem diagnostics](runtime/subsystem-diagnostics.md)
-- [Linux Debug output terminal and process lifetime](../projects/modules/platform/debug-terminal-linux/README.md)
+The generator reads `site/`. Keep published prose there. Module `README.md`
+files beside the code are relative symlinks to their canonical module pages;
+edit and preview those pages through `site/modules/`. Repository-only pages use
+ordinary relative links to the site sources. The site converts links to
+repository-only documents into versioned source links.
 
-## Assets
+## Game Development
 
-- [Asset package downloads and image placement](assets/catalog.md)
-- [Asset loading](assets/asset-loading.md)
-- [Asset values, playback and CPU submission](assets/asset-values-and-playback.md)
-- [Text encoding and source indices](assets/text-encoding.md)
-- [Unicode text layout and font resources](assets/text-layout.md)
-- [File indexing and font discovery](assets/file-and-font-discovery.md)
-- [Asset manifest format](assets/asset-manifests.md)
+[Project setup](site/getting-started/project-setup.md) provides the first working
+source/SDK configuration. [Choose modules](site/modules/index.md) maps capabilities to
+implementations; [Source and SDK integration](site/development/consuming-engine.md)
+owns detailed linking, context assembly and deployment.
 
-## Rendering
+The [tutorial sequence](site/getting-started/create-a/index.md) starts with First Game,
+then covers actor commands, Player/AI controllers, a Character, and a shared TGUI
+UIController/HUD. The optional final discussion considers abstract interfaces. The
+[maintained tutorial application](../projects/apps/tutorial-game/README.md)
+implements the class-based lessons.
 
-- [Pipelines, materials, and render submission](rendering/pipelines-and-materials.md)
+The [Task index](site/getting-started/how-to/index.md) links to instructions directly.
+Browse the same procedures and references by subject through:
 
-## Resources
+- [Assets and animation](site/assets/index.md)
+- [Rendering and resources](site/rendering/index.md)
+- [Input](site/input/index.md)
+- [Text and fonts](site/text/index.md)
+- [GUI](site/gui/index.md)
+- [Audio](site/audio/index.md)
+- [Runtime and concurrency](site/runtime/index.md), including ownership, cleanup and work delivery
+- [Memory, state and utilities](site/utilities/index.md)
+- [Logging and diagnostics](site/diagnostics/index.md)
 
-- [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
-- [CPU memory lifetime and reservation](resources/resource-lifetime.md)
-- [Legacy bitmap font inputs and migration](resources/legacy-ffont.md)
+[Engine Systems](site/engine-systems/index.md) completes the category with a map of
+responsibilities, public types, ownership and relationships. Concrete module
+references belong to the topic they implement. Their canonical prose lives in
+`site/modules/`; the
+[repository module catalogue](../projects/modules/README.md) maps their source owners.
 
-## Development
+## Engine Development
 
-- [First-game walkthrough](getting-started/first-game.md)
-- [Generated C++ API entry points](api/index.md)
-- [Documentation generation and versioned Read the Docs publishing](development/documentation.md)
-- [Pending automated and QA testing requests](testing-requests.md)
-- [Build reference, CI and SDK production](development/building.md)
-- [Test selection](development/testing.md)
-- [Contributing](development/contributing.md)
-- [C++ code style](development/code-style.md)
-- [Architecture validation procedures](development/architecture-validation.md)
-- [Logging acceptance](development/logging-acceptance.md)
-- [Source/SDK consumption and command-line startup](development/consuming-engine.md)
-- [Engine and integration modules](development/modules.md)
-- [Module index and owner guides](../projects/modules/README.md)
-- [Linux Debug terminal module](../projects/modules/platform/debug-terminal-linux/README.md)
-- [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
-- [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
-- [RmlUi placeholder investigation and contribution guidance](external-work/rmlui-placeholder-issue.md)
-- [Writing a UI adapter](development/ui-adapters.md)
-- [Neutral UI consumer checks](development/architecture-validation.md#neutral-ui-consumer)
-- [Desktop smoke checks](development/native-desktop-checks.md)
+- [Contributing](site/development/contributing.md) and [C++ code style](site/development/code-style.md)
+- [Build the engine and SDKs](site/development/building.md)
+- [Module authoring](site/development/modules.md), [Integration contracts](site/architecture/interfaces-adapters.md) and [UI adapter authoring](site/development/ui-adapters.md)
+- [Testing and validation](site/development/testing.md), [Component and SDK checks](site/development/architecture-validation.md), [Logging checks](site/development/logging-acceptance.md) and [Desktop and controller checks](site/development/native-desktop-checks.md)
+- [Documentation tooling](site/development/documentation.md) and [Publishing](site/development/publishing-documentation.md)
+- [CI and SDK artifacts](site/development/ci.md)
 
-## Planning
+[Pending checks and QA](testing-requests.md) records outstanding acceptance.
+The [planning catalogue](planning/README.md) links active work and its prerequisites.
 
-- [Planning catalogue](planning/README.md): horizons, owning plans and prerequisites.
-- [Development roadmap](planning/develop-review-and-development-plan.md): active sequencing.
+## Documentation organization
 
-Keep new documents in the matching topic folder and add them to this index. Use
-lowercase, hyphenated filenames, with `README.md` reserved for documentation
-indexes. Use relative links between documents and to source files so navigation
-works from each document's location.
+[Agent instructions](../AGENTS.md#instruction-index) route work through the
+focused [instruction library](for-agents/README.md), including page outlines,
+writing and precision checks, API comments and documentation generation. These
+instructions are repository-only.
+
+[The published navigation](site/index.md) and each parent page's toctree own the page
+hierarchy. Give a page one navigation parent; use ordinary links for other routes
+to its instructions. Keep task groups in the Task index's local contents and
+implementation-specific contracts in their owning references.
+
+Published paths can remain stable when a page's navigation home changes. Preserve
+useful old anchors when consolidating content. Use relative links to documents
+and source files. Keep published pages in the relevant topic folder under `site/`, with
+lowercase, hyphenated filenames and `README.md` reserved for repository indexes.

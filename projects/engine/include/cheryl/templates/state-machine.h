@@ -18,13 +18,18 @@ namespace CE::State {
  * Order is exit -> state assignment -> action -> enter. Exceptions propagate and
  * stop that sequence: exit failure keeps old state, action/enter failure keeps new
  * state; throwing State assignment follows that type's guarantee. No rollback.
+ * @tparam State Copyable equality-comparable state identity; transitions assign it.
+ * @tparam Trigger Copyable equality-comparable event identity, distinct from State's domain.
+ * @see [State utilities](cheryl-guide:runtime/utility-contracts)
  */
     template <typename State, typename Trigger>
         requires std::copy_constructible<State> && std::copy_constructible<Trigger> && std::equality_comparable<State> &&
                  std::equality_comparable<Trigger>
     class StateMachine {
     public:
+        /** Owned synchronous predicate; an empty guard always permits its matching rule. */
         using Guard = std::function<bool()>;
+        /** Owned synchronous transition/entry/exit callback; empty means no callback. */
         using Action = std::function<void()>;
 
         explicit StateMachine(State initial)
@@ -99,3 +104,53 @@ namespace CE::State {
     };
 
 }
+
+/** @fn template<typename State, typename Trigger> CE::State::StateMachine<State, Trigger>::StateMachine(State initial)
+ * @brief Creates an empty rule/hook table at the supplied state.
+ * @param initial Initial owned state, moved into the machine. No entry hook runs.
+ * State construction failures propagate. The caller controls the machine's lifetime/thread.
+ */
+
+/** @fn template<typename State, typename Trigger> void CE::State::StateMachine<State, Trigger>::add_transition(State from, Trigger trigger, State to, Guard guard, Action action)
+ * @brief Appends one rule; earlier matching rules retain priority.
+ * @param from State from which this rule is eligible.
+ * @param trigger Trigger value compared for equality at dispatch.
+ * @param to State to install if this rule is selected.
+ * @param guard Optional owned predicate, invoked only for matching from/trigger; empty means true.
+ * @param action Optional owned callback after state assignment and before the entry hook.
+ * Copies/moves and allocation can throw. Captured borrowed targets outlive invocation.
+ * A guard may append rules considered later in the same trigger; do not reenter trigger().
+ */
+
+/** @fn template<typename State, typename Trigger> void CE::State::StateMachine<State, Trigger>::on_enter(State state, Action action)
+ * @brief Registers or replaces the entry hook for a state.
+ * @param state State identity to match, copied/moved into the hook table.
+ * @param action Owned synchronous hook; empty disables that state's hook.
+ * Registration does not invoke the hook. Replacement and allocation follow the
+ * value/callable guarantees; borrowed captures must survive future use/removal.
+ */
+
+/** @fn template<typename State, typename Trigger> void CE::State::StateMachine<State, Trigger>::on_exit(State state, Action action)
+ * @brief Registers or replaces the exit hook for a state.
+ * @param state State identity to match, copied/moved into the hook table.
+ * @param action Owned synchronous hook; empty disables that state's hook.
+ * Registration does not invoke the hook. Replacement and allocation follow the
+ * value/callable guarantees; borrowed captures must survive future use/removal.
+ */
+
+/** @fn template<typename State, typename Trigger> const State& CE::State::StateMachine<State, Trigger>::state() const
+ * @brief Borrows the current state stored by this machine.
+ * @return Reference valid while the machine lives; later transitions assign this same storage.
+ * Copy the value to retain an independent sample. Access must not race mutation.
+ */
+
+/** @fn template<typename State, typename Trigger> bool CE::State::StateMachine<State, Trigger>::trigger(const Trigger& event)
+ * @brief Executes the first matching rule whose guard permits it.
+ * @param event Borrowed trigger identity, inspected synchronously.
+ * @return True when a rule was executed, including self-transitions; false for no eligible rule.
+ * The sequence is exit hook, state assignment, action, then entry hook. Hooks for the
+ * chosen transition are copied before exit runs. Exceptions propagate without rollback:
+ * exit failure retains the old state; action/entry failure retains the new state.
+ * A throwing State assignment has its own partial-effect guarantee. No synchronization
+ * or recursive trigger support is provided; hook changes affect later selections.
+ */

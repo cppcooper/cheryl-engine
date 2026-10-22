@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #include <backends/opengl/program-builder.h>
 #include <backends/opengl/pipeline.h>
 #include <backends/opengl/resource-lifetime-internal.h>
@@ -460,8 +461,8 @@ TEST(opengl_program_builder, reflection_output) {
     const auto configuration = log.initial_configuration();
     const auto path = log.get_file_path();
     EXPECT_EQ(path.filename(), "rendering.log");
-    log.set_level_logger(spdlog::level::debug);
-    log.set_level_filesink(spdlog::level::debug);
+    log.set_level_logger(CE::Logging::Level::debug);
+    log.set_level_filesink(CE::Logging::Level::debug);
     ProgramConstructionRecorder native;
     auto program = CE::Rendering::OpenGL::Detail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
     EXPECT_NO_THROW(program->print_active_uniforms());

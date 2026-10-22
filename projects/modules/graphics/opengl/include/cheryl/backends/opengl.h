@@ -1,5 +1,10 @@
 #pragma once
 
+/** @file
+ * @brief Concrete OpenGL context, renderer and resource APIs; link the selected OpenGL module.
+ * @see [OpenGL backend](cheryl-guide:modules/opengl)
+ */
+
 #include "opengl/context.h"
 #include "opengl/glfw-context.h"
 #include "opengl/renderer.h"

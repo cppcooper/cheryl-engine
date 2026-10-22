@@ -8,10 +8,16 @@
 #include <stdexcept>
 
 namespace RmlUiTests {
-    inline Rml::ElementDocument& document(CE::UI::RmlUi::Session& session, const Rml::String& source_url = "[document from memory]") {
+    enum class DocumentSetup { Manual, Runtime };
+    inline Rml::ElementDocument& document(
+        CE::UI::RmlUi::Session& session,
+        const Rml::String& source_url = "[document from memory]",
+        DocumentSetup setup = DocumentSetup::Manual
+    ) {
         if (!session.load_font(std::filesystem::path{CHERYL_RMLUI_TEST_FONT}, "proof"))
             throw std::runtime_error("Cannot load the real font fixture");
-        session.set_view({320, 240}, {640, 480});
+        if (setup == DocumentSetup::Manual)
+            session.set_view({320, 240}, {640, 480});
         auto* document = session.context().LoadDocumentFromMemory(R"(
             <rml><head><style>
                 body { width: 100%; height: 100%; margin: 0; font-family: proof; font-size: 18px; }
@@ -23,7 +29,8 @@ namespace RmlUiTests {
         if (!document)
             throw std::runtime_error("Cannot load the native document");
         document->Show();
-        session.update_time(0);
+        if (setup == DocumentSetup::Manual)
+            session.update_time(0);
         return *document;
     }
 

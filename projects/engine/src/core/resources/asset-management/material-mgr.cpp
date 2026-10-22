@@ -40,3 +40,10 @@ namespace CE::Assets::Materials {
         );
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Materials::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

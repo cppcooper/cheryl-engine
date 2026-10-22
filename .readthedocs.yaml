@@ -10,4 +10,4 @@ build:
   jobs:
     build:
       html:
-        - python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --output "$READTHEDOCS_OUTPUT"
+        - python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean --output "$READTHEDOCS_OUTPUT"

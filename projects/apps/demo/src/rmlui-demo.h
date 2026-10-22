@@ -19,10 +19,11 @@ class DemoRmlUi final {
     std::unique_ptr<RmlUiState> rmlui_state_;
 
 public:
-    DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root, std::filesystem::path font);
+    DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root);
     ~DemoRmlUi();
     DemoRmlUi(const DemoRmlUi&) = delete;
     DemoRmlUi& operator=(const DemoRmlUi&) = delete;
+    void init_simulation();
     bool update(const CE::Game::TickContext& tick, const DemoUiStatus& status);
     void write(CE::Rendering::FrameWriter& frame) const;
     [[nodiscard]] std::string_view error() const;

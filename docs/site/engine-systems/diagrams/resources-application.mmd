@@ -1,0 +1,50 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Resources · application uploads and retained draws
+    accDescr: Local names omit Rendering::Resources::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>loading work"]):::app
+    k1("Assets::Images::decode(file): Assets::Images::Decoded"):::neighbor
+    k2["Assets::Images::<br/>Decoded"]:::focal
+    k3(["Application<br/>init_platform()"]):::app
+    k4["<b>Runtime::<br/>Context</b><br/><br/>resources(): Provider"]:::neighbor
+    k5["<b>Provider</b><br/><br/>create_image(Assets::Images::Decoded): Image<br/><br/>upload_geometry(<br/>Rendering::Geometry::Vertex2D[],<br/>Rendering::Geometry::Topology):<br/>Rendering::Geometry::Buffer2D<br/><br/>graphics_domain(): Rendering::GraphicsDomain"]:::focal
+    k6(["Application<br/>platform-owner work"]):::app
+    k7["Image"]:::focal
+    k8["Rendering::Geometry::<br/>Buffer2D"]:::focal
+    k9["Material"]:::focal
+    k10["Pipeline"]:::focal
+    k11(["Application<br/>prepare_render_frame()"]):::app
+    k12["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k13(["Application<br/>report"]):::app
+    k14["<b>Rendering::<br/>GraphicsDomain</b><br/><br/>snapshot(): Rendering::GraphicsDomainSnapshot"]:::focal
+    k0 --> k1
+    k1 --> k2
+    k3 --> k4
+    k4 --> k5
+    k6 --> k5
+    k5 --> k2
+    k5 --> k7
+    k5 --> k8
+    k9 --> k10
+    k11 --> k12
+    k12 --> k9
+    k12 --> k8
+    k13 --> k14
+    k5 --> k14
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

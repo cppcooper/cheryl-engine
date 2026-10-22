@@ -1,4 +1,5 @@
 #include <cheryl/backends/miniaudio.h>
+#include <cheryl/core/logging/process-lifetime.h>
 
 #if defined(miniaudio_h) || defined(GLFW_VERSION_MAJOR) || defined(GL_VERSION_3_3)
     #error Audio consumers must not inherit native audio or graphics SDK headers.
@@ -30,6 +31,13 @@ namespace {
     int offline() {
         std::cout << "Audio consumer: checking offline PCM and closed handles.\n" << std::flush;
         auto system = CE::Audio::Miniaudio::System::open_offline();
+        CE::Events::EventBus events;
+        std::optional<CE::Audio::PlaybackEnded> ended;
+        const auto listener = events.register_listener(CE::Audio::playback_ended_event, [&](const CE::Audio::PlaybackEnded& event) {
+            ended = event;
+        });
+        CE::Audio::System& portable = *system;
+        portable.publish_events_to(events.publisher());
         const auto clip = CE::Audio::Clip::from_samples({2, 48000}, std::vector<float>(2048, 0.25f));
         auto voice = system->play(clip, {.volume = 0.5f});
         std::array<float, 128> output{};
@@ -41,6 +49,14 @@ namespace {
             return 1;
         }
         system->close();
+        portable.publish_notifications();
+        if (!ended || ended->terminal.reason != CE::Audio::PlaybackEndReason::OutputClosed ||
+            ended->voice != voice->snapshot().voice || ended->generation != 1 ||
+            portable.notification_snapshot().pending != 0) {
+            std::cerr << "Audio consumer: final generation outcome was not published after close.\n";
+            return 1;
+        }
+        listener.disconnect();
         if (voice->snapshot().state != CE::Audio::PlaybackState::Closed) {
             std::cerr << "Audio consumer: surviving voice did not report Closed after system closure.\n";
             return 1;
@@ -182,6 +198,7 @@ namespace {
 }
 
 int main(int argc, char** argv) {
+    CE::Logging::ProcessLifetime logging_lifetime;
     try {
         bool native = false;
         bool producers = false;

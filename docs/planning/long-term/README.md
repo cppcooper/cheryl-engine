@@ -3,7 +3,7 @@
 This guide retains the scope and prerequisites for deferred integrations and
 consumer-driven extensions. RmlUi rendering effects, an alternative audio SDK and
 the in-game developer console are now selected in the
-[planned roadmap](../develop-review-and-development-plan.md#selected-planned-work).
+[status inventory](../../STATUS.md#2-planned).
 Other unselected engine and module extensions still need a named application
 consumer to establish scope and prerequisites. Additional asset manifests below
 remain deferred to the long term. Steam API services, Steam Input and their
@@ -12,11 +12,11 @@ Multi-platform testing is also shelved; Linux/X11 remains the active short-term
 platform.
 
 Use the current ownership, lifetime, selection and standalone contracts in the
-[module guide](../../development/modules.md). Its
-[module boundary criteria](../../development/modules.md#module-boundary-criteria)
+[module guide](../../site/development/modules.md). Its
+[module boundary criteria](../../site/development/modules.md#module-boundary-criteria)
 govern new owners. Reusable isolation/composition procedures and native/fixture
 coverage limits are in
-[architecture validation](../../development/architecture-validation.md).
+[architecture validation](../../site/development/architecture-validation.md).
 
 ## Multi-platform acceptance
 
@@ -40,7 +40,7 @@ are selection prerequisites; no mobile or console module is implemented.
 ### Multiple active rendering windows
 
 Multiple active rendering windows and switching the selected rendering window are
-deferred. The [display/window contract](../../runtime/display-and-window-contract.md)
+deferred. The [display/window contract](../../site/runtime/display-and-window-contract.md)
 allows a display to own several windows but permits one active rendering selection;
 replacement of that selection rejects. Window ownership alone does not establish
 multiple graphics contexts, presentation surfaces or independent resource domains.
@@ -57,7 +57,7 @@ Windows worker CPU affinity is deferred to phase 4 of the
 [status inventory](../../STATUS.md#3-deferred), alongside platform acceptance and
 OS services. The current Windows hwloc provider retains CPU/core/cache discovery
 but reports thread binding unavailable because its backend rejects
-`HWLOC_CPUBIND_NOMEMBIND`. The [worker contract](../../runtime/worker-execution.md#cpu-policy-and-capabilities)
+`HWLOC_CPUBIND_NOMEMBIND`. The [worker contract](../../site/runtime/worker-execution.md#cpu-policy-and-capabilities)
 requires CPU binding to preserve memory placement; preferred policies use portable
 scheduling and required CPU/cache locality requests reject.
 
@@ -92,7 +92,7 @@ so explicit startup-failure reporting requires a contract change if selected.
 
 Broader native ownership requires a consumer case. Battery and touch/motion
 exposure remain separate from the handoff's initial scope; use the
-[native capability limits](../../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope)
+[native capability limits](../../site/modules/native-glfw.md#hid-capability-and-platform-scope)
 when selecting extensions. Windows/macOS source, fallback and notification work
 remains with the deferred platform scope.
 
@@ -144,7 +144,7 @@ a concrete consumer requirement. Coordinate process-wide Gainput HID collection,
 shutdown and notification ownership before supporting them; independent `Init`/`Exit`
 calls cannot establish that behavior. Preserve one collection path per effective
 controller. The current
-[native adapter lifetime](../../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
+[native adapter lifetime](../../site/modules/native-glfw.md#input-lifetime-and-mapping)
 permits one initialized owner and retains its original Windows notification window.
 Explicit HID startup-failure reporting follows the
 [deferred HID contract](#deferred-hid-integration); ownership checks do not supply
@@ -158,12 +158,12 @@ The RmlUi core integration supplies native documents/fonts, keyboard/text/pointe
 input, rectangular clipping, retained CPU/GPU scenes and lifecycle handling. Its
 selected Linux root-composition baseline remains usable while rendering effects
 are planned. Existing dedicated regressions and supplied-Core acceptance remain in
-the [startup/UI follow-up](../develop-review-and-development-plan.md#startup-and-ui-follow-up).
+the [startup/UI follow-up](../short-term/README.md#startup-and-ui-follow-up).
 
 RmlUi masks, nonidentity transforms, offscreen layers, filters, custom shaders and
 repeating texture coordinates are planned extensions and currently reject
 publication under the
-[current recording contract](../../../projects/modules/ui/rmlui/README.md#recording-and-publication).
+[current recording contract](../../site/modules/rmlui.md#recording-and-publication).
 Determine which effects can be implemented by the adapter and which require
 changes to neutral render/resource contracts and the graphics backend. Include
 necessary OpenGL/backend support in the selected task, covering render targets,
@@ -181,7 +181,7 @@ authoring API. Similarity to existing bridges does not require shared widgets.
 Each toolkit remains independently selectable and depends on neutral Engine
 contracts; toolkit code must not become an Engine dependency. TGUI and RmlUi
 establish the current boundary in the
-[adapter-author guide](../../development/ui-adapters.md).
+[adapter-author guide](../../site/development/ui-adapters.md).
 
 ### Additional graphics backends
 
@@ -193,24 +193,28 @@ omit/replace/test benefit; a seam alone does not justify it.
 
 ## Other engine extensions
 
+### Graphical developer console
+
 The built-in graphical developer console is planned as the engine's own graphical
 interface.
 Its scope consists of that console, with the renderer supplying its rendering;
 other application UI remains consumer-owned. It supplies eventual in-app console
 output independently of whether an application selects the optional native terminal.
 Establish scrolling/history, input routing and command requirements before
-implementation. Until then, Release uses its existing logging destinations. The
-implemented [Linux Debug terminal](../../../projects/modules/platform/debug-terminal-linux/README.md) uses a native terminal and can
-provide diagnostics independently of game rendering; closing it leaves the
-application running.
+implementation. Keep it independent of the optional
+[native terminal](../../site/modules/debug-terminal-linux.md).
 
-Beyond the initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope),
+### Text coverage
+
+Beyond the initial [grayscale scope](../../site/assets/text-layout.md#native-acceptance-scope),
 consider wider CJK/script acceptance when a consumer establishes its required fonts,
 language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
 planned [nearer text follow-on](../mid-term/README.md#color-emoji).
 Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
-The [miniaudio module](../../../projects/modules/audio/miniaudio/README.md)
+### Alternative audio SDK
+
+The [miniaudio module](../../site/modules/miniaudio.md)
 implements ordinary playback with an accepted Linux root-assembly WAV baseline.
 An alternative audio SDK/module is planned; select its SDK and assess licensing,
 runtime/dependency deployment, source/package integration and coexistence before
@@ -221,11 +225,15 @@ define consumer/native acceptance for the chosen alternative. Spatial audio,
 effects graphs, capture, device enumeration/hotplug and custom codecs also need
 separately selected consumer requirements.
 
-Immutable image sampling and TGUI smoothing integration are implemented in the
-[sampling contract](../../rendering/pipelines-and-materials.md#immutable-sampling).
-Additional atlas padding or repacking remains a separately selected extension. Current grid UVs address cell edges
-without padding; the [demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples)
+### Atlas padding and repacking
+
+Additional atlas padding or repacking needs a separately selected scope. Preserve
+the [sampling contract](../../site/rendering/pipelines-and-materials.md#immutable-sampling):
+current grid UVs address cell edges without padding. The
+[demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples)
 retain the baseline observations.
+
+### Game systems
 
 Manual collision checks for object overlap/clipping are deferred to phase 1 of the
 [status inventory](../../STATUS.md#3-deferred). Define their shape, coordinate and
@@ -236,32 +244,35 @@ Cheryl as a Git submodule and supply its own optional modules from the start, or
 implement its features directly. Do not plan on a later extraction or game
 refactor as a prerequisite for starting development.
 
+### NUMA locality
+
 NUMA discovery and memory placement are deferred indefinitely; no client/server
 architecture is scheduled. Reopen only for a consumer and hardware that justify
 multi-node locality. Any resumed facility must be optional at compile time and
 preserve ordinary submission/completion behavior. Separate CPU-to-node mapping
 from allocation, first-touch and migration; single-node runs cannot establish
-multi-node acceptance.
+multi-node acceptance. Preserve the
+[worker provider contract](../../site/runtime/worker-execution.md#topology-providers-and-capacity).
+Topology alone does not prove a speedup or guarantee residency; performance claims
+require representative workload measurements.
 
-General cache/core locality is implemented through optional hwloc support and
-[application-owned worker providers](../../runtime/worker-execution.md#topology-providers-and-capacity),
-separately from the NUMA deferral. Topology does not prove a speedup or guarantee
-residency; performance claims still require representative workload measurements.
+### Other extensions
 
 3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
 work. Placeholders do not imply supported facilities. Establish scope, prerequisites,
-ownership and acceptance before promoting any candidate into the development roadmap.
+ownership and acceptance before selecting any candidate in STATUS.
 
 Broader pointer capture, modal/controller routing and clipboard/cursor/IME services
-need explicit consumer requirements under the [UI capability boundaries](../../development/ui-adapters.md#routing-and-unavailable-services).
-Build-tree and [prebuilt SDK consumption](../../development/consuming-engine.md#prebuilt-development-sdks)
-are implemented. [CI](../../development/building.md#github-ci-and-sdk-artifacts)
-prepares compiled development libraries/headers as workflow artifacts; it publishes
-no GitHub releases or demo packages. Release publication requires a separate choice
-of trigger/policy and accepted platform/toolchain configurations. Pending hosted
-Windows and main artifact collection remain in the active testing queue; successful
-builds do not establish desktop/device acceptance.
+need explicit consumer requirements under the [UI capability boundaries](../../site/development/ui-adapters.md#routing-and-unavailable-services).
+Build-tree and [prebuilt SDK consumption](../../site/development/consuming-engine.md#prebuilt-development-sdks)
+are implemented. SDK collection and release publication belong to the
+[CI workflow](../../../.github/workflows/ci.yml); they are not a deferred engine
+extension. The first main-push collection remains in the
+[testing queue](../../testing-requests.md#tr20-automated-main-push-sdk-collection).
+Hosted build/SDK acceptance does not establish desktop/device acceptance.
+
+### Monitor hotplug
 
 Native monitor hotplug is deferred in
 [phase 3 of the status inventory](../../STATUS.md#3-deferred); monitor hotplug and
@@ -269,7 +280,7 @@ per-window scale/change reporting still need explicit consumers.
 Settle refreshed inventory identity, native-handle invalidation and existing-window
 rebinding before adding hotplug support; monitor scale alone does not satisfy a
 per-window service. The current
-[display/window contract](../../runtime/display-and-window-contract.md) defines the
+[display/window contract](../../site/runtime/display-and-window-contract.md) defines the
 construction-time inventory and copied-size capability limits.
 
 ### Residency accounting
@@ -281,13 +292,13 @@ backend allocation, and advisory budgets from enforceable admission limits.
 Settle owner-thread admission and independent provider/cache ownership before
 allowing multiple domains. Eviction must preserve in-flight frames and avoid
 counting shared images/materials repeatedly. The current
-[residency contract](../../resources/resource-residency.md) supplies strong ownership
+[residency contract](../../site/resources/resource-residency.md) supplies strong ownership
 and explicit clear/replacement/teardown; cache counts do not provide byte budgets.
 
 ## Additional dungeon asset manifests
 
 Prepare one manifest for each of the two 0x72 dungeon packages in the
-[download catalog](../../assets/catalog.md#packages-awaiting-manifests) when
+[download catalog](../../site/assets/catalog.md#packages-awaiting-manifests) when
 this long-term task becomes active. Keep the original downloads available for source
 comparison. Preserve the existing Buch dungeon image and manifest; the added packages
 need distinct namespaces and image directories.
@@ -301,8 +312,8 @@ Handle one package per coherent development unit:
    semantics rather than inferring them from dimensions alone.
 3. Write a separate JSON manifest covering the selected package images and add its
    final locations and manifest link to the catalog. Use the current
-   [manifest format](../../assets/asset-manifests.md) and
-   [loading validation contract](../../assets/asset-loading.md).
+   [manifest format](../../site/assets/asset-manifests.md) and
+   [loading validation contract](../../site/assets/asset-loading.md).
 
 **Acceptance:** the catalog identifies each package revision, and its manifest uses
 valid image paths and grids; slices and animations match that revision. Schema/source checks and

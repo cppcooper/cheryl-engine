@@ -1,3 +1,4 @@
+#include "../internal/unicode.h"
 #include <text/layout.h>
 
 #include "font-internal.h"
@@ -5,11 +6,6 @@
 
 #include <hb.h>
 #include <hb-ot.h>
-#include <unicode/ubidi.h>
-#include <unicode/ubrk.h>
-#include <unicode/uchar.h>
-#include <unicode/uloc.h>
-#include <unicode/uscript.h>
 
 #include <algorithm>
 #include <cmath>
@@ -410,6 +406,10 @@ namespace CE::Text {
 
     ShapedText::ShapedText(FontCollection fonts, LayoutOptions options)
     : fonts_(std::move(fonts)), options_(std::move(options)) {}
+
+    ShapedText layout_text(const Font& font, const std::string_view text, const LayoutOptions& options) {
+        return layout_text(font.collection(options.font_style), text, options);
+    }
 
     ShapedText layout_text(const FontCollection& fonts, const std::string_view text, const LayoutOptions& options) {
         if (!options.pixel_height || options.pixel_height > static_cast<unsigned>(std::numeric_limits<int>::max() / 64))

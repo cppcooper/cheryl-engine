@@ -14,4 +14,8 @@ cheryl_add_test_suite(${TARGET_TEST_ACCEPTANCE_OPENGL} ACCEPTANCE
     SOURCES ${native_acceptance_sources}
     LIBRARIES ${native_test_libraries}
     PRIVATE_INCLUDES "${CHERYL_OPENGL_PRIVATE_SOURCE_DIR}"
+        "${CHERYL_REPOSITORY_ROOT}/projects/modules/platform/native-glfw/src"
+        "$<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:${TARGET_LIB_MODULE_OPENGL_S_GL46},INTERFACE_INCLUDE_DIRECTORIES>"
     DEFINITIONS ${native_test_definitions})
+add_dependencies(${TARGET_TEST_ACCEPTANCE_OPENGL}-cases ${TARGET_LIB_MODULE_OPENGL_S_GL46})

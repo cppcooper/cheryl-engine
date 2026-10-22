@@ -36,9 +36,18 @@ namespace CE::Text {
         }
 
         FontBytes read_font(const std::filesystem::path& path) {
+            std::error_code error;
+            if (!std::filesystem::is_regular_file(path, error)) {
+                if (!std::filesystem::exists(path, error) && !error)
+                    return {};
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font source is not a regular file '" + path.string() + "'");
+            }
             std::ifstream input(path, std::ios::binary | std::ios::ate);
-            if (!input)
+            if (!input) {
+                if (!std::filesystem::exists(path, error) && !error)
+                    return {};
                 throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to open font '" + path.string() + "'");
+            }
             const auto length = static_cast<std::streamoff>(input.tellg());
             if (length <= 0 || static_cast<std::uintmax_t>(length) > static_cast<std::uintmax_t>(std::numeric_limits<FT_Long>::max()) ||
                 static_cast<std::uintmax_t>(length) > std::numeric_limits<std::size_t>::max() ||
@@ -54,8 +63,19 @@ namespace CE::Text {
         FontFaceInfo face_info(FT_Face face, std::optional<std::filesystem::path> path, const std::uint32_t index) {
             if (face->num_glyphs <= 0 || static_cast<unsigned long>(face->num_glyphs) > std::numeric_limits<std::uint32_t>::max())
                 throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font has an unsupported glyph count");
-            return {face->family_name ? face->family_name : "", face->style_name ? face->style_name : "", std::move(path),
-                index, static_cast<std::uint32_t>(face->num_glyphs), false};
+            auto weight = static_cast<std::uint16_t>((face->style_flags & FT_STYLE_FLAG_BOLD) ? 700 : 400);
+            if (const auto* table = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2)); table && table->usWeightClass)
+                weight = table->usWeightClass;
+            return {
+                face->family_name ? face->family_name : "",
+                face->style_name ? face->style_name : "",
+                std::move(path),
+                index,
+                static_cast<std::uint32_t>(face->num_glyphs),
+                false,
+                weight,
+                (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0
+            };
         }
 
         struct StyleScore {
@@ -82,43 +102,60 @@ namespace CE::Text {
             StyleScore style_score;
         };
 
-        std::map<std::string, Candidate> discover_families(
+        std::map<std::string, std::vector<Candidate>> discover_families(
             FT_Library library,
             const FontSelection& selection,
-            const std::vector<std::string>& requested
+            const std::vector<std::string>& requested,
+            const bool application_assets
         ) {
-            std::map<std::string, Candidate> result;
+            std::map<std::string, std::vector<Candidate>> result;
             if (requested.empty())
                 return result;
-            const auto files = selection.system_directories ? find_system_fonts(*selection.system_directories) : find_system_fonts();
+            const auto files = application_assets             ? find_system_fonts(selection.asset_directories)
+                               : selection.system_directories ? find_system_fonts(*selection.system_directories)
+                                                              : find_system_fonts();
             for (const auto& file : files) {
+                const auto filename = application_assets ? family_key(file.filename().string()) : std::string{};
                 FontBytes bytes;
                 FreeTypeFace first(nullptr, FT_Done_Face);
                 try {
                     bytes = read_font(file);
+                    if (!bytes)
+                        continue;
                     first = open_face(library, {bytes, 0});
                 } catch (const ::CE::Exceptions::runtime_exception&) {
-                    continue; // Installed-font discovery is best effort; explicit files below are strict.
+                    continue; // Name-based discovery is best effort.
                 }
                 const auto count = first->num_faces;
                 if (count <= 0 || static_cast<unsigned long>(count) > std::numeric_limits<std::uint32_t>::max())
                     continue;
                 for (FT_Long index = 0; index < count; ++index) {
                     FreeTypeFace face(nullptr, FT_Done_Face);
+                    const auto face_index = static_cast<std::uint32_t>(index);
                     try {
-                        face = index == 0 ? std::move(first) : open_face(library, {bytes, static_cast<std::uint32_t>(index)});
+                        face = index == 0 ? std::move(first) : open_face(library, {bytes, face_index});
+                        const auto key = family_key(face->family_name ? face->family_name : "");
+                        const auto score = style_score(face.get());
+                        const auto retain = [&](const std::string& name) {
+                            if (std::ranges::find(requested, name) == requested.end())
+                                return;
+                            auto& candidates = result[name];
+                            if (!selection.include_family_styles && !candidates.empty()) {
+                                if (candidates.front().style_score <= score)
+                                    return; // Equal styles keep sorted path/face order.
+                                candidates.clear();
+                            }
+                            candidates.push_back(Candidate{{bytes, face_index}, face_info(face.get(), file, face_index), score});
+                            std::stable_sort(candidates.begin(), candidates.end(), [](const auto& left, const auto& right) {
+                                return left.style_score < right.style_score;
+                            });
+                        };
+                        retain(key);
+                        if (application_assets && filename != key)
+                            retain(filename);
                     } catch (const ::CE::Exceptions::runtime_exception&) {
                         continue;
                     }
-                    const auto key = family_key(face->family_name ? face->family_name : "");
-                    if (std::ranges::find(requested, key) == requested.end())
-                        continue;
-                    const auto score = style_score(face.get());
-                    const auto old = result.find(key);
-                    if (old != result.end() && old->second.style_score <= score)
-                        continue; // Equal styles keep sorted path/face order.
-                    result.insert_or_assign(key, Candidate{{bytes, static_cast<std::uint32_t>(index)},
-                        face_info(face.get(), file, static_cast<std::uint32_t>(index)), score});
                 }
             }
             return result;
@@ -176,36 +213,62 @@ namespace CE::Text {
     FontCollection FontCollection::load(const FontSelection& selection) {
         auto library = Detail::open_freetype();
         std::vector<std::string> requested;
+        std::vector<std::string> asset_requested;
         for (const auto& source : selection.preferred) {
             if (const auto* family = std::get_if<SystemFontFamily>(&source)) {
                 if (family->name.empty() || family->name.find('\0') != std::string::npos)
                     throw ::CE::Exceptions::invalid_args(CE_HERE, "An installed font family needs a nonempty name without NUL");
                 requested.push_back(family_key(family->name));
+            } else if (const auto* name = std::get_if<std::string>(&source)) {
+                if (name->empty() || name->find('\0') != std::string::npos)
+                    throw ::CE::Exceptions::invalid_args(CE_HERE, "A preferred font needs a nonempty name without NUL");
+                requested.push_back(family_key(*name));
+                asset_requested.push_back(requested.back());
             }
         }
         if (selection.automatic_system_fonts) {
-            for (const auto name : automatic_families)
+            for (const auto name : automatic_families) {
                 requested.push_back(family_key(name));
+                asset_requested.push_back(requested.back());
+            }
         }
-        const auto installed = discover_families(library.get(), selection, requested);
+        const auto assets = discover_families(library.get(), selection, asset_requested, true);
+        const auto installed = discover_families(library.get(), selection, requested, false);
+        const auto named_candidates = [&](const std::string_view name) -> const std::vector<Candidate>* {
+            const auto key = family_key(name);
+            if (const auto entry = assets.find(key); entry != assets.end())
+                return &entry->second;
+            if (const auto entry = installed.find(key); entry != installed.end())
+                return &entry->second;
+            return nullptr;
+        };
         auto result = std::make_shared<Detail::FontCollectionData>();
         for (const auto& source : selection.preferred) {
             if (const auto* file = std::get_if<FontFile>(&source)) {
                 const auto path = file->path.lexically_normal();
                 const Detail::FontFaceData data{read_font(path), file->face_index};
+                if (!data.bytes)
+                    continue;
                 const auto face = Detail::open_face(library.get(), data);
                 append_face(*result, data, face_info(face.get(), path, file->face_index));
+            } else if (const auto* name = std::get_if<std::string>(&source)) {
+                if (const auto* entries = named_candidates(*name)) {
+                    for (const auto& entry : *entries)
+                        append_face(*result, entry.data, entry.info);
+                }
             } else {
                 const auto entry = installed.find(family_key(std::get<SystemFontFamily>(source).name));
-                if (entry != installed.end())
-                    append_face(*result, entry->second.data, entry->second.info);
+                if (entry != installed.end()) {
+                    for (const auto& candidate : entry->second)
+                        append_face(*result, candidate.data, candidate.info);
+                }
             }
         }
         if (selection.automatic_system_fonts) {
             for (const auto name : automatic_families) {
-                const auto entry = installed.find(family_key(name));
-                if (entry != installed.end() && !entry->second.style_score.heavy)
-                    append_face(*result, entry->second.data, entry->second.info);
+                const auto* entries = named_candidates(name);
+                if (entries && !entries->front().style_score.heavy)
+                    append_face(*result, entries->front().data, entries->front().info);
             }
         }
         const auto embedded = Detail::builtin_font_bytes();

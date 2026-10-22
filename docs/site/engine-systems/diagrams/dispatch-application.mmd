@@ -1,0 +1,45 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Dispatch · application owner requests
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>init_platform()"]):::app
+    k1["<b>Context</b><br/><br/>platform_dispatcher(): PlatformDispatcher<br/><br/>resources(): Rendering::Resources::Provider"]:::neighbor
+    k2["<b>PlatformDispatcher</b><br/><br/>submission(): PlatformDispatcher::Submission"]:::focal
+    k3["<b>PlatformDispatcher::<br/>Submission</b><br/><br/>submit(Work): Result"]:::focal
+    k4(["Application<br/>producer"]):::app
+    k5(["Application<br/>platform-owner work"]):::app
+    k6["<b>Rendering::Resources::<br/>Provider</b><br/><br/>create_image(Assets::Images::Decoded):<br/>Rendering::Resources::Image<br/><br/>upload_geometry(<br/>Rendering::Geometry::Vertex2D[],<br/>Rendering::Geometry::Topology):<br/>Rendering::Geometry::Buffer2D"]:::neighbor
+    k7(["Application<br/>composition"]):::app
+    k8["<b>GameRuntime</b><br/><br/>simulation_dispatcher(): SimulationDispatcher"]:::neighbor
+    k9["<b>SimulationDispatcher</b><br/><br/>submission(): SimulationDispatcher::Submission"]:::focal
+    k10["<b>SimulationDispatcher::<br/>Submission</b><br/><br/>submit(Work): Result"]:::focal
+    k11(["Application<br/>simulation-owner work"]):::app
+    k12["Game::<br/>TickContext"]:::neighbor
+    k0 --> k1
+    k1 --> k2
+    k2 --> k3
+    k4 --> k3
+    k5 --> k1
+    k1 --> k6
+    k7 --> k8
+    k8 --> k9
+    k9 --> k10
+    k4 --> k10
+    k11 --> k12
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

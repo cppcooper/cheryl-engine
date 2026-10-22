@@ -2,8 +2,8 @@
 
 The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW`, `Cheryl::OpenGL` and
 `Cheryl::OpenGL::Startup` for shared command-line bootstrap. Root composition
-also selects the optional [Linux Debug terminal](../../modules/platform/debug-terminal-linux/README.md)
-where available; actual Debug defaults to a separate output viewer.
+also selects the optional [Linux Debug terminal](../../../docs/site/modules/debug-terminal-linux.md)
+in supported single-configuration Debug builds by default, with a separate output viewer.
 Selecting `Cheryl::UI::TGUI` adds a panel on the right; selecting
 `Cheryl::UI::RmlUi` adds an independent native-document view on the left. Each has
 live counters, a camera-reset button, an editable field, a scrolling list,
@@ -12,14 +12,15 @@ be selected.
 
 ## Setup
 
-From the repository root, with the [dependencies](../../../docs/development/building.md#system-dependencies)
+From the repository root, with the [dependencies](../../../docs/site/development/building.md#system-dependencies)
 initialized, configure the demo:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
+  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja \
+    -DCHERYL_BUILD_DEMO=ON
 )
 ```
 
@@ -44,22 +45,25 @@ Run in sequential or concurrent mode:
 )
 ```
 
-The demo requires Native GLFW, OpenGL and native input. TGUI is selected by
-default; enable `CHERYL_BUILD_UI_RMLUI=ON` for the left-hand view. Disable both
-adapters for the toolkit-free F2 text probe. Reload CMake after changing cached
-selections; the [build guide](../../../docs/development/building.md) owns option
+The demo requires Native GLFW, OpenGL and native input. TGUI and RmlUi are
+selected by default, showing both views. Disable both adapters for the toolkit-free
+F2 text probe. Reload CMake after changing cached
+selections; the [build guide](../../../docs/site/development/building.md) owns option
 defaults and dependency settings.
 
-The builtin HUD selects optional system/application fonts and always retains an
-embedded fallback; it can start without an installed system font. RmlUi keeps its
+The builtin HUD selects fonts by name from the asset root, then system directories,
+and always retains an embedded fallback; it can start without an installed system
+font. An asset font overrides a system font with the same name. RmlUi keeps its
 separate file-based service, using a selected file or the checked-in DejaVu Sans
-fallback. TGUI uses its own embedded default font. Shaders and the small RmlUi proof document/images are checked in under the
-asset root. The tile/sprite showcase attempts to load three optional package images
+fallback. TGUI uses its own embedded default font. Main text/image shaders and the
+small RmlUi proof document/images are checked in under the asset root. UI shaders
+are embedded in the OpenGL library and selected automatically. The tile/sprite
+showcase attempts to load three optional package images
 on every launch. Missing or broken package metadata/images skip the affected samples
 and report once to stderr; the HUD, input and selected UI views continue running.
 `--full-assets` also attempts the whole manifest/image tree and reports a failed
 batch without aborting startup. Package PNGs are not tracked. The
-[asset package catalog](../../../docs/assets/catalog.md) lists their download sources
+[asset package catalog](../../../docs/site/assets/catalog.md) lists their download sources
 and expected paths. The default asset root is the checkout's `assets/`.
 A positional argument selects another root:
 
@@ -107,9 +111,9 @@ keep their original target and epoch while each view drains the complete batch.
 Startup groups help into Engine, Backend and Application options. Use `--help`
 to show the selected options; help and invalid configuration return before a
 native context is created. The
-[Engine option reference](../../../docs/development/consuming-engine.md#command-line-startup)
+[Engine option reference](../../../docs/site/development/consuming-engine.md#command-line-startup)
 owns `--concurrent`, timing, input polling and `--worker-count`. The
-[GLFW/OpenGL reference](../../modules/graphics/opengl/README.md#command-line-startup)
+[GLFW/OpenGL reference](../../../docs/site/modules/opengl.md#command-line-startup)
 owns window dimensions/title, swap interval and `--input-diagnostics`.
 The demo's [option helper](src/demo-options.cpp) registers these Application options:
 
@@ -120,32 +124,34 @@ The demo's [option helper](src/demo-options.cpp) registers these Application opt
 | `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
 | `--unicode-text` | Shows accented Latin, Cyrillic, mixed/pure RTL, missing-glyph and wrapping examples in the builtin HUD. |
 | `--text-runs` | Prepares positioned geometry for builtin HUD/camera text and sample labels, then submits one draw per contiguous atlas-page run. Toolkit text is unchanged. |
-| `--builtin-font` | Disables automatic installed-family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
-| `--font=/path/to/font.ttf` | Appends an application file to the ordered preferred font sources; repeat as needed. Invalid files fail startup. |
-| `--font-family=NAME` | Appends an installed family to the same preferred order. Quote names containing spaces; unavailable families are skipped. |
+| `--builtin-font` | Disables automatic family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
+| `--font=/path/to/font.ttf` | Appends an explicit file to the ordered preferred font sources; repeat as needed. Missing files are skipped; existing invalid or unreadable files fail startup. |
+| `--font-family=NAME` | Appends a name to the same preferred order, resolving asset fonts before installed families. Asset filenames including their extension also work. Quote names containing spaces; missing names are skipped. |
 | `--text-direction=auto`, `ltr` or `rtl` | Sets builtin paragraph direction. Latin/numbers keep their natural run direction; explicit RTL aligns HUD lines to the width's right edge. |
 
-See [simulation timing](../../../docs/runtime/simulation-timing.md) and
-[input polling](../../../docs/runtime/input-state-model.md) for policy constraints
+See [simulation timing](../../../docs/site/runtime/simulation-timing.md) and
+[input polling](../../../docs/site/runtime/input-state-model.md) for policy constraints
 and defaults. A finite run checks startup/updates/shutdown; it does not establish
 visual or interactive behavior.
 
 For controller investigation, use a developer logging build and `--input-diagnostics`.
-The [native controller diagnostics](../../modules/platform/native-glfw/README.md#controller-diagnostics)
+The [native controller diagnostics](../../../docs/site/modules/native-glfw.md#controller-diagnostics)
 explain the records and their limits. The option changes the OS-platform logger's
 file/logger gates to TRACE while retaining its console preset. It rejects builds
 that stripped TRACE before starting the runtime.
 
 ## Native output terminal
 
-On Linux GNU/Clang, root `AUTO` composition attaches the output terminal in actual
-Debug builds. `--no-debug-terminal` disables display when included. Release and
-other configurations omit it unless `CHERYL_DEBUG_TERMINAL=ON`; those included
-non-Debug builds display only with `--debug-terminal`. Without an implementation
-these options are not consumed by terminal support. Help/headless launches create
+On Linux GNU/Clang, a fresh root Debug configuration using Ninja defaults
+`CHERYL_BUILD_DEBUG_TERMINAL_LINUX` to `ON`. Other configurations default to `OFF`;
+set it explicitly to include the terminal in Release or a multi-configuration build.
+Existing build directories retain their cached selection. `--no-debug-terminal`
+disables display when included. Included non-Debug builds display only with
+`--debug-terminal`. Without an implementation these options are not consumed by
+terminal support. Help/headless launches create
 no viewer. Closing the viewer keeps the demo running; normal exit closes it and
 abnormal process loss retains available output. See the
-[module contract](../../modules/platform/debug-terminal-linux/README.md) and
+[module contract](../../../docs/site/modules/debug-terminal-linux.md) and
 [pending acceptance](../../../docs/testing-requests.md).
 
 ## Tile and sprite samples
@@ -179,11 +185,11 @@ resource-retaining packets and performs no image loading or playback mutation.
 Indexed `main:images` (triangle strip) and `main:text` (triangles) materials share
 one `shader2d` program and straight-alpha blending. Default startup and F5 select
 `graphics/shaders/graphics-manifests.json`; other shader files are not automatically
-indexed. The [loading contract](../../../docs/assets/asset-loading.md#resources-and-application-bootstrap)
+indexed. The [loading contract](../../../docs/site/assets/asset-loading.md#resources-and-application-bootstrap)
 describes incremental catalogue replacement and pair adoption. Images inherit the OpenGL provider's linear
 magnification and generated mipmaps, so enlarged pixel edges can look softened.
 Engine defaults also request maximum-supported anisotropy. Explicit immutable
-[sampler bindings](../../../docs/rendering/pipelines-and-materials.md#immutable-sampling)
+[sampler bindings](../../../docs/site/rendering/pipelines-and-materials.md#immutable-sampling)
 can select other filtering without mutating an image; these demo samples expose no
 filtering control. Atlas padding or repacking remains separate future work.
 F5 adopts both replacement handles together; a failed
@@ -204,7 +210,7 @@ are below in [native QA](#repeating-native-qa).
 ## Builtin Unicode text
 
 The HUD and camera label use the neutral
-[Unicode text service](../../../docs/assets/text-layout.md). The HUD wraps to the
+[Unicode text service](../../../docs/site/assets/text-layout.md). The HUD wraps to the
 framebuffer width minus two 24-pixel margins. The toolkit-free F2 probe now encodes
 its scalar editing buffer as UTF-8, so supported accents/Cyrillic display as glyphs
 and unknown graphemes use a visible replacement. Its caret still moves through
@@ -223,7 +229,7 @@ For an interactive preview, use `--unicode-text --builtin-font`, then repeat wit
 alignment and resource-replacement/shutdown observations are accepted. RTL selects
 paragraph direction rather than reversing every string: Latin retains its natural
 order and aligns right, while the Hebrew-only paragraph already resolves RTL in
-automatic mode. The [text guide](../../../docs/assets/text-layout.md#native-acceptance-scope)
+automatic mode. The [text guide](../../../docs/site/assets/text-layout.md#native-acceptance-scope)
 owns bidi proof and remaining coverage limits; [native QA](#unicode-preview-validation)
 preserves the reusable launch variants.
 Color emoji and wider CJK acceptance remain outside this batch. The missing-glyph
@@ -232,23 +238,25 @@ example exercises replacement rather than Chinese-language coverage.
 ## UI ownership and uploads
 
 `Game` passes the neutral `DemoUiStatus` model to its selected views and receives
-camera-reset actions. Each view keeps manual OpenGL material construction on platform during
+camera-reset actions. Each view prepares its uploader on platform during
 initialization, then creates its session/native objects lazily on the first
-simulation update. It supplies copied logical/framebuffer dimensions and simulation
-time. Complete CPU recordings go through the platform dispatcher/uploader, with
+simulation update. Both sessions opt in to automatic simulation-view following;
+runtime applies paired size changes before the matching update. The demo retains
+manual time advancement after input. Complete CPU recordings go through the platform dispatcher/uploader, with
 at most one replacement pending per view. Upload failure preserves the current
 scene and appears in the HUD. Frame preparation appends TGUI, then RmlUi, after
 the world/HUD pass; it never traverses live widgets. Teardown follows simulation
 join and releases application-held widgets/elements/listeners before their toolkit
 globals. Both adapters remain independent; their app views share only the status
-model and generic shader assets, with distinct alpha pipelines. The
-[manual recipe example](../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
-explains definition/binding wiring. A future indexed UI migration targets TGUI
-first; RmlUi retains a separate manual example if it later migrates too. Each view delivers
-the complete input batch once through its session's control callback, retaining
-the entry keyboard epoch while visibility controls select pointer delivery per record.
+model. Uploads select [automatic materials](../../../docs/site/rendering/pipelines-and-materials.md#default-ui-materials)
+through the generic provider contract. OpenGL owns embedded shaders and reuses
+their programs across the distinct straight/premultiplied alpha pipelines.
+Custom materials can be loaded from JSON and passed as explicit handles.
+Each view delivers the complete input batch once through its session's control
+callback, retaining the entry keyboard epoch while visibility controls select
+pointer delivery per record.
 
-The demo uses the adapter's [typed layout](../../modules/ui/tgui/README.md#typed-layout).
+The demo uses the adapter's [typed layout](../../../docs/site/modules/tgui.md#typed-layout).
 The panel anchors to the window's top-right with a 24-unit inset. Its width follows
 35% of the window, bounded between 394 and 640 logical units; its height follows
 75%, bounded between 500 and 800 units. For example:
@@ -317,12 +325,12 @@ The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
 desktop scale. Per-window scale transitions, other platforms, IME and physical GPU resource
 retirement need separate observations. Native startup, field/placeholder focus,
 list layout and UI interaction are accepted in the selected Linux root composition.
-Dedicated parser/factory, callback/batch and placeholder regressions
-remain in the [owning plan](../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
-Builtin Unicode keeps its separate [coverage scope](../../../docs/assets/text-layout.md#native-acceptance-scope).
+Dedicated successful Startup context/runtime handoff, callback/batch and placeholder regressions
+remain in the [owning plan](../../../docs/planning/short-term/README.md#startup-and-ui-follow-up).
+Builtin Unicode keeps its separate [coverage scope](../../../docs/site/assets/text-layout.md#native-acceptance-scope).
 
 Reuse accepted coverage unless related source changes require a rerun. The
-[focused acceptance procedure](../../modules/ui/rmlui/README.md#acceptance-procedure)
+[focused acceptance procedure](../../../docs/site/modules/rmlui.md#acceptance-procedure)
 batches RmlUi and coexistence checks in one parallel build.
 
 ## Repeating native QA
@@ -336,7 +344,7 @@ results do not establish Wayland, other platforms or physical GPU retirement.
 
 The Unicode and sample procedures use `build/testing-native-linux`: Linux Release,
 developer logging, GLFW/X11/OpenGL, native input, HID off and both UI adapters off.
-Use the [native guide's configuration](../../../docs/development/native-desktop-checks.md#linux-controller-automation)
+Use the [native guide's configuration](../../../docs/site/development/native-desktop-checks.md#linux-controller-automation)
 if that directory is absent or differs; user-run CMake configuration selects Ninja.
 For a matching build, refresh only the demo once for both procedures:
 
@@ -349,7 +357,7 @@ For a matching build, refresh only the demo once for both procedures:
 ```
 
 The startup/UI procedure uses the separate `build/testing-native-ui` directory.
-Refresh affected targets with the [UI procedure](../../../docs/development/ui-adapters.md#repeating-linux-root-validation)
+Refresh affected targets with the [UI procedure](../../../docs/site/development/ui-adapters.md#repeating-linux-root-validation)
 when needed. Rebuilding one directory does not refresh the other. Each launch
 selects `assets` as the root; the demo resolves `graphics/shaders/` beneath it.
 Temporary sample roots preserve that layout. Close each interactive launch before
@@ -374,17 +382,19 @@ in automatic mode, so its order need not change between automatic and explicit R
   ./build/testing-native-linux/demo --unicode-text assets
   ./build/testing-native-linux/demo --unicode-text --concurrent assets
   ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf assets
-  env XDG_DATA_HOME="$PWD/assets" ./build/testing-native-linux/demo \
-    --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --font-family=DejaVuSans.ttf assets
 )
 ```
 
-The `XDG_DATA_HOME` launch supplies a controlled family-discovery root containing
-the repository font. Installed DejaVu Sans candidates can precede it; either is a
-valid explicit family selection. Automatic discovery can use only the embedded
-fallback when preferred families are absent. Successful fallback alone does not
-prove discovery; controlled CPU cases establish its metadata and ordering. Numeric
-font-weight limits still need the [dedicated fixtures](../../../docs/planning/short-term/unicode-text.md#progress).
+The family-name and filename launches select the repository font from the asset
+root, including nested font directories. The asset copy takes precedence over
+installed DejaVu Sans. No system-directory or environment setup is required.
+Automatic discovery can use only the embedded fallback when preferred families
+are absent. Successful fallback alone does not prove discovery; inspect
+`FontCollection::faces()` to distinguish a discovered file from the embedded face.
+Numeric font-weight limits still need the
+[dedicated regressions](../../../docs/planning/short-term/README.md#font-selection-regressions).
 
 - Inspect English, French accents and `e`+combining acute, German umlauts/`ß`, and
   Russian glyphs. Accents stay with their base and glyph masks are upright, with
@@ -418,7 +428,7 @@ and the three images from the sample table in
 temporary roots, preserving checkout files. It covers sequential variable timing
 and concurrent 16 ms fixed timing, missing metadata/images, selected/partial
 artwork and a corrupt weapon image. Artwork cases are blocked when their source
-images are absent; place them according to the [catalog](../../../docs/assets/catalog.md).
+images are absent; place them according to the [catalog](../../../docs/site/assets/catalog.md).
 Missing-artwork startup does not count as rendered-artwork acceptance.
 
 ```sh
@@ -481,7 +491,7 @@ PY
   source size, intact colors/transparent backgrounds and no joined adjacent-cell
   geometry. The current provider uses linear magnification; softened pixel edges
   reflect that policy. Report neighboring-cell color leakage separately for the
-  [sampling contract](../../../docs/rendering/pipelines-and-materials.md#immutable-sampling);
+  [sampling contract](../../../docs/site/rendering/pipelines-and-materials.md#immutable-sampling);
   explicit sampling does not create padded atlas cells.
   Static grass, sword and frozen Swordsman do not animate.
 - Watch the three animated tiles use their respective 400/200/100 ms frame durations
@@ -502,7 +512,7 @@ PY
   acceptance.
 
 For changes affecting shader replacement, use the
-[targeted reload sequence](../../../docs/development/native-desktop-checks.md#repeatable-sequence)
+[targeted reload sequence](../../../docs/site/development/native-desktop-checks.md#repeatable-sequence)
 with the printed temporary root's `graphics/shaders/shader2d.frag`. Both old
 materials must remain usable on failure and recover after restoration; the HUD
 reports then clears the error. This is separate from normal sample regression QA.
@@ -537,8 +547,9 @@ and the final launch exits after five updates.
 - The configured title/dimensions appear, the positional asset root loads tracked
   resources, and normal and concurrent fixed runs retain input/rendering/shutdown.
   The finite launch reports five completed updates and exits normally. Help and
-  finite-run success do not prove all parser precedence/runtime-policy combinations;
-  dedicated Startup regressions remain pending.
+  finite-run success do not prove every runtime-policy combination. The Startup
+  suite covers parser validation and help/error paths; dedicated successful
+  context/result/runtime handoff regressions remain pending.
 - The RmlUi field begins empty with a muted placeholder. Click its left, middle
   and right, type text, clear it and click again: no crash or invalid caret/selection,
   and the hint never becomes editable content. F4 focuses the actual field even

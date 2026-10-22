@@ -118,6 +118,26 @@ namespace CE::Platform::GLFW {
         return create_window(monitor, mode, width, height, "");
     }
 
+    Window* DisplaySystem::create_opengl_window(
+        const ::CE::Platform::Monitor& monitor,
+        const ::CE::Platform::WindowMode mode,
+        const int width,
+        const int height,
+        const std::string& title,
+        const OpenGLContextOptions& context
+    ) {
+        if (context.major <= 0 || context.minor < 0)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL context version must be valid");
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, context.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, context.minor);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, context.core_profile ? GLFW_OPENGL_CORE_PROFILE : GLFW_OPENGL_ANY_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, context.forward_compatible ? GLFW_TRUE : GLFW_FALSE);
+        glfwWindowHint(GLFW_VISIBLE, context.visible ? GLFW_TRUE : GLFW_FALSE);
+        return create_window(monitor, mode, width, height, title);
+    }
+
     Window* DisplaySystem::create_window(
         const ::CE::Platform::Monitor& monitor,
         const ::CE::Platform::WindowMode mode,

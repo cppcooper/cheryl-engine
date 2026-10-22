@@ -4,9 +4,33 @@ inputs:
   profile:
     description: CI composition, headless or modules.
     required: true
+  cache-job:
+    description: Unique matrix job name for Windows dependency contributions.
+    default: worker
+  windows-vcpkg:
+    description: Build shared Windows dependencies once, or consume a prepared installation.
+    default: build
+  prepared-artifact:
+    description: Installed vcpkg artifact from this run's platform preparation job.
+    default: ''
+outputs:
+  dependency-cache-writer:
+    description: Whether this run may publish its main or develop build dependency cache.
+    value: ${{ steps.metadata.outputs.dependency-cache-writer }}
 runs:
   using: composite
   steps:
+    - name: Validate dependency preparation mode
+      shell: bash
+      env:
+        VCPKG_MODE: ${{ inputs.windows-vcpkg }}
+        PREPARED_ARTIFACT: ${{ inputs.prepared-artifact }}
+      run: |
+        case "$VCPKG_MODE" in
+          build) ;;
+          consume) test -n "$PREPARED_ARTIFACT" ;;
+          *) echo 'Unknown Windows vcpkg preparation mode' >&2; exit 1 ;;
+        esac
     - name: Describe dependency caches
       id: metadata
       shell: bash
@@ -19,13 +43,16 @@ runs:
       with:
         path: ${{ steps.metadata.outputs.submodule-path }}
         key: ${{ steps.metadata.outputs.submodule-key }}
+        restore-keys: |
+          ${{ steps.metadata.outputs.submodule-prefix }}
+          ${{ steps.metadata.outputs.submodule-main-prefix }}
     - name: Check out pinned submodules
       shell: bash
       env:
         CHERYL_SUBMODULE_TOKEN: ${{ github.token }}
       run: python .github/ci/dependencies.py submodules
     - name: Save submodule Git objects
-      if: steps.submodules.outputs.cache-hit != 'true'
+      if: steps.metadata.outputs.dependency-cache-writer == 'true' && steps.submodules.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.submodule-path }}
@@ -39,26 +66,12 @@ runs:
           ${{ steps.metadata.outputs.vcpkg-root }}
           ${{ steps.metadata.outputs.ccache-tools }}
         key: ${{ steps.metadata.outputs.tools-key }}
-    - name: Restore Windows dependency packages and downloads
-      if: runner.os == 'Windows'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.metadata.outputs.dependency-path }}
-        key: ${{ steps.metadata.outputs.dependency-key }}
-        restore-keys: |
-          ${{ steps.metadata.outputs.dependency-exact-prefix }}
-          ${{ steps.metadata.outputs.dependency-profile-prefix }}
-          ${{ steps.metadata.outputs.dependency-runner-prefix }}
-    - name: Snapshot Windows dependency cache
-      if: runner.os == 'Windows'
-      shell: bash
-      run: python .github/ci/dependencies.py cache-state --snapshot
     - name: Prepare pinned Windows tools
       if: runner.os == 'Windows'
       shell: bash
       run: python .github/ci/dependencies.py windows-tools
     - name: Save Windows tools
-      if: runner.os == 'Windows' && steps.tools.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -72,9 +85,6 @@ runs:
       with:
         path: ${{ steps.metadata.outputs.pip-path }}
         key: ${{ steps.metadata.outputs.pip-key }}
-        restore-keys: |
-          ${{ steps.metadata.outputs.pip-exact-prefix }}
-          ${{ steps.metadata.outputs.pip-prefix }}
     - name: Snapshot Python cache
       if: runner.os == 'Windows' && inputs.profile == 'modules'
       shell: bash
@@ -89,11 +99,63 @@ runs:
       shell: bash
       run: python .github/ci/dependencies.py cache-state --cache pip
     - name: Save Python downloads and wheels
-      if: runner.os == 'Windows' && inputs.profile == 'modules' && steps.pip-state.outputs.changed == 'true'
+      if: runner.os == 'Windows' && inputs.profile == 'modules' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.pip.outputs.cache-hit != 'true' && steps.pip-state.outputs.changed == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.pip-path }}
         key: ${{ steps.pip.outputs.cache-primary-key }}
+    - name: Describe shared Windows dependency pool
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
+      id: vcpkg
+      shell: bash
+      run: python .github/ci/vcpkg_cache.py describe
+    - name: Restore shared Windows dependency pool
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.vcpkg.outputs.cache-path }}
+        key: ${{ steps.vcpkg.outputs.cache-key }}
+        restore-keys: ${{ steps.vcpkg.outputs.cache-prefix }}
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
+      id: vcpkg-install
+      shell: pwsh
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+        $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (!$vs) { throw 'MSVC x64 tools are unavailable' }
+        & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+        python .github/ci/dependencies.py windows-install --profile $env:DEPENDENCY_PROFILE
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Pack prepared Windows dependencies
+      if: ${{ !cancelled() && runner.os == 'Windows' && inputs.windows-vcpkg == 'build' && steps.vcpkg-install.outcome == 'success' }}
+      id: vcpkg-pack
+      shell: bash
+      run: python .github/ci/vcpkg_cache.py pack --installed "$CHERYL_CI_VCPKG_INSTALLED_DIR"
+    - name: Retain prepared Windows dependencies
+      if: ${{ !cancelled() && runner.os == 'Windows' && inputs.windows-vcpkg == 'build' && steps.vcpkg-pack.outputs.has-content == 'true' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: vcpkg-cache-${{ runner.arch }}-${{ inputs.cache-job }}-${{ github.run_attempt }}
+        path: ${{ steps.vcpkg.outputs.contribution-path }}
+        if-no-files-found: error
+        compression-level: 0
+        overwrite: true
+        retention-days: 1
+    - name: Download shared Windows installation
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'consume'
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: ${{ inputs.prepared-artifact }}
+        path: ${{ steps.metadata.outputs.vcpkg-installed-dir }}
+    - name: Verify shared Windows installation
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'consume'
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: python .github/ci/dependencies.py windows-verify --profile "$DEPENDENCY_PROFILE"
     - name: Update Linux package indexes
       if: runner.os == 'Linux'
       shell: bash
@@ -119,7 +181,7 @@ runs:
         DEPENDENCY_PROFILE: ${{ inputs.profile }}
       run: python .github/ci/dependencies.py apt-install --profile "$DEPENDENCY_PROFILE"
     - name: Save Linux package binaries
-      if: runner.os == 'Linux' && steps.apt-plan.outputs.needed == 'true' && steps.apt.outputs.cache-hit != 'true'
+      if: runner.os == 'Linux' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.apt-plan.outputs.needed == 'true' && steps.apt.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.dependency-path }}/apt/*.deb

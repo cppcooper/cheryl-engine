@@ -1,20 +1,23 @@
 # Mid-term work
 
 Color emoji and reorder-safe sorting are planned in the
-[selected roadmap](../develop-review-and-development-plan.md#selected-planned-work).
+[status inventory](../../STATUS.md#2-planned).
 General render batching and text/timing optimization remain deferred. Sorting and
 optimization retain their representative-workload and settled-contract prerequisites.
 These tasks have no active implementation checklist yet; activate one coherent unit
 after its investigation/design checkpoint. Opt-in
-[positioned text runs](../../assets/text-layout.md#positioned-text-runs) already
+[positioned text runs](../../site/assets/text-layout.md#positioned-text-runs) already
 prepare glyph placements once and preserve contiguous page order.
 
 ## Color emoji
 
-This is selected planned work beyond the current grayscale implementation.
+This is selected planned work for Engine's shaped-text layout and atlas path.
+The shared [font rasterizer](../../site/assets/text-layout.md#supported-rendering-scope)
+already exposes alpha and premultiplied RGBA glyph pixels; that lower-level support
+does not complete color-font layout, atlas submission or emoji acceptance.
 
 Select required color-font formats, fonts and emoji sequences beyond the accepted
-initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope).
+initial [grayscale scope](../../site/assets/text-layout.md#native-acceptance-scope).
 Establish RGBA page orientation,
 material/alpha handling and sequence/fallback policy while preserving source clusters
 and immutable generations. Keep grayscale text independently usable. Color glyphs

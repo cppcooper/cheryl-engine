@@ -1,11 +1,15 @@
 #include <core/engine/engine-context.h>
 #include "engine-context-internal.h"
+#include "view-state-internal.h"
+#include "runtime-services-internal.h"
 
 #include <assets/resources/resource-provider.h>
 #include <core/controls/input-interface.h>
 #include <core/display/display-system-interface.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
+#include <core/engine/event-delivery.h>
+#include <templates/asset-mgr.h>
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
 #include <internals/compile-time-logging.hpp>
@@ -70,8 +74,26 @@ namespace CE::Runtime {
     }
 
     void Context::begin_session() {
-        if (session_started_.exchange(true, std::memory_order_acq_rel))
+        std::lock_guard lock(execution_mutex_);
+        if (session_started_.load(std::memory_order_acquire))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
+        const auto context = Detail::ViewSourceAccess::identity();
+        const auto session = Detail::ViewSourceAccess::identity();
+        const auto window_source = Detail::ViewSourceAccess::identity();
+        const auto simulation_source = Detail::ViewSourceAccess::identity();
+        input_->publish_events_to(events_.publisher());
+        resources_->publish_events_to(events_.publisher());
+        events_.register_listener(
+            CE::Rendering::graphics_domain_state_changed_event, [](const CE::Rendering::GraphicsDomainStateChanged& change) {
+                static_cast<void>(CE::Assets::Cache::Context::evict_graphics_domain(change));
+            }
+        );
+        renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
+        Detail::ViewSourceAccess::reserve(window_state_, window_source, session);
+        Detail::ViewSourceAccess::reserve(simulation_view_, simulation_source, session);
+        Detail::RuntimeServicesAccess::begin(services_, context, session);
+        event_context_ = context;
+        session_started_.store(true, std::memory_order_release);
     }
 
     Context::~Context() {
@@ -85,6 +107,9 @@ namespace CE::Runtime {
             Diagnostics::report_outcome("execution", domain_, "context_destruction", "failed");
             std::terminate();
         }
+        Detail::ViewSourceAccess::close(simulation_view_);
+        Detail::RuntimeServicesAccess::close(services_);
+        Detail::ViewSourceAccess::close(window_state_);
     }
 
     CE::Workers::Group Context::make_worker_group(CE::Workers::GroupOptions options) {

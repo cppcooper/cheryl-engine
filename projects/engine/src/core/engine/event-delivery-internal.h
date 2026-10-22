@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/engine/event-delivery.h>
 
 #include <functional>
@@ -10,5 +12,5 @@ namespace CE::Events::Detail {
     // or throw without retaining it; it must never invoke it inline or wait for execution.
     using WorkerSubmission = std::function<void(CE::Events::EventBus::Work)>;
 
-    [[nodiscard]] CE::Events::EventBus::Delivery worker_stream_delivery(CE::Workers::Group group, WorkerSubmission submit);
+    [[nodiscard]] CE_API CE::Events::EventBus::Delivery worker_stream_delivery(CE::Workers::Group group, WorkerSubmission submit);
 }

@@ -1,0 +1,7 @@
+{
+  "package": "mermaid",
+  "version": "11.12.1",
+  "source": "https://registry.npmjs.org/mermaid/-/mermaid-11.12.1.tgz",
+  "integrity": "sha512-UlIZrRariB11TY1RtTgUWp65tphtBv4CSq7vyS2ZZ2TgoMjs2nloq+wFqxiwcxlhHUvs7DPGgMjs2aeQxz5h9g==",
+  "files": "dist/mermaid.esm.min.mjs, dist/chunks/mermaid.esm.min/*.mjs and LICENSE, copied without modification"
+}

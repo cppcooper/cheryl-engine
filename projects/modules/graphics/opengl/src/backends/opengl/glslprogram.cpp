@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/glslprogram.h>
 #include "upload-check.h"
 #include <internals/exceptions.h>
@@ -72,6 +73,76 @@ namespace CE::Rendering::OpenGL {
         return reflect_variables(
             program_.id(), GL_ACTIVE_ATTRIBUTES, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, glGetActiveAttrib, glGetAttribLocation
         );
+    }
+
+    void Program::set_uniform_vec(const char* name, const glm::vec2& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_vec failed");
+        if (location >= 0)
+            glUniform2f(location, value.x, value.y);
+    }
+
+    void Program::set_uniform_vec(const char* name, const glm::vec3& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_vec failed");
+        if (location >= 0)
+            glUniform3f(location, value.x, value.y, value.z);
+    }
+
+    void Program::set_uniform_vec(const char* name, const glm::vec4& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_vec failed");
+        if (location >= 0)
+            glUniform4f(location, value.x, value.y, value.z, value.w);
+    }
+
+    void Program::set_uniform_matrix(const char* name, const glm::mat2& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_matrix failed");
+        if (location >= 0)
+            glUniformMatrix2fv(location, 1, GL_FALSE, &value[0][0]);
+    }
+
+    void Program::set_uniform_matrix(const char* name, const glm::mat3& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_matrix failed");
+        if (location >= 0)
+            glUniformMatrix3fv(location, 1, GL_FALSE, &value[0][0]);
+    }
+
+    void Program::set_uniform_matrix(const char* name, const glm::mat4& value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_matrix failed");
+        if (location >= 0)
+            glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
+    }
+
+    void Program::set_uniform_value(const char* name, const float value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_value failed");
+        if (location >= 0)
+            glUniform1f(location, value);
+    }
+
+    void Program::set_uniform_value(const char* name, const int value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_value failed");
+        if (location >= 0)
+            glUniform1i(location, value);
+    }
+
+    void Program::set_uniform_value(const char* name, const unsigned int value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_value failed");
+        if (location >= 0)
+            glUniform1ui(location, value);
+    }
+
+    void Program::set_uniform_value(const char* name, const bool value) {
+        const int location = get_uniform_location(name);
+        assert(location >= 0 && "set_uniform_value failed");
+        if (location >= 0)
+            glUniform1i(location, value);
     }
 
     void Program::set_material_bindings(MaterialBindings bindings) {

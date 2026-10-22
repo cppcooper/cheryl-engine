@@ -1,0 +1,51 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Input · application actions and controllers
+    accDescr: Local names omit Input::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>init_platform()"]):::app
+    k1["<b>Runtime::<br/>Context</b><br/><br/>input(): System"]:::neighbor
+    k2["<b>System</b><br/><br/>bindings(): Actions::Bindings<br/><br/>action_contexts(): Actions::ContextSubmission<br/><br/>keyboard_id(): DeviceId"]:::focal
+    k3["<b>Actions::<br/>Bindings</b><br/><br/>bind_button(Control, Actions::Id): Actions::BindingId<br/><br/>bind_axis(Control, Actions::Id, Actions::AxisOptions):<br/>Actions::BindingId<br/><br/>unbind(Actions::BindingId)"]:::focal
+    k4["Control"]:::focal
+    k5["KeyboardKey"]:::focal
+    k6(["Application-owned controller"]):::app
+    k7["Actions::<br/>ContextDefinition"]:::focal
+    k8["<b>Actions::<br/>ContextSubmission</b><br/><br/>attach(Actions::ContextDefinition): Actions::Context"]:::focal
+    k9["<b>Actions::<br/>Context</b><br/><br/>id(): Actions::ContextId<br/><br/>reset()"]:::focal
+    k10(["Application<br/>update()"]):::app
+    k11["Game::<br/>TickContext"]:::neighbor
+    k12["<b>Tick</b><br/><br/>actions(Actions::Context): Actions::View<br/><br/>button(Actions::Id): Actions::ButtonTickState<br/><br/>axis(Actions::Id): Actions::AxisTickState"]:::focal
+    k13["<b>Actions::<br/>View</b><br/><br/>button(Actions::Id): Actions::ButtonTickState<br/><br/>axis(Actions::Id): Actions::AxisTickState"]:::focal
+    k2 --> k3
+    k3 --> k4
+    k4 --> k5
+    k6 --> k7
+    k6 --> k8
+    k8 --> k9
+    k6 --> k9
+    k10 --> k11
+    k11 --> k12
+    k12 --> k13
+    k6 --> k13
+    k0 --> k1
+    k1 --> k2
+    k8 --> k7
+    k12 --> k9
+    k2 --> k8
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

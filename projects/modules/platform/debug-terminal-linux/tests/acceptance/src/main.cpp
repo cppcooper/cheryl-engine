@@ -16,7 +16,7 @@ namespace {
     void finish_probe() {
         std::fputs("exit-record\n", stderr);
         try {
-            spdlog::get(probe_name)->warn("exit-record");
+            CE::Logging::Logger<probe_name>::get().warn("exit-record");
         } catch (...) {
             std::fputs("exit-logger-failure\n", stderr);
         }
@@ -34,7 +34,7 @@ namespace {
             return false;
         std::thread worker([] { std::fputs("worker-record\n", stderr); });
         worker.join();
-        spdlog::get(probe_name)->warn("record");
+        CE::Logging::Logger<probe_name>::get().warn("record");
         return true;
     }
 }
@@ -49,8 +49,8 @@ int main(const int argc, char** argv) {
     CE::Logging::Config configuration;
     configuration.directory = std::filesystem::current_path() / "logs";
     configuration.rotate_on_open = false;
-    configuration.logger_level = configuration.file_level = configuration.console_level = spdlog::level::warn;
-    CE::Logging::Logger<probe_name>::initialize(spdlog::file_event_handlers{}, configuration);
+    configuration.logger_level = configuration.file_level = configuration.console_level = CE::Logging::Level::warn;
+    CE::Logging::Logger<probe_name>::initialize(CE::Logging::FileEventHandlers{}, configuration);
     CE::Logging::Logger<probe_name>::set_pattern("engine-%v");
     if (std::atexit(finish_probe) != 0)
         return 3;
@@ -68,7 +68,7 @@ int main(const int argc, char** argv) {
         if (std::getchar() == EOF)
             return 4;
         std::fputs("after-close\n", stderr);
-        spdlog::get(probe_name)->warn("after-close");
+        CE::Logging::Logger<probe_name>::get().warn("after-close");
     }
     if (scenario == "crash") {
         std::fputs("abnormal-record\n", stderr);

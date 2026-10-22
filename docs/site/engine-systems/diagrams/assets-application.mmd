@@ -1,0 +1,51 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Assets · application loading and playback
+    accDescr: Local names omit Assets::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>loading work"]):::app
+    k1["<b>Loading::<br/>Loader</b><br/><br/>load_assets(Rendering::Resources::Provider)<br/><br/>prepare(): Loading::Prepared<br/><br/>upload(<br/>Loading::Prepared,<br/>Rendering::Resources::Provider,<br/>replace_shaders)"]:::focal
+    k2["Loading::<br/>Prepared"]:::focal
+    k3(["Application<br/>init_platform()"]):::app
+    k4["Rendering::Resources::<br/>Provider"]:::neighbor
+    k5(["Application-owned game objects"]):::app
+    k6["<b>Sprites::<br/>Manager</b><br/><br/>get_asset(name_space, name): Sprites::Manager::Handle"]:::focal
+    k7["<b>Tilesets::<br/>Manager</b><br/><br/>get_asset(key): Tilesets::Manager::Handle"]:::focal
+    k8["<b>Sprites::<br/>Asset</b><br/><br/>animation(animation, facing): Sprites::Animation"]:::focal
+    k9["<b>Tilesets::<br/>Asset</b><br/><br/>tile(cell): Tilesets::Tile<br/><br/>animation(name): Tilesets::Animation<br/><br/>cell_at(Grids::CellIndex, elapsed): Grids::CellIndex"]:::focal
+    k10(["Application<br/>update()"]):::app
+    k11["<b>Sprites::<br/>Animation</b><br/><br/>advance(elapsed)<br/><br/>cell(): Grids::CellIndex"]:::focal
+    k12(["Application<br/>prepare_render_frame()"]):::app
+    k13("Rendering::Submission::resolve_sprite(<br/>Sprites::Asset,<br/>Grids::CellIndex,<br/>Rendering::DrawStyle2D,<br/>Rendering::Submission::Context2D):<br/>Rendering::DrawPacket2D"):::neighbor
+    k14["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k0 --> k1
+    k1 --> k2
+    k3 --> k4
+    k1 --> k4
+    k5 --> k6
+    k5 --> k7
+    k5 --> k8
+    k5 --> k9
+    k10 --> k11
+    k12 --> k13
+    k13 --> k8
+    k13 --> k14
+    k6 --> k8
+    k7 --> k9
+    k8 --> k11
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

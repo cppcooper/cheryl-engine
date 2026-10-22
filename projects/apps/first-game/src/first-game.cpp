@@ -1,16 +1,16 @@
 #include "first-game.h"
 
 #include <cheryl/assets/submission/draw2d.h>
+#include <cheryl/assets/resources/resource-provider.h>
 #include <cheryl/core/controls/input-interface.h>
 #include <cheryl/core/display/window-interface.h>
 #include <cheryl/core/resources/asset-management/asset-loader.h>
-#include <cheryl/core/resources/asset-management/shader-asset-mgr.h>
 #include <cheryl/core/resources/asset-management/sprite-mgr.h>
-#include <cheryl/text/font-collection.h>
+#include <cheryl/text/font-service.h>
 #include <cheryl/text/layout.h>
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <gainput/gainput.h>
+#include <cheryl/core/controls/button-codes.h>
 
 #include <algorithm>
 #include <stdexcept>
@@ -19,40 +19,46 @@ namespace FirstGame {
     Game::Game(CE::Runtime::Context& engine, std::filesystem::path asset_root)
     : engine_(engine), asset_root_(std::move(asset_root)) {}
 
-    void Game::init() {
+    void Game::init_platform() {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
 
         // [bindings]
         auto& input = engine_.input();
         auto& bindings = input.bindings();
         const auto keyboard = input.keyboard_id();
-        bindings_[0] = bindings.bind_button({keyboard, gainput::KeyEscape}, quit_);
-        bindings_[1] = bindings.bind_button({keyboard, gainput::KeyLeft}, left_);
-        bindings_[2] = bindings.bind_button({keyboard, gainput::KeyRight}, right_);
-        bindings_[3] = bindings.bind_button({keyboard, gainput::KeySpace}, next_cell_);
+        bindings_[0] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Escape}, quit_);
+        bindings_[1] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Left}, left_);
+        bindings_[2] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Right}, right_);
+        bindings_[3] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Space}, next_cell_);
         // [/bindings]
 
         // [assets]
         auto& resources = engine_.resources();
         CE::Assets::Loading::Loader loader(asset_root_);
+        loader.publish_events_to(engine_.events().publisher());
         loader.load_assets(resources);
 
         auto sprite = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
-        images_ = CE::Assets::Shaders::Manager::get().find_material("first-game:images");
-        text_ = CE::Assets::Shaders::Manager::get().find_material("first-game:text");
-        if (!sprite || !images_ || !text_)
-            throw std::runtime_error("First-game assets require actor, images and text resources");
+        if (!sprite)
+            throw std::runtime_error("First-game assets require the actor sprite");
+
+        // Keep this small pixel-art image sharp while sharing the engine's pipeline.
+        auto appearance = sprite->material->definition();
+        appearance.sampling["image"] = resources.create_sampler(
+            {.minification = CE::Rendering::Sampling::Filter::Nearest,
+             .magnification = CE::Rendering::Sampling::Filter::Nearest,
+             .mipmaps = CE::Rendering::Sampling::MipmapFilter::None,
+             .anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled}
+        );
+        images_ = std::make_shared<const CE::Rendering::Resources::Material>(std::move(appearance));
 
         const auto size = camera_.framebuffer_size();
         actor_.emplace(std::move(sprite), glm::vec2(static_cast<float>(size.width) * 0.5f, static_cast<float>(size.height) * 0.5f));
         // [/assets]
 
         // [score]
-        CE::Text::FontSelection selection;
-        selection.preferred.emplace_back(CE::Text::SystemFontFamily{"DejaVu Sans"});
-        selection.automatic_system_fonts = false;
-        auto fonts = CE::Text::FontCollection::load(selection);
-        auto layout = CE::Text::layout_text(fonts, "Score: 0", {.pixel_height = 24});
+        auto font = engine_.fonts().default_font();
+        auto layout = CE::Text::layout_text(font, "Score: 0", {.pixel_height = 24});
         score_.emplace(CE::Text::Rendering::upload(CE::Text::Rendering::prepare(std::move(layout)), resources));
         // [/score]
     }
@@ -80,9 +86,7 @@ namespace FirstGame {
     // [render]
     void Game::prepare_render_frame(CE::Rendering::FrameWriter& frame) const {
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
-        const CE::Rendering::Submission::Context2D context{
-            pass.semantics(), pass.parameters(), pass.constraints(), CE::Rendering::Submission::ImageParameter2D{"image", 0}
-        };
+        const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
 
         CE::Rendering::DrawStyle2D image_style;
         image_style.material = images_;
@@ -91,7 +95,6 @@ namespace FirstGame {
         pass.add(CE::Rendering::Submission::resolve_sprite(*actor_->sprite, actor_->cell, image_style, context));
 
         CE::Rendering::DrawStyle2D text_style;
-        text_style.material = text_;
         text_style.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(24.0f, static_cast<float>(camera_.framebuffer_size().height) - 48.0f, 0.0f));
         pass.add(CE::Rendering::Submission::resolve_text(*score_, text_style, context));
@@ -99,7 +102,7 @@ namespace FirstGame {
     // [/render]
 
     // [cleanup]
-    void Game::deinit() {
+    void Game::deinit_platform() {
         for (auto& binding : bindings_) {
             if (binding != 0) {
                 static_cast<void>(engine_.input().bindings().unbind(binding));
@@ -109,7 +112,6 @@ namespace FirstGame {
         score_.reset();
         actor_.reset();
         images_.reset();
-        text_.reset();
     }
     // [/cleanup]
 }

@@ -7,6 +7,7 @@
 #include <ext/matrix_transform.hpp>
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
+#include <testing/material-builder.h>
 
 #include <algorithm>
 #include <array>
@@ -45,6 +46,7 @@ namespace {
         void bind(std::uint32_t) const override { throw std::logic_error("CPU text submission must not bind an atlas"); }
     };
     struct TextProvider final : CE::Rendering::Resources::Provider {
+        CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
         int calls = 0, fail_at = 0;
         bool bad_size = false;
         GeometryFault geometry_fault = GeometryFault::None;
@@ -53,6 +55,7 @@ namespace {
         std::vector<std::weak_ptr<CE::Rendering::Resources::Image>> images;
 
         using CE::Rendering::Resources::Provider::upload_geometry;
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return &builder; }
         void admit() {
             if (++calls == fail_at)
                 throw std::runtime_error("text upload");
@@ -197,6 +200,43 @@ TEST(text_resources, prepare) {
     EXPECT_EQ(provider.calls, 2);
 }
 
+TEST(text_resources, defaults) {
+    TextProvider provider;
+    const auto prepared = CE::Text::Rendering::prepare(CE::Text::layout_text(fonts(), "AA"), {.positioned_runs = true});
+    const auto uploaded = CE::Text::Rendering::upload(prepared, provider);
+    ASSERT_TRUE(uploaded.material());
+    const auto packets = CE::Rendering::Submission::resolve_text(uploaded, {}, {});
+    const auto runs = CE::Rendering::Submission::resolve_text_runs(uploaded, {}, {});
+    ASSERT_FALSE(packets.empty());
+    ASSERT_FALSE(runs.empty());
+    EXPECT_EQ(packets.front().material, uploaded.material());
+    EXPECT_EQ(runs.front().material, uploaded.material());
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(packets.front().parameters.at("image")).unit, 0u);
+    ASSERT_EQ(provider.builder.requests.size(), 1u);
+    EXPECT_EQ(provider.builder.requests.front().first, CE::Rendering::Materials::Builtin2D::Textured);
+    EXPECT_EQ(provider.builder.requests.front().second, CE::Rendering::Pipelines::Blend::StraightAlpha);
+    EXPECT_TRUE(uploaded.material()->definition().sampling.empty());
+
+    const auto custom = style().material;
+    const auto overridden = CE::Text::Rendering::upload(prepared, provider, custom);
+    EXPECT_EQ(provider.builder.requests.size(), 1u);
+    EXPECT_EQ(CE::Rendering::Submission::resolve_text(overridden, {}, {}).front().material, custom);
+    auto per_draw = style();
+    EXPECT_EQ(CE::Rendering::Submission::resolve_text(uploaded, per_draw, {}).front().material, per_draw.material);
+    EXPECT_EQ(uploaded.material(), packets.front().material);
+}
+
+TEST(text_resources, default_failure) {
+    TextProvider provider;
+    provider.builder.missing = true;
+    const auto prepared = CE::Text::Rendering::prepare(CE::Text::layout_text(fonts(), "A"));
+    EXPECT_THROW(static_cast<void>(CE::Text::Rendering::upload(prepared, provider)), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.calls, 0);
+    const auto custom = style().material;
+    const auto uploaded = CE::Text::Rendering::upload(prepared, provider, custom);
+    EXPECT_EQ(uploaded.material(), custom);
+}
+
 TEST(text_resources, pages) {
     CE::Text::LayoutOptions options;
     options.pixel_height = 16;
@@ -265,7 +305,10 @@ TEST(text_resources, empty) {
     const auto uploaded = CE::Text::Rendering::upload(prepared, provider);
     EXPECT_TRUE(CE::Rendering::Submission::resolve_text(uploaded, style(), context()).empty());
     EXPECT_EQ(provider.calls, 0);
-    EXPECT_THROW(static_cast<void>(CE::Rendering::Submission::resolve_text(uploaded, style(), {})), CE::Exceptions::invalid_args);
+    EXPECT_TRUE(CE::Rendering::Submission::resolve_text(uploaded, {}, {}).empty());
+    EXPECT_THROW(
+        static_cast<void>(CE::Rendering::Submission::resolve_text(uploaded, style(), {.image = std::nullopt})), CE::Exceptions::invalid_args
+    );
 }
 
 TEST(text_resources, failures) {
@@ -438,7 +481,10 @@ TEST(text_runs, empty) {
     EXPECT_FALSE(uploaded.positioned_geometry());
     EXPECT_TRUE(CE::Rendering::Submission::resolve_text_runs(uploaded, style(), context()).empty());
     EXPECT_EQ(provider.calls, 0);
-    EXPECT_THROW(static_cast<void>(CE::Rendering::Submission::resolve_text_runs(uploaded, style(), {})), CE::Exceptions::invalid_args);
+    EXPECT_THROW(
+        static_cast<void>(CE::Rendering::Submission::resolve_text_runs(uploaded, style(), {.image = std::nullopt})),
+        CE::Exceptions::invalid_args
+    );
 }
 
 TEST(text_runs, failures) {

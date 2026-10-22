@@ -10,4 +10,12 @@ namespace CE::Audio {
     }
 
     void PlaybackOptions::validate() const { validate_volume(volume); }
+
+    void System::publish_events_to(CE::Events::EventBus::Publisher) {
+        throw CE::Exceptions::bad_request(CE_HERE, "Playback notifications are unsupported by this audio backend");
+    }
+    void System::publish_notifications() {
+        throw CE::Exceptions::bad_request(CE_HERE, "Playback notifications are unsupported by this audio backend");
+    }
+    PlaybackNotifications System::notification_snapshot() const { return {}; }
 }

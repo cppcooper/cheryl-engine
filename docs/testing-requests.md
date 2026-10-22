@@ -1,8 +1,9 @@
 # Testing requests
 
 This is the pending user-run acceptance queue for implemented work. The
-[roadmap](planning/develop-review-and-development-plan.md) owns development
-sequencing; subject guides own contracts, reusable procedures and coverage limits.
+[status inventory](STATUS.md) owns selected work and deferred review order;
+[planning catalogue](planning/README.md) indexes the owning plans. Subject guides
+own contracts, reusable procedures and coverage limits.
 Current requests retain real-desktop terminal checks, targeted material/artwork QA
 and the first main-push SDK collection. Accepted Engine-only graph, terminal matrix,
 CPU, sampling/UI and hosted build/SDK checks belong in their reusable subject
@@ -27,7 +28,7 @@ These commands do not authorize agent execution.
 **QA. Platform:** Linux desktop, GNU/Clang Debug; explicit non-Debug inclusion in
 Release `ON`. **Readiness:** runnable probes ready; blocked without a desktop and
 Konsole/xterm. Reuse matching binaries from the accepted
-[configuration matrix](../projects/modules/platform/debug-terminal-linux/README.md#configuration-matrix),
+[configuration matrix](site/modules/debug-terminal-linux.md#configuration-matrix),
 or prepare them with that procedure. Desktop/IDE demo observations require a
 matching Debug native demo too.
 
@@ -39,8 +40,8 @@ waits for Enter on launching stdin after viewer closure. `crash` deliberately us
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal normal
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal hold
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal normal
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal hold
   ./build/testing-terminal-Release-ON/tests-acceptance-engine-terminal normal
   ./build/testing-terminal-Release-ON/tests-acceptance-engine-terminal normal --debug-terminal
 )
@@ -49,7 +50,7 @@ waits for Enter on launching stdin after viewer closure. `crash` deliberately us
 ```sh
 (
   cd "$(git rev-parse --show-toplevel)" || exit
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal crash
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal crash
   terminal_status=$?
   test "$terminal_status" -eq 86
 )
@@ -65,7 +66,7 @@ For root application composition, build once and reuse:
     -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON -DCHERYL_DEBUG_TERMINAL=AUTO \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON -DCHERYL_DEBUG_TERMINAL_EMULATOR=auto \
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
     -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
     -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=OFF \
@@ -136,7 +137,7 @@ accepted unit/native suites:
   TGUI/RmlUi manual materials retain complete scenes through image/font replacement
   and shutdown.
 - Use a copied temporary root for F5 as in the
-  [desktop sequence](development/native-desktop-checks.md#repeatable-sequence).
+  [desktop sequence](site/development/native-desktop-checks.md#repeatable-sequence).
   Successful reload, invalid/missing source or main definition must preserve the
   previous text/image pair on failure, report the error and recover after restoration.
   Earlier normal-rendering QA did not establish this migration/failure scope.
@@ -158,7 +159,7 @@ commands below need an authenticated GitHub CLI and `sha256sum`; the GitHub Acti
 UI can replace run inspection and artifact download.
 
 Hosted builds, focused tests and relocated SDK consumers are accepted within the
-[CI selection and coverage limits](development/building.md#github-ci-and-sdk-artifacts).
+[CI selection and coverage limits](site/development/ci.md).
 This request retains only the main-push collection gate. PR, `develop` and manual
 runs intentionally skip it, so another manual dispatch cannot accept this scope.
 The existing workflow configures and checks both producer matrices before collection;
@@ -200,7 +201,7 @@ working directory and downloads into a fresh directory:
   matching SHA256 files and SDK manifests for the intended revision/configurations.
   The workflow creates no GitHub release or demo package.
 - Report the run URL, commit, configurations and collection result. Preserve the
-  [hosted Windows skipped-case limits](development/building.md#hosted-windows-coverage-limits)
+  [hosted Windows skipped-case limits](site/development/ci.md#hosted-windows-coverage-limits)
   independently; green matrix jobs do not accept those cases or native/device QA.
 
 ## Deferred and unfinished coverage
@@ -213,6 +214,6 @@ requests. Existing Linux audio, Unicode, controller and startup/UI acceptance li
 remain in their subject guides.
 
 Unimplemented regressions stay in the
-[Unicode plan](planning/short-term/unicode-text.md#progress) and
-[startup/UI checklist](planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
+[font-selection plan](planning/short-term/README.md#font-selection-regressions) and
+[startup/UI checklist](planning/short-term/README.md#startup-and-ui-follow-up).
 Restore runnable requests when their fixtures, targets and observation paths exist.

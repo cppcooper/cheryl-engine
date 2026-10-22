@@ -10,6 +10,19 @@
 
 namespace CE::Platform::GLFW::Detail {
     thread_local unsigned int NativeCallbackScope::depth_ = 0;
+
+    NativeCallbackScope::NativeCallbackScope() noexcept {
+        ++depth_;
+    }
+
+    NativeCallbackScope::~NativeCallbackScope() {
+        --depth_;
+    }
+
+    bool NativeCallbackScope::active() noexcept {
+        return depth_ != 0;
+    }
+
     namespace {
         std::atomic<GLFWerrorfun> previous_callback{nullptr};
         std::atomic<::CE::Diagnostics::DomainId> domain{0};
