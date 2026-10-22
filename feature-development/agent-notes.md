@@ -1,26 +1,31 @@
 # Storytelling: first dialogue milestone
 
-Design proposal only, prepared on `feat/storytelling` from clean baseline
-`3542f883391d4225329dab8d5d61a5987e69c8f0`. No dialogue implementation or
-executable acceptance exists in this change. The companion
+U1 implements validated immutable CPU definitions on `feat/storytelling`, from
+clean design checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978` (original source
+baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`). The definition implementation
+and 16 unit cases pass syntax checks; native acceptance is blocked by the missing
+fallback font described in [next.md](next.md). Sessions and the console encounter
+remain proposed. The companion
 [decisions](decisions.md) use the same `ST-001` through `ST-007` IDs;
 [next](next.md) selects one subsequent implementation unit.
 
 ## Authority, scope and evidence limits
 
-The assigned worker-4 task and the workspace storytelling brief authorize this
-bounded investigation and these three internal records. The parent `AGENTS.md`,
+The coordinator's STORYTELLING-U1 assignment authorizes the definition source,
+focused checks and updates to these internal records, superseding the earlier
+design-only task. The parent `AGENTS.md`,
 `coordination/autonomy-policy.md`, `coordination/workers.json` and feature brief
 were read from `/mnt/projects/cheryl-features/`. Repository workflow,
 investigation, architecture, testing, Git and documentation instructions were
 also read, including `docs/AGENTS.md`; the nested-instruction search found only
 the root and documentation instruction files. No pre-existing changes or
-feature-development records were present. This clone alone is owned; protected
-checkouts and sibling clones are outside the work.
+feature-development records were present at the original design baseline. U1
+started with the design records committed and a clean tree. This clone alone is
+owned; protected checkouts and sibling clones are outside the work.
 
-**ST-001 — Small reusable boundary.** Propose CPU dialogue definition validation
-and an explicitly advanced session, with a console adapter as its first consumer.
-Provisional home: `CE::Dialogue`, under
+**ST-001 — Small reusable boundary.** U1 implements CPU dialogue definition
+validation; an explicitly advanced session and console adapter remain later units.
+The definition lives in `CE::Dialogue`, under
 `projects/engine/include/cheryl/core/game-framework/dialogue.h` and its source
 counterpart. The public contract needs no `AbstractGame`, runtime context,
 renderer, UI toolkit, event bus, clock, input service or file index. Initial
@@ -28,7 +33,7 @@ engine linkage may still carry existing engine dependencies; an independently
 packaged library is not promised. No quest model, actor hierarchy, scripting
 language, automatic traversal, localization service or sibling feature is needed.
 
-Required first fixture, authored directly in C++:
+Required first fixture, authored directly in C++ (U1 definition test data only):
 
 | Node | Choice ID / text | Condition key | Effect key | Target |
 | --- | --- | --- | --- | --- |
@@ -39,15 +44,41 @@ Required first fixture, authored directly in C++:
 | `admitted` | terminal text: You enter | — | — | — |
 | `departed` | terminal text: You depart | — | — | — |
 
-The application owns exactly one gameplay flag, `introduced`, initially false.
+In the later console consumer, the application owns exactly one gameplay flag,
+`introduced`, initially false.
 Its condition reads that flag; its effect sets it true. A callback invocation
 counter belongs only to test instrumentation. Both endings are reachable; after
 `silent`, the visible `pass` choice is disabled and selecting it is rejected.
 The important save point is `gate` after `introduce`, with the flag true.
 
-## Proposed caller sequence
+## U1 compile-and-inspect caller
 
-All `CE::Dialogue` names below are proposed. `require`, `find_choice`,
+The small consumer case includes the public dialogue header first, compiles the
+four-node fixture, retains the returned handle and inspects ordered values:
+
+```cpp
+auto result = CE::Dialogue::compile(gate(), operations()); // test fixture helpers
+ASSERT_TRUE(result.has_value());
+const CE::Dialogue::DefinitionHandle definition = *result;
+EXPECT_EQ(definition->entry().id, CE::Dialogue::NodeId{"approach"});
+const auto* choice = definition->find_choice({"gate"}, {"pass"});
+ASSERT_NE(choice, nullptr);
+EXPECT_EQ(choice->text, "Ask to enter");
+```
+
+This caller and the other cases in
+[dialogue-definition.cpp](../projects/engine/tests/unit/src/dialogue-definition.cpp)
+have passed warning-enabled C++23 syntax checking, not native execution.
+[dialogue.h](../projects/engine/include/cheryl/core/game-framework/dialogue.h)
+exposes only CPU values, standard-library facilities and Engine visibility macros.
+[dialogue.cpp](../projects/engine/src/core/game-framework/dialogue.cpp) supplies
+validation and lookup. Existing source globs select both files without CMake edits.
+The spelling and ownership choices are engineering decisions, not newly inferred
+personal API preferences.
+
+## Proposed caller sequence beyond U1
+
+Compilation below uses U1; session names and behavior remain proposed. `require`, `find_choice`,
 `make_gate_definition`, flag handlers and the `GateSave` codec are application
 helpers illustrating results, not additional engine APIs. `require` checks a
 result and reports its diagnostic before extracting its value. The sketch has
@@ -95,7 +126,7 @@ ordinal identity. Internal lookup indices can be compiled but never saved.
 Any content or bound-operation semantic change requires an authored revision
 bump. Revision correctness is an application obligation, not verified by a hash.
 
-The application supplies a nonempty session ID identifying one encounter
+In the proposed later session unit, the application supplies a nonempty session ID identifying one encounter
 instance, independently of the definition and engine runtime session. Start uses
 step zero at the entry node; each successful choice increments a checked
 `uint64_t` step. Exhaustion rejects before any callback. Restore retains session
@@ -104,8 +135,35 @@ independent cursors. The host ensures one active authority per saved session ID;
 move-only live sessions discourage accidental copies but cannot police multiple
 processes restoring the same file. Deliberate forks require new application IDs.
 
-**ST-003 — Ownership and execution.** `compile` consumes an owned draft and
-returns a retained immutable definition, or owned diagnostics. A live move-only
+U1 compiles one `Draft`, so multiple definition IDs cannot occur in one input.
+It rejects an empty definition ID and duplicate node IDs within that definition.
+There is no cross-compilation registry to reject an already-used definition ID;
+independent compilations of the same ID/revision are permitted. Global identity
+and revision discipline remain application responsibilities. This interpretation
+keeps duplicate checking within the authored domains instead of inventing a
+definition registry. Same choice names across nodes and the same spelling across
+condition/effect domains are valid, as are definition/node names with equal spelling.
+
+**ST-003 — Ownership and execution.** `compile(const Draft&, const OperationKeys&)`
+borrows stable inputs for the call, validates all rows, and deep-copies the draft
+into a privately constructed `const Definition`. It never moves caller storage,
+even when given `std::move(draft)`. Only compilation can construct a usable frozen
+object; copy/move construction and assignment of `Definition` are deleted.
+`DefinitionHandle` is a retained `shared_ptr<const Definition>`, not the sole
+immutability mechanism. `CompileResult` is a dialogue-local
+`std::expected<DefinitionHandle, std::vector<Diagnostic>>`: nonnull success or
+nonempty diagnostics, with allocation/copy exceptions propagated. No generic
+result facility is introduced.
+
+`nodes()` returns an authored-order `span<const Node>`; ID and entry accessors
+also borrow frozen storage. Exact `find_node` and node-scoped `find_choice` use
+linear scans, return null on misses and never allocate or normalize names. Retain
+a handle through borrowed access. This is sufficient for the tiny graph and avoids
+an unneeded retained index; the private entry index preserves authored order.
+Stable definition reads can be concurrent; input mutation/destruction must be
+serialized with compilation. Owned diagnostic copies outlive their source inputs.
+
+In later proposed units, a live move-only
 session retains `shared_ptr<const Definition>` plus its own numeric cursor, step
 and status; releasing the original definition handle does not invalidate it.
 Application flags and callables are neither stored in that definition nor owned
@@ -128,14 +186,16 @@ introduced; destruction performs no effects.
 **ST-004 — Opaque operations, application policy.** A choice contains at most one
 optional condition key and one optional effect key. `OperationKeys` is a supplied
 set of supported names for validation, not a global service or executable
-registry. The frozen definition retains the names it needs. Per-call handlers
-implement pure `bool(ConditionKey)` and synchronous `void(EffectKey)` operations;
+registry. U1 validates each domain independently, rejects empty/duplicate
+supported names, and retains used names in its copied choices. Validation accepts
+no application code. In later units, per-call handlers would implement pure
+`bool(ConditionKey)` and synchronous `void(EffectKey)` operations;
 the application must honor the declared key contract. No engine flag store,
 expression evaluator, inventory policy or serialized callable is proposed.
 Missing condition means true; missing effect means no action. A view can evaluate
 conditions repeatedly, so predicates cannot consume randomness or mutate flags.
 
-**ST-005 — Selection and commit.** Each selection carries session ID, source node,
+**ST-005 — Selection and commit (proposed U2, absent from U1).** Each selection carries session ID, source node,
 step and choice ID. These values scope a command; they are not a security token.
 `choose` checks those fields, terminal/fault/busy state, membership and step
 capacity, then reevaluates the condition against current application state.
@@ -174,20 +234,25 @@ no usable definition if it finds empty/duplicate identities, zero revision,
 missing entry, unknown targets, unknown condition/effect references, duplicate
 declared operation keys, or malformed node shape. A node is either terminal with
 no choices, or a prompt with at least one choice. Validate the entire draft,
-including unreachable nodes, without invoking application handlers. Unreachable
-nodes may be warnings; a graph cycle is not itself invalid. Statically valid
+including unreachable nodes, without invoking application handlers. U1 performs
+no reachability analysis or warnings; a graph cycle is not itself invalid. Statically valid
 conditions need not be satisfiable, and conditional dead ends remain host policy.
 
-Diagnostics own code, definition ID/revision, node/choice or draft index, field
-and offending ID where available. Example: `unknown_target: gate-encounter@1
-node=gate choice=pass target=admittted`. Enumerate errors in authored order so a
-caller can fix several references together. Use structured results for expected
-authoring/input/selection rejections; callback and allocation exceptions remain
-exceptions. This is an additive local result contract, not an engine-wide error
+Diagnostics own code, definition ID/revision, optional zero-based node, choice and
+supported-name indices, field and offending value. For example, a missing target
+has code `MissingReference`, definition `gate-encounter@1`, node index 1, choice
+index 0, field `target`, value `admittted`. Ordering is definition id/revision,
+supported conditions then effects, entry, then each authored node's id/shape and
+each choice's id/target/condition/effect. Membership sets are never enumerated to
+produce diagnostics. Empty text is allowed; node shape checks also reject unknown
+`NodeKind` values. The error variant exposes no partial definition. Use structured
+results for expected authoring failures; selection rejections are still proposed.
+Allocation/copy failures propagate as exceptions; callback failure rules await U2.
+This is an additive local result contract, not an engine-wide error
 framework. Exception reporting must preserve the original failure even if
 enriching a message cannot allocate.
 
-**ST-007 — Snapshot a completed boundary and the application state together.**
+**ST-007 — Snapshot a completed boundary and the application state together (proposed, absent from U1).**
 `snapshot()` succeeds only between operations on a healthy session. Version 1 is
 an owned value of: snapshot schema, definition ID/revision, session ID, current
 node ID and step. Terminal status is derived from the referenced node. An initial
@@ -290,7 +355,7 @@ new v3 intent nor present preference.
 | --- | --- | --- |
 | ST-001 | Put dialogue entirely in the console; or create a narrative/quest framework | The former proves a fixture without testing reuse, the latter invents policy beyond the brief. Keep only validation/cursor reusable. Namespace/header location is provisional and cheap to change before callers accumulate. |
 | ST-002 | Serialize vector offsets, addresses, runtime IDs or a content hash | Stable authored strings and exact manual revision are understandable and portable. They require disciplined revision bumps. A hash/migration layer can be added later, with a schema change; no current save compatibility is promised. |
-| ST-003 | Borrow a mutable draft or store callback closures in every session | Borrowing makes draft edits/destruction observable; retained closures expand lifetime and save ambiguity. Shared immutable data costs one allocation/control block and copied views cost small allocations. Review copy cost only after the tiny consumer exists. |
+| ST-003 | Borrow a mutable draft or store callback closures in every session | Borrowing makes draft edits/destruction observable; retained closures expand lifetime and save ambiguity. Frozen data requires an owned object and shared control block; copied views would add small allocations. Review copy cost only after the tiny consumer exists. |
 | ST-004 | Engine-owned flags/expression language; event bus effect dispatch | Applications already own meaning, and notification failure/delivery is not a commit. Explicit synchronous keys keep policy outside. More operations or composed predicates require a later demonstrated consumer, not speculative variants now. |
 | ST-005 | Wrap StateMachine hooks; introduce plan/ack transactions and durable effect receipts | Hook assignment/failure order does not fit the intended save boundary. A dedicated numeric cursor permits nonthrowing commit after the fixture's boolean effect; a transaction protocol is excessive for it. External effects would reopen this decision rather than silently inherit its limited guarantee. |
 | ST-006 | Lazy missing-reference errors during play; throw for every ordinary rejection | Eager diagnostics catch hidden branches and structured rejections distinguish unavailable choices from broken handlers. This adds a small diagnostic value type without rewriting existing engine error policy. |
@@ -310,12 +375,12 @@ UI would consume copied views and send scoped selections to simulation.
 
 | Unit, in dependency order | Coherent deliverable and gate |
 | --- | --- |
-| U1 (next): validated CPU definition | Draft/ID/operation-key/diagnostic values, immutable compilation, lookup invariants and focused unit cases. Gate: normal fixture compiles, invalid references/duplicates reject with useful owned diagnostics; caller draft lifetime cannot leak into compiled data. Read implementation instructions before editing source. |
+| U1: validated CPU definition | Source and 16 focused cases implemented; all pass warning-enabled syntax checking. Private construction and a deep copy close the mutable-alias boundary. Native verification remains blocked on the baseline fallback-font input; see next.md before claiming U1 accepted. |
 | U2: explicit session | View, scoped selection, application handlers, checked progression, failure state and value snapshot/resume. Gate: both routes, rejection without effects, independent lifetimes, stale selections, throwing handlers and paired resume/no replay cases. Reassess the nonthrowing post-effect path before any extra API callers. |
 | U3: console acceptance | Branch-local console app/fixture, versioned JSON envelope, save/resume commands and focused codec/transcript cases. Wire only needed targets/dependencies, then run permitted checks when this unit is assigned. Gate: actual console outcomes and resumed effect count, malformed/mismatched saves, safe adoption and explicit I/O failures. |
 
-These are proposed subsequent units, not authorized work started by this design
-task. [next.md](next.md) owns the one selected next unit and its checks.
+Only U1 is assigned now. U2/U3 await later coordinator assignments.
+[next.md](next.md) owns U1's verification gap and the next useful unit.
 
 ## Acceptance and present verification
 
@@ -344,15 +409,19 @@ The feature milestone remains unexecuted. Required observable acceptance:
    Existing active state survives a failed load; an existing checkpoint is never
    overwritten, and failed new-file writes do not change encounter progress.
 
-Actually performed for this investigation: clean Git/index inspection, source
+Performed during the initial design investigation: clean Git/index inspection, source
 and local-history reads, concrete-consumer/test-registration tracing, and review
 of these records against those sources. A bounded read-only subagent assisted
-historical evidence collection. Only text/static record checks belong to this
-task. No compiler, build, native test, console consumer, dependency retrieval,
-installation, documentation generation or external service acceptance ran.
+historical evidence collection. That design task ran only text/static record
+checks. It ran no compiler, build, native test, console consumer, dependency
+retrieval, installation, documentation generation or external service acceptance.
 
 Material uncertainties: modern API taste is largely unproven; manual revision
 discipline cannot detect same-ID/revision content changes; generic effects can
 partially mutate before throwing; JSON/console target wiring and the nonthrowing
-commit/adoption path still need implementation evidence. These limit claims,
-without requiring a design questionnaire or expanding this milestone.
+commit/adoption path still need implementation evidence. U1's source immutability
+and diagnostic cases are syntax-checked but not accepted by native execution:
+the prescribed configuration fails because `assets/fonts/DejaVuSans.ttf` is absent,
+and CTest selected zero tests (error exit 8). No asset substitution, dependency pin
+change or alternate native runner was used. Actual commands, source registration,
+coverage and the prerequisite recovery action are recorded in [next.md](next.md).

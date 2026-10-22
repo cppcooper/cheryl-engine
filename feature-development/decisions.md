@@ -1,50 +1,52 @@
 # Storytelling decisions
 
-Proposed for the first console dialogue milestone at source baseline
-`3542f883391d4225329dab8d5d61a5987e69c8f0`. These are agent design choices,
+Definition choices implemented in U1 from design checkpoint
+`716ec60984e6764a03ed375ac37826e5d92e6978`; session/save choices remain proposed.
+These are agent engineering choices,
 not confirmed personal API preferences. Detailed contracts, alternatives,
 provenance and acceptance are in [agent-notes.md](agent-notes.md);
-[next.md](next.md) selects the next unit. No feature behavior has been implemented
-or accepted by execution.
+[next.md](next.md) records U1 checks and the next unit. Native acceptance is
+blocked by a missing baseline fallback-font input; syntax checks alone do not
+accept U1 or the console milestone.
 
 ## ST-001 — Reusable dialogue, console first
 
-Use a small CPU definition validator and explicitly advanced session, exercised
-by a four-node console encounter. This meets branching and resume requirements
-while keeping game policy in the application. Runtime startup, event delivery,
-UI toolkits, quest generation, localization and sibling features add no required
-capability here. The tradeoff is an intentionally limited facility. Confidence
-is high in the scope, medium in the provisional namespace and file placement.
+U1 adds CPU definition compilation in CE::Dialogue; the four-node gate is test
+data. Sessions and the console consumer remain later units. This keeps game
+policy outside reusable validation and requires no runtime, UI, JSON or sibling
+feature in the header. The tradeoff is an intentionally limited facility within
+the existing Engine target. Confidence is high in this boundary, medium in the
+interface spelling; current source compatibility does not establish personal taste.
 
 ## ST-002 — Separate authored identity from session progress
 
-Use authored definition/node/choice IDs and an exact definition revision, with
-an application-supplied session ID and checked progression step. Saved offsets
-or process identities would break when content or runtime instances change.
-Manual revision bumps remain an application obligation; hashes and migration
-are deferred. Confidence is high that these identities must differ, medium in
-their proposed string wrappers, and low that historical code establishes the
-user's preferred spelling.
+Use distinct owned string types for definition, node, choice, condition and
+effect identities, with a positive authored revision. Each draft represents one
+definition; node names are unique there and choice names within a node. Equal
+names across domains are valid. Global duplicate-definition detection and
+revision discipline remain application responsibilities, trading registry policy
+for independent compilation. Confidence is high in domain separation, medium in
+the wrappers. Session identities and steps remain deferred.
 
-## ST-003 — Retain immutable definitions and copy observations
+## ST-003 — Freeze definitions and retain their owners
 
-Each move-only session retains an immutable definition and owns its cursor;
-views and snapshots own their data. Borrow application handlers only during
-synchronous calls on one serialized owner. This avoids draft and callback
-lifetime dependencies and follows current value-lifetime contracts. Shared
-ownership and copied text incur small allocation costs. Confidence is high in
-the safety requirement and medium in this representation; v3 includes contrary
-parent-reference patterns.
+Compilation borrows stable input, then deep-copies it into a privately constructed
+const Definition; even std::move cannot transfer caller aliases into frozen
+storage. Definition copying/moving is disabled, handles retain it, and ordered
+observations borrow its lifetime. This closes the ownership gap left by
+shared_ptr<const> alone. Copies cost allocation; linear lookup avoids premature
+index machinery. Confidence is high in the source boundary, with native lifetime
+verification still blocked. Session ownership remains a later choice.
 
 ## ST-004 — Keep condition and effect meaning in the application
 
-Choices refer to optional condition/effect keys validated against supplied
-supported names. The application reads and sets its one flag through synchronous
-handlers; the engine owns no world-state language or flag store. This keeps
-reuse narrow and avoids treating event notifications as effect completion.
-The tradeoff is application responsibility for pure predicates and correct
-bindings. Confidence is high in the boundary, medium in key-based dispatch,
-with only cautious historical preference support.
+Choices contain optional condition/effect keys, checked against separate supplied
+name lists. U1 rejects empty or repeated names within each list and stores only
+used names in copied choices. It accepts no executable application policy, so
+validation cannot dispatch callbacks. Runtime meaning remains application-owned.
+The tradeoff is later responsibility for correct bindings and pure predicates.
+Confidence is high in this boundary, medium in eventual dispatch spelling;
+historical preference evidence remains limited.
 
 ## ST-005 — Recheck selections and commit only after effects
 
@@ -58,13 +60,13 @@ implementation proof.
 
 ## ST-006 — Validate complete definitions before play
 
-Compile the whole authored graph into a usable definition only after identity,
-shape and reference checks succeed. Return owned, location-rich diagnostics
-and ordinary selection rejection results; preserve callback/allocation
-exceptions. This catches invalid hidden branches without imposing a new global
-error system. Extra diagnostic values and eager setup work are the tradeoff.
-Confidence is high in early validation, medium in result vocabulary and warning
-policy until the focused caller exists.
+Validate every authored row, including unreachable errors, before constructing a
+usable definition. A dialogue-local std::expected returns either a retained
+definition or owned diagnostics with code, authored positions, field and value.
+Deterministic traversal makes multiple errors actionable; cycles are valid and
+reachability warnings are excluded. Allocation failures remain exceptions. The
+tradeoff is eager validation and diagnostic allocation. Confidence is high in the
+source contract; native acceptance awaits the missing build input.
 
 ## ST-007 — Save progress and application flags as one boundary
 
