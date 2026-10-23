@@ -2,28 +2,28 @@
 
 U1 implements CPU values/ranges; U2 implements retained bindings and ordered CPU
 packet vectors. U3 composes them through existing pass writers in synthetic cases.
-U4 adds a private fixed demo display; editing remains proposed.
+U4 adds a private fixed demo display; U5 adds checked CPU point picking and a
+transformed pick/paint/erase consumer. Private interactive demo wiring remains proposed.
 These choices are not user-confirmed API preferences.
 The matching IDs in [agent-notes.md](agent-notes.md)
 hold contracts, alternatives, provenance and pending acceptance. Each entry below
 states the outcome, reason, tradeoff and confidence. The next bounded action is
 described in [next.md](next.md), which records actual checks and acceptance limits.
 
-U4 configures and builds target demo successfully with GNU 16.2.1, Debug,
-shared Engine, WARN and ASan/UBSan instrumentation. The preserved CPU runner
-registers and passes all 36 U1/U2/U3 regressions (no skips, 26.48 seconds).
-The capability probe exits 255: `Error: unable to open display :1`. No demo,
-watchdog, capture or rendered observation is executed. Required atlas Reader/
-decode/manager checks are compiled but not executed by the app. The local source
-PNG is inspected; it is not display evidence. Visual acceptance remains blocked.
+U5 starts from accepted source/build checkpoint 6a85f16. The preserved Debug
+shared Engine runner builds/discovers successfully and passes **44/44**, no skips,
+39.52 seconds, under ASan/UBSan with halt_on_error. This is all 36 accepted cases
+plus five point-query and three transformed consumer cases. Header-first core
+compilation retains no asset/render/camera dependency. No unchanged display retry
+runs: U4's probe exited 255, `Error: unable to open display :1`. App atlas loading,
+actual display/edit/capture and graphical cleanup remain unverified.
 
-Actual commands below use the shared wrapper/one job. The full separate graphics
-configuration, independent existing-pin preparation, logs and unexecuted bounded
-display command are in [next.md](next.md#actual-commands-and-results).
+Actual commands (one job, existing wrapper/lock, preserved configuration):
 
 ```sh
-/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- timeout --signal=TERM --kill-after=2s 15s glxinfo -B
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -34,15 +34,19 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
 ```
 
-The six consumer cases still establish caller order, old/new frame independence,
-isolated resolver/group failure preservation and resource weak lifetimes, with
-zero synthetic native counters. U4 changes only private app files/records; no
-reusable API/ABI or pin changes. Leak checking remains unverified (detect_leaks=0
-only per command); ASan/UBSan halt_on_error stays enabled. Visual blends/placement,
-app cleanup, installed SDK/Windows exports, other compiler/STL/GLM ABIs and Release
-remain unverified. Next action: after display access changes, one wrapper probe
-then the preserved bounded owned-window observation. Do not retry unchanged
-access or start editing/picking; transport stays with the coordinator publisher.
+All immediate exits are 0; full commands, diagnostics, registration correspondence
+and saved u5-results.json are in [next.md](next.md#actual-commands-and-results).
+The independent rectangle oracle covers exact edges/neighbors and small/large/
+subnormal sizes; maximum uint32 geometry needs no Map allocation. Pick/paint/erase
+changes only one layer, preserves sibling cells/output and old retained frames,
+keeps authored order and leaves synthetic native counters zero. Leak checking is
+unverified (command-local detect_leaks=0 only); no sanitizer/build setting changes.
+
+The API addition requires new users to relink a compatible Engine; Map layout and
+existing methods are unchanged. Installed SDK/Windows exports, other compiler/
+STL/GLM ABIs and Release remain unverified. Next proposed unit: private interactive
+demo wiring after coordinator selection. Graphical checks need changed display
+access; no later unit, retry loop or transport is started here.
 
 ## TM-001
 
@@ -66,44 +70,44 @@ remain a low-confidence taste inference.
 
 ## TM-003
 
-Keep signed map points/layers checked before storage access. Place Y-down cells
-in Y-up world space using normalized source pivots and independent positive X/Y
-source-to-cell scaling. Require identity base model, unit style scale and finite
-float-representable placement/pass matrices. This supports non-square frames
-without reversed artwork, but excludes arbitrary transforms and extreme-scale
-precision guarantees. Engineering confidence is high from synthetic corner checks;
-coordinate/naming preference confidence remains low and the adapter restriction
-can change without altering CPU maps.
+Keep signed cells checked and place Y-down rows in Y-up world space with source
+pivots and positive source-to-cell scales. U5's local consumer inverts pan/zoom
+before picking and derives visibility from its viewport. Validate finite origins,
+points, float matrices and noncollapsed viewport bounds before editing. Adapter
+base model remains identity and style scale one. This excludes general camera
+transforms and arbitrary precision. Engineering confidence is high from CPU
+cases; naming/preference confidence remains low.
 
 ## TM-004
 
-Intersect views with the finite map, then binary-search computed double grid
-edges for half-open cell bounds. Exact touches exclude neighboring cells without
-an epsilon, including decimal sizes where bare division misclassifies edges.
-Future picking must agree with those boundaries. Logarithmic search costs more
-comparisons than division but avoids rounded-index repairs. Engineering confidence
-is high from the independent intersection oracle; no picking API or personal
-coordinate preference is implied.
+Return owned optional<Point> from pick_cell; invalid geometry/nonfinite input
+throws invalid_args, while valid exterior points miss. Share computed-edge
+validation/search with visible_cells: top/left inclusive, internal edges choose
+the following cell, final edges exclusive. Support subnormals and maximum uint32
+geometry without allocation or enumeration. Binary search costs comparisons but
+avoids quotient/epsilon ownership errors. Engineering confidence is high from
+independent rectangle oracles; exact spelling has low taste confidence and local
+source/relink reversal cost.
 
 ## TM-005
 
-Compose two maps/two layers by adding resolved vectors in explicit caller order.
-Existing PassWriter assigns consecutive authored_order values across groups;
-vector row/column order remains intact. U3 changes group sequence to expose
-sorting/Z policies. U4 code submits four atlas-backed groups, with image observation
-blocked by display access. This keeps composition flexible at the cost of
-explicit calls. Engineering confidence is high from source and CPU cases;
-visual outcome and personal API taste remain unverified.
+Compose maps/layers in explicit caller order; PassWriter assigns consecutive
+authored_order across row/column vectors. U3 reverses groups to expose sorting.
+U5 derives visibility from pan/zoom, adds a picked ground cell before its existing
+detail and checks 6/7/6 packets across paint/erase frames. Shifted views cull
+exactly at cell edges. Explicit calls cost verbosity but avoid hidden Z/resource
+policy. Engineering confidence is high from source and CPU cases; actual visual
+order remains unobserved.
 
 ## TM-006
 
-Edits affect subsequent resolutions and independently prepared frames. U3 edits
-one map and moves its view before preparing a newer frame; an older frame keeps
-copied matrices, selected ranges and retained resources, while the other map's
-values/output stay independent. This requires separate frame ownership and
-observations outside writer/recycle phases, not concurrent-read guarantees.
-Repeated packet generation costs CPU work. Confidence is high in the engineering
-boundary; U4 is fixed display only and does not establish visual edit acceptance.
+Validate transforms and pick before mutating one chosen layer; exterior misses
+and invalid inputs preserve all cells. U5 paints, prepares, erases and prepares
+again, preserving the other layer, sibling map/output and older frames' copied
+matrices/ranges/resources after fixture destruction. This gives synchronous CPU
+ownership, not concurrent publication or graphical edit acceptance. Repeated
+resolution costs CPU work. Engineering confidence is high from focused cases;
+private interactive wiring remains a later unit.
 
 ## TM-007
 
@@ -132,7 +136,7 @@ placements and translucent details. Validate the local four-color atlas through
 Reader/decode/managers before binding; fail with required-source diagnostics.
 Reuse platform loading/cleanup and existing packet/pass/camera contracts,
 bypassing optional samples and controls. This limits setup and ambiguity but
-defers editing/animation. Engineering confidence is high; fixture ergonomics
+defers interactive editing/animation. Engineering confidence is high; fixture ergonomics
 have low taste confidence and local reversal cost. Actual build/display/image
 evidence is separate in next.md; an unavailable observation never counts as acceptance.
 

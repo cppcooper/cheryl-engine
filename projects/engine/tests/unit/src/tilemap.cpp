@@ -77,6 +77,18 @@ namespace {
         return result;
     }
 
+    // Independent point oracle: enumerate half-open rectangles, without an axis
+    // search, quotient or call to either production grid query.
+    std::optional<Maps::Point> containing_cell(const Maps::Extent extent, const Maps::CellSize size, const Maps::LocalPoint point) {
+        for (std::uint32_t row = 0; row < extent.rows; ++row)
+            for (std::uint32_t column = 0; column < extent.columns; ++column) {
+                const Maps::LocalRect rect{column * size.width, row * size.height, (column + 1) * size.width, (row + 1) * size.height};
+                if (rect.left <= point.x && point.x < rect.right && rect.top <= point.y && point.y < rect.bottom)
+                    return Maps::Point{column, row};
+            }
+        return std::nullopt;
+    }
+
     std::vector<double> edge_probes(const std::uint32_t count, const double size) {
         const auto infinity = std::numeric_limits<double>::infinity();
         std::vector<double> result{-size, (static_cast<double>(count) + 1.0) * size};
@@ -355,4 +367,130 @@ TEST(tilemap, intersection_oracle) {
                     }
     }
     EXPECT_GT(checked, 10000u);
+}
+
+TEST(tilemap, pick_caller) {
+    std::optional<Maps::Point> retained;
+    {
+        Maps::Map map({3, 2}, 2);
+        retained = Maps::pick_cell(map.extent(), {0.1, 0.1}, {0.15, 0.05});
+        ASSERT_EQ(retained, (Maps::Point{1, 0}));
+        map.set({1}, *retained, {7});
+        EXPECT_EQ(map.get({1}, {1, 0}), (Maps::TileId{7}));
+        EXPECT_EQ(map.get({0}, {1, 0}), (Maps::TileId{}));
+        map.set({1}, *retained, {});
+        EXPECT_EQ(snapshot(map), std::vector<Maps::TileId>(12));
+    }
+    EXPECT_EQ(retained, (Maps::Point{1, 0})); // Coordinate ownership needs no surviving map.
+}
+
+TEST(tilemap, pick_edges) {
+    const Maps::Extent extent{3, 2};
+    const Maps::CellSize size{20, 12};
+    EXPECT_EQ(Maps::pick_cell(extent, size, {0, 0}), (Maps::Point{0, 0}));
+    EXPECT_EQ(Maps::pick_cell(extent, size, {-0.0, -0.0}), (Maps::Point{0, 0}));
+    EXPECT_EQ(Maps::pick_cell(extent, size, {20, 12}), (Maps::Point{1, 1}));
+    EXPECT_EQ(Maps::pick_cell(extent, size, {59.5, 23.5}), (Maps::Point{2, 1}));
+    const auto maximum = std::numeric_limits<double>::max();
+    for (const Maps::LocalPoint point :
+         {Maps::LocalPoint{-1, 0}, Maps::LocalPoint{0, -1}, Maps::LocalPoint{60, 0}, Maps::LocalPoint{0, 24}, Maps::LocalPoint{60, 24},
+          Maps::LocalPoint{maximum, 0}, Maps::LocalPoint{0, -maximum}})
+        EXPECT_FALSE(Maps::pick_cell(extent, size, point));
+
+    const Maps::Extent decimal_extent{64, 8};
+    const Maps::CellSize decimal{0.1, 0.1};
+    const Maps::LocalPoint edge{43 * decimal.width, 3 * decimal.height};
+    const auto infinity = std::numeric_limits<double>::infinity();
+    EXPECT_EQ(Maps::pick_cell(decimal_extent, decimal, edge), (Maps::Point{43, 3}));
+    EXPECT_EQ(
+        Maps::pick_cell(decimal_extent, decimal, {std::nextafter(edge.x, -infinity), std::nextafter(edge.y, -infinity)}),
+        (Maps::Point{42, 2})
+    );
+    EXPECT_EQ(
+        Maps::pick_cell(decimal_extent, decimal, {std::nextafter(edge.x, infinity), std::nextafter(edge.y, infinity)}), (Maps::Point{43, 3})
+    );
+    EXPECT_EQ(Maps::pick_cell(decimal_extent, decimal, edge), containing_cell(decimal_extent, decimal, edge));
+}
+
+TEST(tilemap, pick_invalid) {
+    const Maps::Extent extent{3, 2};
+    const Maps::CellSize size{20, 12};
+    const Maps::LocalPoint point{1, 1};
+    for (const auto invalid : {Maps::Extent{}, Maps::Extent{0, 2}, Maps::Extent{3, 0}})
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(invalid, size, point)), invalid_args);
+    const auto infinity = std::numeric_limits<double>::infinity();
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    for (const auto value : {0.0, -0.0, -1.0, infinity, -infinity, nan}) {
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {value, 12}, point)), invalid_args);
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {20, value}, point)), invalid_args);
+        // Exterior coordinates must not hide invalid geometry.
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {value, 12}, {-1, -1})), invalid_args);
+    }
+    for (const auto value : {infinity, -infinity, nan}) {
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, size, {value, 0})), invalid_args);
+        EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, size, {0, value})), invalid_args);
+    }
+    const auto maximum = std::numeric_limits<double>::max();
+    EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {maximum, 1}, point)), invalid_args);
+    EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {1, maximum}, point)), invalid_args);
+    EXPECT_THROW(static_cast<void>(Maps::pick_cell(extent, {maximum, 1}, {-1, -1})), invalid_args);
+}
+
+TEST(tilemap, pick_limits) {
+    const auto count = std::numeric_limits<std::uint32_t>::max();
+    const Maps::Extent extent{count, count - 1}; // Geometry only: do not construct a huge Map.
+    const auto tiny = std::numeric_limits<double>::denorm_min();
+    const auto large = std::numeric_limits<double>::max() / static_cast<double>(count) / 2;
+    const auto infinity = std::numeric_limits<double>::infinity();
+    for (const auto size : {Maps::CellSize{1, 1}, Maps::CellSize{0.1, 0.3}, Maps::CellSize{tiny, tiny * 3}, Maps::CellSize{large, large}}) {
+        const Maps::LocalPoint last{(count - 1) * size.width, (count - 2) * size.height};
+        const Maps::LocalPoint end{count * size.width, (count - 1) * size.height};
+        EXPECT_EQ(Maps::pick_cell(extent, size, {0, 0}), (Maps::Point{0, 0}));
+        EXPECT_EQ(Maps::pick_cell(extent, size, last), (Maps::Point{count - 1, count - 2}));
+        EXPECT_EQ(
+            Maps::pick_cell(extent, size, {std::nextafter(end.x, -infinity), std::nextafter(end.y, -infinity)}),
+            (Maps::Point{count - 1, count - 2})
+        );
+        EXPECT_FALSE(Maps::pick_cell(extent, size, end));
+        EXPECT_EQ(
+            Maps::visible_cells(extent, size, {last.x, last.y, end.x, end.y}), (Maps::CellRange{count - 1, count, count - 2, count - 1})
+        );
+    }
+}
+
+TEST(tilemap, pick_oracle) {
+    const auto tiny = std::numeric_limits<double>::denorm_min();
+    const auto normal = std::numeric_limits<double>::min();
+    const auto maximum = std::numeric_limits<double>::max();
+    const std::array sizes{
+        Maps::CellSize{20, 12},
+        Maps::CellSize{0.1, 0.1},
+        Maps::CellSize{0.3, 0.7},
+        Maps::CellSize{1.0 / 3, 1.0 / 7},
+        Maps::CellSize{tiny, tiny * 3},
+        Maps::CellSize{tiny * 3, tiny * 5},
+        Maps::CellSize{normal, normal * 2},
+        Maps::CellSize{1e-100, 2e-100},
+        Maps::CellSize{1e100, 2e100},
+        Maps::CellSize{maximum / 8, maximum / 16}
+    };
+    std::size_t checked = 0;
+    for (const auto extent : {Maps::Extent{5, 3}, Maps::Extent{3, 2}, Maps::Extent{1, 4}})
+        for (const auto size : sizes) {
+            auto xs = edge_probes(extent.columns, size.width);
+            auto ys = edge_probes(extent.rows, size.height);
+            for (std::uint32_t i = 0; i < extent.columns; ++i)
+                xs.push_back(i * size.width + size.width / 2);
+            for (std::uint32_t i = 0; i < extent.rows; ++i)
+                ys.push_back(i * size.height + size.height / 2);
+            for (const auto x : xs)
+                for (const auto y : ys) {
+                    const Maps::LocalPoint point{x, y};
+                    ASSERT_EQ(Maps::pick_cell(extent, size, point), containing_cell(extent, size, point))
+                        << "extent=" << extent.columns << ',' << extent.rows << " size=" << size.width << ',' << size.height
+                        << " point=" << x << ',' << y;
+                    ++checked;
+                }
+        }
+    EXPECT_GT(checked, 5000u);
 }

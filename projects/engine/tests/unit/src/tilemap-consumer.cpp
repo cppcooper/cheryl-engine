@@ -3,8 +3,13 @@
 
 #include <assets/resources/resource-provider.h>
 #include <gtest/gtest.h>
+#include <internals/exceptions.h>
+
+#include <ext/matrix_clip_space.hpp>
 
 #include <array>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <span>
 #include <utility>
@@ -209,6 +214,89 @@ namespace {
                 for (std::uint32_t column = 0; column < map.extent().columns; ++column)
                     result.push_back(map.get({layer}, {column, row}));
         return result;
+    }
+
+    // Consumer-local camera-plane values, X-right/Y-up. No input/window/camera
+    // owner is retained: view = (world - pan) * zoom, with a [0,w] x [0,h] viewport.
+    struct ViewSample {
+        Maps::LocalPoint pan;
+        double zoom;
+        Maps::CellSize viewport;
+    };
+
+    float view_float(const double value, const bool positive = false) {
+        if (!std::isfinite(value) || std::abs(value) > std::numeric_limits<float>::max() || (positive && value <= 0))
+            throw invalid_args(CE_HERE, "View values must be finite and float-representable, with positive zoom/viewport");
+        const auto result = static_cast<float>(value);
+        if (positive && result <= 0)
+            throw invalid_args(CE_HERE, "View scale/dimensions must not collapse to zero");
+        return result;
+    }
+
+    Render::Parameters::PassSemantics view_matrices(const ViewSample& view) {
+        const auto zoom = view_float(view.zoom, true);
+        const auto width = view_float(view.viewport.width, true);
+        const auto height = view_float(view.viewport.height, true);
+        Render::Parameters::PassSemantics result;
+        result.projection = glm::ortho(0.0f, width, 0.0f, height);
+        result.view = glm::mat4{1};
+        result.view[0][0] = result.view[1][1] = zoom;
+        result.view[3][0] = view_float(-view.pan.x * view.zoom);
+        result.view[3][1] = view_float(-view.pan.y * view.zoom);
+        for (const auto& matrix : {result.projection, result.view})
+            for (int column = 0; column < 4; ++column)
+                for (int row = 0; row < 4; ++row)
+                    if (!std::isfinite(matrix[column][row]))
+                        throw invalid_args(CE_HERE, "View matrices must remain finite");
+        return result;
+    }
+
+    Maps::LocalPoint to_local(const ViewSample& view, const glm::dvec2 origin, const Maps::LocalPoint point) {
+        static_cast<void>(view_matrices(view)); // Reject invalid transform values before any edit.
+        if (!std::isfinite(origin.x) || !std::isfinite(origin.y) || !std::isfinite(point.x) || !std::isfinite(point.y))
+            throw invalid_args(CE_HERE, "Map origin and picked view point must be finite");
+        const Maps::LocalPoint local{view.pan.x + point.x / view.zoom - origin.x, origin.y - (view.pan.y + point.y / view.zoom)};
+        if (!std::isfinite(local.x) || !std::isfinite(local.y))
+            throw invalid_args(CE_HERE, "Point conversion is not finite");
+        return local;
+    }
+
+    Maps::LocalRect local_visible(const ViewSample& camera, const glm::dvec2 origin) {
+        const auto top_left = to_local(camera, origin, {0, camera.viewport.height});
+        const auto bottom_right = to_local(camera, origin, {camera.viewport.width, 0});
+        if (top_left.x >= bottom_right.x || top_left.y >= bottom_right.y)
+            throw invalid_args(CE_HERE, "Transformed viewport must have positive area");
+        return {top_left.x, top_left.y, bottom_right.x, bottom_right.y};
+    }
+
+    std::optional<Maps::Point> paint_at(
+        Maps::Map& map,
+        const Maps::LayerIndex layer,
+        const Submit::TilemapView& placement,
+        const ViewSample& camera,
+        const Maps::LocalPoint point,
+        const Maps::TileId tile
+    ) {
+        static_cast<void>(local_visible(camera, placement.origin));
+        const auto cell = Maps::pick_cell(map.extent(), placement.cell_size, to_local(camera, placement.origin, point));
+        if (cell)
+            map.set(layer, *cell, tile);
+        return cell;
+    }
+
+    void prepare_view(Render::Frame& frame, const Fixture& fixture, const ViewSample& camera) {
+        auto west = fixture.west_view;
+        auto east = fixture.east_view;
+        west.visible = local_visible(camera, west.origin);
+        east.visible = local_visible(camera, east.origin);
+        const auto matrices = view_matrices(camera);
+        Render::FrameWriter writer(frame);
+        auto pass = writer.begin_pass(matrices.projection, matrices.view);
+        const Submit::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+        pass.add(Submit::resolve_tilemap_layer(fixture.west, ground, fixture.bindings, west, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(fixture.west, detail, fixture.bindings, west, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(fixture.east, ground, fixture.bindings, east, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(fixture.east, detail, fixture.bindings, east, {}, context));
     }
 }
 
@@ -453,4 +541,150 @@ TEST(tilemap_consumer, retention) {
     EXPECT_TRUE(material.expired());
     EXPECT_TRUE(pipeline.expired());
     calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, pick_paint_erase) {
+    const auto calls = std::make_shared<Calls>();
+    const ViewSample camera{{90, 170}, 2, {460, 48}};
+    const std::array original{authored[0], authored[1], authored[2], authored[3], authored[4], authored[5]};
+    const std::array changed{authored[0], ExpectedDraw{12, 125, 191}, authored[1], authored[2], authored[3], authored[4], authored[5]};
+    Render::Frame older, painted, erased;
+    std::vector<Render::DrawPacket2D> old_packets, painted_packets;
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    {
+        Fixture fixture(calls);
+        geometry = fixture.geometry;
+        image = fixture.image;
+        const auto before = cells(fixture.west);
+        const auto sibling = cells(fixture.east);
+        prepare_view(older, fixture, camera);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(older, original));
+        old_packets = older.passes()[0].draws;
+        // Camera point (80,40) -> world (130,190) -> map-local (30,10).
+        const auto picked = paint_at(fixture.west, ground, fixture.west_view, camera, {80, 40}, {10});
+        ASSERT_EQ(picked, (Maps::Point{1, 0}));
+        auto edited = before;
+        edited[1] = {10};
+        EXPECT_EQ(cells(fixture.west), edited); // All other cells and the other layer survive.
+        EXPECT_EQ(cells(fixture.east), sibling);
+        prepare_view(painted, fixture, camera);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(painted, changed));
+        painted_packets = painted.passes()[0].draws;
+        EXPECT_EQ(painted_packets[1].first_vertex, 12u); // New ground precedes the existing detail at the same cell.
+        EXPECT_EQ(painted_packets[4].first_vertex, 12u);
+        for (std::size_t i = 3; i < original.size(); ++i)
+            expect_payload(painted_packets[i + 1], old_packets[i]); // Detail and sibling output differ only in assigned order.
+        EXPECT_EQ(paint_at(fixture.west, ground, fixture.west_view, camera, {80, 40}, {}), picked);
+        prepare_view(erased, fixture, camera);
+        EXPECT_EQ(cells(fixture.west), before);
+        EXPECT_EQ(cells(fixture.east), sibling);
+        expect_packets(older, old_packets);
+        expect_packets(painted, painted_packets);
+        expect_packets(erased, old_packets);
+        const auto passes = painted.passes();
+        EXPECT_FLOAT_EQ(passes[0].view[0][0], 2);
+        EXPECT_FLOAT_EQ(passes[0].view[3][0], -180);
+        EXPECT_FLOAT_EQ(passes[0].view[3][1], -340);
+        EXPECT_FLOAT_EQ(passes[0].projection[0][0], 2.0f / 460);
+        EXPECT_FLOAT_EQ(passes[0].projection[1][1], 2.0f / 48);
+        calls->expect_cpu();
+    } // No frame observations overlap writers; maps/bindings/provider are now destroyed.
+    expect_draws(older, original);
+    expect_draws(painted, changed);
+    expect_packets(older, old_packets);
+    expect_packets(painted, painted_packets);
+    expect_packets(erased, old_packets);
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, pick_preservation) {
+    Fixture fixture;
+    const ViewSample camera{{90, 170}, 2, {460, 48}};
+    const auto point = to_local(camera, fixture.west_view.origin, {80, 40});
+    ASSERT_EQ(Maps::pick_cell(fixture.west.extent(), fixture.west_view.cell_size, point), (Maps::Point{1, 0}));
+    const auto before = cells(fixture.west);
+    const auto sibling = cells(fixture.east);
+    Render::Frame older;
+    prepare_view(older, fixture, camera);
+    const auto packets = older.passes()[0].draws;
+    const auto preserved = [&] {
+        EXPECT_EQ(cells(fixture.west), before);
+        EXPECT_EQ(cells(fixture.east), sibling);
+        expect_packets(older, packets);
+        fixture.calls->expect_cpu();
+    };
+    for (const Maps::LocalPoint outside : {Maps::LocalPoint{18, 40}, Maps::LocalPoint{140, 40}, Maps::LocalPoint{80, 12}}) {
+        EXPECT_FALSE(paint_at(fixture.west, ground, fixture.west_view, camera, outside, {10}));
+        preserved(); // Negative local X, exact right and exact bottom are ordinary misses.
+    }
+    const auto infinity = std::numeric_limits<double>::infinity();
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    const auto maximum = std::numeric_limits<double>::max();
+    for (const auto zoom : {0.0, -1.0, infinity, -infinity, nan, maximum, std::numeric_limits<double>::denorm_min()}) {
+        auto invalid = camera;
+        invalid.zoom = zoom;
+        EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, fixture.west_view, invalid, {80, 40}, {10})), invalid_args);
+        preserved();
+    }
+    for (const auto value : {nan, infinity, maximum}) {
+        for (const auto member : {&Maps::LocalPoint::x, &Maps::LocalPoint::y}) {
+            auto invalid = camera;
+            invalid.pan.*member = value;
+            EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, fixture.west_view, invalid, {80, 40}, {10})), invalid_args);
+            preserved();
+        }
+    }
+    for (const auto origin : {glm::dvec2{nan, 200}, glm::dvec2{100, infinity}, glm::dvec2{maximum, 200}}) {
+        auto invalid = fixture.west_view;
+        invalid.origin = origin;
+        EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, invalid, camera, {80, 40}, {10})), invalid_args);
+        preserved();
+    }
+    for (const auto picked : {Maps::LocalPoint{nan, 40}, Maps::LocalPoint{80, infinity}}) {
+        EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, fixture.west_view, camera, picked, {10})), invalid_args);
+        preserved();
+    }
+    auto collapsed = camera;
+    collapsed.pan.y = 0x1p60; // Both transformed viewport Y edges round together despite finite matrices.
+    EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, fixture.west_view, collapsed, {80, 40}, {10})), invalid_args);
+    preserved();
+    auto overflow = camera;
+    overflow.zoom = 0.5;
+    EXPECT_THROW(static_cast<void>(paint_at(fixture.west, ground, fixture.west_view, overflow, {maximum, 40}, {10})), invalid_args);
+    preserved();
+}
+
+TEST(tilemap_consumer, pick_visibility) {
+    const Fixture fixture;
+    const ViewSample first{{90, 170}, 2, {460, 48}};
+    const ViewSample shifted{{120, 174}, 0.5, {120, 12}};
+    const auto one = to_local(first, fixture.west_view.origin, {80, 40});
+    const auto two = to_local(shifted, fixture.west_view.origin, {5, 8});
+    EXPECT_DOUBLE_EQ(one.x, 30);
+    EXPECT_DOUBLE_EQ(one.y, 10);
+    EXPECT_DOUBLE_EQ(two.x, 30);
+    EXPECT_DOUBLE_EQ(two.y, 10);
+    EXPECT_EQ(Maps::pick_cell(fixture.west.extent(), fixture.west_view.cell_size, one), (Maps::Point{1, 0}));
+    EXPECT_EQ(Maps::pick_cell(fixture.west.extent(), fixture.west_view.cell_size, two), (Maps::Point{1, 0}));
+    const auto visible = local_visible(shifted, fixture.west_view.origin);
+    EXPECT_DOUBLE_EQ(visible.left, 20);
+    EXPECT_DOUBLE_EQ(visible.top, 2);
+    EXPECT_DOUBLE_EQ(visible.right, 260);
+    EXPECT_DOUBLE_EQ(visible.bottom, 26);
+    EXPECT_EQ(Maps::visible_cells(fixture.west.extent(), fixture.west_view.cell_size, visible), (Maps::CellRange{1, 3, 0, 2}));
+    Render::Frame older, newer;
+    prepare_view(older, fixture, first);
+    const auto packets = older.passes()[0].draws;
+    prepare_view(newer, fixture, shifted);
+    const std::array expected{authored[1], authored[2], authored[3], authored[5], authored[6], authored[7]};
+    expect_draws(newer, expected);
+    expect_packets(older, packets);
+    const auto passes = newer.passes();
+    EXPECT_FLOAT_EQ(passes[0].view[0][0], 0.5f);
+    EXPECT_FLOAT_EQ(passes[0].view[3][0], -60);
+    EXPECT_FLOAT_EQ(passes[0].view[3][1], -87);
+    fixture.calls->expect_cpu();
 }

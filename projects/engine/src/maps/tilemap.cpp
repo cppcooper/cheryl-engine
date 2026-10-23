@@ -24,6 +24,22 @@ namespace CE::Tilemaps {
             return count;
         }
 
+        LocalPoint checked_footprint(const Extent extent, const CellSize size) {
+            if (extent.columns == 0 || extent.rows == 0 || !std::isfinite(size.width) || !std::isfinite(size.height) || size.width <= 0.0 ||
+                size.height <= 0.0)
+                throw Exceptions::invalid_args(CE_HERE, "Grid queries require nonzero extents and finite positive cell sizes");
+            const auto width = static_cast<double>(extent.columns) * size.width;
+            const auto height = static_cast<double>(extent.rows) * size.height;
+            if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.0 || height <= 0.0 ||
+                width <= static_cast<double>(extent.columns - 1) * size.width ||
+                height <= static_cast<double>(extent.rows - 1) * size.height)
+                throw Exceptions::invalid_args(CE_HERE, "Tilemap footprint must have finite positive, noncollapsed cell edges");
+            // uint32_t indices are far below binary64's exact-integer limit. Finite
+            // products of these positive sizes cannot collapse interior cell edges;
+            // subnormal sizes are integer multiples of the minimum subnormal too.
+            return {width, height};
+        }
+
         // Find the first computed edge >= position (or > position for an upper bound).
         // Search bounded integers directly: rounded decimal division cannot decide equality.
         std::uint32_t edge_bound(const std::uint32_t count, const double size, const double position, const bool upper) {
@@ -89,28 +105,32 @@ namespace CE::Tilemaps {
     }
 
     CellRange visible_cells(const Extent extent, const CellSize cell_size, const LocalRect visible) {
-        if (extent.columns == 0 || extent.rows == 0 || !std::isfinite(cell_size.width) || !std::isfinite(cell_size.height) ||
-            cell_size.width <= 0.0 || cell_size.height <= 0.0)
-            throw Exceptions::invalid_args(CE_HERE, "Visible cells require nonzero extents and finite positive cell sizes");
-
-        const auto width = static_cast<double>(extent.columns) * cell_size.width;
-        const auto height = static_cast<double>(extent.rows) * cell_size.height;
-        if (!std::isfinite(width) || !std::isfinite(height))
-            throw Exceptions::invalid_args(CE_HERE, "Tilemap footprint is not finite");
+        const auto footprint = checked_footprint(extent, cell_size);
         if (!std::isfinite(visible.left) || !std::isfinite(visible.top) || !std::isfinite(visible.right) ||
             !std::isfinite(visible.bottom) || visible.left > visible.right || visible.top > visible.bottom)
             throw Exceptions::invalid_args(CE_HERE, "Visible rectangle must have finite ordered edges");
 
         const auto left = std::max(0.0, visible.left);
         const auto top = std::max(0.0, visible.top);
-        const auto right = std::min(width, visible.right);
-        const auto bottom = std::min(height, visible.bottom);
+        const auto right = std::min(footprint.x, visible.right);
+        const auto bottom = std::min(footprint.y, visible.bottom);
         if (left >= right || top >= bottom)
             return {};
 
         return {
             edge_bound(extent.columns, cell_size.width, left, true) - 1, edge_bound(extent.columns, cell_size.width, right, false),
             edge_bound(extent.rows, cell_size.height, top, true) - 1, edge_bound(extent.rows, cell_size.height, bottom, false)
+        };
+    }
+
+    std::optional<Point> pick_cell(const Extent extent, const CellSize cell_size, const LocalPoint point) {
+        const auto footprint = checked_footprint(extent, cell_size);
+        if (!std::isfinite(point.x) || !std::isfinite(point.y))
+            throw Exceptions::invalid_args(CE_HERE, "Picked map-local point must be finite");
+        if (point.x < 0.0 || point.y < 0.0 || point.x >= footprint.x || point.y >= footprint.y)
+            return std::nullopt;
+        return Point{
+            edge_bound(extent.columns, cell_size.width, point.x, true) - 1, edge_bound(extent.rows, cell_size.height, point.y, true) - 1
         };
     }
 }

@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace CE::Tilemaps {
@@ -39,8 +40,14 @@ namespace CE::Tilemaps {
 
     /** Cell dimensions in caller-defined map-local units, with no rendering dependency. */
     struct CellSize {
-        double width{};  ///< Finite positive width for visible_cells().
-        double height{}; ///< Finite positive height for visible_cells().
+        double width{};  ///< Finite positive width for grid queries.
+        double height{}; ///< Finite positive height for grid queries.
+    };
+
+    /** Continuous map-local position; X increases rightward and Y downward, without a camera. */
+    struct LocalPoint {
+        double x{}; ///< Finite distance from the map's left edge, in the same map-local units as CellSize::width.
+        double y{}; ///< Finite distance from the map's top edge, in the same map-local units as CellSize::height.
     };
 
     /** Half-open continuous rectangle in map-local X-right/Y-down units. */
@@ -94,12 +101,26 @@ namespace CE::Tilemaps {
      * Cell edge i is double(i)*cell_size on each axis, including the footprint's
      * exclusive final edge. Exact touching edges are excluded using comparisons
      * against these computed edges, without division rounding or an epsilon.
-     * Nonzero extents, finite positive cell sizes, finite footprint products and
-     * finite ordered rectangle edges are required; invalid inputs throw invalid_args.
+     * Nonzero extents, finite positive cell sizes/footprints, increasing final cell
+     * edges (as for pick_cell()) and finite ordered rectangle edges are required;
+     * invalid inputs throw invalid_args.
      * Valid zero-area, outside and merely touching rectangles return CellRange{}.
      * This CPU query allocates nothing, retains nothing, and does not clip pixels.
      */
     [[nodiscard]] CE_API CellRange visible_cells(Extent extent, CellSize cell_size, LocalRect visible);
+
+    /** Pick the cell containing a finite map-local point, or nullopt for a valid exterior point.
+     * Cell edge i is double(i)*cell_size, matching visible_cells(). Internal exact edges
+     * belong to the following cell; top/left are inclusive, final right/bottom exclusive.
+     * Nonzero extents and finite positive sizes/footprints with increasing final cell
+     * edges are required. Invalid geometry or nonfinite points throw invalid_args even
+     * when exterior; all inputs remain unchanged. Positive subnormal sizes are supported.
+     * With uint32_t extents and binary64 double, finite products have distinct adjacent
+     * edges; no arbitrary epsilon, division-based index or linear cell scan is used.
+     * Valid queries allocate/retain nothing, take logarithmic axis searches and return
+     * an owned Point. World/camera conversion and layer selection belong to the caller.
+     */
+    [[nodiscard]] CE_API std::optional<Point> pick_cell(Extent extent, CellSize cell_size, LocalPoint point);
 }
 
 /**

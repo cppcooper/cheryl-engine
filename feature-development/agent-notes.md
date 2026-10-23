@@ -1,8 +1,9 @@
-# Tilemap milestone: CPU values, packets and demo display
+# Tilemap milestone: CPU picking, editing and retained submission
 
 This branch implements U1's CPU values/ranges, U2's retained binding/packet
-adapter, U3's synthetic pass consumer, and U4's private fixed demo display.
-The broader editable consumer remains a proposal.
+adapter, U3's synthetic pass consumer, U4's private fixed demo display, and U5's
+checked CPU point picking/pick-paint-erase consumer. Private interactive demo
+wiring remains proposed; U4 graphical acceptance is still blocked.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
@@ -17,10 +18,12 @@ the bounded coordinator assignments. U1 was accepted at
 U2 was accepted at `c77496f0adace3e76c9a59fc573a1a0ef138eb63`; U3 starts there
 with a clean index/tree. U3 was accepted at
 `f91e181b2eb2870f90baea61161ddd38e1803db6`; U4 starts there with a clean
-index/tree. Only this clone is owned. U4 adds a private demo helper/mode and app
-wiring; production Map, resolver, frame/pass, backend and reusable startup APIs
-remain unchanged. Editor controls, persistence, resizing and chunking remain
-unimplemented. The publisher owns assigned-branch transport.
+index/tree. U4 source/build was accepted at
+`6a85f160ffa3f3acd56312f707ebbb65bde5e607`; U5 starts there clean. Only this
+clone is owned. U5 adds a CPU query/point value and shares geometry validation
+with visibility, plus cases in the two assigned unit files. Map layout/edit
+methods, resolver, demo/input/frame/pass/backend/startup/persistence APIs,
+build files and dependency pins remain unchanged. The publisher owns transport.
 
 ## CPU caller implemented in U1
 
@@ -136,6 +139,50 @@ its data, validation, ownership and alternatives; actual build/native/image
 evidence belongs to next.md. Fixture names, flag spelling, colors and placement
 are local engineering choices under delegated authority, with low personal-taste confidence
 and reversal cost confined to private app files.
+
+## Small U5 CPU caller
+
+The public addition is independent of map storage, assets and cameras:
+
+```cpp
+#include <cheryl/maps/tilemap.h>
+
+namespace Maps = CE::Tilemaps;
+Maps::Map map({3, 2}, 2);
+const auto picked = Maps::pick_cell(map.extent(), {0.1, 0.1}, {0.15, 0.05});
+if (picked)
+    map.set({1}, *picked, {7}); // owned Point{1,0}; TileId{0} erases later
+```
+
+`tilemap.pick_caller` executes this shape, checks the other layer and erases the
+cell. It retains the coordinate after map destruction. `pick_cell` has no map
+or camera owner, allocates nothing on valid input and returns optional<Point>.
+invalid_args distinguishes invalid geometry/nonfinite input from ordinary misses.
+The naming and optional-plus-exception shape follow current checked query/value
+contracts; personal API-taste confidence is low, and renaming is a local source
+migration plus relinking users of the new symbol (TM-004).
+
+The synthetic consumer keeps a small inverse transformation in its own file:
+
+```cpp
+// camera-plane p is X-right/Y-up; view = (world - pan) * zoom.
+// Validate pan/zoom/origin, finite float matrices and a positive viewport first.
+const Maps::LocalPoint local{
+    pan.x + p.x / zoom - origin.x,
+    origin.y - (pan.y + p.y / zoom)
+};
+const auto picked = Maps::pick_cell(map.extent(), cell_size, local);
+if (picked)
+    map.set(ground, *picked, {10});
+// Prepare another owned Frame with camera-derived local visible bounds;
+// submit west ground/detail, east ground/detail through the existing pass.
+// Repeat the pick with TileId{0}, then prepare a separate erased Frame.
+```
+
+No transformation, camera framework, input wiring or editor service is added to
+the engine. See TM-003/004/005/006 for precise supported transforms, geometry and
+frame observations. Source presence, executed CPU cases and still-missing visual
+acceptance remain separate in next.md.
 
 ## Proposed editable caller sequence
 
@@ -306,6 +353,25 @@ finite. A view's world origin `O` is the map's top-left, with world Y increasing
 up. Cell `(x,y)` spans world X `[Ox+x*w, Ox+(x+1)*w)` and world Y between
 `Oy-(y+1)*h` and `Oy-y*h`.
 
+U5's test-local ViewSample describes pan P, finite positive zoom z and a finite
+positive viewport W×H in camera-plane X-right/Y-up units. It applies
+`view=(world-P)*z`; inverse world position is `P+view_point/z`, then local
+position `(world_x-Ox, Oy-world_y)`. Derived local visible bounds are
+`{Px-Ox, Oy-(Py+H/z), Px+W/z-Ox, Oy-Py}`. It passes matching orthographic
+projection and scale/translation matrices into the existing writer. No rotation,
+perspective, top-down platform mouse conversion or live Camera is involved.
+
+Before mutation, the local consumer requires finite points/origins, positive
+finite zoom/viewport values that remain nonzero finite floats, finite float
+projection/view matrices, finite inverse results and a positive-area transformed
+viewport. Extreme translations can collapse those viewport edges despite finite
+matrices and are rejected. It does not clip supplied points to the viewport;
+the map query decides membership, leaving later real-input UI gating separate.
+The converter uses ordinary double arithmetic and render matrices are floats;
+no arbitrary-magnitude world ULP/round-trip guarantee is made. The exercised
+pan values and z=2 or 0.5 are exactly representable. These are consumer-local
+engineering restrictions, not public camera policy or inferred user taste.
+
 Require positive source frame dimensions and a finite normalized source pivot
 before division, including directly constructed assets that bypass loading.
 For source frame size `(fw,fh)` and top-left pivot `(px,py)`, place its pivot at
@@ -334,8 +400,9 @@ pure CPU helper `visible_cells(extent, cell_size, LocalRect)` returns a copied
 cell range `[first_column,end_column) × [first_row,end_row)`. `LocalRect` is
 continuous `{left,top,right,bottom}` in map-local Y-down units. Validate nonzero
 extent axes, finite edges, ordered axes, finite positive cell size and finite
-footprint products first. Invalid extents, inverted/NaN/infinite inputs or
-overflowing footprint products throw `invalid_args`; zero-area input and a
+positive footprint products and increasing final cell edges first. U5 shares
+this checked geometry boundary with picking. Invalid extents, inverted/NaN/infinite
+inputs or overflowing/collapsed required footprint products throw `invalid_args`; zero-area input and a
 rectangle merely touching or outside the map return an empty range.
 
 Intersect with the map footprint using comparisons before searching its edges.
@@ -367,15 +434,47 @@ For an 8×6 map with 16-unit cells, expected ranges include:
 | `[112,80,128,96)` | `[7,8)` | `[5,6)` |
 | `[128,0,144,16)` or `[0,0,0,16)` | empty | empty |
 
-Given an axis-aligned world view with left/right/bottom/top edges `(L,R,B,T)`,
-the consumer supplies local rectangle `(L-Ox, Oy-T, R-Ox, Oy-B)` per instance.
-Future picking must use that inverse conversion and the same computed grid
-boundaries as visible_cells: edge i is double(i)*size. Bare floor(point/size)
-is insufficient at decimal boundaries; any candidate index must be corrected by
-comparisons against those edges, with no arbitrary epsilon. Exact right/bottom
-map edges are outside. No picking/editor API is implemented in U2.
-Camera translation/positive zoom are consumer responsibilities. Selection is
-culling, not a scissor: a partially visible cell is emitted whole and the existing viewport/optional clip cuts pixels.
+U5 implements `pick_cell(Extent, CellSize, LocalPoint) -> optional<Point>`.
+It validates the same geometry and both finite coordinates before classifying
+an exterior point. A valid exterior point returns nullopt; invalid inputs throw
+invalid_args without mutation. Signed zero belongs to cell zero. Local top/left
+are inclusive, each internal exact computed edge chooses the following cell,
+and final right/bottom edges are exclusive. For an interior point, the shared
+binary upper-bound search yields the first edge greater than the point; subtract
+one to get its cell. There is no quotient, epsilon or floating-to-integer cast.
+The pure query retains nothing and uses O(log columns + log rows) comparisons,
+constant storage and no valid-path allocation, even at maximum uint32 extents.
+Invalid-argument exception diagnostics can allocate under the existing policy.
+Geometry queries do not require that the product be addressable as Map storage.
+
+Both queries require nonzero axes, finite positive sizes, finite positive total
+products and `edge(n)>edge(n-1)` at each final edge. On the exercised binary64
+platform, n<2^32 is far below the 53-bit significand's integer limit: normal
+product rounding error is much smaller than a step. Subnormal sizes are positive
+integer multiples of denorm_min; these bounded products also cannot lose a cell
+step. Thus finite positive inputs cannot collapse an interior or final grid
+edge under this supported geometry. The explicit positive/final-edge guards are
+defensive and do not narrow previously valid binary64 geometry. A size already
+rounded to zero is rejected as zero, not rescued by an epsilon. No artificial
+unreachable collapsed-grid fixture or OOM probe is manufactured; the consumer's
+collapsed transformed viewport has a concrete rejection case. Widening extents
+past uint32, alternate floating environments or arbitrary-scale render precision
+would require revisiting this argument; they are not claimed here.
+
+The independent point oracle enumerates small half-open cell rectangles, testing
+left<=x<right and top<=y<bottom, never sharing production search/quotient code.
+It probes exact edges, both nextafter neighbors, interiors and positive/negative
+exteriors on asymmetric 5×3, 3×2 and 1×4 domains. Sizes include decimal 0.1,
+0.3/0.7, thirds/sevenths, minimum subnormals, minimum normals, 1e-100, 1e100 and
+large finite footprints near double's maximum. Separate constant-sized checks
+query maximum uint32 axes with unit/decimal/subnormal/large sizes without Map
+allocation or cell enumeration. Decimal 43*0.1 and 3*0.1 regress the floor error.
+
+Given axis-aligned world bounds `(L,R,B,T)`, the consumer supplies local visible
+rectangle `(L-Ox, Oy-T, R-Ox, Oy-B)` per instance. Its inverse picking uses the
+same computed grid boundaries after conversion; bare floor(point/size) remains
+insufficient. Culling emits partially visible whole cells and does not scissor
+pixels. Camera translation and positive zoom remain consumer responsibilities.
 
 Alternatives are scanning every cell against `Math::overlaps`, an inclusive
 maximum index, floor/ceil candidates corrected against grid edges, or having the
@@ -412,7 +511,12 @@ vector's row/column order and changes the composed order. A distinct retained
 image/material pair moves from position 0 to position 5 in the reordered case,
 so grouping by resource cannot silently satisfy the expected sequence. Models
 retain Z=0.
-These are consumer cases, not changes to pass, renderer or backend behavior.
+U5's camera-derived consumer emits 6 packets initially, 7 after painting one
+previously empty west ground cell, then 6 after erase. Existing detail at that
+same cell follows the new ground packet; all orders are consecutive. The first
+camera culls east after exactly its first column; shifted pan/zoom instead
+excludes west column zero and includes all east columns. These are consumer
+cases, not changes to pass, renderer or backend behavior.
 
 Default 2D pass constraints and ordinary textured materials disable depth;
 straight-alpha composition makes later detail draws visible over earlier ground
@@ -448,8 +552,17 @@ old copied matrices, selected ranges, resources and authored order must remain
 unchanged. The east map's entire cell snapshot and all three of its packet
 payloads/order remain unchanged. Frame/pass observations occur only after writer
 scopes end, and helpers do not retain borrowed frame spans across recycling.
-This is synchronous CPU composition evidence; no publication/concurrency behavior
-is inferred. Alternatives: bake frames into map cells, or rebuild a mesh
+U5 additionally picks camera point (80,40) with pan (90,170), zoom 2, giving
+world (130,190), local (30,10), cell (1,0). Paint ID 10 on ground, prepare a
+newer Frame, pick/erase to zero and prepare a third Frame. Only that west cell
+changes; the complete other layer and sibling map remain unchanged. Detail and
+sibling packet payloads stay equal apart from assigned authored_order shifts.
+Older and painted frames preserve copied matrices, ranges and resources after
+erase and after maps/bindings/provider destruction. Misses, nonfinite inputs,
+invalid zoom/pan/origin, inverse overflow and a collapsed transformed viewport
+preserve all map cells and the retained older frame. Bind/draw/upload counters
+stay zero. This is synchronous CPU composition evidence; no publication/concurrency
+behavior is inferred. Alternatives: bake frames into map cells, or rebuild a mesh
 after each edit. These complicate identity and stale state. Confidence: high for
 existing playback compatibility, medium for the intentionally simple recompute
 strategy. A cache later needs explicit invalidation and animation handling.
@@ -616,7 +729,8 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 
 These are source observations, not executed acceptance. S1–S12 line spans refer
 to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
-branch-local files; S14 identifies U2, S15 the U3 consumer and S16 the U4 app. Links resolve here.
+branch-local files; S14 identifies U2, S15 the U3 consumer, S16 the U4 app and
+S17 the U5 CPU picking/editing addition. Links resolve here.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -636,6 +750,7 @@ branch-local files; S14 identifies U2, S15 the U3 consumer and S16 the U4 app. L
 | S14 | U2's [submission header](../projects/engine/include/cheryl/assets/submission/tilemap2d.h), [implementation](../projects/engine/src/assets/submission/tilemap2d.cpp) and [synthetic cases](../projects/engine/tests/unit/src/tilemap-submission.cpp). Retained ID bindings, checked source metadata, pivot transforms, once-only animation and local ordered vectors; exact executed selections are in next.md. |
 | S15 | U3's [synthetic pass consumer](../projects/engine/tests/unit/src/tilemap-consumer.cpp) composes unchanged Map, binding/packet and FrameWriter/PassWriter owners. Six cases cover caller order, independent frame snapshots, isolated resolver/group failures and weak lifetimes. The submission header clarifies all-alias metadata stability over binding lifetime; execution results are in next.md. |
 | S16 | U4's private [display helper](../projects/apps/demo/src/tilemap-demo.cpp), [mode option](../projects/apps/demo/src/demo-options.cpp), [main caller](../projects/apps/demo/src/main.cpp) and [platform/preparation/cleanup owner](../projects/apps/demo/src/demo-game.cpp). Reader -> decode -> image upload -> tileset manager -> stable bindings -> four layer vectors -> existing pass; runtime results and ignored local artifacts are in next.md. |
+| S17 | U5's [CPU query/header](../projects/engine/include/cheryl/maps/tilemap.h), [shared geometry/search implementation](../projects/engine/src/maps/tilemap.cpp), [five point cases](../projects/engine/tests/unit/src/tilemap.cpp) and [three transformed consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Owned optional coordinates, computed-edge ownership, independent rectangle oracle, bounded maximum extents and local pick/paint/erase plus camera-derived pass preparation. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -675,9 +790,10 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-U1/U2/U3 are coordinator-accepted. TILEMAP-U4 activates only the private fixed
-demo display and necessary local app wiring/dependency setup. Actual command
-outcomes and limitations are in next.md. Editing needs another assignment.
+U1/U2/U3 and U4's limited source/build checkpoint are coordinator-accepted.
+TILEMAP-U5 activates only checked CPU picking and the synthetic transformed
+pick/paint/erase consumer. Actual commands/limits are in next.md. Private real
+input/demo wiring still requires another assignment; X11 access is not retried.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
@@ -685,6 +801,7 @@ outcomes and limitations are in next.md. Editing needs another assignment.
 | U2 — implemented source | Retained bindings and `Submission::resolve_tilemap_layer` in separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, metadata, placement, vector order, retention, atomic result failure and animation. No pass insertion or backend work. |
 | U3 — implemented consumer | Six synthetic cases compose two instances/layers through existing pass writers; assert authored_order, caller sequence, snapshots, separate failure boundaries and resource release. Header comments clarify the whole binding-lifetime metadata obligation; no production behavior/API change. |
 | U4 — implemented display step | Private --tilemap-display helper/mode; required local four-color atlas validation, two independent 3×2/two-layer maps, explicit ground/detail order and platform cleanup. The display-access gap and all 36 CPU regressions are recorded in next.md; no editor/picking controls. |
+| U5 — implemented CPU picking/editing | LocalPoint and pick_cell share computed-edge geometry with visibility; five point cases and three synthetic transformed edit cases. All 36 accepted regressions plus eight additions execute together; no demo/input/backend change or display retry. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
@@ -711,53 +828,26 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. U4 commands, sanitizer
-status and public-header/ABI limits are in [next.md](next.md); prior U1/U2/U3
+registration. Presence in that runner is not a test run. U5 commands, sanitizer
+status and public-header/ABI limits are in [next.md](next.md); prior U1–U4
 configurations/results remain in committed record history and preserved local logs.
 
-## U4 execution and next action
+## U5 execution and next action
 
-The separate clone-local graphics configuration exits 0 with GNU 16.2.1, Debug,
-shared Engine/WARN, X11-only GLFW, native input, OpenGL, Startup and demo enabled;
-optional modules/apps/test families remain off. Only target demo is built, one
-job. It links successfully without source warnings; the helper's header-first
-source has `-g -Wall -fsanitize=address,undefined`. Existing GLAD REPRODUCIBLE
-uses pinned local specification bytes. The four missing existing-pin dependencies
-were independently populated from read-only source Git objects; no pins, remotes,
-protected worktrees/metadata/caches or system installations are changed.
-
-The admitted bounded `glxinfo -B` capability probe exits **255**:
-
-```text
-Error: unable to open display :1
-```
-
-That is an X11-access gap for this required execution route, not a diagnosed
-server/auth cause. It is not retried unchanged. No demo, watchdog or capture is
-launched; no rendered image, update completion, app Reader/decode/load, blending,
-pivot alignment or platform cleanup is claimed. The committed local PNG was
-viewed as source art (400×100, four colored cells); this is not rendered evidence.
-The implementation checks parsed metadata and decoded/uploaded dimensions before
-binding, but those guards remain unexecuted in the app until display access works.
-The ignored one-shot check script and exact finite demo command are prepared in
-next.md; their execution/ownership/capture behavior is still unverified.
-
-All 36 CPU regressions run again through the preserved U1 Debug runner: six U3
-consumer cases, 15 U2 submission cases and 15 U1 map/range cases. Discovery and
-execution exit 0, **36/36 pass, no skips, 26.48 seconds**, with ASan/UBSan
-halt_on_error and no diagnostics. Leak detection alone is invocation-local off
-for the known tracing limitation; leak checking remains unverified. Synthetic
-bind/draw/upload counters remain zero, and the existing snapshot/failure/lifetime
-cases still pass. This is CPU evidence, not a native graphics-domain proof.
-
-Actual commands follow; the full configure flags, exact dependency preparation,
-nonempty test registration and complete log paths are in
-[next.md](next.md#actual-commands-and-results). No new runner or mechanical
-constant-only test is added; the app-mode/image coverage gap is explicit.
+The preserved build/tilemap-u1-debug configuration remains GNU 16.2.1, Debug,
+shared Engine/tests/WARN ON, policy minimum 3.5 and the assigned optional modules/
+apps/docs/test families plus Startup OpenGL OFF. Build only tests-engine and
+its dependencies through the shared wrapper, one job. Build and discovery exit 0;
+all 44 selected cases pass, no skips, in **39.52 seconds**, under ASan/UBSan with
+halt_on_error. Compile commands retain -g/-Wall/-fsanitize=address,undefined.
+The 44 are all 36 accepted cases plus five tilemap picking cases and three
+consumer cases; no accepted name is lost. Complete diagnostics and exact counts
+are in next.md and the ignored u5-* logs/results under the CPU build directory.
 
 ```sh
-/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- timeout --signal=TERM --kill-after=2s 15s glxinfo -B
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -768,17 +858,29 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
 ```
 
-CPU Map, binding/resolver, frame/pass, backend and reusable startup contracts and
-unit cases are unchanged from accepted U3. No reusable ABI is added/changed;
-existing STL/GLM public layouts still need compatible consumer toolchains.
-Installed SDK/Windows/other ABI/Release, leaks, visual editing, camera-driven
-culling and native cleanup remain unverified. Engineering confidence in the
-private integration is high from compatibility/source and regressions; the real
-image outcome is unresolved. Fixture aesthetics/API taste confidence stays low.
+No new source warnings, assertion or sanitizer failure occurs; only command-local
+leak detection is disabled for the already recorded tracing limitation. Leak
+checking stays unverified. No reconfiguration, dependency download/pin change,
+graphics retry, broad suite, device run, install or public documentation build
+occurs. Map layout/get/set and submission/frame/pass/demo/input/backend/startup/
+persistence APIs stay unchanged. The new LocalPoint/pick_cell addition is source
+additive; new function users must relink a compatible Engine. Installed SDK,
+Windows exports, other compiler/STL/GLM ABIs and Release remain unverified.
 
-Next bounded action: after X11 access changes, one wrapper capability probe and,
-if accessible, the preserved finite owned-window observation. Compare two map
-footprints, empty cells, translucent later details and pivot placement; an update
-count cannot establish them. No user reply is expected and no unchanged retry is
-authorized. Editing/picking requires a later assignment and computed-boundary
-agreement (TM-004). Stop at this local checkpoint; publisher owns transport.
+U4's accepted source/build history and dependency preparation remain in commit
+6a85f16 and saved u4-* logs. Its last probe exited 255 with:
+
+```text
+Error: unable to open display :1
+```
+
+The gap is unchanged and is not retried. No actual app atlas decode/upload,
+display/capture, visual edit result or graphical cleanup is claimed by U5's CPU
+passes. Validating CPU picking/packets cannot establish those observations.
+
+Next proposed bounded action, requiring coordinator selection: wire the accepted
+CPU point/paint/erase flow into the private demo using its existing input/platform
+ownership, with selected instance/layer and camera-derived visible bounds. Keep
+production camera/input/backend/persistence APIs unchanged. Visual observation
+waits for a changed display prerequisite and must use a bounded owned-window
+check. No later unit or recurring loop starts here; publisher owns transport.
