@@ -1,3 +1,5 @@
+#include "tilemap-editor.h"
+
 #include <assets/submission/tilemap2d.h>
 #include <core/rendering/render-frame.h>
 
@@ -687,4 +689,345 @@ TEST(tilemap_consumer, pick_visibility) {
     EXPECT_FLOAT_EQ(passes[0].view[3][0], -60);
     EXPECT_FLOAT_EQ(passes[0].view[3][1], -87);
     fixture.calls->expect_cpu();
+}
+
+namespace {
+    namespace Events = CE::Input::Events;
+    using Key = CE::Input::KeyboardKey;
+    using Mouse = CE::Input::MouseButton;
+    const DemoTilemapEditor::Sizes editor_sizes{{400, 200}, {800, 600}}; // Independent 2x / 3x scale.
+
+    Events::Record key(const Key code, const Events::ButtonPhase phase = Events::ButtonPhase::Press) {
+        return {
+            0,
+            {},
+            1,
+            CE::Input::DeviceKind::Keyboard,
+            Events::Button{CE::Input::control_id(code), phase, CE::Input::Modifiers::None, -1, -1, code}
+        };
+    }
+
+    Events::Record click(const Mouse code, const Events::Pointer position, const Events::ButtonPhase phase = Events::ButtonPhase::Press) {
+        return {
+            0,
+            {},
+            2,
+            CE::Input::DeviceKind::Mouse,
+            Events::Button{CE::Input::control_id(code), phase, CE::Input::Modifiers::None, -1, -1, Key::Unknown, code, position}
+        };
+    }
+
+    Events::Record wheel(const double y, const Events::Pointer position) {
+        return {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Scroll{0, y, position}};
+    }
+
+    void edit(DemoTilemapEditor& editor, const std::initializer_list<Events::Record> records) {
+        editor.consume({records.begin(), records.size()}, editor_sizes);
+    }
+
+    void prepare_editor(Render::Frame& frame, const DemoTilemapEditor& editor, const Fixture& fixture) {
+        Render::FrameWriter writer(frame);
+        Render::DrawStyle2D images;
+        images.material = fixture.material;
+        editor.write(writer, fixture.bindings, images);
+    }
+}
+
+TEST(tilemap_consumer, editor_order) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {});
+    const auto west = cells(editor.map(0));
+    const auto east = cells(editor.map(1));
+    ASSERT_EQ(editor.pick({72, 144}), (Maps::Point{1, 1})); // An initially empty ground cell.
+    ASSERT_EQ(editor.pick({104, 144}), (Maps::Point{2, 1}));
+    // Same simulation tick: these must use their OWN pointers, not the final
+    // cursor or final axes. Release/repeat do not paint a third cell.
+    edit(
+        editor, {key(Key::Digit6),
+                 click(Mouse::Left, {72, 144}),
+                 click(Mouse::Left, {104, 144}),
+                 click(Mouse::Left, {40, 128}, Events::ButtonPhase::Release),
+                 click(Mouse::Left, {40, 128}, Events::ButtonPhase::Repeat),
+                 {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Pointer{399, 199}},
+                 {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Axis{1, 399}},
+                 {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Axis{2, 199}}}
+    );
+    auto expected = west;
+    expected[4] = expected[5] = {10};
+    EXPECT_EQ(cells(editor.map(0)), expected);
+    EXPECT_EQ(cells(editor.map(1)), east);
+    EXPECT_EQ(editor.selected_map(), 0u);
+    EXPECT_EQ(editor.selected_layer(), ground);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{10}));
+    Render::Frame frame;
+    prepare_editor(frame, editor, fixture);
+    ASSERT_EQ(frame.passes().size(), 1u);
+    const auto& draws = frame.passes()[0].draws;
+    ASSERT_EQ(draws.size(), 16u);
+    EXPECT_EQ(draws[4].first_vertex, 12u);
+    EXPECT_EQ(draws[5].first_vertex, 12u);
+    for (std::size_t i = 0; i < draws.size(); ++i)
+        EXPECT_EQ(draws[i].authored_order, i);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_selection) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {});
+    const auto west = cells(editor.map(0));
+    const auto east = cells(editor.map(1));
+    // Selection, paint, sample, selection, paint remain interleaved.
+    edit(
+        editor, {key(Key::Digit2), key(Key::T), key(Key::Digit5), click(Mouse::Left, {180, 140}), click(Mouse::Middle, {212, 156}),
+                 key(Key::Digit1), key(Key::G), click(Mouse::Left, {72, 144})}
+    );
+    EXPECT_EQ(editor.brush(), (Maps::TileId{7})); // East detail (1,1), not ground or west.
+    auto changed_east = east;
+    changed_east[6] = {9};
+    auto changed_west = west;
+    changed_west[4] = {7};
+    EXPECT_EQ(cells(editor.map(0)), changed_west);
+    EXPECT_EQ(cells(editor.map(1)), changed_east);
+    edit(editor, {click(Mouse::Right, {72, 144})});
+    EXPECT_EQ(cells(editor.map(0)), west);
+    EXPECT_EQ(cells(editor.map(1)), changed_east);
+    // Empty sampling is intentional; it selects an erasing brush, not atlas zero.
+    edit(editor, {click(Mouse::Middle, {72, 144}), click(Mouse::Left, {104, 144})});
+    EXPECT_EQ(editor.brush(), (Maps::TileId{0}));
+    EXPECT_EQ(editor.map(0).get(ground, {2, 1}), (Maps::TileId{0}));
+
+    const auto before = cells(editor.map(0));
+    auto blocked = click(Mouse::Left, {40, 128});
+    blocked.to_gameplay = false;
+    auto missing = click(Mouse::Left, {40, 128});
+    std::get<Events::Button>(missing.data).position.reset();
+    auto other_device = click(Mouse::Left, {40, 128});
+    other_device.device_kind = CE::Input::DeviceKind::Other;
+    auto blocked_key = key(Key::Digit2);
+    blocked_key.to_gameplay = false;
+    edit(
+        editor, {blocked, missing, other_device, blocked_key, key(Key::Digit2, Events::ButtonPhase::Release),
+                 key(Key::T, Events::ButtonPhase::Repeat), key(Key::Digit6, Events::ButtonPhase::Repeat)}
+    );
+    EXPECT_EQ(cells(editor.map(0)), before);
+    EXPECT_EQ(cells(editor.map(1)), changed_east);
+    EXPECT_EQ(editor.selected_map(), 0u);
+    EXPECT_EQ(editor.selected_layer(), ground);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{0}));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_edges) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {});
+    // FB = (2*x, 600-3*y). Top-left world (48,240); cells (64,48).
+    EXPECT_EQ(editor.pick({24, 120}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({56, 136}), (Maps::Point{1, 1}));
+    const auto lower = [](const double n) { return std::nextafter(n, -std::numeric_limits<double>::infinity()); };
+    const auto upper = [](const double n) { return std::nextafter(n, std::numeric_limits<double>::infinity()); };
+    EXPECT_FALSE(editor.pick({lower(24), 128}));
+    EXPECT_EQ(editor.pick({upper(24), 128}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({lower(56), 128}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({upper(56), 128}), (Maps::Point{1, 0}));
+    EXPECT_FALSE(editor.pick({40, lower(120)}));
+    EXPECT_EQ(editor.pick({40, upper(120)}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({40, lower(136)}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({40, upper(136)}), (Maps::Point{0, 1}));
+    EXPECT_EQ(editor.pick({lower(120), 144}), (Maps::Point{2, 1}));
+    EXPECT_FALSE(editor.pick({120, 144})); // Final right edge.
+    EXPECT_FALSE(editor.pick({upper(120), 144}));
+    EXPECT_EQ(editor.pick({40, lower(152)}), (Maps::Point{0, 1}));
+    EXPECT_FALSE(editor.pick({40, 152})); // Final bottom edge.
+    EXPECT_FALSE(editor.pick({40, upper(152)}));
+    ASSERT_TRUE(editor.set_view({48, -360}, 1));
+    EXPECT_EQ(editor.pick({0, 0}), (Maps::Point{0, 0})); // Logical top-left includes map top-left.
+    EXPECT_FALSE(editor.pick({-1, 0}));
+    EXPECT_FALSE(editor.pick({0, -1}));
+    EXPECT_FALSE(editor.pick({400, 0}));
+    EXPECT_FALSE(editor.pick({0, 200}));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_view) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {});
+    const auto west = cells(editor.map(0));
+    const auto east = cells(editor.map(1));
+    edit(editor, {key(Key::D), key(Key::W), key(Key::D, Events::ButtonPhase::Repeat), key(Key::A, Events::ButtonPhase::Release)});
+    EXPECT_DOUBLE_EQ(editor.pan().x, 32);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 32);
+    edit(editor, {key(Key::A), key(Key::S)});
+    EXPECT_DOUBLE_EQ(editor.pan().x, 0);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 0);
+    ASSERT_EQ(editor.pick({40, 128}), (Maps::Point{0, 0}));
+    edit(editor, {wheel(4, {40, 128}), {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Pointer{399, 199}}});
+    EXPECT_DOUBLE_EQ(editor.zoom(), 2);
+    EXPECT_DOUBLE_EQ(editor.pan().x, 40);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 108);
+    EXPECT_EQ(editor.pick({40, 128}), (Maps::Point{0, 0})); // Cursor anchor held.
+    edit(editor, {key(Key::R), wheel(4, {40, 128}), wheel(-4, {104, 144})});
+    EXPECT_DOUBLE_EQ(editor.zoom(), 1);
+    EXPECT_DOUBLE_EQ(editor.pan().x, -64); // Distinct wheel pointers in one tick.
+    EXPECT_DOUBLE_EQ(editor.pan().y, 24);
+    edit(editor, {key(Key::R)});
+    EXPECT_DOUBLE_EQ(editor.zoom(), 1);
+    EXPECT_DOUBLE_EQ(editor.pan().x, 0);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 0);
+    Render::Frame older, shifted;
+    prepare_editor(older, editor, fixture);
+    const auto packets = older.passes()[0].draws;
+    ASSERT_EQ(packets.size(), 15u);
+    ASSERT_TRUE(editor.set_view({112, 144}, 2));
+    EXPECT_EQ(editor.pick({0, 199}), (Maps::Point{1, 1}));
+    prepare_editor(shifted, editor, fixture);
+    const auto pass = shifted.passes();
+    ASSERT_EQ(pass.size(), 1u);
+    ASSERT_EQ(pass[0].draws.size(), 12u); // West col0 excluded at its exact edge.
+    EXPECT_EQ(pass[0].draws[0].first_vertex, 4u);
+    EXPECT_FLOAT_EQ(pass[0].projection[0][0], 2.0f / 800);
+    EXPECT_FLOAT_EQ(pass[0].projection[1][1], 2.0f / 600);
+    EXPECT_FLOAT_EQ(pass[0].view[0][0], 2);
+    EXPECT_FLOAT_EQ(pass[0].view[3][0], -224);
+    EXPECT_FLOAT_EQ(pass[0].view[3][1], -288);
+    for (std::size_t i = 0; i < pass[0].draws.size(); ++i)
+        EXPECT_EQ(pass[0].draws[i].authored_order, i);
+    expect_packets(older, packets);
+    EXPECT_EQ(cells(editor.map(0)), west);
+    EXPECT_EQ(cells(editor.map(1)), east);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_invalid) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {});
+    ASSERT_TRUE(editor.set_view({0, 0}, 1));
+    ASSERT_EQ(editor.pick({72, 144}), (Maps::Point{1, 1}));
+    const auto west = cells(editor.map(0));
+    const auto east = cells(editor.map(1));
+    const auto inf = std::numeric_limits<double>::infinity();
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    const auto max = std::numeric_limits<double>::max();
+    for (const auto zoom : {0.0, -1.0, inf, -inf, nan, max, std::numeric_limits<double>::denorm_min()})
+        EXPECT_FALSE(editor.set_view({0, 0}, zoom));
+    for (const auto pan :
+         {Maps::LocalPoint{nan, 0}, Maps::LocalPoint{0, inf}, Maps::LocalPoint{max, 0}, Maps::LocalPoint{0, -max},
+          Maps::LocalPoint{0, 0x1p100}})
+        EXPECT_FALSE(editor.set_view(pan, 1)); // Includes collapsed inverse viewport with finite float matrices.
+    auto missing = wheel(4, {40, 128});
+    std::get<Events::Scroll>(missing.data).position.reset();
+    auto invalid_x = wheel(4, {40, 128});
+    std::get<Events::Scroll>(invalid_x.data).x = nan;
+    edit(
+        editor,
+        {wheel(max, {40, 128}), wheel(-max, {40, 128}), wheel(inf, {40, 128}), wheel(nan, {40, 128}), wheel(4, {nan, 128}),
+         wheel(4, {40, inf}), wheel(4, {-1, 128}), wheel(4, {400, 128}), missing, invalid_x, click(Mouse::Left, {nan, 144}),
+         click(Mouse::Right, {72, inf}), click(Mouse::Left, {120, 144}), click(Mouse::Left, {40, 152}), click(Mouse::Left, {-1, 128})}
+    );
+    EXPECT_DOUBLE_EQ(editor.pan().x, 0);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 0);
+    EXPECT_DOUBLE_EQ(editor.zoom(), 1);
+    EXPECT_EQ(cells(editor.map(0)), west);
+    EXPECT_EQ(cells(editor.map(1)), east);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{7}));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_sizes) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    EXPECT_FALSE(editor.pick({40, 128}));
+    Render::Frame uninitialized;
+    prepare_editor(uninitialized, editor, fixture);
+    EXPECT_TRUE(uninitialized.passes().empty());
+    edit(editor, {});
+    ASSERT_TRUE(editor.set_view({32, 32}, 1));
+    const auto west = cells(editor.map(0));
+    const auto east = cells(editor.map(1));
+    const std::array invalid{DemoTilemapEditor::Sizes{{0, 200}, {800, 600}},  DemoTilemapEditor::Sizes{{400, 0}, {800, 600}},
+                             DemoTilemapEditor::Sizes{{-1, 200}, {800, 600}}, DemoTilemapEditor::Sizes{{400, -1}, {800, 600}},
+                             DemoTilemapEditor::Sizes{{400, 200}, {0, 600}},  DemoTilemapEditor::Sizes{{400, 200}, {800, 0}},
+                             DemoTilemapEditor::Sizes{{400, 200}, {-1, 600}}, DemoTilemapEditor::Sizes{{400, 200}, {800, -1}}};
+    const std::array attempted{key(Key::Digit2), key(Key::T), key(Key::Digit6), key(Key::R), click(Mouse::Left, {40, 128})};
+    for (const auto size : invalid) {
+        editor.consume(attempted, size);
+        EXPECT_FALSE(editor.pick({40, 128}));
+        Render::Frame suspended;
+        prepare_editor(suspended, editor, fixture);
+        EXPECT_TRUE(suspended.passes().empty());
+        EXPECT_DOUBLE_EQ(editor.pan().x, 32);
+        EXPECT_DOUBLE_EQ(editor.pan().y, 32);
+        EXPECT_EQ(editor.selected_map(), 0u);
+        EXPECT_EQ(editor.selected_layer(), ground);
+        EXPECT_EQ(editor.brush(), (Maps::TileId{7}));
+    }
+    EXPECT_EQ(cells(editor.map(0)), west);
+    EXPECT_EQ(cells(editor.map(1)), east);
+    edit(editor, {}); // A later captured positive size sample resumes preparation.
+    Render::Frame restored;
+    prepare_editor(restored, editor, fixture);
+    ASSERT_EQ(restored.passes().size(), 1u);
+    EXPECT_FLOAT_EQ(restored.passes()[0].view[3][0], -32);
+    EXPECT_FLOAT_EQ(restored.passes()[0].view[3][1], -32);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_frames) {
+    const auto calls = std::make_shared<Calls>();
+    Render::Frame older, painted, erased;
+    std::vector<Render::DrawPacket2D> original, changed;
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    {
+        const Fixture fixture(calls);
+        DemoTilemapEditor editor;
+        edit(editor, {});
+        geometry = fixture.geometry;
+        image = fixture.image;
+        const auto west = cells(editor.map(0));
+        const auto east = cells(editor.map(1));
+        prepare_editor(older, editor, fixture);
+        original = older.passes()[0].draws;
+        ASSERT_EQ(original.size(), 15u);
+        edit(editor, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+        auto expected = west;
+        expected[4] = {10};
+        EXPECT_EQ(cells(editor.map(0)), expected);
+        EXPECT_EQ(cells(editor.map(1)), east);
+        prepare_editor(painted, editor, fixture);
+        changed = painted.passes()[0].draws;
+        ASSERT_EQ(changed.size(), 16u);
+        EXPECT_EQ(changed[4].first_vertex, 12u); // Painted ground before details.
+        EXPECT_FLOAT_EQ(std::get<float>(changed[4].parameters.at("alpha")), 1);
+        EXPECT_FLOAT_EQ(std::get<float>(changed[6].parameters.at("alpha")), 0.5f);
+        for (std::size_t i = 5; i < original.size(); ++i)
+            expect_payload(changed[i + 1], original[i]); // Entire detail and sibling output unchanged apart from order.
+        edit(editor, {click(Mouse::Right, {72, 144})});
+        prepare_editor(erased, editor, fixture);
+        EXPECT_EQ(cells(editor.map(0)), west);
+        EXPECT_EQ(cells(editor.map(1)), east);
+        expect_packets(older, original);
+        expect_packets(painted, changed);
+        expect_packets(erased, original);
+        calls->expect_cpu();
+    } // Includes editor maps/view/selection, bindings and fixture owners.
+    expect_packets(older, original);
+    expect_packets(painted, changed);
+    expect_packets(erased, original);
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    older.recycle();
+    painted.recycle();
+    erased.recycle();
+    original.clear();
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    changed.clear();
+    EXPECT_TRUE(geometry.expired());
+    EXPECT_TRUE(image.expired());
+    calls->expect_cpu();
 }

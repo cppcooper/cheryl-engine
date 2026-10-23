@@ -12,10 +12,6 @@
 #include <stdexcept>
 
 namespace {
-    namespace Maps = CE::Tilemaps;
-    namespace Submit = CE::Rendering::Submission;
-    constexpr Maps::LayerIndex ground{0};
-    constexpr Maps::LayerIndex detail{1};
     constexpr std::array<CE::Assets::Grids::CellIndex, 4> targets{0, 1, 2, 3};
 
     void validate_definition(const CE::Assets::Tilesets::Definition& definition, const std::filesystem::path& root) {
@@ -33,19 +29,6 @@ namespace {
         }
     }
 
-    void fill(Maps::Map& map, const Maps::LayerIndex layer, const std::array<std::uint32_t, 6>& ids) {
-        for (std::int64_t row = 0; row < 2; ++row)
-            for (std::int64_t column = 0; column < 3; ++column)
-                map.set(layer, {column, row}, {ids[static_cast<std::size_t>(row * 3 + column)]});
-    }
-}
-
-DemoTilemaps::DemoTilemaps() {
-    // Logical IDs 7..10 select brown/black/grey/red; zero has no binding or draw.
-    fill(west_, ground, {7, 8, 9, 10, 0, 7});
-    fill(west_, detail, {0, 10, 0, 9, 0, 0});
-    fill(east_, ground, {9, 7, 0, 8, 10, 9});
-    fill(east_, detail, {10, 0, 10, 0, 7, 0});
 }
 
 void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider) {
@@ -73,26 +56,17 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
         for (std::size_t i = 0; i < targets.size(); ++i)
             bindings_.add({static_cast<std::uint32_t>(7 + i)}, asset, targets[i]);
         std::cout << "Tilemap display ready: tileset:tileset, decoded 400x100 RGBA8, grid 1x4, pivot {0,1}, targets 0..3\n"
-                     "Two fixed 3x2 maps, cells 64x48; west {48,240}, east {328,208}; detail alpha 0.5\n"
+                     "Two 3x2 maps, cells 64x48; west {48,240}, east {328,208}; detail alpha 0.5\n"
                      "Submission: west ground/detail, east ground/detail; ID 7 -> target 0, ID 0 -> empty\n"
+                     "Editor: 1/2 west/east, G/T ground/detail, 3..6 brown/black/grey/red\n"
+                     "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
+                     "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
                   << std::flush;
     } catch (const std::exception& error) {
         throw std::runtime_error("Required tilemap display atlas 'tileset:tileset' (" + source.string() + "): " + error.what());
     }
 }
 
-void DemoTilemaps::write(
-    CE::Rendering::PassWriter& pass,
-    const CE::Rendering::DrawStyle2D& images,
-    const CE::Rendering::Submission::Context2D& context
-) const {
-    const Submit::TilemapView west_view{.origin = {48, 240}, .cell_size = {64, 48}, .visible = {0, 0, 192, 96}};
-    const Submit::TilemapView east_view{.origin = {328, 208}, .cell_size = {64, 48}, .visible = {0, 0, 192, 96}};
-    auto overlay = images;
-    overlay.alpha = 0.5f;
-    // Existing pass writers own authored_order; no implicit layer/Z sorting.
-    pass.add(Submit::resolve_tilemap_layer(west_, ground, bindings_, west_view, images, context));
-    pass.add(Submit::resolve_tilemap_layer(west_, detail, bindings_, west_view, overlay, context));
-    pass.add(Submit::resolve_tilemap_layer(east_, ground, bindings_, east_view, images, context));
-    pass.add(Submit::resolve_tilemap_layer(east_, detail, bindings_, east_view, overlay, context));
+void DemoTilemaps::write(CE::Rendering::FrameWriter& frame, const CE::Rendering::DrawStyle2D& images) const {
+    editor_.write(frame, bindings_, images);
 }

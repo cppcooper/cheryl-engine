@@ -1,9 +1,9 @@
-# Tilemap milestone: CPU picking, editing and retained submission
+# Tilemap milestone: private editor, CPU picking and retained submission
 
 This branch implements U1's CPU values/ranges, U2's retained binding/packet
 adapter, U3's synthetic pass consumer, U4's private fixed demo display, and U5's
-checked CPU point picking/pick-paint-erase consumer. Private interactive demo
-wiring remains proposed; U4 graphical acceptance is still blocked.
+checked CPU point picking/pick-paint-erase consumer. U6 adds shared private editor
+state and compiled demo event wiring; graphical input/display acceptance stays open.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
@@ -20,10 +20,51 @@ with a clean index/tree. U3 was accepted at
 `f91e181b2eb2870f90baea61161ddd38e1803db6`; U4 starts there with a clean
 index/tree. U4 source/build was accepted at
 `6a85f160ffa3f3acd56312f707ebbb65bde5e607`; U5 starts there clean. Only this
-clone is owned. U5 adds a CPU query/point value and shares geometry validation
-with visibility, plus cases in the two assigned unit files. Map layout/edit
-methods, resolver, demo/input/frame/pass/backend/startup/persistence APIs,
-build files and dependency pins remain unchanged. The publisher owns transport.
+clone is owned. U5 was accepted at `ff76e5d6381243b05d2b450dd176d5b7a3dbc620`;
+U6 starts there clean. It changes private demo state/wiring and explicitly adds
+the private app source/include to the existing engine unit case target. Public
+Map/picking/resolver/input/camera/frame/pass/backend/startup/persistence APIs and
+dependency pins remain unchanged. The publisher owns transport.
+
+## Small U6 event caller and owner boundary
+
+```cpp
+#include "tilemap-editor.h" // private app header; also first in the CPU consumer cases
+
+DemoTilemapEditor editor;
+// On simulation, in publication order, using only copied tick data:
+editor.consume(tick.input.records(), {tick.logical_size, tick.framebuffer_size});
+// Later on that same owner, with no concurrent update or frame observation:
+editor.write(frame, bindings, image_style);
+```
+
+DemoTilemaps owns this state and stable bindings; required Reader/decode/manager
+loading remains on platform. Tilemap mode acquires its Events capture lease before
+its init_platform early return, samples initial logical/framebuffer sizes there,
+then transfers state to serialized simulation update/preparation. Its existing
+init_simulation return intentionally installs no ordinary UI hooks or action
+bindings. Cleanup resets the lease and helper on platform after simulation joins
+and frames finish. No borrowed tick records, camera, native window, provider or
+frame/pass view survives a helper call. Ordinary demo modes keep their old paths.
+
+Controls (private engineering choice, not user taste): 1/2 west/east; G/T ground/
+detail; 3–6 brush IDs 7–10; left paint/right erase/middle sample, including ID zero;
+WASD pan by 32 world units per Press; wheel Y scales zoom by exp2(delta/4) at its
+own captured pointer; R resets pan/zoom only. Initial selection is west/ground/7.
+Only gameplay-admitted keyboard/mouse records act. Button Release/Repeat, other
+devices, missing pointer positions, final Pointer/Axis records and text do not
+edit. Input sequence is consumed as supplied, never regrouped or sorted.
+Selection affects subsequent records immediately, rather than the whole tick.
+
+TickContext already supplies paired logical_size/framebuffer_size sampled by
+GameRuntime::select_window on platform, including sequential and threaded update
+paths. GLFW mouse/scroll callbacks capture glfwGetCursorPos into each record.
+These are observation-time logical positions but tick-selected sizes, not a
+per-event resize history. A resize between observation and consumption may thus
+map with the selected tick's sizes; no historical-window reconstruction is claimed.
+No public correction is needed. Evidence: input-record.h, tick-context.h,
+game-runtime.cpp::select_window/update and native-glfw input-system.cpp::on_mouse_button/on_scroll.
+No actual graphical input has been observed.
 
 ## CPU caller implemented in U1
 
@@ -191,7 +232,8 @@ values and `Submission::{TilemapBindings,TilemapView,resolve_tilemap_layer}` exi
 U3 exercises synthetic pass composition; U4 adds a static local-art display path;
 this full editor/animation sequence remains unimplemented and unexecuted.
 Its historical Puny World example needs artwork absent from the current pin;
-it is not a prerequisite for U4 or the next bounded editing proposal.
+it is not a prerequisite for U4 or U6's local-atlas editor. U6 implements the
+smaller event/edit/view subset above; this full animation example stays proposed.
 `FrameWriter`, `Context2D`, and asset handles follow the current engine. Exact new naming has low
 preference confidence and should stay local to one consumer until exercised.
 
@@ -317,7 +359,7 @@ compatibility confidence; it is not an explicit user API preference. No
 metadata-copy layer, hot replacement or ongoing
 revalidation is implemented. There is no hot replacement API in this milestone. Missing nonzero
 bindings throw `bad_request` with logical ID, layer and cell coordinates; no silent blank
-fallback. The future consumer paints only registered IDs. Copies own independent binding
+fallback. The U6 private consumer paints only IDs sampled from its maps or its registered brushes. Copies own independent binding
 tables while sharing source handles under that metadata contract; no lookup reference or mutation handle
 escapes. A private friend resolver keeps the public table surface at `add`.
 Reversal cost is local to this new submission header/source and its caller cases;
@@ -371,6 +413,28 @@ The converter uses ordinary double arithmetic and render matrices are floats;
 no arbitrary-magnitude world ULP/round-trip guarantee is made. The exercised
 pan values and z=2 or 0.5 are exactly representable. These are consumer-local
 engineering restrictions, not public camera policy or inferred user taste.
+
+U6 implements that transform once in private DemoTilemapEditor for both the app
+and new synthetic tests. For logical size Lw×Lh, framebuffer W×H and pointer q,
+camera-plane p is `{qx*W/Lw, H-qy*H/Lh}` in the full framebuffer viewport, with
+independent horizontal/vertical scale and top-left to Y-up conversion. Then
+world=`P+p/z` and local=`{world.x-Ox, Oy-world.y}`. Pointer positions must be
+finite and inside the half-open logical window. pick_cell alone decides grid
+ownership against computed edges; no epsilon or quotient index is introduced.
+Both picking and camera-derived visibility use the same checked state. Render
+matrices are finite floats; CPU inversion uses doubles, so GPU rounding at
+arbitrary magnitudes/zooms remains a precision limit, not exact visual evidence.
+
+The helper accepts only positive dimensions and positive finite zoom that stays
+positive as float, float-representable pan/zoom/translation, finite projection/view
+matrices and finite noncollapsed visible bounds for both maps. Invalid view
+replacement preserves the previous view. Invalid/minimized size samples suspend
+all events and emit no pass until valid sizes return, preserving maps, view,
+selection and brush. Wheel candidates must have finite deltas/pointer and a
+positive finite resulting zoom; invalid/overflowing/underflowing candidates are
+ignored without clamping. This costs a little repeated validation but avoids an
+invented global camera domain. Confidence: high engineering, low UI preference;
+reversal is confined to private app source/tests, with no public ABI change.
 
 Require positive source frame dimensions and a finite normalized source pivot
 before division, including directly constructed assets that bypass loading.
@@ -526,6 +590,12 @@ batching. Those introduce competing ordering policies. Confidence: high because
 the brief explicitly requires authored order and current playback preserves it;
 there is no v3 evidence for a preferred layer API.
 
+U6 keeps the same west ground/detail, east ground/detail submission order as U4.
+New editor frames have 15 packets initially, 16 after painting an empty ground
+cell, and 15 after erase. All details and sibling payloads remain unchanged
+apart from shifted assigned orders; pan to an exact grid boundary culls west
+column zero and leaves 12 packets. There is no selected-layer Z or sort policy.
+
 ## TM-006
 
 **Apply edits synchronously and resolve from current state.** A valid `set` changes
@@ -566,6 +636,18 @@ behavior is inferred. Alternatives: bake frames into map cells, or rebuild a mes
 after each edit. These complicate identity and stale state. Confidence: high for
 existing playback compatibility, medium for the intentionally simple recompute
 strategy. A cache later needs explicit invalidation and animation handling.
+
+U6's real private editor helper consumes ordered records and writes a new frame
+through existing packet/pass APIs; it never calls native resources. Two clicks
+at different positions in one tick must edit two distinct cells even if final
+Pointer/Axis samples point elsewhere. Selection and brush changes act in order;
+Release/Repeat do not paint, erase, sample or pan. Middle sampling may select
+zero, so a later left press can intentionally erase. No held-button brush stroke,
+input rebinding, undo, scene/editor framework or transaction across a tick is
+promised. Tests exercise full map snapshots and old/new prepared frame ownership.
+Invalid events preserve the relevant values/view; earlier valid events remain
+applied. Confidence is high for the local engineering contract, low as user UI
+taste. Changing controls/state is private app/test migration only.
 
 ## TM-007
 
@@ -656,12 +738,13 @@ meshes only after measurement, retaining order and animation semantics.
 
 ## TM-009
 
-**Use a dedicated fixed display mode before adding editing.** U4 implements
+**Use a dedicated private mode, adding tested editing in U6.** U4 implements
 private `DemoTilemaps` in the existing demo, selected by `--tilemap-display`.
 Two independent dense 3×2 maps each have ground/detail layers. Their full local
-views are `{0,0,192,96}` with 64×48 cells; west/east world top-left origins are
+footprints are `{0,0,192,96}` with 64×48 cells; west/east world top-left origins are
 `{48,240}` and `{328,208}`. Base model is identity, style scale one, detail alpha
-0.5 and elapsed zero. No input, camera pan, animation or editor state is added.
+0.5 and elapsed zero. U4 was fixed; U6 retains this initial content and adds
+private selection/edit/pan/zoom state without animation.
 Rows are authored top-to-bottom:
 
 | Instance | Ground rows | Detail rows |
@@ -675,7 +758,8 @@ Translucent details overlap ground and one east detail covers an empty ground
 cell, distinguishing later-layer blending from a fully opaque replacement.
 The maps have distinct placement/content; no hidden instance sorting or Z policy
 is introduced. Fixed full-map visible rectangles exercise the existing range
-helper; camera-driven culling and visual edits remain future work.
+helper in U4; U6 derives those bounds from its checked view. Visual edits remain
+unobserved pending changed display access.
 
 Platform init uses the authoritative Reader for the committed local
 `graphics/definitions/tilesets/tileset.json`, requiring qualified ID
@@ -688,11 +772,13 @@ Failures propagate with the required ID/source path, never an optional skip.
 No Puny World/dungeon/magecity artwork is required or downloaded.
 
 The existing material loader provides main:images and default depth-disabled
-pass/camera contracts. Platform owns loading; simulation/preparation only reads
-fixed helper state and copies packets. Existing runtime shutdown finishes frames
+pass contracts. Platform owns loading; simulation edits the private helper and
+preparation reads it serially and copies packets. Existing runtime shutdown finishes frames
 before deinit_platform resets the helper, then materials/caches/backend follow
-their existing cleanup owners. No reusable API or build file changes are needed;
-the demo source glob includes the helper. Existing-pinned native dependencies
+their existing cleanup owners. No reusable API changes are needed;
+the demo source glob includes the helper; the existing unit target privately
+compiles its CPU source with a private app include path, without enabling demo or
+native modules. Existing-pinned native dependencies
 are prepared with independent local Git storage; no new dependency/pin is added.
 
 An optional sample would hide required failures and clutter the image. A separate
@@ -700,9 +786,10 @@ app/scene would duplicate lifecycle/setup. The private mode is a narrow reversib
 choice, with high engineering confidence from existing ownership/contracts and
 low confidence as personal UI/API taste. Changing fixture constants/selection
 only affects these app files and records. Build, context access, actual display
-and captured observation are separate evidence in next.md. Painting/picking,
-independent visibility/time controls and editor acceptance are deferred; they do
-not gate this fixed display step.
+and captured observation are separate evidence in next.md. U6 tests private
+editing/selection/view events and compiles demo wiring. Real input, independent
+visibility/time controls and graphical editor acceptance remain unverified or
+deferred. A successful compile/CPU event stream does not resolve X11 access.
 
 ## TM-010
 
@@ -730,7 +817,7 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 These are source observations, not executed acceptance. S1–S12 line spans refer
 to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
 branch-local files; S14 identifies U2, S15 the U3 consumer, S16 the U4 app and
-S17 the U5 CPU picking/editing addition. Links resolve here.
+S17 the U5 CPU picking/editing addition; S18 the U6 private state/input consumer. Links resolve here.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -751,6 +838,7 @@ S17 the U5 CPU picking/editing addition. Links resolve here.
 | S15 | U3's [synthetic pass consumer](../projects/engine/tests/unit/src/tilemap-consumer.cpp) composes unchanged Map, binding/packet and FrameWriter/PassWriter owners. Six cases cover caller order, independent frame snapshots, isolated resolver/group failures and weak lifetimes. The submission header clarifies all-alias metadata stability over binding lifetime; execution results are in next.md. |
 | S16 | U4's private [display helper](../projects/apps/demo/src/tilemap-demo.cpp), [mode option](../projects/apps/demo/src/demo-options.cpp), [main caller](../projects/apps/demo/src/main.cpp) and [platform/preparation/cleanup owner](../projects/apps/demo/src/demo-game.cpp). Reader -> decode -> image upload -> tileset manager -> stable bindings -> four layer vectors -> existing pass; runtime results and ignored local artifacts are in next.md. |
 | S17 | U5's [CPU query/header](../projects/engine/include/cheryl/maps/tilemap.h), [shared geometry/search implementation](../projects/engine/src/maps/tilemap.cpp), [five point cases](../projects/engine/tests/unit/src/tilemap.cpp) and [three transformed consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Owned optional coordinates, computed-edge ownership, independent rectangle oracle, bounded maximum extents and local pick/paint/erase plus camera-derived pass preparation. |
+| S18 | U6 [private helper](../projects/apps/demo/src/tilemap-editor.cpp), [mode wiring](../projects/apps/demo/src/demo-game.cpp), [consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp) and [private build requirements](../projects/engine/tests/unit/CMakeLists.txt). Existing input-record.h/tick-context.h provide captured pointers and copied sizes; game-runtime.cpp::select_window and both update paths publish sizes, native-glfw input-system.cpp::on_mouse_button/on_scroll captures logical pointers. No public producer change. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -790,10 +878,10 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-U1/U2/U3 and U4's limited source/build checkpoint are coordinator-accepted.
-TILEMAP-U5 activates only checked CPU picking and the synthetic transformed
-pick/paint/erase consumer. Actual commands/limits are in next.md. Private real
-input/demo wiring still requires another assignment; X11 access is not retried.
+U1/U2/U3, U4's limited source/build checkpoint and U5 are coordinator-accepted.
+TILEMAP-U6 activates private tested editor state and compiled demo input wiring.
+Actual commands/limits are in next.md; real input/display remains unobserved.
+X11 access is not retried.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
@@ -802,6 +890,7 @@ input/demo wiring still requires another assignment; X11 access is not retried.
 | U3 — implemented consumer | Six synthetic cases compose two instances/layers through existing pass writers; assert authored_order, caller sequence, snapshots, separate failure boundaries and resource release. Header comments clarify the whole binding-lifetime metadata obligation; no production behavior/API change. |
 | U4 — implemented display step | Private --tilemap-display helper/mode; required local four-color atlas validation, two independent 3×2/two-layer maps, explicit ground/detail order and platform cleanup. The display-access gap and all 36 CPU regressions are recorded in next.md; no editor/picking controls. |
 | U5 — implemented CPU picking/editing | LocalPoint and pick_cell share computed-edge geometry with visibility; five point cases and three synthetic transformed edit cases. All 36 accepted regressions plus eight additions execute together; no demo/input/backend change or display retry. |
+| U6 — private editor source | Shared private CPU state for ordered events, independent logical/framebuffer scale conversion, selection/edit/pan/zoom and frame preparation; demo capture/update/cleanup wiring plus seven consumer cases. Execution is recorded below; real input/display remains unverified. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
@@ -828,59 +917,66 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. U5 commands, sanitizer
-status and public-header/ABI limits are in [next.md](next.md); prior U1–U4
+registration. U6 adds explicit private app compilation/include requirements.
+Presence in that runner is not a test run. U6 commands, sanitizer
+status and public-header/ABI limits are in [next.md](next.md); prior U1–U5
 configurations/results remain in committed record history and preserved local logs.
 
-## U5 execution and next action
+## U6 execution and next action
 
-The preserved build/tilemap-u1-debug configuration remains GNU 16.2.1, Debug,
-shared Engine/tests/WARN ON, policy minimum 3.5 and the assigned optional modules/
-apps/docs/test families plus Startup OpenGL OFF. Build only tests-engine and
-its dependencies through the shared wrapper, one job. Build and discovery exit 0;
-all 44 selected cases pass, no skips, in **39.52 seconds**, under ASan/UBSan with
-halt_on_error. Compile commands retain -g/-Wall/-fsanitize=address,undefined.
-The 44 are all 36 accepted cases plus five tilemap picking cases and three
-consumer cases; no accepted name is lost. Complete diagnostics and exact counts
-are in next.md and the ignored u5-* logs/results under the CPU build directory.
+U6 starts clean at ff76e5d and preserves the accepted 44-case baseline, all
+incremental outputs and dependency pins. Seven additional consumer cases use the
+same private app implementation as the demo; the existing engine unit target
+privately compiles tilemap-editor.cpp and includes its directory. No public
+engine API or SDK include requirement changes. Source inspection confirms paired
+tick sizes and observation-time button/scroll pointers already exist; no backend
+or camera correction is required. The small caller and ownership contracts are
+above, with matching compact decisions and exact commands in [next.md](next.md).
 
-```sh
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
-  -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
-  --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
-```
+Executed results: formatting, tests-engine build, registration, focused execution
+and demo build/link all exit 0. **51/51 pass, zero failed/skipped, 32.16 seconds**
+under Debug ASan/UBSan/halt_on_error. Source names = registration = executed names:
+16 consumer (#200–215), 15 submission (#216–230), 20 core (#231–250), retaining
+all 44 accepted U5 names plus exactly seven additions. Event tests confirm two
+positions in one tick, ordered selection, phase/device/routing filtering, 2x/3x
+scale/Y conversion, exact edges/neighbors, finite pan/anchored zoom/reset, invalid
+preservation, 15/16/15 edit frames, culling to 12, unchanged sibling/layer payloads,
+old frame retention and resource release only after all owners disappear.
+Synthetic native bind/draw/upload counters remain zero throughout.
 
-No new source warnings, assertion or sanitizer failure occurs; only command-local
-leak detection is disabled for the already recorded tracing limitation. Leak
-checking stays unverified. No reconfiguration, dependency download/pin change,
-graphics retry, broad suite, device run, install or public documentation build
-occurs. Map layout/get/set and submission/frame/pass/demo/input/backend/startup/
-persistence APIs stay unchanged. The new LocalPoint/pick_cell addition is source
-additive; new function users must relink a compatible Engine. Installed SDK,
-Windows exports, other compiler/STL/GLM ABIs and Release remain unverified.
+The CPU Debug shared Engine/tests/WARN/policy-3.5/OFF configuration and graphics
+Debug GLFW-X11/OpenGL/Startup/demo configuration stay intact. Incremental source
+glob/private requirement regeneration changes no options or pins. Only relevant
+targets/dependencies are built, one job through the shared wrapper. Normal lock
+queueing completes; there is no admission refusal, failed attempt or unchanged
+retry. Current adaptive policy, monitor admission, no swap and 4 GiB host floor
+apply. Header-first helper compilation retains -Wall/-g/-fsanitize=address,undefined
+in both outputs. The demo and changed sources have no diagnostics. Recompiling
+the unit target exposes seven existing -Wdangling-else warnings in unchanged
+asset catalogue/font/runtime/shader/math cases; exact locations are in next.md.
+No warning setting is weakened and no unrelated source is changed.
 
-U4's accepted source/build history and dependency preparation remain in commit
-6a85f16 and saved u4-* logs. Its last probe exited 255 with:
+Complete u6-build.log/u6-registration.log/u6-ctest.log/u6-LastTest.log and exact
+u6-commands.sh/u6-results.json stay under build/tilemap-u1-debug; graphics
+u6-build.log stays under build/tilemap-u4-display-debug. Exact commands, immediate
+exits and registration correspondence are in next.md. Internal links/fences,
+matching TM-001–010 IDs and 40–80-word compact decisions are checked statically;
+source/whitespace and staged review precede the local checkpoint. Native runner
+success establishes these selected CPU behaviors, not the graphical milestone.
 
-```text
-Error: unable to open display :1
-```
+Command-local detect_leaks=0 remains the only sanitizer exception for the known
+LSan tracing fatal error. ASan/UBSan/halt_on_error stay selected; leaks are
+unverified. GNU shared source use is the intended check, not installed SDK,
+Windows/other-toolchain ABI, Release or arbitrary GPU precision acceptance.
 
-The gap is unchanged and is not retried. No actual app atlas decode/upload,
-display/capture, visual edit result or graphical cleanup is claimed by U5's CPU
-passes. Validating CPU picking/packets cannot establish those observations.
+U4's probe exited 255 with `Error: unable to open display :1`; the prerequisite
+has not changed and U6 does not retry. No app atlas decode/upload, real input,
+render/capture, graphical cleanup or visual edit observation is claimed. CPU
+pointer and packet assertions leave that gap open. Controls/size policy are
+reversible engineering choices, not explicit user preferences.
 
-Next proposed bounded action, requiring coordinator selection: wire the accepted
-CPU point/paint/erase flow into the private demo using its existing input/platform
-ownership, with selected instance/layer and camera-derived visible bounds. Keep
-production camera/input/backend/persistence APIs unchanged. Visual observation
-waits for a changed display prerequisite and must use a bounded owned-window
-check. No later unit or recurring loop starts here; publisher owns transport.
+Next bounded action requires coordinator selection: source-review this private
+helper and compiled wiring, then, only after changed display access, perform a
+bounded owned-window input/display observation. No later unit, storage, resizing,
+chunking, sibling integration or recurring loop starts here. Publisher owns
+assigned-branch transport; stop after the local coherent checkpoint.

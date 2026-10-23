@@ -1,52 +1,27 @@
 # Tilemap milestone decisions
 
-U1 implements CPU values/ranges; U2 implements retained bindings and ordered CPU
-packet vectors. U3 composes them through existing pass writers in synthetic cases.
-U4 adds a private fixed demo display; U5 adds checked CPU point picking and a
-transformed pick/paint/erase consumer. Private interactive demo wiring remains proposed.
-These choices are not user-confirmed API preferences.
-The matching IDs in [agent-notes.md](agent-notes.md)
-hold contracts, alternatives, provenance and pending acceptance. Each entry below
-states the outcome, reason, tradeoff and confidence. The next bounded action is
-described in [next.md](next.md), which records actual checks and acceptance limits.
+U1–U5 provide finite CPU maps, checked ranges/picking, retained bindings/packets,
+pass composition and the required atlas demo fixture. U6 shares a private editor
+state implementation between synthetic consumers and compiled demo event wiring.
+These are engineering choices under delegated authority, not user-confirmed API
+or control preferences. Matching IDs in [agent-notes.md](agent-notes.md) retain
+contracts, alternatives, provenance and confidence/reversal costs.
 
-U5 starts from accepted source/build checkpoint 6a85f16. The preserved Debug
-shared Engine runner builds/discovers successfully and passes **44/44**, no skips,
-39.52 seconds, under ASan/UBSan with halt_on_error. This is all 36 accepted cases
-plus five point-query and three transformed consumer cases. Header-first core
-compilation retains no asset/render/camera dependency. No unchanged display retry
-runs: U4's probe exited 255, `Error: unable to open display :1`. App atlas loading,
-actual display/edit/capture and graphical cleanup remain unverified.
+U6 starts clean at accepted ff76e5d (44/44 CPU cases). It adds seven editor cases,
+private app wiring and explicit private unit source/include requirements. All
+**51/51 pass, zero failed/skipped, 32.16 seconds**, under Debug ASan/UBSan. Both
+tests-engine and demo build/link with immediate exit 0. Public
+Map/picking/resolver/camera/input/frame/pass/backend/startup/persistence APIs and
+pins stay unchanged. Exact commands, immediate exits, registration correspondence,
+logs and executed-vs-pending results are in [next.md](next.md#actual-commands-and-results).
 
-Actual commands (one job, existing wrapper/lock, preserved configuration):
-
-```sh
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
-  -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
-  --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
-```
-
-All immediate exits are 0; full commands, diagnostics, registration correspondence
-and saved u5-results.json are in [next.md](next.md#actual-commands-and-results).
-The independent rectangle oracle covers exact edges/neighbors and small/large/
-subnormal sizes; maximum uint32 geometry needs no Map allocation. Pick/paint/erase
-changes only one layer, preserves sibling cells/output and old retained frames,
-keeps authored order and leaves synthetic native counters zero. Leak checking is
-unverified (command-local detect_leaks=0 only); no sanitizer/build setting changes.
-
-The API addition requires new users to relink a compatible Engine; Map layout and
-existing methods are unchanged. Installed SDK/Windows exports, other compiler/
-STL/GLM ABIs and Release remain unverified. Next proposed unit: private interactive
-demo wiring after coordinator selection. Graphical checks need changed display
-access; no later unit, retry loop or transport is started here.
+The unchanged graphical gap remains: U4's probe exited 255 with
+`Error: unable to open display :1`. U6 does not retry it. Compiled demo input and
+synthetic events cannot establish real display/input, asset decode/upload,
+capture, graphical cleanup or leak acceptance. Only command-local detect_leaks=0
+is permitted for the diagnosed tracing limitation; ASan/UBSan/halt_on_error remain
+selected. No installed SDK/Windows/other-toolchain ABI acceptance is inferred.
+No later unit or recurring scheduling is activated; publisher owns transport.
 
 ## TM-001
 
@@ -70,13 +45,13 @@ remain a low-confidence taste inference.
 
 ## TM-003
 
-Keep signed cells checked and place Y-down rows in Y-up world space with source
-pivots and positive source-to-cell scales. U5's local consumer inverts pan/zoom
-before picking and derives visibility from its viewport. Validate finite origins,
-points, float matrices and noncollapsed viewport bounds before editing. Adapter
-base model remains identity and style scale one. This excludes general camera
-transforms and arbitrary precision. Engineering confidence is high from CPU
-cases; naming/preference confidence remains low.
+Convert each captured logical top-left pointer using independent framebuffer
+scales and Y inversion, then invert the private pan/positive zoom into map-local
+coordinates. Shared helper state supplies picking, culling and float pass
+matrices. Invalid dimensions suspend events/preparation; invalid transforms
+preserve the old view. Tick sizes are selected together, without per-event resize
+history. This avoids live platform reads but retains double/float precision
+limits. Confidence is high in engineering, low in UI taste; reversal is private.
 
 ## TM-004
 
@@ -91,23 +66,23 @@ source/relink reversal cost.
 
 ## TM-005
 
-Compose maps/layers in explicit caller order; PassWriter assigns consecutive
-authored_order across row/column vectors. U3 reverses groups to expose sorting.
-U5 derives visibility from pan/zoom, adds a picked ground cell before its existing
-detail and checks 6/7/6 packets across paint/erase frames. Shifted views cull
-exactly at cell edges. Explicit calls cost verbosity but avoid hidden Z/resource
-policy. Engineering confidence is high from source and CPU cases; actual visual
-order remains unobserved.
+Compose west ground/detail then east ground/detail; PassWriter assigns
+consecutive authored_order across row/column vectors. The private editor derives
+visibility from its viewport, paints before existing detail, and retains old
+frames through erase/pan. CPU cases check 15/16/15 packets and exact-edge culling
+to 12. Explicit submission costs verbosity but avoids hidden selected-layer Z
+or resource sorting. Engineering confidence is high from source and focused
+cases; actual visual order remains unobserved.
 
 ## TM-006
 
-Validate transforms and pick before mutating one chosen layer; exterior misses
-and invalid inputs preserve all cells. U5 paints, prepares, erases and prepares
-again, preserving the other layer, sibling map/output and older frames' copied
-matrices/ranges/resources after fixture destruction. This gives synchronous CPU
-ownership, not concurrent publication or graphical edit acceptance. Repeated
-resolution costs CPU work. Engineering confidence is high from focused cases;
-private interactive wiring remains a later unit.
+Share one private editor state between demo and synthetic events. Consume
+ordered gameplay records; selection acts immediately and each click/wheel uses
+its own captured pointer. Only Press edits; middle samples including empty,
+left paints, right erases. Invalid operations preserve values/view, while earlier
+valid events remain applied. Frames retain copied output independently of later
+edits or helper destruction. This costs repeated resolution and lacks tick
+rollback. Engineering confidence is high; controls are reversible private choices.
 
 ## TM-007
 
@@ -131,14 +106,13 @@ actual native results and leak/visual limits are recorded in next.md.
 
 ## TM-009
 
-Use private --tilemap-display mode for two fixed 3×2/two-layer maps, separate
-placements and translucent details. Validate the local four-color atlas through
-Reader/decode/managers before binding; fail with required-source diagnostics.
-Reuse platform loading/cleanup and existing packet/pass/camera contracts,
-bypassing optional samples and controls. This limits setup and ambiguity but
-defers interactive editing/animation. Engineering confidence is high; fixture ergonomics
-have low taste confidence and local reversal cost. Actual build/display/image
-evidence is separate in next.md; an unavailable observation never counts as acceptance.
+Use private --tilemap-display: 1/2 select maps, G/T layers, 3–6 colors;
+left/right/middle paint/erase/sample; WASD pan, wheel zoom, R resets view.
+Retain required atlas diagnostics and platform loading/cleanup. Acquire Events
+before early return; simulation serializes update/preparation. Private unit
+requirements compile the same app source, trading a small app/test coupling for
+one algorithm. Engineering confidence is high; UI taste confidence low, reversal
+local. Compiled wiring leaves real input/display unverified.
 
 ## TM-010
 

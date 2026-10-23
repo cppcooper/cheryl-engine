@@ -149,6 +149,10 @@ public:
             image_shader_ = std::move(materials.images);
             tilemaps_.emplace();
             tilemaps_->load(asset_root_, resources);
+            // This mode returns before ordinary bindings/capture. Raw ordered
+            // records need their own lease, retained through platform cleanup.
+            events_ = engine_.input().capture(CE::Input::Capture::Channel::Events);
+            tilemaps_->update({}, {engine_.window().logical_size(), engine_.window().framebuffer_size()});
             return;
         }
         CE::Assets::Loading::Loader loader(asset_root_);
@@ -256,7 +260,7 @@ public:
 
     void update(const CE::Game::TickContext& tick) override {
         if (tilemap_display_) {
-            camera_.set_framebuffer_size(tick.framebuffer_size);
+            tilemaps_->update(tick.input.records(), {tick.logical_size, tick.framebuffer_size});
             if (++updates_ == update_limit_ && stop_)
                 stop_();
             return;
@@ -388,6 +392,12 @@ public:
     }
 
     void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+        if (tilemap_display_) {
+            CE::Rendering::DrawStyle2D images;
+            images.material = image_shader_;
+            tilemaps_->write(frame, images);
+            return;
+        }
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
         const CE::Rendering::Submission::Context2D context{
@@ -397,10 +407,6 @@ public:
         text.material = font_shader_;
         CE::Rendering::DrawStyle2D images;
         images.material = image_shader_;
-        if (tilemap_display_) {
-            tilemaps_->write(pass, images, context);
-            return;
-        }
         assets_.write(pass, images, text, context);
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)

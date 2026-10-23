@@ -1,7 +1,6 @@
 #pragma once
 
-#include <assets/submission/tilemap2d.h>
-#include <core/rendering/render-frame.h>
+#include "tilemap-editor.h"
 
 #include <filesystem>
 
@@ -9,19 +8,14 @@ namespace CE::Rendering::Resources {
     struct Provider;
 }
 
-// Fixed application fixture: load on platform, read during preparation, destroy
-// on platform after the runtime has finished its frames. No editor/input state.
+// Load/capture on platform, edit/prepare serially on simulation, destroy on
+// platform after the runtime has finished its frames. Assets remain bind-once.
 class DemoTilemaps final {
-    CE::Tilemaps::Map west_{{3, 2}, 2};
-    CE::Tilemaps::Map east_{{3, 2}, 2};
+    DemoTilemapEditor editor_;
     CE::Rendering::Submission::TilemapBindings bindings_;
 
 public:
-    DemoTilemaps();
     void load(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider);
-    void write(
-        CE::Rendering::PassWriter& pass,
-        const CE::Rendering::DrawStyle2D& images,
-        const CE::Rendering::Submission::Context2D& context
-    ) const;
+    void update(std::span<const CE::Input::Events::Record> records, DemoTilemapEditor::Sizes sizes) { editor_.consume(records, sizes); }
+    void write(CE::Rendering::FrameWriter& frame, const CE::Rendering::DrawStyle2D& images) const;
 };
