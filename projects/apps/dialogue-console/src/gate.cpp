@@ -5,6 +5,10 @@
 #include <utility>
 
 namespace GateConsole {
+    D::OperationKeys operation_keys() {
+        return {{{"introduced"}}, {{"introduce"}}};
+    }
+
     D::DefinitionHandle gate_definition() {
         const D::Draft draft{
             .id = {"gate-encounter"},
@@ -24,7 +28,7 @@ namespace GateConsole {
                 {{"departed"}, "You depart", D::NodeKind::Terminal, {}}
             }
         };
-        return D::compile(draft, {{{"introduced"}}, {{"introduce"}}}).value();
+        return D::compile(draft, operation_keys()).value();
     }
 
     std::string_view describe(D::SessionError error) noexcept {
@@ -70,7 +74,10 @@ namespace GateConsole {
     }
 
     Encounter::Encounter(std::size_t* effect_calls)
-    : definition_(gate_definition()), session_(D::Session::start(definition_, {"gate-0001"}).value()), effect_calls_(effect_calls) {}
+    : Encounter(gate_definition(), effect_calls) {}
+
+    Encounter::Encounter(D::DefinitionHandle definition, std::size_t* effect_calls)
+    : definition_(std::move(definition)), session_(D::Session::start(definition_, {"gate-0001"}).value()), effect_calls_(effect_calls) {}
 
     std::expected<D::View, D::SessionError> Encounter::view() {
         return session_.view([this](const D::ConditionKey& key) {

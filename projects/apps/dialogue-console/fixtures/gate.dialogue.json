@@ -1,0 +1,18 @@
+{
+  "definition_schema": 1,
+  "id": "gate-encounter",
+  "revision": 1,
+  "entry": "approach",
+  "nodes": [
+    {"id": "approach", "text": "A guard waits.", "kind": "prompt", "choices": [
+      {"id": "introduce", "text": "Introduce yourself", "target": "gate", "effect": "introduce"},
+      {"id": "silent", "text": "Stay silent", "target": "gate"}
+    ]},
+    {"id": "gate", "text": "The gate is closed.", "kind": "prompt", "choices": [
+      {"id": "pass", "text": "Ask to enter", "target": "admitted", "condition": "introduced"},
+      {"id": "leave", "text": "Leave", "target": "departed"}
+    ]},
+    {"id": "admitted", "text": "You enter", "kind": "terminal", "choices": []},
+    {"id": "departed", "text": "You depart", "kind": "terminal", "choices": []}
+  ]
+}

@@ -11,12 +11,14 @@ unavailable under ST-008. U2 passed 18 session cases, the 16 definition regressi
 and its isolated allocation probe. U3's 26 new cases and all 34 regressions passed
 (60/60), including ten actual child consoles. Its evidence/limits are in next.md.
 No new preference evidence is inferred.
+U4's private startup-only authored input passed 23 new plus all 60 retained cases
+(83/83), with 32 child-console outcomes checked. Full evidence/limits are in next.md.
 
 ## ST-001 — Reusable dialogue, console first
 
 CPU definitions and sessions live in CE::Dialogue; a default-OFF private headless
-console now owns the concrete gate, flag, commands and paired adoption. It links
-Engine and privately includes pinned JSON headers, without optional modules.
+console owns the built-in or explicitly loaded content, flag, commands and paired
+adoption. It links Engine and privately includes pinned JSON headers without modules.
 Numbered presentations select only issued tokens and reject old commands after
 progress/resume. This trades a second command argument for visible scope.
 Confidence is high in separation, medium in command spelling; changing commands
@@ -114,3 +116,22 @@ remain untouched. This authorized narrowing replaces temporary publication and
 trades overwrite convenience for a small auditable boundary. Confidence is high
 on verified Linux, portability remains unverified; replacement/durability would
 require a separately designed policy.
+
+## ST-011 — Compile one chosen authored definition before startup
+
+Load an explicit --definition path before constructing Encounter, or keep the
+built-in gate when omitted. Private definition_schema 1 decodes ordered owned
+Draft values, then uses the existing compiler and fixed introduced/introduce
+allowlist. Owned origin/field/row context and every semantic diagnostic survive
+failure; no fallback or partial definition starts. Usage errors exit 2, rejected
+input 3. This trades live replacement for predictable startup. Confidence is high
+in separation; private format spelling remains medium-confidence and locally reversible.
+
+## ST-012 — Bound authored decoding before freezing
+
+Keep 64 KiB input, 256 nodes, 2048 total choices, 128-byte IDs/keys, 4096-byte
+individual text, 32768-byte aggregate text and five container frames. Strict SAX
+decoding rejects duplicates, coercion, excess nesting and raw NUL before compilation.
+These limits bound lexer storage, draft growth and freeze copies. The byte cap
+precludes 2048 complete choices; a lower-only private seam tests its defensive
+guard. Confidence is high in bounds, medium in chosen text caps; changing caps is local.

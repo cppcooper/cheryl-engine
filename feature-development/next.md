@@ -1,4 +1,118 @@
-# U3 console / paired JSON acceptance
+# U4 bounded authored definitions
+
+Current assignment STORYTELLING-U4 starts from clean accepted U3
+`1a71629f51d0515d6203dc0dd014e1329da8f038`. The private loader, owned diagnostic
+boundary, gate/crossroads JSON fixtures and explicit startup path are implemented;
+**83/83 focused native cases passed**: 23 new plus all 60 accepted regressions,
+with no skips/unrun cases or ASan/UBSan diagnostics. All 32 child consoles returned
+their expected status: 18 normal exits 0, six usage exits 2, eight rejected-input
+exits 3. Engine/public headers, Runtime, the accepted save codec and fresh-save
+implementation remain unchanged. Both decision views add ST-011/012 and retain
+ST-001/007's ownership/application policy. This accepts the assigned native U4
+scope only; portability and wider integration remain unverified.
+
+## U4 implemented contract
+
+`dialogue-console --definition /chosen/gate.dialogue.json` reads and compiles the
+complete explicit file before constructing Encounter/Session or processing input.
+Omission preserves the built-in gate; a bad supplied path never falls back.
+`load_definition(path)` returns a retained immutable definition or owned origin/
+field/row context and every original compiler diagnostic. The header-first
+`dialogue_console_definition.consumer` loads the authored gate, introduces,
+captures/encodes/restores the idle pair, views and passes with one total effect.
+Different crossroads IDs/text/revision use the same caller. Loading, decoding,
+compilation and restore invoke no effects.
+
+Exact schema/bounds are in ST-011/012 in both views: separate definition_schema 1;
+root id/revision/entry/nodes; nodes id/text/kind/choices; choices id/text/target plus
+optional string condition/effect. Supported names stay exactly condition introduced
+and effect introduce, supplied by the private application, never data. Limits:
+65536 document bytes plus one read detection byte, 256 nodes, 2048 total choices,
+128 decoded bytes per ID/key/property, 4096 per text, 32768 aggregate node/choice
+text, five container frames. No coercion, missing-field inference, arbitrary DOM,
+unknown fields, duplicate decoded names, raw NUL or trailing data are accepted.
+
+The byte cap is stronger than the 2048-choice guard: shortest complete rows alone
+need 65535 bytes before node/document overhead. Actual input at that count rejects
+as oversized; a valid production 2048-choice boundary is **not** claimed executed.
+The lower-only private seam exercises the same global guard at three and four
+choices across two nodes, retaining all other production limits. Exact 256-node
+and +1, decoded string/text/aggregate and document-byte boundaries ran through real
+files. These are reversible engineering choices, not personal API taste evidence.
+
+## Actual U4 checks
+
+The existing incremental GNU/Linux Debug configuration, policy minimum 3.5, OFF
+selections, pins and outputs were preserved. All configure/build/native commands
+used the shared-lock/resource wrapper, one job, ASan/UBSan and both halt-on-error
+settings. No resource refusal/exit 75 or cancelled/relaunched queue wait occurred.
+Command-local leak disabling remains ST-008; leak checking is **unverified**.
+Actual commands below all exited **0**, from clone root:
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target dialogue-console tests-dialogue-console tests-engine --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+```
+
+| Complete clone-local log under `builds/storytelling-u1-debug/` | Actual result |
+| --- | --- |
+| `u4-configure.log`, `.exit` | 0; retained Debug/OFF selections and pins; only private app registration changes. |
+| `u4-build-1.log`, `.exit` | 0; focused compilation/link/discovery. No source defect or sanitizer adjustment was needed. |
+| `u4-registration.log`, `.exit` | 0; exactly 83 nonempty cases. |
+| `u4-registration-audit.log` | Source/discovery names match in order, all 60 U3 cases retained, 23 new. |
+| `u4-ctest-1.log`, `.exit` | 0; `100% tests passed out of 83`, 12.15 seconds, no skipped/unrun cases. |
+| `u4-ctest-details-1.log` | Complete preserved LastTest.log; 83 matching RUN/OK/CTest pass records, all 32 child arguments/stdin/stdout/stderr/immediate statuses. |
+| `u4-results-audit.log` | Executed/registered names match; expected child exits 0:18 / 2:6 / 3:8; no skips or ASan/UBSan diagnostics. |
+
+Logs/status files stay ignored and clone-local, outside the commit. Generated rules
+confirm explicit private pinned JSON includes for new translation units, unchanged
+ASan/UBSan instrumentation and Engine-only app linkage. Children inherit the wrapped
+test's resource/sanitizer envelope and never reacquire the lock. Disposable file/
+transcript fixtures stay under clone-local CTest workspaces; authored source
+fixtures are read-only at runtime. All seven changed/new C++ files passed repository
+clang-format dry-run and whitespace checks.
+
+| New passed cases (dialogue_console prefixes) | Observable boundary |
+| --- | --- |
+| definition.consumer, routes, second_definition | Header-first caller, loaded gate order/text and both routes, unavailable pass, one-effect paired resume; different crossroads data, initial/terminal snapshots, zero effects. |
+| definition.ownership, owned_diagnostics | Stable retained definition/session/views after bytes and drafts are mutated/destroyed; complete owned compiler vector and structural origin/field/node/choice context after source destruction. |
+| definition.semantic_errors, order_cycles_scope | Entry/target/empty/scoped duplicate IDs, shape and unsupported/cross-domain keys, including unreachable errors; exact ordered engine diagnostics retained. Nonfirst entry, cross-node choice reuse and explicit cycles remain valid. |
+| definition.duplicates, unknown_missing, shapes_types, schema_revision | Every object's duplicate/unknown/missing fields, escaped-equivalent names, shapes/types/numeric booleans, invalid/unsupported schemas, revision integer/range/overflow. Positive uint64-max revision is valid; mismatched save rejects with live state/tokens preserved. |
+| definition.limits_strings, limits_text, limits_nodes_choices, malformed_depth, raw_nul_bytes, io_and_formats | Exact caps/+1, decoded UTF-8 bytes, global choices via lower guard, aggregate text, bounded depth, malformed/truncated/trailing/second documents, all raw-NUL suffix variants, invalid paths and distinct authored/save formats. Every rejected file preserves exact bytes and creates no sidecar. |
+| transcript.authored_gate_routes, authored_gate_resume, authored_second | Real --definition runs for gate and crossroads; same-field resume invalidates old presentation. Same-owner restore/pass reports one effect; fresh loaded and built-in processes restoring the save report zero. |
+| transcript.authored_mismatch, authored_invalid_startup, authored_usage | Different valid ID/revision definitions reject incompatible saves without flag/presentation changes. Invalid startup exits 3 and usage exits 2, with no encounter/effect output, command processing, fallback or output next to source files. |
+
+## U4 limits and next action
+
+No assigned execution blocker remains. Other platforms/C libraries, leak detection,
+installed SDK use and wider runtime integration are unverified/outside this private
+startup unit. Capped bytes/work do not promise external file-read latency. Exact
+revision checks supply no content authentication/history proof; same-ID/revision
+edits remain application discipline. Flags belong to the serialized owner, never
+topology. Existing fresh-save/no-replacement/no-durability and session/incarnation/
+fault contracts remain in force. No broad campaign, GUI/device, dependency fetch,
+install, pin change, SDK export, documentation build, subagent or external agent
+was started.
+
+Confidence is high in executed staging, ownership, rejection and operation
+boundaries; medium in private format spelling/text caps. Caps/CLI changes have low
+local reversal cost; changed schema meaning needs explicit versioning. The stronger
+byte cap and lower guard check remain distinguished above. Next concrete action:
+coordinator source/log review of this local U4 checkpoint and selection of later
+bounded work. Stop here; no next implementation, sibling integration, recurring
+scheduling or publication transport is started.
+
+## Retained U3 console / paired JSON acceptance
 
 STORYTELLING-U3 is implemented and accepted within the assigned native scope, from
 clean U2 `639fbf505cee4f0970efb7fa4f2ce2253c97abc4`. **60/60 focused cases passed**:
@@ -97,9 +211,8 @@ uncertainties from U1/U2 remain unchanged.
 Confidence is high in the executed ownership/rejection/file boundaries, medium
 in command spelling and private format longevity. Command/adapter changes have
 low local reversal cost; changed schema semantics need explicit versioning.
-Next concrete action: coordinator source/log review of this local U3 checkpoint
-and selection of any subsequent bounded work. Stop here; no implementation unit,
-sibling integration, recurring scheduling or publication transport is started.
+U3's next action was coordinator source/log review; the coordinator accepted it
+and assigned U4 above. Its publication transport remains with the coordinator.
 
 ## Retained U2 acceptance evidence
 
@@ -366,7 +479,6 @@ pure predicates and coherent application flag pairing remain caller obligations.
 Leak checking is unavailable here; no durable external-effect/rollback guarantee
 or migrated snapshot compatibility is claimed.
 
-U2's proposed next unit was the console/JSON milestone, now explicitly assigned
-and implemented as U3 above. No further unit is selected. Stop after U3 acceptance
-and its local checkpoint; coordinator review and publication transport remain
-with the coordinator, without a question or automatic continuation.
+U2 proposed U3, which was implemented and accepted before the current U4 assignment.
+No unit beyond U4 is selected. Stop after U4's local checkpoint for coordinator
+review and later bounded selection, without a question or automatic continuation.

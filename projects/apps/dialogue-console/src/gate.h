@@ -15,6 +15,7 @@ namespace GateConsole {
         bool operator==(const PairedState&) const = default;
     };
 
+    D::OperationKeys operation_keys();
     D::DefinitionHandle gate_definition();
     std::string_view describe(D::SessionError error) noexcept;
 
@@ -28,6 +29,7 @@ namespace GateConsole {
 
     public:
         explicit Encounter(std::size_t* effect_calls = nullptr);
+        explicit Encounter(D::DefinitionHandle definition, std::size_t* effect_calls = nullptr);
         Encounter(const Encounter&) = delete;
         Encounter& operator=(const Encounter&) = delete;
 

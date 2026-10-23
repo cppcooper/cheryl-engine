@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-010` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-012` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -32,6 +32,13 @@ feature-development records were present at the original design baseline. U1
 started with the design records committed and a clean tree. This clone alone is
 owned; protected checkouts and sibling clones are outside the work.
 
+STORYTELLING-U4 authorizes loading one explicit bounded authored definition in the
+private consumer before startup, preserving Engine and U3 save/session contracts.
+Its implementation and exact format are below; 23 new plus all 60 accepted cases
+passed (83/83), with full source/log evidence in [next.md](next.md).
+No new personal preference evidence is
+inferred from this format or the existing agent-authored APIs.
+
 **ST-001 — Small reusable boundary.** U1/U2 implement CPU dialogue definition
 validation and an explicitly advanced session; U3 adds the private console adapter
 under `projects/apps/dialogue-console/`, with a default-OFF
@@ -39,7 +46,10 @@ under `projects/apps/dialogue-console/`, with a default-OFF
 test cases explicitly include pinned JSON 3.11.3 privately. Root options/registration,
 the tutorial-game's `cheryl_add_test_suite` pattern and Engine's helper were inspected
 before wiring. No optional modules, Workers, public header changes or SDK export
-are needed. The app owns its own gate fixture, not an import from a sibling.
+are needed. The app owns its own gate fixture, not an import from a sibling. U4
+adds explicit startup-only authored input and a second private crossroads fixture;
+the no-argument gate and paired commands remain compatible. There is no implicit
+asset discovery, live replacement, callback-time I/O or new Engine content service.
 The definition lives in `CE::Dialogue`, under
 `projects/engine/include/cheryl/core/game-framework/dialogue.h` and its source
 counterpart. The public contract needs no `AbstractGame`, runtime context,
@@ -424,6 +434,117 @@ power-loss durability, hostile directory races, multiwriter coordination and dur
 external-effect guarantees are excluded. Confidence is high for this bounded policy;
 adding replacement would reopen its design rather than silently widen it.
 
+## U4 authored definitions before encounter construction
+
+**ST-011 — One chosen file, existing compilation semantics.** The private
+[loader](../projects/apps/dialogue-console/src/definition-codec.cpp) reads an
+explicit path, structurally decodes owned Draft values, then calls the unchanged
+CPU `compile` with `operation_keys()`. That private helper is shared with the
+built-in gate and supplies exactly condition `introduced` and effect `introduce`.
+JSON cannot declare handlers or expand the allowlist. The accepted compiler still
+owns ID/reference/scope, node-shape and operation validation. Empty IDs remain
+compiler errors; empty text and explicit cycles remain valid. Structural errors
+stop decoding early. Semantic failures retain every original Diagnostic, including
+definition/revision, authored indices, code, field and offending value. A private
+DefinitionError owns origin, structural field/message/node/choice context and the
+complete semantic vector. Formatted diagnostics keep the origin and row location;
+none borrow bytes, a draft or parser token storage.
+
+The small caller in main is equivalent to the header-first consumer case:
+
+```cpp
+auto loaded = GateConsole::load_definition(path);       // owns frozen definition or errors
+if (!loaded) {
+    std::cerr << GateConsole::format_definition_error(loaded.error()) << '\n';
+    return 3;                                         // no Encounter, input or effects
+}
+GateConsole::Encounter encounter(std::move(*loaded), trace ? &effects : nullptr);
+return GateConsole::run_console(encounter, std::cin, std::cout);
+```
+
+The actual CLI compiles either the explicit path or built-in gate before creating
+Encounter. Options --definition PATH and --trace-effects may each appear once in
+either order. Missing/duplicate/unknown options exit 2; read/decode/compile rejection
+exits 3 before command processing; later unexpected exceptions retain the existing
+exit 1 behavior. A supplied bad path never falls back. No argument preserves the
+built-in encounter. This is a medium-confidence private CLI choice, not user API
+taste; its reversal cost is confined to this consumer/tests.
+
+Authored JSON is a complete, separate definition_schema 1 document. Root fields
+are exactly definition_schema (integer 1), id (string), revision (positive uint64),
+entry (string), nodes (ordered array). Each node requires id, text, kind (prompt or
+terminal), choices (ordered array, explicitly empty for terminals). Each choice
+requires id, text, target; optional condition/effect values are strings when present,
+never null, bool or an expression. Required fields cannot be inferred. Properties
+may appear in any order, but duplicate decoded names, unknown/missing fields and
+wrong shapes/types reject at every object level. This does not change public
+Draft/Session semantics or provide a general authored-content service.
+
+[gate.dialogue.json](../projects/apps/dialogue-console/fixtures/gate.dialogue.json)
+contains the existing four-node encounter. The second complete small example,
+[crossroads.dialogue.json](../projects/apps/dialogue-console/fixtures/crossroads.dialogue.json),
+is deliberately different data rather than a second hard-coded path:
+
+```json
+{
+  "definition_schema": 1,
+  "id": "crossroads",
+  "revision": 7,
+  "entry": "arrival",
+  "nodes": [
+    {"id": "arrival", "text": "Sunset at the crossroads.", "kind": "prompt", "choices": [
+      {"id": "rest", "text": "Rest here", "target": "camp"}
+    ]},
+    {"id": "camp", "text": "You make camp.", "kind": "terminal", "choices": []}
+  ]
+}
+```
+
+The compiled handle retains a private frozen copy after input bytes and decoded
+draft destruction/mutation. Encounter retains the chosen definition for start and
+every resume. Existing exact save definition/revision/node checks therefore apply
+to loaded content too; a valid revision 2 file does not authorize a revision 1 save.
+Neither author loading nor restore infers flags, authenticates history, replays
+effects or creates a save. A same-ID/revision edited definition remains an
+application revision-discipline risk, not something this codec detects.
+
+**ST-012 — Bound the owned draft and validation work.** All bounds are decoded
+UTF-8 byte counts where strings are concerned, without normalization or coercion:
+
+| Input bound | Reason and enforcement |
+| --- | --- |
+| 65536 document bytes | Bounded read allocates exactly cap plus one detection byte before opening; checks read/close, rejects oversize before parsing. No writes or sidecars. This also bounds nlohmann's lexer token buffer before callbacks. |
+| 256 nodes / 2048 total choices | Check before emplacing each row; total choice budget is across nodes, not per node. Bounds draft vectors and existing compiler work before freeze. |
+| 128 bytes per ID, operation key or property name | Reject before moving values into the draft; supports opaque UTF-8 IDs without unlimited identity/key copies. Empty identities still reach semantic validation. |
+| 4096 bytes per node/choice text | Allows console prose while bounding each owned string and its freeze copy. Text may be empty. |
+| 32768 aggregate node/choice text bytes | Check remaining budget before accumulation; limits repeated text copies in the draft and frozen definition. IDs are independently bounded by per-field and document caps. |
+| Five container levels | Exactly document → nodes array → node → choices array → choice. Fixed SAX frames reject deeper objects/arrays before allocating recursive content. No arbitrary DOM is constructed. |
+
+Raw NUL is rejected across the entire byte span before parsing, including valid
+JSON followed by NUL, NUL+junk or NUL+another document. Strict full-document parsing
+rejects truncation, trailing junk/second documents, comments, wrong types/numeric
+booleans, noninteger/unsupported schemas, zero/negative or overflowing revision.
+Decoded key bitsets detect escaped-equivalent duplicates. String and aggregate
+limits run before draft adoption; valid structure is compiled eagerly, including
+unreachable rows, without callbacks. Rejected inputs expose no usable definition.
+
+2048 shortest complete choice objects alone need 65535 bytes before their node/
+document overhead, so the fixed document cap is stronger. Keep the assigned total
+choice cap as defense rather than claim a production-boundary input can reach it.
+A private Testing decoder can only lower that one budget; the same SAX guard is
+tested at an exact smaller global boundary and +1, with all production byte/string/
+node/depth checks retained. The real shortest 2048-choice document rejects as
+oversized. This seam is local test coverage, not a way to relax caller limits.
+
+Confidence is high in bounded ownership and staged startup, medium in the chosen
+text caps/format longevity. Limits and private spelling are locally reversible;
+changed schema meaning needs an explicit version. A DOM/pruning callback was
+rejected because it can keep parsing arbitrarily deep ignored content. Another
+compiler/loader in Engine would duplicate semantic authority and expand scope.
+U4 instead changes only private app startup, data and tests, preserving the save
+codec, file-save guarantees, public headers, Session/incarnation/fault contracts
+and Runtime. Native results and portability/leak limits are in next.md.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -512,10 +633,12 @@ UI would consume copied views and send scoped selections to simulation.
 | --- | --- |
 | U1: validated CPU definition | Accepted for the assigned definition scope: all 16 focused native cases passed under Debug ASan/UBSan, including private construction, independent copied storage, retained ownership, lookup and eager owning diagnostics. Leak checking is unavailable under ST-008; see next.md for complete logs and commands. |
 | U2: explicit session | Implemented and verified: all 18 session cases plus the 16 definition regressions passed under Debug ASan/UBSan. Incarnation freshness, owning views, checked moves/lifecycle, borrowed handlers, exceptions, reentrancy, overflow and value resume are covered. A separate allocation-rejection probe passed for owned-copy failures and the post-effect path. |
-| U3: console acceptance | Private headless gate, numbered selections, complete versioned JSON envelope, exclusive fresh-path save/resume and focused state/codec/file/transcript cases are implemented. Exact executed counts/results and remaining limits are in next.md; build success alone does not establish these behaviors. |
+| U3: console acceptance | Accepted private headless gate, numbered selections, complete paired JSON envelope and exclusive fresh-path save/resume, with 26 new plus 34 retained cases passing. Full evidence/limits are in next.md. |
+| U4: authored startup | Private bounded definition_schema 1 input compiles before Encounter construction with fixed application keys. 17 definition cases and six new transcript cases passed with all 60 regressions (83/83); all 32 child statuses match expected normal/usage/rejection outcomes. |
 
-U1V completed U1 verification; U2 completed CPU sessions/values. The current U3
-assignment completes only the console milestone; later scope requires coordinator selection.
+U1V completed U1 verification; U2 completed CPU sessions/values; U3 completed the
+console milestone. Current U4 completes only authored startup; later scope requires
+coordinator selection.
 [next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
@@ -600,3 +723,17 @@ suite or global sanitizer setting was needed. Source/test registration, full log
 immediate statuses and native coverage limits are in [next.md](next.md).
 Leak checking and other platform/C-library behavior remain unverified. This accepts
 only the assigned U3 console milestone; further work needs coordinator selection.
+
+U4's [definition cases](../projects/apps/dialogue-console/tests/definition-codec.cpp)
+and added [executable transcripts](../projects/apps/dialogue-console/tests/transcripts.cpp)
+now provide native evidence for ST-011/012: all 17 definition and six new transcript
+cases passed with all 60 accepted regressions (83/83, no skips or sanitizer
+diagnostics). The 32 actual children returned expected exits: 18 normal, six usage,
+eight rejected-startup outcomes. Invalid startup has no encounter output, effects
+or command processing. Loaded gate order/routes and zero-replay paired resume,
+crossroads data, ownership after source destruction, exact retained diagnostic
+vectors, strict structural rejection and actual file bounds/byte preservation
+were exercised. The lower-only guard seam and stronger document limit remain
+distinguished above. Public headers/Engine/Runtime and save-codec/file contracts
+were preserved. Exact commands, full logs, counts and portability/leak/integration
+limits are in [next.md](next.md). This accepts only assigned U4; stop for coordinator review.

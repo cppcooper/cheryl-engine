@@ -1,0 +1,12 @@
+{
+  "definition_schema": 1,
+  "id": "crossroads",
+  "revision": 7,
+  "entry": "arrival",
+  "nodes": [
+    {"id": "arrival", "text": "Sunset at the crossroads.", "kind": "prompt", "choices": [
+      {"id": "rest", "text": "Rest here", "target": "camp"}
+    ]},
+    {"id": "camp", "text": "You make camp.", "kind": "terminal", "choices": []}
+  ]
+}
