@@ -1,7 +1,8 @@
-# Tilemap milestone: CPU values and retained packets
+# Tilemap milestone: CPU values, packets and pass consumer
 
-This branch implements U1's CPU map values/visible-cell ranges and U2's retained
-bindings/CPU packet adapter. The first graphical consumer remains a proposal.
+This branch implements U1's CPU values/ranges, U2's retained binding/packet
+adapter, and U3's synthetic pass consumer. The first graphical consumer remains
+a proposal.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
@@ -13,8 +14,11 @@ U1 starts at design checkpoint `2e74a09ccd56f55d6256699ed69668ba6dbd7c00` on
 parent `AGENTS.md`, `coordination/autonomy-policy.md`, tilemap feature brief and
 the bounded coordinator assignments. U1 was accepted at
 `dec1ec55b1c8d55cfed22ffcf2003238a9878a09`; U2 starts there with a clean index/tree.
-Only this clone is owned. No pass integration, native backend work, demo controls,
-persistence, resizing or chunking is implemented by U2.
+U2 was accepted at `c77496f0adace3e76c9a59fc573a1a0ef138eb63`; U3 starts there
+with a clean index/tree. Only this clone is owned. U3 adds consumer cases and a
+binding lifetime comment, with no production Map, resolver, frame/pass or backend
+behavior/API changes. Demo controls, persistence, resizing and chunking remain
+unimplemented.
 
 ## CPU caller implemented in U1
 
@@ -63,11 +67,48 @@ resolution only, with no pass insertion. New naming follows current submission
 vocabulary, not an asserted user preference. H1's explicit caller setup intent
 is weak supporting evidence; H3's legacy mutable selection is not adopted.
 
+## Small U3 pass caller
+
+With two independent maps, their views and a stable binding table prepared as
+above, the synthetic consumer composes existing APIs directly:
+
+```cpp
+#include <assets/submission/tilemap2d.h>
+#include <core/rendering/render-frame.h>
+
+namespace Maps = CE::Tilemaps;
+namespace Render = CE::Rendering;
+namespace Submit = CE::Rendering::Submission;
+constexpr Maps::LayerIndex ground{0}, detail{1};
+Render::Frame frame;
+{
+    Render::FrameWriter writer(frame);
+    auto pass = writer.begin_pass(projection, camera_view, constraints, parameters);
+    const Submit::Context2D context{
+        pass.semantics(), pass.parameters(), pass.constraints()
+    };
+    pass.add(Submit::resolve_tilemap_layer(west, ground, bindings, west_view, style, context));
+    pass.add(Submit::resolve_tilemap_layer(west, detail, bindings, west_view, style, context));
+    pass.add(Submit::resolve_tilemap_layer(east, ground, bindings, east_view, style, context));
+    pass.add(Submit::resolve_tilemap_layer(east, detail, bindings, east_view, style, context));
+}
+// Observe frame.passes() only while its frame is alive and excluded from writing/recycling.
+```
+
+`tilemap_consumer.caller` supplies synthetic retained geometry/image/materials,
+copies pass semantics/parameters/constraints into Context2D, and adds 3+2+2+1
+packets. The table shares handles; bound source metadata must stay unchanged
+through every alias for every retaining binding's lifetime (TM-002). The fixture
+constructs an actually const Asset and follows that obligation. No scene wrapper,
+separate runner, asset file, runtime startup or rendering is introduced. Executed
+counts/results and lifetime limits belong to [next.md](next.md).
+
 ## Proposed caller sequence
 
 The broader graphical consumer below remains a proposal. `CE::Tilemaps` CPU
 values and `Submission::{TilemapBindings,TilemapView,resolve_tilemap_layer}` exist;
-this full runtime/pass sequence has not been exercised by U2.
+U3 exercises synthetic pass composition; this full runtime/artwork sequence
+remains unimplemented and unexecuted.
 `FrameWriter`, `Context2D`, and asset handles follow the current engine. Exact new naming has low
 preference confidence and should stay local to one consumer until exercised.
 
@@ -178,11 +219,21 @@ and all in-grid frames; authoritative `Clip::cell_at(0ms)` validates nonempty,
 positive, nonoverflowing timelines at setup. This validation does not advance time
 or animate a final selection. Unrelated named views/autotile rules are not used or
 validated. Geometry/material/range/parameter compatibility remains with existing
-`resolve_tile` for each emitted packet. Bindings remain stable during
-resolution; there is no hot replacement API in this milestone. Missing nonzero
+`resolve_tile` for each emitted packet.
+
+The table retains handles, not a deep copy or a mechanism that freezes an Asset.
+Bound source metadata must remain unchanged through **every alias** for the
+lifetime of **any binding** retaining it, including copies of the table. A
+`shared_ptr<const Asset>` restricts access through that handle; it does not freeze
+an object reachable through another alias. Synchronizing a mutation between
+resolution calls does not satisfy this bind-once metadata obligation. Setup
+validation and the asset's target lookup index rely on it. Per-call table, asset
+and resource stability obligations still apply. This is the explicit U3 caller
+contract, with high confidence; no metadata-copy layer, hot replacement or ongoing
+revalidation is implemented. There is no hot replacement API in this milestone. Missing nonzero
 bindings throw `bad_request` with logical ID, layer and cell coordinates; no silent blank
 fallback. The future consumer paints only registered IDs. Copies own independent binding
-tables while sharing immutable assets; no lookup reference or mutation handle
+tables while sharing source handles under that metadata contract; no lookup reference or mutation handle
 escapes. A private friend resolver keeps the public table surface at `add`.
 Reversal cost is local to this new submission header/source and its caller cases;
 changing exposed STL layout still needs consumer recompilation. Requiring an image
@@ -316,7 +367,14 @@ Two instances' relative order is likewise the caller's sequence. Layer count is
 fixed between whole-value assignments; names, visibility and editor selection belong to the consumer.
 U2 returns only one vector and leaves every packet's default `authored_order`
 untouched (zero). The existing pass writer, not this adapter, assigns insertion
-order later. No pass, renderer or backend code changes are part of U2.
+order later. U3's synthetic caller adds four vectors from two maps/two layers
+through that existing pass writer. It asserts contiguous orders 0–7 across groups
+of 3, 2, 2 and 1 packets; reversing the caller's group sequence retains each
+vector's row/column order and changes the composed order. A distinct retained
+image/material pair moves from position 0 to position 5 in the reordered case,
+so grouping by resource cannot silently satisfy the expected sequence. Models
+retain Z=0.
+These are consumer cases, not changes to pass, renderer or backend behavior.
 
 Default 2D pass constraints and ordinary textured materials disable depth;
 straight-alpha composition makes later detail draws visible over earlier ground
@@ -344,8 +402,16 @@ The shared tileset is never mutated. Editing map A or changing its clock cannot
 change map B (S3, S12). U2 exposes elapsed as a copied input, not a clock
 owner. `resolve_tile(asset, final_cell, ...)` receives the already-final index
 and performs no second animation lookup. Edit/erase is observed on the next
-resolution while earlier vectors preserve retained values. Alternatives: bake
-frames into map cells, or rebuild a mesh
+resolution while earlier vectors preserve retained values.
+
+U3 prepares an older Frame, ends its writer scope, edits one west-map ID and
+changes only that instance's origin, then prepares a separate newer Frame. The
+old copied matrices, selected ranges, resources and authored order must remain
+unchanged. The east map's entire cell snapshot and all three of its packet
+payloads/order remain unchanged. Frame/pass observations occur only after writer
+scopes end, and helpers do not retain borrowed frame spans across recycling.
+This is synchronous CPU composition evidence; no publication/concurrency behavior
+is inferred. Alternatives: bake frames into map cells, or rebuild a mesh
 after each edit. These complicate identity and stale state. Confidence: high for
 existing playback compatibility, medium for the intentionally simple recompute
 strategy. A cache later needs explicit invalidation and animation handling.
@@ -395,11 +461,34 @@ preserve a preexisting caller vector. There is no output-parameter partial resul
 pass insertion, native call, or whole-frame transaction in U2. A later consumer
 can use `pass.add(vector)` under the existing separate group contract (S7).
 
+U3 now exercises that separate contract. One case successfully inserts two prior
+packets, proves the west resolver setup is valid, then changes only a later
+visible map cell to unbound ID 999. Its negative assertion invokes only the
+resolver, while a geometry-query counter proves an earlier valid cell reached
+packet validation. No failed vector is submitted; prior payloads/order survive.
+Another case resolves a valid two-packet group, validates both packets against
+the actual pass constraints, then changes only the later packet's vertex_count
+from 4 to 0 before group add. Rejection must append neither packet and preserve
+all prior draws. These cases isolate failure boundaries instead of conflating
+resolution with insertion. They promise neither frame rollback nor native work.
+
 Bindings retain assets; packets independently retain geometry, material/pipeline
 and images, with copied matrices. They do not keep the map, binding table or asset
 metadata alive. Native resource-domain validity still depends on the original
 live backend. Existing runtime graphics-owner recycling/cleanup remains required,
 even though resolution is CPU-only (S7, S8, S12).
+
+U3's retention case destroys maps, bindings, provider and all other fixture owners
+while a prepared Frame is the sole remaining resource owner. The Asset weak
+handle expires, while geometry/image/material/pipeline remain retained. Only then
+does the case copy a packet vector from the frame. Recycling the Frame releases
+its share; the copied vector still owns those resources.
+Clearing the vector then expires all four resource weak handles. All borrowed
+frame spans/writers are out of scope before recycle. Synthetic geometry/image
+bind/draw counters and provider upload-entry counters stay zero by contract;
+stand-ins are directly constructed and upload capability is never given to the
+consumer. This bounds the evidence to the local fake resources; no backend
+resource domain, graphics-owner teardown or visual outcome is established.
 
 For V visible cells and N nonempty cells on a layer, traversal visits O(V) cells
 with expected constant-time binding lookup and O(N) output storage. Per-cell costs
@@ -467,7 +556,7 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 
 These are source observations, not executed acceptance. S1–S12 line spans refer
 to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
-branch-local files; S14 identifies U2. Links resolve in this clone.
+branch-local files; S14 identifies U2 and S15 the U3 consumer. Links resolve here.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -485,6 +574,7 @@ branch-local files; S14 identifies U2. Links resolve in this clone.
 | S12 | [Game hooks](../projects/engine/include/cheryl/core/game-framework/abstract-game.h), lines 9–34 and 64–102. Upload/binding setup belongs to platform init, updates/preparation share simulation ownership, preparation may be skipped, writers are borrowed, cleanup waits for frames. |
 | S13 | U1's current [CPU header](../projects/engine/include/cheryl/maps/tilemap.h), [implementation](../projects/engine/src/maps/tilemap.cpp) and [focused cases](../projects/engine/tests/unit/src/tilemap.cpp). These own map values, assignment/move invariants and computed-edge visibility; current command outcomes are in next.md. |
 | S14 | U2's [submission header](../projects/engine/include/cheryl/assets/submission/tilemap2d.h), [implementation](../projects/engine/src/assets/submission/tilemap2d.cpp) and [synthetic cases](../projects/engine/tests/unit/src/tilemap-submission.cpp). Retained ID bindings, checked source metadata, pivot transforms, once-only animation and local ordered vectors; exact executed selections are in next.md. |
+| S15 | U3's [synthetic pass consumer](../projects/engine/tests/unit/src/tilemap-consumer.cpp) composes unchanged Map, binding/packet and FrameWriter/PassWriter owners. Six cases cover caller order, independent frame snapshots, isolated resolver/group failures and weak lifetimes. The submission header clarifies all-alias metadata stability over binding lifetime; execution results are in next.md. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -524,22 +614,24 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-U1 is coordinator-accepted. TILEMAP-U2 activates only retained bindings, CPU layer
-packet vectors and their focused verification; U3 remains a future assignment.
-Actual command outcomes and limitations are in next.md.
+U1/U2 are coordinator-accepted. TILEMAP-U3 activates only the synthetic pass
+consumer and bind-once lifetime contract clarification. Actual command outcomes
+and limitations are in next.md. Later graphical work needs another assignment.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
 | U1 — implemented source | CPU map values, checked edits/queries, assignment/move invariants and computed-edge visible ranges; 15 focused cases. Owners: `include/cheryl/maps/tilemap.h`, `src/maps/tilemap.cpp`, `tests/unit/src/tilemap.cpp` under `projects/engine/`. No rendering/assets dependency in the CPU API. See [next.md](next.md) for actual verification limits. |
 | U2 — implemented source | Retained bindings and `Submission::resolve_tilemap_layer` in separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, metadata, placement, vector order, retention, atomic result failure and animation. No pass insertion or backend work. |
-| U3 — next proposed step | Small synthetic consumer inserting two instances/layers through existing pass writers; assert assigned authored_order, caller sequence and group failure preservation. No new pass/backend API. A dedicated demo/editor helper remains later, separately assigned work. |
+| U3 — implemented consumer | Six synthetic cases compose two instances/layers through existing pass writers; assert authored_order, caller sequence, snapshots, separate failure boundaries and resource release. Header comments clarify the whole binding-lifetime metadata obligation; no production behavior/API change. |
+| U4 — proposed display step | Minimal existing-demo display fixture for two in-memory maps/two layers using suitable existing local art. Check actual layered display and placement before choosing editor/picking controls. Requires a later coordinator assignment. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
 commands and the LeakSanitizer limitation are in next.md. U2's 15 synthetic packet
 cases and all 15 U1 regressions passed together under the same instrumentation.
-The broader rendering/editor observations below remain milestone acceptance targets, with
-graphical consumer acceptance still pending:
+U3's six consumer cases and all 30 prior regressions passed together under the
+same instrumentation. Exact execution/logs are recorded in next.md. The broader rendering/editor observations below remain milestone
+acceptance targets, with graphical consumer acceptance still pending:
 
 | Check | Required observable result |
 | --- | --- |
@@ -557,5 +649,37 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. U1/U2 exact commands,
+registration. Presence in that runner is not a test run. U1/U2/U3 exact commands,
 sanitizer status and public-header/ABI limits are recorded in [next.md](next.md).
+
+## U3 execution and next action
+
+U3's final run passed six consumer cases plus all 30 U1/U2 regressions: 36/36,
+no skips, 28.26 seconds, Debug ASan/UBSan. Build, discovery and execution exited 0.
+The checks establish caller-controlled order, old/new frame independence, separate
+resolver/group failure preservation and weak resource release. Leak checking,
+real graphics-domain/visual behavior, installed SDK/Windows and other ABI/Release
+contexts remain unverified. The next proposed action is U4's minimal two-map,
+two-layer display fixture, after suitable local-art validation and a later
+coordinator assignment; no next unit starts here.
+
+The final source uses an actually const bound Asset and keeps all borrowed frame
+views outside writing/recycling phases. That honors the metadata caller contract;
+it does not enforce every external alias or establish concurrent publication.
+The header clarification changes no callable/layout or implementation. Detailed
+logs, intermediate passing fixture refinements and policy boundaries are in
+[next.md](next.md). Exact executed commands, all from this clone:
+
+```sh
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
+  -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
+  --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
+```

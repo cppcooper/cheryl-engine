@@ -46,10 +46,13 @@ namespace CE::Rendering::Submission {
         const Context2D& context
     );
 
-    /** Setup-owned logical-ID table retaining immutable tileset snapshots and original targets.
-     * Copies own independent tables with shared immutable assets. No replacement/removal
-     * or mutable binding view is exposed. Keep the table/assets stable during resolution;
-     * synchronize externally if used across owners. This does not define a save format.
+    /** Setup-owned logical-ID table retaining source handles and original targets.
+     * Copies own independent tables sharing the same assets; retention neither deep-copies
+     * nor freezes an asset. Bound source metadata must remain unchanged through EVERY
+     * alias for the lifetime of ANY binding retaining it, including table copies.
+     * No replacement/removal or mutable binding view is exposed. Keep the table/assets
+     * and resources stable during each resolution; synchronize externally across owners.
+     * This does not define a save format or perform ongoing metadata revalidation.
      */
     class CE_TYPE_API TilemapBindings final {
         struct Binding {
@@ -78,7 +81,7 @@ namespace CE::Rendering::Submission {
  * @fn void CE::Rendering::Submission::TilemapBindings::add(CE::Tilemaps::TileId id, std::shared_ptr<const CE::Assets::Tilesets::Asset> asset, CE::Assets::Grids::CellIndex target)
  * @brief Retain one nonzero logical identity bound to an original atlas target, including target zero.
  * @param id Application-owned nonzero identity; duplicates are rejected.
- * @param asset Stable tileset snapshot with nonzero source grid/frame, normalized pivot and an image containing the grid.
+ * @param asset Retained source handle with nonzero grid/frame, normalized pivot and an image containing the grid. Metadata must stay unchanged through every alias while any binding retains it.
  * @param target Original in-grid target; each resolution applies its animation exactly once at the view's time.
  * @throws CE::Exceptions::invalid_args For zero/duplicate IDs, null assets/images, invalid grid/pivot/animation metadata or targets.
  * All clips require valid targets/frames and positive, representable timelines; unrelated views/autotile rules are not inspected.

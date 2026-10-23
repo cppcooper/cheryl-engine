@@ -1,12 +1,39 @@
 # Tilemap milestone decisions
 
 U1 implements CPU values/ranges; U2 implements retained bindings and ordered CPU
-packet vectors. The first graphical consumer and pass integration remain proposals.
+packet vectors. U3 composes them through existing pass writers in synthetic cases.
+The first graphical consumer remains a proposal.
 These choices are not user-confirmed API preferences.
 The matching IDs in [agent-notes.md](agent-notes.md)
 hold contracts, alternatives, provenance and pending acceptance. Each entry below
 states the outcome, reason, tradeoff and confidence. The proposed next unit is
 described in [next.md](next.md), which records actual checks and acceptance limits.
+
+U3's final run passed six consumer cases plus all 30 U1/U2 regressions: 36/36,
+no skips, 28.26 seconds, Debug ASan/UBSan. Build, discovery and execution exited 0.
+The checks establish caller-controlled order, old/new frame independence, separate
+resolver/group failure preservation and weak resource release. Leak checking,
+real graphics-domain/visual behavior, installed SDK/Windows and other ABI/Release
+contexts remain unverified. The next proposed action is U4's minimal two-map,
+two-layer display fixture, after suitable local-art validation and a later
+coordinator assignment; no next unit starts here.
+
+Commands executed from this clone (one job through the shared wrapper; leak
+detection disabled only per invocation):
+
+```sh
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
+  -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
+  --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
+```
 
 ## TM-001
 
@@ -19,13 +46,13 @@ is high; the representation remains a proposal about taste, with little v3 evide
 
 ## TM-002
 
-Bind nonzero logical IDs to retained immutable tilesets and original atlas targets;
-zero stays empty while atlas zero remains drawable. Setup rejects duplicates,
-null assets/images, invalid grids/pivots/targets and invalid timelines before
-insertion. Resource compatibility stays with existing per-cell resolution. This
-retains metadata longer and restricts directly assembled assets, but avoids
-per-cell handles and delayed metadata failures. Engineering confidence is high;
-naming and palette ergonomics have low personal-preference confidence.
+Retain handles and original atlas targets for nonzero IDs; zero stays empty,
+atlas zero draws. Retention neither deep-copies nor freezes an asset. Metadata
+must remain unchanged through every alias while any binding retains it, including
+table copies. Per-call table/resource stability also applies. Setup validation
+preserves earlier entries, trading flexibility for bind-once safety. Confidence
+is high from the explicit user contract and source; exact API ergonomics remain
+a low-confidence taste inference.
 
 ## TM-003
 
@@ -50,23 +77,23 @@ coordinate preference is implied.
 
 ## TM-005
 
-Return each requested layer's visible nonempty cells in increasing row/column
-vector order. The caller chooses layer/instance order; packets retain default
-zero authored_order until the existing pass writer assigns it. This preserves
-explicit composition without texture sorting, at the cost of deliberate layer
-calls and one packet per cell. Engineering confidence is high from ordered
-synthetic outputs and current pass contracts; actual pass/graphical integration
-is deferred, and exact API vocabulary has low preference confidence.
+Compose two maps/two layers by adding resolved vectors in explicit caller order.
+Existing PassWriter assigns consecutive authored_order values across groups;
+vector row/column order remains intact. U3's synthetic consumer changes group
+sequence to expose implicit sorting or Z policies. This keeps composition
+flexible without a scene abstraction, at the cost of explicit calls. Engineering
+confidence is high in the source contract; actual commands/results are in next.md.
+Rendering and user preference beyond the explicit requirement remain unverified.
 
 ## TM-006
 
-Read current cells and resolve each visible binding's original target exactly
-once at caller-provided nonnegative milliseconds. Return new packets without
-mutating shared assets or owning a clock. Immediate edits and independent times
-therefore affect only subsequent resolutions; older vectors retain their values.
-Repeated lookup/resolution costs CPU work instead of cache invalidation machinery.
-Engineering confidence is high from animation-boundary, independent-instance and
-erase cases; future consumer scheduling and performance remain unverified.
+Edits affect subsequent resolutions and independently prepared frames. U3 edits
+one map and moves its view before preparing a newer frame; an older frame keeps
+copied matrices, selected ranges and retained resources, while the other map's
+values/output stay independent. This requires separate frame ownership and
+observations outside writer/recycle phases, not concurrent-read guarantees.
+Repeated packet generation costs CPU work. Confidence is high in the engineering
+boundary; native execution status is recorded separately from future visual acceptance.
 
 ## TM-007
 
@@ -79,14 +106,14 @@ is high about compatibility and medium about this scope choice, without v3 prefe
 
 ## TM-008
 
-Resolve one layer through existing resolve_tile into a function-local owned
-packet vector, with copied matrices and retained geometry/material/images.
-Failure after a valid cell exposes no partial vector and preserves caller inputs;
-there is no whole-frame transaction. Native calls and pass insertion remain
-outside this adapter. This accepts temporary vectors and repeated validation.
-Engineering confidence is high from synthetic retention/failure checks; native
-domain lifetime still belongs to the backend, and performance suitability remains
-unmeasured.
+Use existing vector insertion after CPU resolution. U3 separately checks
+resolver failure after a valid cell and group rejection after invalidating only
+a later validated packet's range. Earlier pass draws survive both. A frame
+alone retains resources after fixture destruction; a copied vector survives
+frame recycling. Clearing it expires resource weak handles. This gives group
+preservation, not frame rollback or graphics-domain teardown. Confidence is high
+from executed cases;
+actual native results and leak/visual limits are recorded in next.md.
 
 ## TM-009
 
