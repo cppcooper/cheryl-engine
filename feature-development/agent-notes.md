@@ -280,3 +280,237 @@ Caves/dungeons may need masks/regions/room graphs; geography fields/drainage;
 settlements sites/roads/parcels; tectonic edits changed regions and explicit
 invalidation/remap/revalidation of dependent layers. These remain separate
 related semantic outputs. U1 does not design or implement them or a common World.
+
+## U2 authority and initial proposal (PROCGEN-007–010)
+
+U1 is accepted at `323914810d6a9e4cd6f870baaaa5916c50747c8a`; U2 is explicitly
+activated. Initial status and diffs are clean. Read updated workspace rules,
+autonomy, brief/workstream, assignment, W018/W019 and clone instructions/records.
+Reuse the existing Debug/GNU 16.2.1/UBSan configuration and preserve U1 replay.
+
+Proposed success-path caller recorded before dependent APIs; executable code
+will check errors/no-path before dereferencing:
+
+```cpp
+auto maze = ProcGen::generate(extents, key, generation_budget).value();
+auto graph = ProcGen::maze_view(maze);
+auto route = ProcGen::find_route(graph, entrance, goal,
+    ProcGen::Heuristic::manhattan, search_limits).value();
+auto metrics = ProcGen::measure(graph, entrance, goal,
+    route.path->cells, analysis_budget).value();
+```
+
+All new spelling/types are engineering choices, not inferred personal taste.
+PROCGEN-002 retains nominated HyperMaze/v3 provenance and counterevidence. W018
+supplies the requested traversal endpoint; W019 makes search a supporting utility.
+Re-read official Boost 1.84
+[A* pseudocode](https://www.boost.org/doc/libs/1_84_0/libs/graph/doc/astar_search.html)
+and [heuristic concept](https://www.boost.org/doc/libs/1_84_0/libs/graph/doc/AStarHeuristic.html)
+as algorithm references, without choosing a Boost dependency or copying an API.
+U2 chooses only known consistent zero/Manhattan heuristics: one axis step changes
+Manhattan distance by one and each supported cost is at least one. No geometric
+portal heuristic or arbitrary-callback optimality is promised.
+
+Recorded sequence: implement the borrowed view/positive costs and bounded A*, then
+metrics and literal fixtures, then independent BFS/O(V^2) weighted reference,
+failure/ownership tests and text caller. Charge validation, initialization, heap
+height bounds, expansions, probes and reconstruction. Check buffers and arithmetic
+before allocation. Found/no-path are complete search outcomes; expected validation,
+overflow and budget errors publish no partial path. Allocation/programming
+exceptions propagate. This sequence is implemented; executed evidence follows.
+
+U3 remains proposed: strict labyrinth construction and useful measured traversal
+mapping, with coverage/endpoints/ambiguity distinct and requested/achieved outcomes.
+Proven incompatibility is separate from bounded construction failure. No generator,
+new controls, general graph mazes, caves, settlements, broad AI or physics in U2.
+
+### PROCGEN-007 — Implemented input/cost and ownership boundary
+
+Owners under `projects/tests/procedural-generation`: `traversal.h::MazeView`,
+`traversal-internal.h::header/validate/arc`, `traversal.cpp::maze_view`.
+`MazeView` borrows a const Domain and spans of const u32 masks/u64 costs. All C
+rectangular cells are active, including isolates. No portals, masked active
+domain, callbacks, graph registry or generation state. Source data must stay
+alive and unchanged during each call; moves/assignment may invalidate its views.
+
+Empty costs mean unit cost. Otherwise exactly C*D entries at `cell*D+axis`
+store positive-axis edge costs. Open slots require 1..UINT64_MAX; closed positive
+slots require zero. Negative incidences use the same slot at the lower-index
+endpoint. Each undirected edge therefore has one cost. Full validation checks
+span lengths, inactive bits, reciprocal in-bounds steps, positive/closed-slot
+costs and finite edge/work caps before scratch buffers are allocated. Medium
+confidence for future game-AI reuse; no general graph adapter is extracted.
+
+Paths own their vectors and deep-copy on copy. Later searches or destruction of
+input cannot invalidate them. No call takes mutable prior results or aliases
+scratch. Measurements own independent scalar/array/optional values. Adopting a
+new successful result remains caller policy; caller mutations need its own
+synchronization. U1's generation/replay implementation is unchanged. Failure
+reasons/messages are appended without changing previous enum ordering.
+
+### PROCGEN-008 — Implemented A*, determinism, failures and resources
+
+Owners: `traversal.cpp::find_route/estimate/route_storage` and checked helpers in
+`traversal-internal.h`. Only zero and unit-Manhattan heuristics are accepted.
+An axis step changes Manhattan distance by one and costs at least one, so both
+are consistent, with zero at the goal. Closed costs are final. There is no
+arbitrary-callback or admissible-but-inconsistent reopening contract. Portal
+links cannot enter this boundary and inherit a geometric heuristic.
+
+Search v1 orders the min-heap by `(f,g,cell)` ascending and enumerates axes
+ascending/negative before positive. Equal costs keep the first parent. Strict
+open-cost improvements enqueue new entries; stale entries are detected on pop
+by settled state/current g and consume queue/storage/work limits. No pointer,
+hash or unspecified insertion tie is used. Goal acceptance happens on a current
+settled pop, after charging settlement, followed by fully charged reconstruction
+and reversal before publication. Start=goal gives one index, cost0, one settlement.
+
+Expected outcomes: `SearchResult.path` present means found; absent means the
+queue was completely drained. Failure kind/reason distinguishes invalid endpoints
+(`invalid_input/endpoint`), topology/cost/heuristic/path errors, numeric overflow
+(`invalid_input/overflow`), and finite-budget refusal (cells/edges/storage/work/
+expansions/queue_entries/queue_pushes). No failure publishes a partial SearchResult.
+Checked sums include g+edge, g+h, Manhattan sums, buffer/work formulas and metric
+route costs. UINT64_MAX is a valid path cost, not an unseen sentinel. Any performed
+sum overflow refuses even if another representable route might exist; it never
+becomes no-path. Only private `TraversalDetail::Stop` control exceptions become
+typed errors. Allocation/standard-library/logic exceptions propagate. Invalid and
+early-budget paths allocate no owned buffers; the C++ exception runtime may use
+its own bounded control storage, excluded from payload accounting. Allocation
+denial tests cover operator-new buffers, not all runtime allocation internals.
+
+Effective limits are min(caller, hard): 1M cells, 16M undirected edges, 64 MiB
+requested storage, 100M work, 1M settled expansions, 1M live queue entries and
+16M total pushes. The input edge cap is distinct from repeated inspected open
+incidences, which are counted and work-charged through directional probes. Zero
+expansions, live capacity or pushes refuse before buffer allocation.
+
+Search peak model: `4096+C*(sizeof(Record)+sizeof(Index))+Q*sizeof(Entry)`.
+It includes all records, full C-index possible output, and ALL Q reserved queue
+entries, including duplicates. On the executed ABI Record/Entry are 24 bytes:
+`4096+32*C+24*Q`. No vector grows beyond its admitted capacity; no extra C-sized
+path buffer appears during reconstruction. Fixed metadata has a compile-time
+allowance check. Container max_size and all byte/work arithmetic are checked
+before allocation. Requirement helpers plan without allocating buffers or applying
+hard caps. Requested-element accounting excludes allocator over-allotment,
+runtime/sanitizer overhead, borrowed inputs and prior caller-owned outputs; not RSS.
+
+Work charges: validation C*(1+2*D); C initialized records; heuristic one unit for
+zero or D for Manhattan; push from n entries `1+bit_width(n+1)`; pop from n
+`1+2*bit_width(n)`; one per settlement, directional probe, reconstructed index
+and reversal swap (`path.size()/2`). Heap-height charges conservatively include
+standard heap comparison bounds, including stale pops. The early mandatory
+lower bound is `C*(1+2*D)+C+7` (validation, records, minimum start h/push/pop/
+settlement); actual completion always enforces runtime work. Complexity is bounded
+by validation O(C*D), queue O(pushes*log(Q+1)), expansion O(expansions*D) and
+reconstruction O(C), under the effective work cap. D<=16 bounds per-unit helpers.
+No elapsed-time/RSS guarantee is inferred.
+
+`search_version=1` labels debug/replay evidence, not a file format. Same logical
+view/costs/endpoints/heuristic/version and sufficient limits reproduce the path.
+Limits govern admission/completion, not successful path content. U1 Maze retains
+its original replay descriptor. Integer/domain portability assumptions are U1's;
+object sizes/admission may differ by ABI. Only Linux/GNU execution is verified.
+
+### PROCGEN-009 — Implemented measurements and conventions
+
+Owners: `metrics.cpp::measure/metric_storage`, result declarations in `traversal.h`.
+The full active graph is flood-traversed, starting with entrance. Report C, E,
+entrance reachability including itself, components K, cycle rank E-(C-K), and
+degree histogram 0..32. Dead ends are degree-one cells INCLUDING selected
+endpoints; a singleton/isolated degree-zero cell is not a dead end.
+
+A nonempty selected route must be simple, in bounds, passage-adjacent and exactly
+entrance-to-goal. Recompute its cost; route cell count and edge count (cells-1)
+stay distinct. Supplied paths need not be shortest. Empty span means no route
+selected, not proof of unreachability, leaving route/tree-only fields absent.
+
+Only connected trees with an explicit selected route get off-route cells/edges,
+attachment-branch count (including attachments at endpoints), off-route degree-one
+dead ends and maximum false depth. Multi-source flood measures UNWEIGHTED edge
+distance from path attachment, ignoring weights/geographic distance. Tree
+off-route edge count equals off-route cells. Empty off-route mass yields zeros.
+Cycle/disconnected inputs return absent tree-only metrics; a chosen shortest
+route does not classify every other cyclic route as a false lead.
+
+Strict recognition is structural and independent of path selection: connected,
+cycle-free, exactly the selected two distinct degree-one endpoints, all others
+degree two, covering the declared active domain. Singleton C1/E0 accepts start=
+goal=0, also when no route is selected. A trivial start=goal path in a larger
+graph is valid but never strict. Excluding the arrival edge leaves one onward
+choice at internal path nodes; voluntary reversal/player orientation/difficulty
+are not guaranteed or measured. No scalar difficulty score is invented.
+
+Metric peak: `4096+C*(sizeof(Cell)+sizeof(Index))`; Cell holds depth/flags and a
+full C-entry queue is reused across components/tree analysis. On this ABI this
+is `4096+24*C`. Minimum complete no-selected-path work is C*(7+4*D): validation,
+two initialized buffers, degree/component scans and enqueue/pop/probes for every
+cell. Path validation/tree analysis add runtime work. All enqueue/pop/probe/path
+index/seed operations are charged; no recursive traversal. Common caps match
+search's cell/edge/storage/work caps. Failure publishes no partial measurements.
+
+### PROCGEN-010 — Executed U2 evidence and next boundary
+
+Test owner: `traversal-tests.cpp`, included in the EXISTING `procgen-tests`
+executable. All-case selection includes unchanged U1 case functions and U2.
+No dependency, target family, root configuration or export is added. Tested
+source is this U2 commit based on accepted U1 `323914810d6a9e4cd6f870baaaa5916c50747c8a`.
+
+References use literal edge lists, or pairwise coordinate/mask extraction for
+generated graphs, independently of generation/search neighbor traversal. Unit
+distances use BFS; weighted reference uses bounded O(V^2) scan-based Dijkstra,
+without heap/heuristic/stale-entry logic. Validate each returned route's endpoints,
+unique cells, literal adjacency and summed cost separately. Three seeds each on
+2D `{5,3}` and 4D `{3,2,2,3}` compare both heuristic modes to BFS. Every 4D route
+has a real fourth-axis step. Equivalent optimal routes need not match exact BFS
+paths; square tie `[0,1,3]` is separately pinned.
+
+Literal expected metrics:
+
+| Fixture | Evidence |
+| --- | --- |
+| Four-cell line endpoints0/3 | C4/E3/K1/rank0, degree1:2/degree2:2, route3 edges/cost3, no false branches, strict true |
+| Same line endpoints1/3 | Off-route cells1/branch1/depth1; strict false because selected entrance is internal |
+| Singleton | C1/E0/K1, degree0:1/dead ends0, one-cell route/cost0, strict true |
+| Winding literal 4D path | C16/E15, degree1:2/degree2:14, all reached, route15 edges/cost15, strict true, fourth-axis edge |
+| Branch tree | C6/E5/K1/rank0, degree1:3/degree2:2/degree3:1, route2 edges, off-route cells3/edges3/branches2/dead ends2/depth2; strict false |
+| Deep false-lead tree | C8/E7, degree1:4/degree2:2/degree3:2, off-route cells4/branches1/dead ends2/depth3; strict false |
+| Looped ladder | C6/E7/K1/rank2, degree2:4/degree3:2; zero dead ends yet two onward options at degree3; tree metrics absent, strict false |
+| Disconnected | C6/E3/K3/rank0, reachable3, degree0:1/degree1:4/degree2:1, absent route/tree metrics; strict false even with a route in one component |
+
+Weighted square first discovers goal at cost10, improves it to3, and uses five
+pushes for four cells (duplicates are charged). Another weighted cyclic fixture
+pops one stale entry: six pushes/pops, five settlements. Tests cover exact
+UINT64_MAX cost, g/f/route cost overflow, huge planning arithmetic, exact and
+just-too-small cell/edge/storage/work/expansion/queue/push budgets. Exhausted
+search is never no-path. Earlier inputs/results survive invalid/budget failure
+and propagated bad_alloc. Paths survive source destruction. References cap at
+64 cells; no huge rejected buffer or memory-pressure/OOM experiment.
+
+Executed in preserved `builds/procedural-generation`: Linux/GNU16.2.1, C++23,
+Debug/Ninja/UBSan ON, warnings as errors. ALL configure/build/native checks used
+`/mnt/projects/cheryl-features/scripts/build --`, one job. No resource refusal,
+queue cancellation, dependency retrieval or model substitution occurred. Complete
+stdout/stderr logs are local/ignored under `builds/procedural-generation/logs/u2/`:
+
+| Command after wrapper prefix | Log | Result |
+| --- | --- | --- |
+| `clang-format -i` on owned changed C++ files | `format-1.log` | exit0 |
+| `cmake --build builds/procedural-generation --parallel 1` | `build-1.log` | existing standalone configuration regenerated; compile/link exit0 |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1` | `ctest-1.log` | 23 passed / 0 failed / 0 skipped; 22 cases, 2680 assertions (1470 U1 +1210 U2), plus consumer; zero UBSan diagnostics |
+| `builds/procedural-generation/procgen-consumer` | `consumer-1.log` | 2 demonstrations passed / 0 failed / 0 skipped |
+
+Consumer seed42/stage0x6d617a65/stream7 retains U1 topology/replay. 2D `{6,4}`
+stays C24/E23; chosen route9 cells/8 edges/cost8, components1/dead ends4,
+off-route cells15/branches2/depth8, strict false. Full 4D `{3,2,2,3}` stays
+C36/E35/axis-four edges10; route9 cells/8 edges/cost8, reachable36/rank0/dead ends3,
+off-route cells27/branches1/depth26, strict false. Search work271/527 respectively.
+
+Confidence is high for this finite orthogonal/integer boundary and measured
+invariants, medium for exact private API suitability for future game-AI reuse.
+Unverified: other compilers/OSes, ASan, large-domain performance, public Engine/SDK
+integration and player difficulty/playtesting. A* proves no generation feasibility
+or navigation guarantee. U3 remains proposed: checked strict labyrinth construction,
+useful traversability mapping and selected controls with requested/achieved
+constraints. Distinguish proven incompatibility from bounded construction failure.
+No automatic U3 or general graph/sibling integration.

@@ -30,7 +30,15 @@ namespace ProcGen {
         cells,
         edges,
         storage,
-        work
+        work,
+        topology,
+        cost,
+        endpoint,
+        heuristic,
+        expansions,
+        queue_entries,
+        queue_pushes,
+        path
     };
 
     struct Failure {

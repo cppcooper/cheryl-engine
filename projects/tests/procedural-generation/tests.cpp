@@ -1,5 +1,6 @@
 #include "maze.h"
 #include "checks.h"
+#include "traversal-tests.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -465,6 +466,10 @@ int main(int argc, char** argv) {
             std::cerr << "FAIL " << test.name << ": " << error.what() << '\n';
         }
     }
+    const auto traversal = ProcGenTests::run_traversal_cases(selection);
+    passed += traversal.passed;
+    failed += traversal.failed;
+    assertions += traversal.assertions;
     std::cout << "Cases: " << passed << " passed, " << failed << " failed, 0 skipped; " << assertions << " assertions\n";
     return failed == 0 && passed != 0 ? 0 : 1;
 }

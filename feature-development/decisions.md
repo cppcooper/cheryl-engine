@@ -1,4 +1,4 @@
-# PROCGEN-U1 decisions
+# Procedural generation decisions
 
 Private implemented checkpoint. The caller was proposed before implementation;
 its final source and executed checks now agree with these entries. Detailed
@@ -58,8 +58,44 @@ difficulty claims.
 **User requirement; high confidence.** Use a stdlib-only runner with independent
 topology validation, fixed replay vectors and bounded refusal cases. Run only this
 standalone configuration through the shared one-job wrapper and retain complete
-clone-local logs. Executed Debug/UBSan acceptance passes all 11 CTest entries:
+clone-local logs. Executed U1 Debug/UBSan acceptance passed all 11 CTest entries:
 10 cases with 1,470 assertions plus the 2D/4D consumer; zero failures/skips.
 Later caves/dungeons, geography, settlements and tectonic edits
 inherit semantic ownership/replay questions, not this maze representation.
 Presentation and public extraction await separate review.
+
+## PROCGEN-007 — Borrowed maze traversal view
+
+**Engineering choice; high confidence, implemented.** Borrow checked domain, const
+passage masks and optional positive integer costs. All rectangular cells are
+active. Costs use positive-axis edge slots; synthetic masks exercise disconnected
+and cyclic cases. This separates search from generation without adding callbacks,
+portals or a general graph service. Exact private spelling is reversible.
+
+## PROCGEN-008 — Deterministic A* and resources
+
+**User requirement plus engineering choice; high confidence, implemented.** Support
+only consistent built-in zero and Manhattan heuristics. Accept the goal on a
+current pop; handle improved open costs and stale entries. Order by (f,g,cell).
+Bound validation, expansions, probes, total pushes, live queue, heap work and
+reconstruction; check arithmetic and publish complete independently owned paths.
+Invalid input, overflow, budget refusal and fully searched no-path stay distinct.
+
+## PROCGEN-009 — Traversal measurements
+
+**User requirement plus engineering choice; high confidence, implemented.** Report
+active cells/edges, reachability, components, cycle rank, degrees, dead ends and
+chosen route length/cost. Only a connected tree with an explicit simple route
+gets off-route branches/cells and maximum false depth. Strict traversal recognizes
+a whole-domain path with the selected endpoints, or the singleton convention.
+Search success is not a difficulty or ambiguity guarantee.
+
+## PROCGEN-010 — U2 acceptance and U3 boundary
+
+**User requirement; high confidence.** Preserve U1 regressions and validate routes
+with independent BFS/Dijkstra and literal metric fixtures. Wrapper-only Debug/UBSan
+execution passes 23 entries, zero failures/skips: 22 cases contain 2680 assertions,
+including all 1470 U1 assertions. Both consumer demonstrations pass. U3 remains
+proposed: strict labyrinth construction and measured traversability controls with
+requested/achieved constraints. Distinguish proven incompatibility from bounded
+construction failure; no U3 generator is implemented.

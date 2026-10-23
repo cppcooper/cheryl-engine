@@ -77,6 +77,22 @@ namespace ProcGen {
                 return "accounted peak storage budget refused";
             case Reason::work:
                 return "work budget refused or exhausted";
+            case Reason::topology:
+                return "invalid passage topology or mask count";
+            case Reason::cost:
+                return "invalid positive-axis cost data";
+            case Reason::endpoint:
+                return "entrance or goal outside active domain";
+            case Reason::heuristic:
+                return "unsupported built-in heuristic";
+            case Reason::expansions:
+                return "settled expansion budget exhausted";
+            case Reason::queue_entries:
+                return "live queue entry budget refused or exhausted";
+            case Reason::queue_pushes:
+                return "total queue push budget refused or exhausted";
+            case Reason::path:
+                return "chosen path must be simple and join the selected endpoints";
         }
         return "unknown failure reason";
     }
