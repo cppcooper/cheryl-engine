@@ -9,15 +9,19 @@ executor's tracing; command-local leak disabling is recorded in ST-008, with no
 passing leak claim. U1 definition acceptance is complete; see [next.md](next.md).
 U2 implements checked sessions and owned value resume, with 18 session cases,
 16 definition regressions and the isolated allocation probe passing; see
-[next.md](next.md). The console/JSON encounter remains proposed. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-008` IDs;
-[next](next.md) selects one subsequent implementation unit.
+[next.md](next.md). U3 implements the private console and paired JSON boundary:
+26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
+child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
+[decisions](decisions.md) use the same `ST-001` through `ST-010` IDs;
+[next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
 
 The coordinator's STORYTELLING-U1 assignment authorized the definition source;
 STORYTELLING-U1V completed definition verification. STORYTELLING-U2 authorizes the
-session implementation, focused checks and these records. These assignments supersede the
+session implementation, focused checks and these records. STORYTELLING-U3 authorizes
+the private console, strict paired codec, exclusive fresh-path persistence and
+focused native/transcript acceptance. These assignments supersede the
 earlier design-only task. The parent `AGENTS.md`,
 `coordination/autonomy-policy.md`, `coordination/workers.json` and feature brief
 were read from `/mnt/projects/cheryl-features/`. Repository workflow,
@@ -29,7 +33,13 @@ started with the design records committed and a clean tree. This clone alone is
 owned; protected checkouts and sibling clones are outside the work.
 
 **ST-001 — Small reusable boundary.** U1/U2 implement CPU dialogue definition
-validation and an explicitly advanced session; the console adapter remains U3.
+validation and an explicitly advanced session; U3 adds the private console adapter
+under `projects/apps/dialogue-console/`, with a default-OFF
+`CHERYL_BUILD_DIALOGUE_CONSOLE` option. It links only Engine; its state library and
+test cases explicitly include pinned JSON 3.11.3 privately. Root options/registration,
+the tutorial-game's `cheryl_add_test_suite` pattern and Engine's helper were inspected
+before wiring. No optional modules, Workers, public header changes or SDK export
+are needed. The app owns its own gate fixture, not an import from a sibling.
 The definition lives in `CE::Dialogue`, under
 `projects/engine/include/cheryl/core/game-framework/dialogue.h` and its source
 counterpart. The public contract needs no `AbstractGame`, runtime context,
@@ -38,7 +48,7 @@ engine linkage may still carry existing engine dependencies; an independently
 packaged library is not promised. No quest model, actor hierarchy, scripting
 language, automatic traversal, localization service or sibling feature is needed.
 
-Required first fixture, authored directly in C++ (U1 definition test data only):
+Concrete fixture, authored directly in C++ (U1 test data, now also the private app):
 
 | Node | Choice ID / text | Condition key | Effect key | Target |
 | --- | --- | --- | --- | --- |
@@ -49,7 +59,7 @@ Required first fixture, authored directly in C++ (U1 definition test data only):
 | `admitted` | terminal text: You enter | — | — | — |
 | `departed` | terminal text: You depart | — | — | — |
 
-In the later console consumer, the application owns exactly one gameplay flag,
+In the console consumer, the application owns exactly one gameplay flag,
 `introduced`, initially false.
 Its condition reads that flag; its effect sets it true. A callback invocation
 counter belongs only to test instrumentation. Both endings are reachable; after
@@ -113,7 +123,7 @@ session.choose(choice(resumed, "pass").selection,
 EXPECT_EQ(calls, 1);                               // introduce was not replayed
 ```
 
-The console later adds encoding and `save PATH` / `resume PATH` around this value
+The U3 console adds encoding and `save PATH` / `resume PATH` around this value
 round trip. Decode and validate both parts into temporary values before adopting
 either; the flag assignment and idle session move in this fixture are nonthrowing.
 The fixture predicate/effect reject an unknown key before any flag assignment;
@@ -197,8 +207,8 @@ selection values. These values and snapshots retain their own strings and IDs;
 they borrow neither draft storage, the session, handlers nor application state.
 They may be displayed after session destruction, but old selections gain no new
 authority. Definition sharing permits stable concurrent reads; operations on a
-session and its application flags require one serialized owner. The proposed console
-will use its main thread. A later runtime consumer should advance on simulation and
+session and its application flags require one serialized owner. The private console
+uses its main thread. A later runtime consumer should advance on simulation and
 publish copies to presentation, retaining no `TickContext`, input view or frame
 writer. No asynchronous producer, shutdown protocol or callback registration is
 introduced; destruction performs no effects.
@@ -288,7 +298,7 @@ This is an additive local result contract, not an engine-wide error
 framework. Exception reporting must preserve the original failure even if
 enriching a message cannot allocate.
 
-**ST-007 — Snapshot a completed boundary and the application state together (value boundary implemented U2).**
+**ST-007 — Snapshot a completed boundary and the application state together (U2 values, U3 paired adapter).**
 `snapshot()` succeeds only between operations on a healthy session. Version 1 is
 an owned value of: snapshot schema, definition ID/revision, session ID, current
 node ID and step. Terminal status is derived from the referenced node. An initial
@@ -302,7 +312,7 @@ definition/revision, nonempty session ID and a known node. A uint64 maximum step
 can be represented/restored, but choose rejects before any predicate/effect.
 Malformed/mismatched factories preserve any existing live session by construction.
 
-Concrete proposed envelope at the important save point:
+Concrete implemented envelope at the important save point:
 
 ```json
 {
@@ -319,13 +329,11 @@ Concrete proposed envelope at the important save point:
 }
 ```
 
-Keep JSON in the console adapter, using the repository's existing nlohmann parser
-when that unit is authorized; public core headers expose values only. Its include
-is currently private to the engine, so the console needs explicit local wiring,
-not an assumed transitive SDK dependency. This introduces no new package/pin.
-The console decoder checks exact schema, required/unknown fields, types, boolean
-flag, nonempty IDs and integer ranges without coercion. Bound fixture input to
-64 KiB; reject duplicate object keys rather than accepting silent replacement.
+JSON stays in the private console adapter, with explicit private include wiring
+to the existing pinned nlohmann headers, never assumed Engine transitivity.
+Public core headers remain CPU/JSON-free. The ST-009 decoder checks exact schema,
+required/unknown fields, types, boolean flag, nonempty IDs and integer ranges
+without coercion. This introduces no new package/pin.
 `resume` independently verifies snapshot schema, exact definition ID/revision,
 known node and valid ID/step fields before creating a session; it never evaluates
 guards or replays transitions. A checked but externally supplied step is not
@@ -333,14 +341,15 @@ proof of an actual path. Save integrity and correspondence of flags to progress
 are host responsibilities; arbitrary edited saves are not authenticated.
 
 Save/capture and load/adoption run on the same owner as the flag and session, with
-no operation in flight. Decode into fresh values and validate all parts before a
-nonthrowing adoption. The console writes to its own temporary file, checks write
-and close success, then publishes a fresh, explicitly chosen checkpoint path;
-it refuses to overwrite an existing checkpoint. Failed writes/publish operations
-are reported, never promoted as saves, and the owned temporary file is discarded.
-Older checkpoints remain untouched. Atomic replacement of an existing save,
-concurrent writers and power-loss durability are outside the first milestone.
-Read/write errors never advance the session.
+no operation in flight. `Encounter::capture` takes the owned idle snapshot and
+boolean together. `restore_bytes` decodes fresh values, then `Encounter::restore`
+calls `Session::resume` against its retained gate definition before touching either
+live value. Successful idle move assignment and boolean adoption cannot throw;
+failure preserves the whole pair and its old live selections. No handler runs.
+The instrumented effect count is borrowed, unsaved and unchanged by restore.
+ST-010 below replaces the earlier temporary-publication proposal with the explicitly
+authorized narrower exclusive fresh-path policy. Read/write errors never advance
+or replace either live value.
 
 Loading the paired `gate` snapshot shows the enabled choices with the flag true,
 and zero additional effect calls. No applied-effect ledger is needed because a
@@ -349,6 +358,71 @@ an older checkpoint intentionally rolls back both values. Crash recovery between
 and capturing/saving a pair, or restoring progress alongside independently changed
 world state, has no exactly-once guarantee. Exact revision matching rejects old
 content; migration and hot reload wait for a demonstrated need.
+
+## U3 private caller, strict codec and files
+
+The executable starts an `Encounter`, shows an owning view, then accepts `show`,
+`choose OFFER CHOICE`, `save PATH`, `resume PATH`, `quit`, or EOF. For example:
+
+```text
+Offer 1: A guard waits.                 # actual output uses separate lines
+choose 1 introduce
+Offer 2: The gate is closed.
+save /chosen/fresh/gate.json
+resume /chosen/fresh/gate.json
+Offer 3: The gate is closed.            # fresh incarnation and presentation
+choose 3 pass
+You enter
+quit
+```
+
+The console holds only the latest owning view and issues monotonically numbered
+presentations. It passes the actual row's Selection to `Encounter::choose`, never
+reconstructing private authority. Prior presentation numbers reject after show,
+progression or successful resume; failed save/read/decode/resume leaves the current
+presentation usable. The Engine still rechecks its current condition. Successful
+resume discards the old view before presenting new choices. View/show, invalid
+input, save/load, factories and EOF/quit perform no effects. Opt-in
+`--trace-effects` prints a process-local counter only for executable transcripts;
+it is not serialized, a second gameplay flag or a durable receipt. Command spelling
+is a medium-confidence application choice, locally reversible without Engine changes.
+
+**ST-009 — Bounded complete envelope, no coercion.** Reads allocate at most
+64 KiB plus one detection byte before acquiring the stream. The decoder first
+checks size and scans **every** byte for raw NUL, including an otherwise valid
+JSON document's suffix. The pinned parser can treat NUL as EOF, so strict parser
+mode alone is insufficient. Nlohmann SAX callbacks fill fresh owned values using
+two fixed frames, admitting only envelope and flags/dialogue objects. Any deeper
+object/array rejects immediately; no arbitrary DOM or recursive app structure is
+constructed. Decoded property names map to per-object bit sets, catching duplicate
+keys and escaped-equivalent names. Required masks reject missing fields; unknown
+names, wrong shapes/types, numeric booleans, negative/out-of-range integers,
+floating schemas and unsupported schemas reject. Strict parsing rejects malformed,
+truncated, trailing junk and second documents. Exact definition/revision/node
+validation remains independently in Session::resume. Edited steps are representable
+values, not proof of history; flags are adopted as supplied, never inferred.
+Read/decode diagnostics do not rewrite input. Confidence is high in bounds and
+rejection semantics from fixed-shape source and passing native cases in next.md. A private
+DOM-with-callback alternative was rejected because pruning need not stop deep
+parsing. Replacing this fixture-specific decoder is cheap while saves are private;
+changing schema semantics requires a new explicit version.
+
+**ST-010 — Exclusive fresh paths, checked completion.** `save_fresh` validates a
+nonempty NUL-free path, captures/encodes before opening, and uses C11 `fopen("wbx")`
+for exclusive creation. No existence precheck, truncation, rename or replacement
+is used. File ownership starts only after open succeeds. All writes, flush and
+close are checked; a short/failed write or flush/close failure removes only the
+newly owned incomplete destination. After open, no throwing C++ work precedes
+close/cleanup. If cleanup fails, the diagnostic includes the owned path and cleanup
+failure, and never reports a successful checkpoint. Existing files, leaf symlinks
+and dangling leaf links are refused without touching contents/referents. This is
+verified only on the native Linux/C-library configuration; other libraries are
+unverified. A private five-boolean seam simulates open, partial write, flush, close
+and owned cleanup failure without exhausting memory, permission assumptions or
+device access. It is not a general I/O abstraction. Atomic replacement, fsync or
+power-loss durability, hostile directory races, multiwriter coordination and durable
+external-effect guarantees are excluded. Confidence is high for this bounded policy;
+adding replacement would reopen its design rather than silently widen it.
 
 ## Verification environment
 
@@ -419,6 +493,8 @@ new v3 intent nor present preference.
 | ST-006 | Lazy missing-reference errors during play; throw for every ordinary rejection | Eager diagnostics catch hidden branches and structured rejections distinguish unavailable choices from broken handlers. This adds a small diagnostic value type without rewriting existing engine error policy. |
 | ST-007 | Save cursor only; replay from entry; serialize arbitrary callbacks; general persistence service | A paired snapshot preserves application state without replay. Console JSON is replaceable without changing the core snapshot, but changing its value schema needs a new version. File overwrite/durability and save migration remain independent future work. |
 | ST-008 | Change sanitizer build/global settings or leave native checks unexecuted | A reproduced LSan tracing failure justifies only the authorized command-local leak accommodation. ASan/UBSan and halt-on-error remain active; leak coverage is unavailable. Reversal removes only detect_leaks=0 on a compatible executor, with no source or configuration migration. |
+| ST-009 | DOM parsing with a pruning callback; permissive field conversion | Fixed SAX frames stop excess nesting immediately and detect decoded-key duplicates before replacement. This adds fixture-specific code; replacing the private codec is local, while changed schema meaning needs a new version. |
+| ST-010 | Temporary publication/rename; overwriting existing saves | The assigned scope deliberately selects exclusive fresh destinations and checked completion. Existing bytes and leaf links stay untouched. The C-library spelling is locally replaceable; atomic replacement or durability needs another explicit design, not an implicit extension. |
 
 ## Integration overlaps and implementation units
 
@@ -436,14 +512,15 @@ UI would consume copied views and send scoped selections to simulation.
 | --- | --- |
 | U1: validated CPU definition | Accepted for the assigned definition scope: all 16 focused native cases passed under Debug ASan/UBSan, including private construction, independent copied storage, retained ownership, lookup and eager owning diagnostics. Leak checking is unavailable under ST-008; see next.md for complete logs and commands. |
 | U2: explicit session | Implemented and verified: all 18 session cases plus the 16 definition regressions passed under Debug ASan/UBSan. Incarnation freshness, owning views, checked moves/lifecycle, borrowed handlers, exceptions, reentrancy, overflow and value resume are covered. A separate allocation-rejection probe passed for owned-copy failures and the post-effect path. |
-| U3: console acceptance | Branch-local console app/fixture, versioned JSON envelope, save/resume commands and focused codec/transcript cases. Wire only needed targets/dependencies, then run permitted checks when this unit is assigned. Gate: actual console outcomes and resumed effect count, malformed/mismatched saves, safe adoption and explicit I/O failures. |
+| U3: console acceptance | Private headless gate, numbered selections, complete versioned JSON envelope, exclusive fresh-path save/resume and focused state/codec/file/transcript cases are implemented. Exact executed counts/results and remaining limits are in next.md; build success alone does not establish these behaviors. |
 
-U1V completed U1 verification; U2 completes the CPU session/value unit. U3 awaits a later coordinator assignment.
+U1V completed U1 verification; U2 completed CPU sessions/values. The current U3
+assignment completes only the console milestone; later scope requires coordinator selection.
 [next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
 
-The broader console/JSON milestone remains unexecuted. Required observable acceptance:
+Required observable acceptance for the console milestone (execution status in next.md):
 
 1. `introduce → pass` ends at `admitted`; `silent → leave` ends at `departed`.
    One gameplay flag and no UI/runtime startup are used by the console.
@@ -477,7 +554,8 @@ retrieval, installation, documentation generation or external service acceptance
 
 Material uncertainties: modern API taste is largely unproven; manual revision
 discipline cannot detect same-ID/revision content changes; generic effects can
-partially mutate before throwing; JSON/console target wiring remains unimplemented.
+partially mutate before throwing; cross-platform console/C-library behavior remains
+unverified, and saves intentionally offer neither replacement nor durability.
 U1V completed the assigned
 definition acceptance: the incremental `tests-engine` target succeeded, CTest
 registration selected exactly 16 cases, and all 16 actually ran and passed, with
@@ -485,8 +563,8 @@ no skipped or unrun cases. The header-first caller, ownership, lookup, invalid
 unreachable data and retained deterministic diagnostics have executable evidence.
 LSan's reproduced tracing failure required the command-local ST-008 accommodation;
 ASan/UBSan instrumentation and halt-on-error remained active. Leak detection is
-unavailable. That accepted U1 only; the broader console/JSON milestone above is
-still pending. No U1 source, repository build configuration,
+unavailable. That accepted U1 only; console/JSON was pending at that checkpoint.
+No U1 source, repository build configuration,
 dependency pin or global setting changed during U1V. Actual commands, logs,
 coverage and the next coordinator-selected unit are recorded in [next.md](next.md).
 
@@ -502,5 +580,23 @@ return through successful cursor/step commit. This is a small isolated executabl
 not a runner-wide allocator override or general failure-injection framework.
 The source catch path rethrows before cursor assignment, retaining the source
 when faulted; native cases verify original exception identity and subsequent
-fault rejection. Leaks remain unverified under ST-008. No console, JSON, files,
-runtime coupling or durable external-effect protocol was implemented.
+fault rejection. Leaks remain unverified under ST-008. U2 did not implement console,
+JSON or files; U3 now owns that private boundary. Runtime coupling and a durable
+external-effect protocol remain outside the milestone.
+
+U3's [private caller and gate](../projects/apps/dialogue-console/src/gate.cpp),
+[strict codec](../projects/apps/dialogue-console/src/codec.cpp),
+[file boundary](../projects/apps/dialogue-console/src/files.cpp) and
+[console](../projects/apps/dialogue-console/src/console.cpp) now have executed
+acceptance: 4 state, 9 codec, 6 file and 7 transcript cases passed alongside all
+34 definition/session regressions, 60/60 with no skips. All ten spawned console
+processes exited 0 inside the wrapped native envelope. The same-owner resumed
+gate/pass transcript reports one total introduce effect; a fresh process restoring
+that save/pass reports zero introduce effects. Initial/terminal saves, stale/invalid
+commands, every malformed-document case's unchanged pair/source/token authority,
+real exclusive file collisions/links, and deterministic write/flush/close/cleanup
+failure behavior were exercised. No implementation fix, Engine API change, broad
+suite or global sanitizer setting was needed. Source/test registration, full logs,
+immediate statuses and native coverage limits are in [next.md](next.md).
+Leak checking and other platform/C-library behavior remain unverified. This accepts
+only the assigned U3 console milestone; further work needs coordinator selection.

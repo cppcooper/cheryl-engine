@@ -1,4 +1,107 @@
-# U2 session acceptance and next unit
+# U3 console / paired JSON acceptance
+
+STORYTELLING-U3 is implemented and accepted within the assigned native scope, from
+clean U2 `639fbf505cee4f0970efb7fa4f2ce2253c97abc4`. **60/60 focused cases passed**:
+26 new consumer cases plus all 34 definition/session regressions, with no skipped
+or unrun cases. Ten actual console child processes each exited 0. No Engine API,
+U1/U2 source, dependency pin or sanitizer flag changed. The default-OFF
+CHERYL_BUILD_DIALOGUE_CONSOLE option and directly necessary app/test registration
+are the only build configuration edits. The app links Engine without optional
+modules and includes pinned JSON 3.11.3 privately, as do its JSON test cases.
+
+The header-first `dialogue_console_state.consumer` caller introduces, captures the
+gate pair, encodes/decodes/resumes, rejects its old incarnation, views and passes
+with the effect count still one. Both decision views describe ST-001/007's concrete
+consumer/paired owner, ST-009's fixed-envelope SAX decoder and ST-010's exclusive
+fresh-path policy. Proposed U3 behavior is now implemented and executed in this
+configuration. These are engineering choices, not new personal preference evidence.
+
+## Actual U3 checks
+
+The existing incremental GNU/Linux Debug build, CMake policy minimum 3.5 and all
+previous OFF module/test-campaign selections were retained. Configure/build/native
+checks used the existing shared-lock/resource wrapper, one job, ASan/UBSan and
+both halt-on-error settings. Normal queued commands were retained and completed
+in their original sessions. No exit 75 or other admission refusal occurred.
+Command-local leak disabling remains ST-008's tracing accommodation; leak checking
+is **unverified**, not passing. No broad campaign, GUI/device, SDK export,
+documentation generation, installation, dependency fetch or external agent ran.
+
+Actual commands from clone root (each exited **0**, full stdout/stderr captured):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug \
+  -DCHERYL_BUILD_DIALOGUE_CONSOLE=ON
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target dialogue-console tests-dialogue-console tests-engine --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+```
+
+| Clone-local log under `builds/storytelling-u1-debug/` | Actual result |
+| --- | --- |
+| `u3-configure.log`, `.exit` | 0; narrowly enabled console, preserved Debug/OFF selections and pins. |
+| `u3-build-1.log`, `.exit` | 0; app/private state library/new runner compiled, linked and discovered; Engine regressions retained. No implementation fix was required. |
+| `u3-registration.log`, `.exit` | 0; exactly 60 cases, including 26 new and all 34 accepted regression names. |
+| `u3-registration-audit.log` | Text audit matches all 60 source TEST declarations to discovery in order, no missing/extra names. |
+| `u3-ctest-1.log`, `.exit` | 0; `100% tests passed out of 60`, 8.42 seconds; --no-tests=error and parallel 1. |
+| `u3-ctest-details.log` | Complete preserved LastTest.log, all 60 RUN/OK/Test Passed records, plus complete stdin/stdout/stderr and immediate status for all ten child-console transcripts. |
+| `u3-results-audit.log` | Registration/executed names match; 60 RUN/OK/passes, ten child exits 0; no skips or ASan/UBSan diagnostics. |
+
+Logs stay ignored and clone-local, outside the source/records commit. Immediate
+command statuses were saved before later inspection. Generated Ninja rules were
+read to confirm explicit private JSON includes for state/case targets, ASan/UBSan
+instrumentation and Engine-only app linkage. No child reacquires the build lock;
+POSIX spawn inherits the wrapped test's environment/resource envelope. Transcript
+fixtures use disposable directories inside the clone-local CTest workspaces.
+
+| New suite and passed names | Executed observable boundary |
+| --- | --- |
+| `dialogue_console_state`: consumer, silent_route, paired_boundaries, adoption_authority (4) | Both outcomes, authored order/text, unavailable/stale rejection, paired initial/gate/terminal values, retained definition, nonthrowing staged adoption and old-token renewal. |
+| `dialogue_console_codec`: ownership_roundtrip, malformed_trailing, duplicate_fields, unknown_missing, shapes_types, schemas_ranges, content, raw_nul, limits_nesting (9) | Owned decoded values; every object level's duplicate/unknown/missing fields; escaped-equivalent keys; wrong shapes/types/numeric booleans; integer overflow and unsupported/noninteger schemas; empty/mismatched IDs/revision/node; truncated/malformed/trailing/second documents; all three specified NUL suffix variants and interior NUL; exact 64 KiB and oversize detection; deep input rejected without a recursive DOM. |
+| `dialogue_console_files`: fresh_roundtrip, existing_files_links, invalid_missing_paths, deterministic_failures, owned_cleanup_failure, cleanup_only_after_failure (6) | Real exclusive save/load; exact existing file bytes and leaf/dangling-link referents preserved; empty/NUL/missing paths; deterministic open, real partial write, flush, close and cleanup failures; incomplete owned output removed or explicitly reported; unowned files never cleaned up. |
+| `dialogue_console_transcript`: admitted, departed, same_owner_resume, fresh_process_resume, failed_io_preserves_offer, initial_terminal_saves, quit_eof_bad_syntax (7) | Actual executable routes, visible authored order/text, unavailable/unknown/stale commands, same-field resume, explicit save/resume, no false success after I/O rejection, preserved presented choices after failed load, initial/terminal saves and clean quit/EOF. |
+
+Each codec rejection case crosses the real file/decode/resume boundary from BOTH
+initial false-flag and introduced true-flag gate states. It compares the entire
+active pair and exact source bytes, checks unchanged effect count, then uses the
+old issued token successfully. Successful same-field resume rejects old tokens
+as WrongIncarnation in helper tests; numbered console presentations reject old
+commands too. Maximum uint64 step decodes/resumes but rejects choosing before
+effects. Edited valid step/flag values are adopted literally, without inferred
+history. The same-owner transcript reports exactly one introduce effect after
+save/resume/pass; the fresh-process transcript reports zero. Effect counts are
+opt-in process-local test instrumentation, absent from saved data.
+
+## U3 limits and next action
+
+No assigned U3 execution blocker remains. Acceptance is limited to this GNU/Linux
+Debug Engine-linked configuration; other C libraries/platforms and leak detection
+remain unverified. Exclusive C11 fopen x creation plus checked write/flush/close is
+the complete file policy: no overwrite, rename publication, fsync/power-loss
+durability, hostile directory-race protection, multiwriter protocol or durable
+external-effect guarantee. Cleanup failure reports the incomplete owned path and
+requires deliberate caller recovery; the console never claims that save succeeded.
+One serialized owner, idle adoption and coherent boolean/snapshot capture remain
+application obligations. The schema is unauthenticated and intentionally has no
+migration or gameplay-history proof. Engine revision discipline and API taste
+uncertainties from U1/U2 remain unchanged.
+
+Confidence is high in the executed ownership/rejection/file boundaries, medium
+in command spelling and private format longevity. Command/adapter changes have
+low local reversal cost; changed schema semantics need explicit versioning.
+Next concrete action: coordinator source/log review of this local U3 checkpoint
+and selection of any subsequent bounded work. Stop here; no implementation unit,
+sibling integration, recurring scheduling or publication transport is started.
+
+## Retained U2 acceptance evidence
 
 U2 implements the CPU session/value unit on top of preserved checkpoint
 `f12adbbf9a3edda5c6ad83115deabc502d296f4b`: retained frozen definition, owned views,
@@ -6,7 +109,8 @@ opaque live incarnation, checked explicit choices, synchronous borrowed handlers
 failure state and owned `Snapshot` resume. **18/18 session cases and all 16
 definition regressions passed** (34/34, no skips/unrun cases). A standalone
 allocation-rejection probe compiled and ran successfully. This accepts the assigned
-U2 scope only. Console/JSON, filesystem I/O and runtime integration remain U3.
+U2 scope only. Console/JSON and filesystem I/O were left for U3; runtime integration
+remains outside the first milestone.
 
 Both contract views are current: [agent-notes.md](agent-notes.md) and
 [decisions.md](decisions.md), especially ST-002/003/004/005/007. The private shared
@@ -111,7 +215,8 @@ ST-005/007 were proposals at U1V; U2 now implements the value boundary as record
 above. The U1 header/source implement owned
 authored values, private deep-copy freezing, ordered inspection, scoped lookup and
 owned diagnostics.
-The four-node gate remains test data; no session, callback dispatch or save exists.
+At U1/U1V the four-node gate was definition test data only; the session and private
+console were added in subsequent units recorded above.
 
 ## Actual checks and registration
 
@@ -236,7 +341,7 @@ The three new C++ files passed `clang-format --dry-run --Werror` at that checkpo
 using the repository style. U1V required no source fix or API change. Record links,
 matching IDs, decision lengths, commands/results and staged whitespace are checked
 for the follow-up records. No broader suite, SDK export, GUI or documentation
-generation ran. The four-node gate remains definition test data only.
+generation ran during U1V. Its four-node gate was definition test data only then.
 
 ## Limits and next coordinator selection
 
@@ -248,7 +353,8 @@ settings, with no code/configuration reversal cost. Acceptance covers this
 GNU/Linux Debug Engine-linked runner only.
 API spelling remains an agent engineering choice with medium confidence, not
 established personal user taste. U2's synchronous dispatch and value snapshots
-are now implemented/executed as recorded above; JSON/console acceptance is pending.
+are implemented/executed as recorded above; the current U3 section owns
+JSON/console acceptance status.
 
 U2 has no unresolved execution blocker. Confidence is high in the marker and
 failure/commit boundaries from source review, the 34 native passes and isolated
@@ -260,12 +366,7 @@ pure predicates and coherent application flag pairing remain caller obligations.
 Leak checking is unavailable here; no durable external-effect/rollback guarantee
 or migrated snapshot compatibility is claimed.
 
-The next useful unit is **U3, console/JSON acceptance**, for coordinator selection.
-Use the implemented gate caller plus a bounded versioned paired flag/Snapshot
-codec and console commands; keep the schema proposal in agent-notes.md distinct
-from current code. Required checks: both console routes, unavailable rejection,
-malformed/oversized/duplicate-key/schema/content rejection before adoption,
-unchanged active values after failed load, and save at gate/resume with unchanged
-effect count. Review fresh-path I/O failure behavior when that unit is assigned.
-Stop after U2; U3, publication transport and recurring work remain with the
-coordinator. No next implementation unit has been started.
+U2's proposed next unit was the console/JSON milestone, now explicitly assigned
+and implemented as U3 above. No further unit is selected. Stop after U3 acceptance
+and its local checkpoint; coordinator review and publication transport remain
+with the coordinator, without a question or automatic continuation.

@@ -5,20 +5,22 @@ Definition choices implemented in U1 from design checkpoint
 These are agent engineering choices,
 not confirmed personal API preferences. Detailed contracts, alternatives,
 provenance and acceptance are in [agent-notes.md](agent-notes.md);
-[next.md](next.md) records U1 checks and the next unit. U1V completed definition
+[next.md](next.md) records executed checks and the next action. U1V completed definition
 acceptance with all 16 focused Debug ASan/UBSan cases passing; leak coverage is
 unavailable under ST-008. U2 passed 18 session cases, the 16 definition regressions
-and its isolated allocation probe; console/JSON remains proposed.
+and its isolated allocation probe. U3's 26 new cases and all 34 regressions passed
+(60/60), including ten actual child consoles. Its evidence/limits are in next.md.
+No new preference evidence is inferred.
 
 ## ST-001 — Reusable dialogue, console first
 
-CPU definitions and explicit sessions live in CE::Dialogue; the gate remains test
-data until the console unit. Applications own conditions, effects and paired state
-adoption. This keeps runtime, UI, JSON and sibling features outside the public
-boundary. The tradeoff is a deliberately small facility within the existing Engine
-target rather than an independently packaged narrative framework. Confidence is
-high in the boundary, medium in interface spelling; compatibility does not establish
-personal taste.
+CPU definitions and sessions live in CE::Dialogue; a default-OFF private headless
+console now owns the concrete gate, flag, commands and paired adoption. It links
+Engine and privately includes pinned JSON headers, without optional modules.
+Numbered presentations select only issued tokens and reject old commands after
+progress/resume. This trades a second command argument for visible scope.
+Confidence is high in separation, medium in command spelling; changing commands
+is local and establishes no personal API taste.
 
 ## ST-002 — Separate authored identity from session progress
 
@@ -75,13 +77,14 @@ source review and 16 passing native cases; leak checking remains unavailable (ST
 
 ## ST-007 — Save progress and application flags as one boundary
 
-Snapshot idle healthy boundaries into owned schema/definition/revision/session/node/
-step values, omitting incarnation and handlers. Resume validates exact content and
-creates a new incarnation without effects or modifying an existing session.
-Capture/adopt application flags with the cursor on one serialized owner; idle
-session moves and the fixture's boolean assignment cannot throw. This prevents
-replay from that coherent pair while leaving rollback/external-I/O recovery to the
-application. Confidence is high in the value boundary; console JSON remains proposed.
+Capture idle snapshot and introduced flag on one serialized Encounter owner. Decode
+fresh values, then resume against its retained definition before nonthrowing idle
+session/boolean adoption. Failed loads preserve both values and live tokens;
+successful loads renew authority and discard presented choices. Counts remain
+unsaved test instrumentation. This avoids replay from a coherent pair, without
+authenticating edited history or guaranteeing external effects across rollback.
+Confidence is high in ownership; schema changes require versioning, adapter changes
+remain local.
 
 ## ST-008 — Bound the native verification accommodation
 
@@ -92,3 +95,22 @@ with ASan/UBSan instrumentation intact. This trades unavailable leak
 coverage for executable definition checks, without changing global settings or
 build flags. Confidence is high from this clone's captured diagnostics. Remove
 only detect_leaks=0 on an LSan-compatible executor; leak detection is unverified.
+
+## ST-009 — Decode a bounded complete envelope strictly
+
+Use pinned nlohmann SAX parsing with two fixed object frames, decoded-key duplicate
+bits and exact field/type/schema checks. Scan every byte for raw NUL first; read
+at most 64 KiB plus one detection byte. Strict parsing rejects trailing documents.
+This trades a small fixture-specific decoder for bounded nesting and no silent
+coercion/replacement. Confidence is high in the boundary, medium in format longevity;
+replacing the private codec is cheap before external saves accumulate.
+
+## ST-010 — Save exclusively to a fresh chosen path
+
+Create the destination with exclusive C11 fopen x mode, then check write, flush
+and close. Track ownership only after create; remove incomplete owned output,
+reporting path and cleanup failure if removal fails. Existing files/leaf links
+remain untouched. This authorized narrowing replaces temporary publication and
+trades overwrite convenience for a small auditable boundary. Confidence is high
+on verified Linux, portability remains unverified; replacement/durability would
+require a separately designed policy.

@@ -226,6 +226,8 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_TUTORIAL_GAME
             "Build the Player/Enemy/HUD and How-to teaching game" OFF
             REQUIRES CHERYL_BUILD_STARTUP CHERYL_STARTUP_OPENGL CHERYL_BUILD_UI_TGUI CHERYL_NATIVE_INPUT)
+    cheryl_option(CHERYL_BUILD_DIALOGUE_CONSOLE
+            "Build the headless dialogue encounter and paired save consumer" OFF)
 
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)
