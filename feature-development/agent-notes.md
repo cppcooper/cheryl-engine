@@ -7,8 +7,11 @@ U2F checkpoint `ef1d0ac741cdbe888d06d3f6216f8d1d2104f077` preserves native path
 meaning through ancestor symlinks/parent components and passed 122 cases.
 Accepted U3 checkpoint `9efd4fd9f248fdd3aa7971d260d45c8449896bdc` adds the private CPU CLI
 with 136 passing cases. U4 extracts the same boundary into Engine-owned source and
-public CPU headers. Actual U4 execution evidence is in [next.md](next.md); this
-is not installed SDK, shared ABI or full persistence acceptance.
+public CPU headers. Accepted U4 checkpoint
+`28617d0ab0789fe1309162319bc5e2871555f2e6` establishes the alternate static CPU
+producer. U5 selects real shared-Engine consumption of the same API/consumer;
+actual execution evidence and remaining limits are in [next.md](next.md). This is
+not installed SDK or full persistence acceptance.
 The reader summary is [decisions.md](decisions.md);
 actual commands/results and the next unit are in [next.md](next.md).
 
@@ -33,7 +36,7 @@ The [workspace instructions](../../../AGENTS.md),
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
 and Git instructions were read, including `docs/AGENTS.md`. The current assignment
-authorizes U4 extraction, focused native verification and its local commit,
+authorizes U5 shared-Engine verification, focused native checks and its local commit,
 and stops for coordinator acceptance. Protected source workspaces and sibling implementations are
 not prerequisites or execution sites.
 
@@ -384,7 +387,8 @@ U1 injected I/O, allocation and programming failures and retained diagnostics
 passed focused checks. U2 adds native-read, close, file-phase and leftover tests;
 see [next.md](next.md) for actual results. Changing error style now affects the public CPU declarations, private CLI/tests
 and independent source-tree consumer. No general result abstraction or shared
-exception hierarchy is selected; shared-library/CRT ABI remains unverified.
+exception hierarchy is selected. U5 verifies owned errors/values across the normal
+Linux/GNU shared Engine; other toolchains/CRTs and installed ABI remain unverified.
 
 U3 renders owning Error fields through `Cli::print_error`: category, operation,
 origin and location, known byte offset and native error category/value/message,
@@ -558,7 +562,8 @@ copying it into production would leave competing authorities. A large resource
 manager API would add lifetime policy without a consumer. **Confidence: high**
 in CPU isolation and source ownership; medium in final namespace/header/target
 names. Reversal changes branch-local includes and its small callers; persisted
-wire bytes do not change. Full Engine/shared/installed ABI acceptance is deferred.
+wire bytes do not change. U5 selects the normal shared Engine producer and cross-DSO execution (MS-010);
+full static Engine, installed and other-toolchain ABI acceptance remain separate.
 
 ## MS-008 Private CLI contract
 
@@ -623,7 +628,8 @@ bytes followed by separate A reload/compare. Unique build children retain output
 and exit statuses. The regular 136-case suite keeps every accepted name/behavior.
 
 Link/source inspection distinguishes source-tree CPU execution from full Engine,
-shared DLL/RTTI/CRT, installation/relocation or SDK packaging acceptance. The latter
+shared DLL/RTTI/CRT, installation/relocation or SDK packaging acceptance. U5
+addresses the source-tree Linux shared boundary in MS-010; the other contexts
 remain unverified. A separate configuration is necessary to expose accidental
 Python/gtest/Engine usage that the existing tests-on build could mask. Reusing
 root Engine consumer infrastructure would introduce unwanted dependencies; a
@@ -631,6 +637,58 @@ consumer-local implementation copy would not prove production consumption.
 **Confidence: high** in the scoped usage requirements; medium in this provisional
 proof target's final name. Reversal is limited to source-tree CMake/consumer files
 and declared names, with no wire or semantic migration. No user-taste inference.
+
+## MS-010 Normal shared-Engine consumer
+
+U5 adds only `MAP_STORAGE_USE_SHARED_ENGINE=ON` to the existing independent
+consumer; the default remains the standalone CPU proof. The new mode includes
+`cmake/CherylModules.cmake` and reuses `cheryl_prepare_module()` with outer module
+test setup disabled. That existing scoped bootstrap disables docs/SDK,
+startup/workers/native/graphics/UI/audio, apps and broad tests. It builds the normal
+shared `Cheryl::Engine`, with necessary dependencies, rather than a substitute
+archive or an Engine-linked stub. Configuration rejects static/imported/other-source
+producers and an alternate CPU producer in this profile. No bootstrap refactor,
+public API, wire/validation or file-publication change is selected.
+
+The same authored garden main and CMake process harness exercise owned memory
+round-trip, copied Error after borrowed input destruction, actual author/fresh
+verify, and exact valid predecessor preservation followed by fresh comparison.
+The shared executable/probes link only Cheryl::Engine and inherit its declared
+usage requirements. They define no CE_ENGINE_STATIC/CE_BUILDING_ENGINE/import
+patches and add no private includes/implementation sources. Header-first probes
+check imports in shared mode and inherited static selection in CPU mode; CE_API
+must expand appropriately for the producer, rather than always being empty.
+Generated producer metadata plus compile/link inputs and dynamic-symbol/runtime
+inspection establish which real library owns the calls. Actual commands/results
+and failure evidence are in next.md. The shared build and three import probes
+passed; exported public functions, Error constructor and DEFAULT RTTI/vtable are
+confirmed, as are undefined consumer imports and this clone's resolved Engine.
+All three garden cases passed after the runner's LeakSanitizer fatal exit was
+isolated with ASAN_OPTIONS=detect_leaks=0; normal Engine instrumentation remains.
+Leak checking is unverified, not reported as passing or as a detected code leak.
+
+The normal Engine configuration embeds a fallback font unconditionally. U5
+prepares the assets gitlink at `98453b2a6e0edfcfba22eea3fde801526d72b861` using
+read-only file transport of committed objects from the protected asset Git store,
+following the coordinator's documented preparation method. No dirty source files,
+outputs, caches, hardlinks or alternates are reused. The font hash is
+`4a2438171a9144a2c698a36a64b10116c4c9db9112cd12361296f9eb0bd8cbed`.
+Fetch/checkout succeeded; optional metadata absorption failed once with
+`Invalid cross-device link` (exit 128), so its independent nested .git is retained.
+This is usable preparation, not an unresolved build prerequisite; no unchanged
+retry or permission bypass was attempted. Protected metadata stayed identical.
+Runtime map loading still performs no asset lookup.
+
+Reusing the alternate archive in shared mode would fail to prove Engine exports;
+compiling a second implementation would hide ownership and export defects.
+Hand-setting visibility or changing shared bootstrap defaults would obscure the
+producer's actual contract. The selectable source-tree mode is the narrow choice.
+**Confidence: high** in scoped target ownership and existing source conventions;
+medium outside the executed Linux/GNU Debug profile. This is an engineering
+verification choice, not inferred user taste. Reversal removes a local CMake
+branch/probe selection and its records; persisted bytes and API semantics remain
+unchanged. Full static Engine, other platforms/compilers/CRTs and installed SDK
+acceptance are separate; no durability, hostile-race or multiwriter promise follows.
 
 ## Source evidence
 
@@ -657,6 +715,7 @@ follow the U4 moves; historical source/checkpoint provenance remains unchanged.
 | E12 | U2F [resolver](../projects/engine/src/core/resources/map-storage/file-storage.cpp) `Detail::resolve` preserves components in `absolute(input)`; [file regressions](../projects/tests/map-storage/file-storage-tests.cpp) `files::ancestor_parent` and four `files.ancestor_parent_*` cases distinguish native and lexically simplified targets. Expected pre-fix failure and final discovery/build/native outcomes are saved separately in [next.md](next.md). This corrects the E11 implementation contract; no historical preference is inferred. |
 | E13 | U3 [consumer](../projects/tests/map-storage/cli.cpp), [literal fixture](../projects/tests/map-storage/fixture.h), [diagnostic renderer](../projects/tests/map-storage/cli-diagnostics.h), [formatter tests](../projects/tests/map-storage/cli-diagnostics-tests.cpp), [process harness](../projects/tests/map-storage/cli-checks.py), and direct [standalone target/registration](../projects/tests/map-storage/CMakeLists.txt). No codec/adapter/schema change. Implementation facts and delegated CLI requirements are engineering evidence; actual commands/counts/outcomes and source/link inspection are in [next.md](next.md), not preference evidence. |
 | E14 | U4 [production declarations](../projects/engine/include/cheryl/core/resources/map-storage/codec.h), [native adapter](../projects/engine/src/core/resources/map-storage/file-storage.cpp), [CPU target](../projects/engine/cmake/MapStorageCpu.cmake), [independent consumer](../projects/engine/tests/map-storage-consumer/main.cpp) and [probes/process registration](../projects/engine/tests/map-storage-consumer/CMakeLists.txt). Placement/visibility follow [Engine source discovery](../projects/engine/CMakeLists.txt), [export macros](../projects/engine/include/cheryl/export.h), E02/E03 and existing [Camera type/member decorators](../projects/engine/include/cheryl/core/rendering/camera.h). Current agent-written conventions establish compatibility, not personal preference. Actual U4 checks and gaps are recorded in next.md. |
+| E15 | U5 [selectable consumer/producer-aware probes](../projects/engine/tests/map-storage-consumer/CMakeLists.txt) reuse the unchanged [garden main](../projects/engine/tests/map-storage-consumer/main.cpp) and [process harness](../projects/engine/tests/map-storage-consumer/check.cmake). [Existing bootstrap](../cmake/CherylModules.cmake) `cheryl_prepare_module` scopes unrelated selections off; [library visibility](../cmake/CherylLibraries.cmake) `cheryl_configure_library` sets CE_BUILDING_ENGINE and hidden shared defaults on the normal [Engine producer](../projects/engine/CMakeLists.txt). Configure/link metadata, GLOBAL/DEFAULT map-function exports, Error DEFAULT RTTI/vtable, consumer undefined imports, actual local DSO resolution and fresh-process outcomes are saved under U5 logs listed in next.md. This is compatibility/execution evidence, not personal-preference evidence. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -698,7 +757,7 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-U1 through U3 are accepted. This assignment implements U4 only and stops for
+U1 through U4 are accepted. This assignment verifies U5 only and stops for
 coordinator review. Executed evidence is recorded in [next.md](next.md).
 
 1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
@@ -723,6 +782,11 @@ coordinator review. Executed evidence is recorded in [next.md](next.md).
    implementation; adapt CLI/tests, target usage requirements and tests-off entry;
    add header-first probes and an independent public-API non-fixture consumer.
    No installed SDK export or full Engine/shared/ABI acceptance is claimed.
+
+5. **U5 — Real shared-Engine consumer, implemented/checked.** Add a narrowly selectable
+   normal shared-Engine link mode and producer-aware header probes; retain the
+   same garden behavior and CPU mode. Build/check only that boundary and inspect
+   exported symbols/runtime dependencies, stopping for coordinator review.
 
 Each unit keeps the decision summary and next action consistent with actual
 evidence. The U1 pre-interruption checks used the then-current shared
@@ -774,3 +838,16 @@ namespace/include substitution. The unchanged two process cases were not rerun.
 Full commands, initial failure/fix provenance, complete logs and remaining full
 Engine/shared/SDK gaps are in next.md. These observations establish only the
 source-tree CPU boundary, not complete map-storage or installed acceptance.
+
+U5 actual evidence extends the above to this clone's normal shared Engine in GNU
+16.2.1 Debug on Linux. Three shared consumer cases passed (five native child
+invocations), all three shared import probes built, and revised CPU static probes
+also built in the preserved configuration. Dynamic function/constructor/typeinfo
+visibility and resolved DSO ownership were inspected. No production/API/export
+fix was needed, so the unchanged 136 regressions and prior CPU native cases were
+not repeated. The initial three Debug processes completed their assertions but
+exited 1 on LeakSanitizer's fatal environment diagnostic; those failed checks are
+preserved separately. The passing rerun disabled only leak detection and retains
+normal Engine ASan/UBSan instrumentation/runtimes. Full static Engine, non-Linux,
+other-toolchain/CRT, installed SDK, leak checking and broader Engine behavior remain
+unverified; next.md owns exact commands, outcomes and coordinator review action.

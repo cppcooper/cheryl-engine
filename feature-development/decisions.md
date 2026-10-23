@@ -3,7 +3,8 @@
 U1's CPU values/codec and U2's private Linux file adapter are implemented.
 U2F corrects native path meaning across ancestor symlinks.
 U3 adds the private process CLI. U4 moves the same implementation into Engine-owned
-public CPU source and adds a source-tree consumer. Executed checks/limits are in
+public CPU source and adds a source-tree consumer. U5 selects normal shared-Engine
+consumption of that same boundary. Executed checks/limits are in
 [next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
@@ -57,8 +58,8 @@ with Engine visibility. Paths retain native components, including ancestor symli
 followed by `..`; cleanup retains primary and owned leftover details. Allocation
 and programming failures propagate, while the private CLI owns process exits.
 Noncanonical spelling and C++ exception ABI are tradeoffs. Confidence is high in
-tested ownership/path identity, medium in exception shape; shared ABI remains
-unverified.
+tested ownership/path identity and Linux/GNU cross-DSO copying, medium in
+exception shape; other-toolchain/installed ABI remains unverified.
 [Details](agent-notes.md#ms-005-ownership-and-failure-reporting).
 
 ## MS-006 Failed-write preservation
@@ -79,7 +80,8 @@ Move the single implementation into Engine include/src under core/resources/map-
 using CE::Maps and CE_API on noninline boundaries. JSON and native fault operations
 stay private. Existing source discovery includes the files; a small Engine-owned
 source-tree target builds them independently for CLI/tests/consumer. This avoids
-duplicate authorities while postponing full Engine/shared/SDK evidence. Confidence
+duplicate authorities; U5 verifies the shared source producer, with static Engine/SDK
+evidence deferred. Confidence
 is high in scoped isolation, medium in names; reversal changes source-tree callers,
 not wire bytes.
 [Details](agent-notes.md#ms-007-integration-and-implementation-placement).
@@ -102,6 +104,17 @@ keep pinned JSON private. MAP_STORAGE_BUILD_TESTS defaults on; off bypasses both
 gtest and Python. An independent tests-off consumer links only that target, with
 header-first probes, owned encode/parse checks, fresh literal file verification
 and failed-save predecessor preservation. The extra build proves a dependency
-boundary masked by tests-on. Confidence is high in this bounded proof; installed
-and shared integration remain unverified.
+boundary masked by tests-on. Confidence is high in this bounded proof; U5 separately
+checks shared Engine. Installed/static Engine acceptance remains unverified.
 [Details](agent-notes.md#ms-009-source-tree-cpu-usage-requirements-and-tests-off-consumer).
+
+## MS-010 Normal shared-Engine consumer
+
+Add an opt-in shared-Engine mode to the existing garden consumer, retaining CPU
+proof mode. Reuse the normal scoped Engine bootstrap, link only Cheryl::Engine
+and inherit its visibility/dependency requirements. Producer-aware header probes,
+real cross-DSO values/errors, fresh processes and symbol/link inspection address
+a gap the alternate archive could not prove. Full Engine dependencies cost build
+time. Confidence is high in Linux/GNU execution; leak checking, installed/static Engine
+and other-toolchain acceptance remain separate.
+[Details](agent-notes.md#ms-010-normal-shared-engine-consumer).
