@@ -1,4 +1,95 @@
-# U1 native acceptance and next unit
+# U2 session acceptance and next unit
+
+U2 implements the CPU session/value unit on top of preserved checkpoint
+`f12adbbf9a3edda5c6ad83115deabc502d296f4b`: retained frozen definition, owned views,
+opaque live incarnation, checked explicit choices, synchronous borrowed handlers,
+failure state and owned `Snapshot` resume. **18/18 session cases and all 16
+definition regressions passed** (34/34, no skips/unrun cases). A standalone
+allocation-rejection probe compiled and ran successfully. This accepts the assigned
+U2 scope only. Console/JSON, filesystem I/O and runtime integration remain U3.
+
+Both contract views are current: [agent-notes.md](agent-notes.md) and
+[decisions.md](decisions.md), especially ST-002/003/004/005/007. The private shared
+incarnation renews on every start/resume, survives idle moves and is absent from
+snapshots; equal persisted fields cannot resurrect an old token. The tiny gate
+caller captures/adopts the flag and cursor on one idle serialized owner, resumes,
+then chooses pass with the effect counter still one. This is an engineering
+implementation of the coordinator's correction, not evidence of personal API taste.
+
+## Actual U2 checks
+
+All configure/build/native checks used the existing wrapper, one job and
+clone-local outputs. The existing Debug configuration/pins were retained. The
+incremental build automatically reconfigured for the new source/test globs;
+no repository build configuration was edited. ASan/UBSan instrumentation and both
+halt-on-error settings remain active, with command-local leak disabling under
+ST-008. No resource refusal/exit 75 occurred. Normal shared-lock queueing was
+allowed to complete in the existing tool session without cancellation/probes.
+
+| Session case(s), all passed | Observable boundary |
+| --- | --- |
+| `consumer`, `routes`, `boundaries` | Header-first tiny caller; one flag; both endings; initial/terminal snapshots; paired resume without repeating the effect. |
+| `conditions`, `scope`, `missing_handlers` | Recheck availability in both directions after presentation; foreign/stale/unissued/unknown selections and missing handlers reject without effects/progress. |
+| `cycles`, `incarnations`, `independent` | Explicit cycle progression invalidates old steps; identical-field resume/rewind and repeated logical IDs get new markers; independent cursors reject foreign commands. |
+| `ownership`, `moves`, `handlers` | Retained definition lifetime; view/snapshot ownership after definition/session release; marker survives idle moves; moved-from state rejects; no handler retention. |
+| `guard_failure`, `effect_failure`, `reentrant` | Predicate failure preserves healthy progress/no effects; original effect exception rethrows after partial app mutation and faults; callback view/choose/snapshot return Busy. |
+| `lifecycle`, `exhaustion`, `resume_rejects` | Active move/replacement/destruction terminate in death tests; maximum step rejects before callbacks; schema/content/revision/session/node failures preserve an existing live value. |
+
+The focused allocation probe is isolated from `tests-engine`; only its own
+executable replaces scalar new/delete. It first proves that a one-byte request
+is rejected, then simulates owned view/snapshot copy failure with 128-byte strings
+and verifies unchanged healthy state. Its effect verifies the key borrows frozen
+storage, then enables allocation rejection until `choose` returns. Success,
+unchanged rejection count, one effect and destination/step checks passed. The
+engine's prepared `expected<void, SessionError>` success is statically nonthrowing
+to copy; the source after effect return contains only numeric assignments, return
+and the nonthrowing busy-guard reset. No memory exhaustion/OOM was attempted.
+
+Actual U2 commands (from clone root), all exit **0**; complete stdout/stderr and
+immediate exit statuses are saved under `builds/storytelling-u1-debug/`:
+
+```sh
+/mnt/projects/cheryl-features/scripts/build -- c++ -std=c++23 -Wall -Wextra -Wpedantic -fsyntax-only \
+  -Iprojects/engine/include -Iprojects/engine/include/cheryl -Iextern/googletest/googletest/include \
+  projects/engine/src/core/game-framework/dialogue-session.cpp projects/engine/tests/unit/src/dialogue-session.cpp
+# Above checked the initial tiny caller before the other 17 session cases were added.
+
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^tests-engine\.(dialogue_definition|dialogue_session)\.'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 -R '^tests-engine\.(dialogue_definition|dialogue_session)\.'
+
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- c++ -std=c++23 -O0 -g -Wall -Wextra -Wpedantic \
+  -fsanitize=address,undefined -fno-omit-frame-pointer -Iprojects/engine/include -Iprojects/engine/include/cheryl \
+  projects/engine/src/core/game-framework/dialogue.cpp projects/engine/src/core/game-framework/dialogue-session.cpp \
+  projects/engine/tests/probes/dialogue-session-allocation.cpp -o builds/storytelling-u1-debug/dialogue-session-allocation-probe
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- builds/storytelling-u1-debug/dialogue-session-allocation-probe
+```
+
+| Complete clone-local log / matching `.exit` | Actual result |
+| --- | --- |
+| `u2-caller-syntax.log` | Exit 0, initial small caller and implementation syntax/type check, no diagnostics. |
+| `u2-build-1.log` | Exit 0, automatic glob reconfiguration, Engine/source/test compilation, linking and discovery. |
+| `u2-registration.log` | Exit 0, exactly 34 cases: 16 definition and 18 session names, matched to source in order. |
+| `u2-ctest-1.log` | Exit 0, `100% tests passed out of 34`, 4.64 seconds; no skips/unrun cases. |
+| `u2-ctest-details.log` | Preserved complete `Testing/Temporary/LastTest.log`; all 34 GoogleTest RUN/OK records and CTest passes checked against source. |
+| `u2-allocation-build.log` | Exit 0, isolated warning-enabled Debug ASan/UBSan source probe compilation. |
+| `u2-allocation-run.log` | Exit 0, allocation rejection and post-effect commit checks passed, no sanitizer diagnostics. |
+
+The four changed/new C++ files passed repository clang-format and whitespace
+checks. The 16 definition tests/source remain unchanged; only the public header
+adds session declarations and the standard functional include. No broad suite,
+SDK export, GUI or documentation generation ran. Full logs remain clone-local
+ignored outputs, outside the coherent source/records commit.
+
+## U1/U1V evidence retained
 
 U1 source is committed in `25836ffb48fb25e9ed5e89d2805daf6e093ed5fc`, from design
 checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978`. U1V started at clean checkpoint
@@ -16,7 +107,8 @@ configuration, dependency pin, global setting or U1 source changed during U1V.
 
 Contracts: [agent-notes.md](agent-notes.md); compact choices:
 [decisions.md](decisions.md), ST-001/002/003/004/006 and verification decision ST-008.
-ST-005/007 remain proposals for later units. The header/source implement owned
+ST-005/007 were proposals at U1V; U2 now implements the value boundary as recorded
+above. The U1 header/source implement owned
 authored values, private deep-copy freezing, ordered inspection, scoped lookup and
 owned diagnostics.
 The four-node gate remains test data; no session, callback dispatch or save exists.
@@ -155,16 +247,25 @@ on an LSan-compatible executor to restore it while retaining both halt-on-error
 settings, with no code/configuration reversal cost. Acceptance covers this
 GNU/Linux Debug Engine-linked runner only.
 API spelling remains an agent engineering choice with medium confidence, not
-established personal user taste. Sessions, effect dispatch and snapshots have
-neither implementation nor executed acceptance yet.
+established personal user taste. U2's synchronous dispatch and value snapshots
+are now implemented/executed as recorded above; JSON/console acceptance is pending.
 
-The next useful **implementation** unit is U2, the explicit session over these
-frozen definitions, for coordinator selection after U1V. Its small caller and
-contracts remain proposed in [agent-notes.md](agent-notes.md). It owns the views,
-scoped selection, application handlers, failure state and value resume boundary
-(ST-005/007).
-First review the retained/borrowed definition boundary and the nonthrowing
-post-effect commit, then implement only that assigned session unit. Its checks
-must cover both routes, unavailable/stale/repeated selections without effects,
-independent retained lifetimes, throwing handlers and paired resume with no effect
-replay. Stop after U1V now; U2 and recurring work are not started automatically.
+U2 has no unresolved execution blocker. Confidence is high in the marker and
+failure/commit boundaries from source review, the 34 native passes and isolated
+probe. The hard active-lifecycle termination policy is a medium-confidence
+engineering choice: it keeps idle adoption noexcept and prevents callback storage
+invalidation, but does not recover programming misuse. Changing it is cheap while
+only these initial callers exist. One serialized owner, stable handler lifetimes,
+pure predicates and coherent application flag pairing remain caller obligations.
+Leak checking is unavailable here; no durable external-effect/rollback guarantee
+or migrated snapshot compatibility is claimed.
+
+The next useful unit is **U3, console/JSON acceptance**, for coordinator selection.
+Use the implemented gate caller plus a bounded versioned paired flag/Snapshot
+codec and console commands; keep the schema proposal in agent-notes.md distinct
+from current code. Required checks: both console routes, unavailable rejection,
+malformed/oversized/duplicate-key/schema/content rejection before adoption,
+unchanged active values after failed load, and save at gate/resume with unchanged
+effect count. Review fresh-path I/O failure behavior when that unit is assigned.
+Stop after U2; U3, publication transport and recurring work remain with the
+coordinator. No next implementation unit has been started.

@@ -7,15 +7,17 @@ definition source at `25836ffb48fb25e9ed5e89d2805daf6e093ed5fc`: all 16 focused
 native cases passed under Debug ASan/UBSan. LeakSanitizer cannot run under this
 executor's tracing; command-local leak disabling is recorded in ST-008, with no
 passing leak claim. U1 definition acceptance is complete; see [next.md](next.md).
-Sessions and the console encounter remain proposed. The companion
+U2 implements checked sessions and owned value resume, with 18 session cases,
+16 definition regressions and the isolated allocation probe passing; see
+[next.md](next.md). The console/JSON encounter remains proposed. The companion
 [decisions](decisions.md) use the same `ST-001` through `ST-008` IDs;
 [next](next.md) selects one subsequent implementation unit.
 
 ## Authority, scope and evidence limits
 
 The coordinator's STORYTELLING-U1 assignment authorized the definition source;
-STORYTELLING-U1V completes focused native verification and these records, without
-starting sessions or changing the definition API. These assignments supersede the
+STORYTELLING-U1V completed definition verification. STORYTELLING-U2 authorizes the
+session implementation, focused checks and these records. These assignments supersede the
 earlier design-only task. The parent `AGENTS.md`,
 `coordination/autonomy-policy.md`, `coordination/workers.json` and feature brief
 were read from `/mnt/projects/cheryl-features/`. Repository workflow,
@@ -26,8 +28,8 @@ feature-development records were present at the original design baseline. U1
 started with the design records committed and a clean tree. This clone alone is
 owned; protected checkouts and sibling clones are outside the work.
 
-**ST-001 — Small reusable boundary.** U1 implements CPU dialogue definition
-validation; an explicitly advanced session and console adapter remain later units.
+**ST-001 — Small reusable boundary.** U1/U2 implement CPU dialogue definition
+validation and an explicitly advanced session; the console adapter remains U3.
 The definition lives in `CE::Dialogue`, under
 `projects/engine/include/cheryl/core/game-framework/dialogue.h` and its source
 counterpart. The public contract needs no `AbstractGame`, runtime context,
@@ -81,43 +83,41 @@ validation and lookup. Existing source globs select both files without CMake edi
 The spelling and ownership choices are engineering decisions, not newly inferred
 personal API preferences.
 
-## Proposed caller sequence beyond U1
+## U2 small caller and paired value resume
 
-Compilation below uses U1; session names and behavior remain proposed. `require`, `find_choice`,
-`make_gate_definition`, flag handlers and the `GateSave` codec are application
-helpers illustrating results, not additional engine APIs. `require` checks a
-result and reports its diagnostic before extracting its value. The sketch has
-not been compiled or run.
+The header-first `dialogue_session.consumer` case compiles the same gate definition
+and uses this sequence. `definition`, `start`, `choice`, `predicate` and `effect`
+are fixture helpers in the test source, not additional engine APIs. One application
+flag owns meaning; `calls` is only effect-count instrumentation. See next.md for
+executed results, rather than treating the source sketch as acceptance by itself.
 
 ```cpp
-namespace D = CE::Dialogue;                       // proposed
-auto definition = require(D::compile(
-    make_gate_definition("gate-encounter", 1),
-    D::OperationKeys{{"introduced"}, {"introduce"}}));
-GateFlags flags{.introduced = false};              // application value
-auto test = [&](D::ConditionKey key) { return check_flag(key, flags); };
-auto apply = [&](D::EffectKey key) { set_flag(key, flags); };
-
-auto saved = [&] {
-    auto session = require(D::Session::start(definition, D::SessionId{"gate-0001"}));
-    auto offer = require(session.view(test));
-    require(session.choose(find_choice(offer, "introduce").selection, test, apply));
-    // Now at gate, step 1, flag true; no effect is pending.
-    return GateSave{1, flags, require(session.snapshot())};
-}();                                               // first session destroyed
-
-auto loaded = require(decode_gate_save(encode_gate_save(saved)));
-auto resumed = require(D::Session::resume(definition, loaded.dialogue));
-flags = loaded.flags;                              // adopt together on this owner
-auto gate = require(resumed.view(test));             // observes; applies no effects
-require(resumed.choose(find_choice(gate, "pass").selection, test, apply));
+namespace D = CE::Dialogue;
+const auto content = definition();
+Flags flags;
+int calls = 0;
+auto session = start(content);
+const auto offer = session.view(predicate(flags)).value();
+session.choose(choice(offer, "introduce").selection,
+               predicate(flags), effect(flags, calls)).value();
+const Flags saved_flags = flags;
+const auto saved = session.snapshot().value();       // gate, step 1, flag true
+auto loaded = D::Session::resume(content, saved);
+ASSERT_TRUE(loaded);
+flags = {};
+session = std::move(*loaded);                       // both sessions idle; nonthrowing
+flags = saved_flags;                               // same serialized owner
+const auto resumed = session.view(predicate(flags)).value();
+session.choose(choice(resumed, "pass").selection,
+               predicate(flags), effect(flags, calls)).value();
+EXPECT_EQ(calls, 1);                               // introduce was not replayed
 ```
 
-The console later adds `save PATH` / `resume PATH` around this value round trip.
-Decode and validate both parts into temporary values before adopting either;
-the flag assignment and session move in this fixture must be nonthrowing.
-`check_flag` rejects an unknown key, and `set_flag` resolves its known key before
-the nonthrowing boolean assignment. A fresh session for the other route selects
+The console later adds encoding and `save PATH` / `resume PATH` around this value
+round trip. Decode and validate both parts into temporary values before adopting
+either; the flag assignment and idle session move in this fixture are nonthrowing.
+The fixture predicate/effect reject an unknown key before any flag assignment;
+the known effect's boolean assignment is nonthrowing. The other route selects
 `silent`, observes `pass` unavailable, then selects `leave`.
 
 ## Identities and retained values
@@ -131,12 +131,20 @@ ordinal identity. Internal lookup indices can be compiled but never saved.
 Any content or bound-operation semantic change requires an authored revision
 bump. Revision correctness is an application obligation, not verified by a hash.
 
-In the proposed later session unit, the application supplies a nonempty session ID identifying one encounter
+In U2, the application supplies a nonempty session ID identifying one encounter
 instance, independently of the definition and engine runtime session. Start uses
 step zero at the entry node; each successful choice increments a checked
 `uint64_t` step. Exhaustion rejects before any callback. Restore retains session
-ID, step and node. Two sessions over the same definition have different IDs and
-independent cursors. The host ensures one active authority per saved session ID;
+ID, step and node. Each start/resume also allocates a fresh private shared
+incarnation marker. Selections retain it; snapshots never contain it. Idle moves
+preserve the marker. Retaining old tokens prevents marker-address reuse, so even
+an identical-field resume/rewind rejects their old authority. This is a small local
+ownership mechanism, not a global ID service. Public token fields remain checked
+logical values, not security credentials. The coordinator explicitly required this
+correction; it is not inferred personal API taste.
+
+Two sessions have independent cursors, even if the host repeats a logical ID;
+that host should give independent encounters different IDs. It ensures one active authority per saved session ID;
 move-only live sessions discourage accidental copies but cannot police multiple
 processes restoring the same file. Deliberate forks require new application IDs.
 
@@ -171,20 +179,26 @@ U1V's native ownership and lookup cases passed after draft mutation/destruction
 and through retained-handle release; this supplies executable evidence for the
 observed lifetime boundary, subject to ST-008's leak-coverage limit.
 
-In later proposed units, a live move-only
+In U2, a live move-only
 session retains `shared_ptr<const Definition>` plus its own numeric cursor, step
 and status; releasing the original definition handle does not invalidate it.
 Application flags and callables are neither stored in that definition nor owned
 by the session. Each operation borrows its supplied handlers only until return.
-Handlers/captures must survive the call; reentering the session is rejected.
+Handlers/captures must survive the call; reentering view/choose/snapshot returns
+`Busy`. Idle move construction/assignment preserve incarnation and are noexcept;
+moved-from operations return `MovedFrom`. Active moves, replacement or destruction
+terminate before invalidating storage beneath a callback. This hard lifecycle
+precondition makes paired idle adoption nonthrowing, at the cost of unrecoverable
+programming misuse; confidence in that policy is medium and reversal affects only
+these initial callers. No operation supplies cross-thread synchronization.
 
 `view` returns copied node text and authored-order choices with availability and
 selection values. These values and snapshots retain their own strings and IDs;
 they borrow neither draft storage, the session, handlers nor application state.
 They may be displayed after session destruction, but old selections gain no new
 authority. Definition sharing permits stable concurrent reads; operations on a
-session and its application flags require one serialized owner. The console
-uses its main thread. A later runtime consumer should advance on simulation and
+session and its application flags require one serialized owner. The proposed console
+will use its main thread. A later runtime consumer should advance on simulation and
 publish copies to presentation, retaining no `TickContext`, input view or frame
 writer. No asynchronous producer, shutdown protocol or callback registration is
 introduced; destruction performs no effects.
@@ -196,23 +210,33 @@ optional condition key and one optional effect key. `OperationKeys` is a supplie
 set of supported names for validation, not a global service or executable
 registry. U1 validates each domain independently, rejects empty/duplicate
 supported names, and retains used names in its copied choices. Validation accepts
-no application code. In later units, per-call handlers would implement pure
-`bool(ConditionKey)` and synchronous `void(EffectKey)` operations;
+no application code. U2 borrows per-call `ConditionHandler` and `EffectHandler`
+std::function objects with signatures `bool(const ConditionKey&)` and
+`void(const EffectKey&)`. It never copies or retains those objects. Keys borrow
+stable retained definition storage for the invocation. Callable conversion at the
+caller can allocate before operation entry; the engine performs no owning key copy
+after an effect. Missing required handlers yield explicit errors;
 the application must honor the declared key contract. No engine flag store,
 expression evaluator, inventory policy or serialized callable is proposed.
 Missing condition means true; missing effect means no action. A view can evaluate
 conditions repeatedly, so predicates cannot consume randomness or mutate flags.
 
-**ST-005 — Selection and commit (proposed U2, absent from U1).** Each selection carries session ID, source node,
-step and choice ID. These values scope a command; they are not a security token.
-`choose` checks those fields, terminal/fault/busy state, membership and step
+**ST-005 — Selection and commit (implemented U2).** Each selection carries private
+live incarnation plus session ID, source node, step and choice ID. These values
+scope a command; they are not a security token. `choose` checks those fields,
+terminal/fault/busy/moved-from state, membership and step
 capacity, then reevaluates the condition against current application state.
 A cached enabled row is insufficient. Rejections are explicit results such as
-`wrong_session`, `stale_selection`, `unknown_choice`, `unavailable`, `finished`
-or `step_exhausted`, leaving progress and effects untouched.
+`WrongSession`, `WrongIncarnation`, `StaleSelection`, `UnknownChoice`, `Unavailable`,
+`Finished` or `StepExhausted`, leaving progress and effects untouched. Terminal
+views/snapshots and maximum-step snapshots remain valid; choosing cannot advance
+a terminal or overflowed cursor.
 
 Complete all lookup, validation, allocation and success-result preparation before
-calling an effect. Once its handler returns, installing the numeric target cursor,
+calling an effect. Success is `expected<void, SessionError>`, prepared before
+entry, with a statically checked nonthrowing copy and no owned result payload.
+The selected effect key borrows retained storage, so argument preparation cannot
+introduce a later string copy. Once its handler returns, installing the numeric target cursor,
 incrementing the step and returning success must not allocate or throw. An effect
 runs once for that accepted choice occurrence. Start, view, snapshot, resume and
 destruction never invoke it. Cycles are permitted because every transition
@@ -227,8 +251,11 @@ save replay. There are no entry/exit hooks or implicit chains.
 | Decode/restore fails | Return diagnostic; adopt neither staged flags nor session; retain any active encounter. No callbacks run during restore. |
 | Console output fails after a committed choice | Choice stays committed; displaying or saving it again cannot replay the effect. |
 
-Mark the operation busy before invoking any handler and enforce this for view,
-choose, snapshot and restore/adoption, including callbacks attempting to save.
+An allocation-free RAII busy guard covers view/choose/snapshot and clears the flag
+without throwing on every exit, including callback and owned-copy exceptions.
+Factories return a separate fresh session without modifying existing values;
+adoption must wait for an idle owner. Callback moves/replacement/destruction are
+hard lifecycle violations, while callback operations predictably return `Busy`.
 The boolean fixture's successful effect cannot throw after assignment. General
 effects have no rollback guarantee: recovery from a fault requires the host to
 discard/reconcile its application state and load a previously coherent pair.
@@ -254,13 +281,14 @@ supported conditions then effects, entry, then each authored node's id/shape and
 each choice's id/target/condition/effect. Membership sets are never enumerated to
 produce diagnostics. Empty text is allowed; node shape checks also reject unknown
 `NodeKind` values. The error variant exposes no partial definition. Use structured
-results for expected authoring failures; selection rejections are still proposed.
-Allocation/copy failures propagate as exceptions; callback failure rules await U2.
+results for expected authoring failures; U2 selection rejections use a separate
+dialogue-local `SessionError` enum. Allocation/copy failures propagate as exceptions;
+the U2 callback failure rules above preserve the original exception.
 This is an additive local result contract, not an engine-wide error
 framework. Exception reporting must preserve the original failure even if
 enriching a message cannot allocate.
 
-**ST-007 — Snapshot a completed boundary and the application state together (proposed, absent from U1).**
+**ST-007 — Snapshot a completed boundary and the application state together (value boundary implemented U2).**
 `snapshot()` succeeds only between operations on a healthy session. Version 1 is
 an owned value of: snapshot schema, definition ID/revision, session ID, current
 node ID and step. Terminal status is derived from the referenced node. An initial
@@ -268,7 +296,11 @@ snapshot records the entry; after a choice it records the destination after any
 applied effect, never a pending edge. The flag belongs in the application's
 versioned envelope alongside that snapshot; a cursor
 alone cannot reconstruct application state. Neither process-local event types,
-addresses, callbacks, indices, shared pointers nor an engine runtime ID are saved.
+addresses, callbacks, indices, shared pointers, live incarnation nor an engine runtime ID are saved.
+`Snapshot::schema` defaults to `current_schema == 1`; resume requires exact schema,
+definition/revision, nonempty session ID and a known node. A uint64 maximum step
+can be represented/restored, but choose rejects before any predicate/effect.
+Malformed/mismatched factories preserve any existing live session by construction.
 
 Concrete proposed envelope at the important save point:
 
@@ -347,7 +379,7 @@ their existence or Git author identity does not establish the user's API taste.
 | Evidence | Observed contract / consequence |
 | --- | --- |
 | C1: [AbstractGame](../projects/engine/include/cheryl/core/game-framework/abstract-game.h), lines 8–29, 91–110; [TickContext](../projects/engine/include/cheryl/core/game-framework/tick-context.h), lines 15–33; [runtime implementation](../projects/engine/src/core/game-framework/game-runtime.cpp), lines 565–588, 610–650, 862–882 | Game organization is unconstrained; simulation owns mutation, borrowed tick/frame data expires, concurrent frame preparation can be skipped, and hook failure leads through cleanup. Keep effects out of presentation and keep the console independent. **High** compatibility confidence; ST-001/003/005. |
-| C2: [StateMachine](../projects/engine/include/cheryl/templates/state-machine.h), lines 11–20, 47–69; [StateTracker](../projects/engine/include/cheryl/templates/state-tracker.h), lines 8–26; [VersionedVariable](../projects/engine/include/cheryl/templates/versioned-variable.h), lines 19–25, 40–68 | Machine order is exit → assignment → action → enter without rollback. Tracker references borrow mutable storage; versioned snapshots copy one value, can coalesce changes and permit revision wrap. These are neither a durable save nor the proposed effect-before-cursor commit. **High**; ST-003/005/007. |
+| C2: [StateMachine](../projects/engine/include/cheryl/templates/state-machine.h), lines 11–20, 47–69; [StateTracker](../projects/engine/include/cheryl/templates/state-tracker.h), lines 8–26; [VersionedVariable](../projects/engine/include/cheryl/templates/versioned-variable.h), lines 19–25, 40–68 | Machine order is exit → assignment → action → enter without rollback. Tracker references borrow mutable storage; versioned snapshots copy one value, can coalesce changes and permit revision wrap. These are neither a durable save nor U2's effect-before-cursor commit. **High**; ST-003/005/007. |
 | C3: [state test source](../projects/engine/tests/all-tests/src/templates/state.cpp), lines 10–35, 48–74; [test routing](../projects/engine/tests/CMakeLists.txt), lines 4–16 | Concrete callers compose two application state domains through a guard and assert ordered hooks/coherent samples. These cases route to unit sources; they contain no dialogue or persisted-effect acceptance. Read, not run. **High** for existing usage only; ST-004/005. |
 | C4: [EventChannel](../projects/engine/include/cheryl/core/subsystems/event-channel.h), lines 10–26; [EventBus](../projects/engine/include/cheryl/core/subsystems/event-bus.h), lines 34–54, 124–164; [dispatch/notify](../projects/engine/src/core/subsystems/event-bus.cpp), lines 67–82, 109–136; [typed-event consumer test](../projects/engine/tests/acceptance/src/typed-events.cpp), lines 62–84 | Channel type identity is in-process, payload callbacks borrow invocation copies, dropping a registration does not unsubscribe, dispatch can propagate listener failure, and notify isolates failures. Queued copies/discards are tested in source. An event notification cannot authorize or transactionally persist a gameplay effect. **High**; ST-001/004/007. |
 | C5: [sprite declarations](../projects/engine/include/cheryl/assets/types/2d/sprite.h), lines 16–49, 56–74; [sprite implementation](../projects/engine/src/assets/types/2d/sprite.cpp), lines 67–90, 111–129; [playback consumer test](../projects/engine/tests/all-tests/src/assets/render-frame.cpp), lines 72–88 | Current sprites retain immutable definitions and produce independently mutable cursors, including after asset release. Source supplies an ownership analogy, not a personal preference or save protocol. **High** source confidence; **medium** transfer to ST-002/003. |
@@ -377,11 +409,11 @@ new v3 intent nor present preference.
 
 ### Alternatives and reversal cost
 
-| Decision | Alternative considered | Reason for present proposal / reversal consequence |
+| Decision | Alternative considered | Reason for present choice / reversal consequence |
 | --- | --- | --- |
 | ST-001 | Put dialogue entirely in the console; or create a narrative/quest framework | The former proves a fixture without testing reuse, the latter invents policy beyond the brief. Keep only validation/cursor reusable. Namespace/header location is provisional and cheap to change before callers accumulate. |
-| ST-002 | Serialize vector offsets, addresses, runtime IDs or a content hash | Stable authored strings and exact manual revision are understandable and portable. They require disciplined revision bumps. A hash/migration layer can be added later, with a schema change; no current save compatibility is promised. |
-| ST-003 | Borrow a mutable draft or store callback closures in every session | Borrowing makes draft edits/destruction observable; retained closures expand lifetime and save ambiguity. Frozen data requires an owned object and shared control block; copied views would add small allocations. Review copy cost only after the tiny consumer exists. |
+| ST-002 | Serialize vector offsets, addresses, runtime IDs or a content hash; use only logical fields or a global incarnation counter | Authored strings/manual revision remain portable. A private retained marker rejects equal-field rewind tokens without a registry or address reuse while tokens survive; it costs one small allocation plus shared references. A content hash/migration remains a separate schema change. |
+| ST-003 | Borrow mutable drafts, retain closures, or throw on active moves | Private copying retains stable definition data; independent views cost string/vector copies. Borrowed handlers keep ownership local. Nonthrowing idle moves permit paired adoption; active lifecycle misuse terminates before invalidating callback storage. Changing that medium-confidence policy would affect only the initial callers, not persisted schema. |
 | ST-004 | Engine-owned flags/expression language; event bus effect dispatch | Applications already own meaning, and notification failure/delivery is not a commit. Explicit synchronous keys keep policy outside. More operations or composed predicates require a later demonstrated consumer, not speculative variants now. |
 | ST-005 | Wrap StateMachine hooks; introduce plan/ack transactions and durable effect receipts | Hook assignment/failure order does not fit the intended save boundary. A dedicated numeric cursor permits nonthrowing commit after the fixture's boolean effect; a transaction protocol is excessive for it. External effects would reopen this decision rather than silently inherit its limited guarantee. |
 | ST-006 | Lazy missing-reference errors during play; throw for every ordinary rejection | Eager diagnostics catch hidden branches and structured rejections distinguish unavailable choices from broken handlers. This adds a small diagnostic value type without rewriting existing engine error policy. |
@@ -403,15 +435,15 @@ UI would consume copied views and send scoped selections to simulation.
 | Unit, in dependency order | Coherent deliverable and gate |
 | --- | --- |
 | U1: validated CPU definition | Accepted for the assigned definition scope: all 16 focused native cases passed under Debug ASan/UBSan, including private construction, independent copied storage, retained ownership, lookup and eager owning diagnostics. Leak checking is unavailable under ST-008; see next.md for complete logs and commands. |
-| U2: explicit session | View, scoped selection, application handlers, checked progression, failure state and value snapshot/resume. Gate: both routes, rejection without effects, independent lifetimes, stale selections, throwing handlers and paired resume/no replay cases. Reassess the nonthrowing post-effect path before any extra API callers. |
+| U2: explicit session | Implemented and verified: all 18 session cases plus the 16 definition regressions passed under Debug ASan/UBSan. Incarnation freshness, owning views, checked moves/lifecycle, borrowed handlers, exceptions, reentrancy, overflow and value resume are covered. A separate allocation-rejection probe passed for owned-copy failures and the post-effect path. |
 | U3: console acceptance | Branch-local console app/fixture, versioned JSON envelope, save/resume commands and focused codec/transcript cases. Wire only needed targets/dependencies, then run permitted checks when this unit is assigned. Gate: actual console outcomes and resumed effect count, malformed/mismatched saves, safe adoption and explicit I/O failures. |
 
-U1V completes U1 verification. U2/U3 await later coordinator assignments.
+U1V completed U1 verification; U2 completes the CPU session/value unit. U3 awaits a later coordinator assignment.
 [next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
 
-The feature milestone remains unexecuted. Required observable acceptance:
+The broader console/JSON milestone remains unexecuted. Required observable acceptance:
 
 1. `introduce → pass` ends at `admitted`; `silent → leave` ends at `departed`.
    One gameplay flag and no UI/runtime startup are used by the console.
@@ -445,15 +477,30 @@ retrieval, installation, documentation generation or external service acceptance
 
 Material uncertainties: modern API taste is largely unproven; manual revision
 discipline cannot detect same-ID/revision content changes; generic effects can
-partially mutate before throwing; JSON/console target wiring and the nonthrowing
-commit/adoption path still need implementation evidence. U1V completed the assigned
+partially mutate before throwing; JSON/console target wiring remains unimplemented.
+U1V completed the assigned
 definition acceptance: the incremental `tests-engine` target succeeded, CTest
 registration selected exactly 16 cases, and all 16 actually ran and passed, with
 no skipped or unrun cases. The header-first caller, ownership, lookup, invalid
 unreachable data and retained deterministic diagnostics have executable evidence.
 LSan's reproduced tracing failure required the command-local ST-008 accommodation;
 ASan/UBSan instrumentation and halt-on-error remained active. Leak detection is
-unavailable. This accepts U1 only; the broader console/session milestone above is
-still unimplemented and unexecuted. No U1 source, repository build configuration,
+unavailable. That accepted U1 only; the broader console/JSON milestone above is
+still pending. No U1 source, repository build configuration,
 dependency pin or global setting changed during U1V. Actual commands, logs,
 coverage and the next coordinator-selected unit are recorded in [next.md](next.md).
+
+U2's [session implementation](../projects/engine/src/core/game-framework/dialogue-session.cpp)
+and header-first [session cases](../projects/engine/tests/unit/src/dialogue-session.cpp)
+now provide actual CPU session evidence: 18 session cases and all 16 definition
+regressions ran and passed, with no skipped/unrun cases. The separate
+[allocation probe](../projects/engine/tests/probes/dialogue-session-allocation.cpp)
+also compiled and ran successfully under ASan/UBSan. It verifies its scalar-new
+rejection hook, uses long strings to expose hidden copies, checks view/snapshot
+copy failures leave healthy unchanged state, and rejects allocations from effect
+return through successful cursor/step commit. This is a small isolated executable,
+not a runner-wide allocator override or general failure-injection framework.
+The source catch path rethrows before cursor assignment, retaining the source
+when faulted; native cases verify original exception identity and subsequent
+fault rejection. Leaks remain unverified under ST-008. No console, JSON, files,
+runtime coupling or durable external-effect protocol was implemented.

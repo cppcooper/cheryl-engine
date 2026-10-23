@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -132,6 +133,121 @@ namespace CE::Dialogue {
         [[nodiscard]] CE_API const Node* find_node(const NodeId& id) const noexcept;
         [[nodiscard]] CE_API const Choice* find_choice(const NodeId& node, const ChoiceId& id) const noexcept;
     };
+
+    /** Application-owned logical encounter identity; independent of a live incarnation. */
+    struct SessionId {
+        std::string value;
+        bool operator==(const SessionId&) const = default;
+    };
+
+    /** Owned choice token. Only view() issues its private live-incarnation marker.
+     * Public logical fields are checked, not security credentials. Copy/move freely;
+     * never serialize a Selection. Default construction has no valid incarnation.
+     */
+    class Selection {
+        struct Incarnation {};
+        std::shared_ptr<const Incarnation> incarnation_;
+        friend class Session;
+
+    public:
+        SessionId session;
+        NodeId node;
+        std::uint64_t step = 0;
+        ChoiceId choice;
+    };
+
+    /** Owned presented choice; availability is advisory and rechecked by choose(). */
+    struct ChoiceView {
+        ChoiceId id;
+        std::string text;
+        bool available = false;
+        Selection selection;
+    };
+
+    /** Owned presentation data, valid after the originating session/definition dies. */
+    struct View {
+        SessionId session;
+        NodeId node;
+        std::uint64_t step = 0;
+        std::string text;
+        NodeKind kind = NodeKind::Prompt;
+        std::vector<ChoiceView> choices; ///< Authored order, including unavailable choices.
+    };
+
+    /** Owned completed-boundary values; contains neither application flags nor incarnation.
+     * Pair with application state on one serialized owner. Revision/step values
+     * do not authenticate a path or supply crash-safe external-effect delivery.
+     */
+    struct Snapshot {
+        static constexpr std::uint32_t current_schema = 1;
+        std::uint32_t schema = current_schema;
+        DefinitionId definition;
+        std::uint64_t definition_revision = 0;
+        SessionId session;
+        NodeId node;
+        std::uint64_t step = 0;
+        bool operator==(const Snapshot&) const = default;
+    };
+
+    /** Explicit ordinary rejections. Callback/allocation exceptions propagate separately. */
+    enum class SessionError {
+        InvalidDefinition, ///< A factory received an empty definition handle.
+        EmptySessionId,
+        SnapshotSchemaMismatch,
+        DefinitionMismatch,
+        RevisionMismatch,
+        UnknownNode,
+        MovedFrom,
+        Busy,     ///< An operation is already active on this serialized owner.
+        Faulted,  ///< An effect threw; application state may already be partial.
+        Finished, ///< Terminal nodes can be viewed/snapshotted, but not chosen from.
+        WrongSession,
+        WrongIncarnation, ///< Start/resume always renews the opaque marker, including rewind.
+        StaleSelection,
+        UnknownChoice,
+        Unavailable,
+        StepExhausted,
+        MissingConditionHandler,
+        MissingEffectHandler
+    };
+
+    using ConditionHandler = std::function<bool(const ConditionKey&)>; ///< Synchronous pure predicate; borrowed for one call.
+    using EffectHandler = std::function<void(const EffectKey&)>;       ///< Synchronous application mutation; borrowed for one call.
+
+    /** Explicit move-only CPU cursor retaining its frozen definition.
+     * Serialize every operation with application state. Handler objects/captures
+     * and supplied inputs must remain valid through the call; no handlers are stored.
+     * Reentrant view/choose/snapshot return Busy. Moving, assigning over/from or
+     * destroying an active session (including from its callback) terminates.
+     * Idle moves preserve incarnation and cannot throw; moved-from operations reject.
+     */
+    class Session final {
+        DefinitionHandle definition_;
+        SessionId id_;
+        std::size_t node_index_ = 0;
+        std::uint64_t step_ = 0;
+        std::shared_ptr<const Selection::Incarnation> incarnation_;
+        bool faulted_ = false;
+        bool busy_ = false;
+
+        Session(DefinitionHandle definition, SessionId id, std::size_t node, std::uint64_t step);
+        [[nodiscard]] std::optional<SessionError> state_error() const noexcept;
+        void take(Session& other) noexcept;
+
+    public:
+        CE_API Session(Session&& other) noexcept;
+        CE_API Session& operator=(Session&& other) noexcept;
+        Session(const Session&) = delete;
+        Session& operator=(const Session&) = delete;
+        CE_API ~Session() noexcept;
+
+        [[nodiscard]] static CE_API std::expected<Session, SessionError> start(DefinitionHandle definition, SessionId id);
+        [[nodiscard]] static CE_API std::expected<Session, SessionError> resume(DefinitionHandle definition, const Snapshot& saved);
+        [[nodiscard]] CE_API std::expected<View, SessionError> view(const ConditionHandler& test = {});
+        [[nodiscard]] CE_API std::expected<void, SessionError>
+        choose(const Selection& selection, const ConditionHandler& test = {}, const EffectHandler& apply = {});
+        [[nodiscard]] CE_API std::expected<Snapshot, SessionError> snapshot();
+    };
 }
 
 /**
@@ -157,4 +273,41 @@ namespace CE::Dialogue {
  * @brief Find an exact choice within one exact node.
  * @return Borrowed choice or nullptr for either lookup miss. Retain a DefinitionHandle through access.
  * Lookup is linear in node count plus that node's choice count. Equal choice names in different nodes remain independent.
+ */
+
+/**
+ * @fn std::expected<CE::Dialogue::Session, CE::Dialogue::SessionError> CE::Dialogue::Session::start(DefinitionHandle definition, SessionId id)
+ * @brief Retain a nonnull validated definition and start at its entry with step zero and a fresh live marker.
+ * @return New session or InvalidDefinition/EmptySessionId; no handlers or effects run. Allocation failures propagate.
+ */
+
+/**
+ * @fn std::expected<CE::Dialogue::Session, CE::Dialogue::SessionError> CE::Dialogue::Session::resume(DefinitionHandle definition, const Snapshot& saved)
+ * @brief Validate schema, exact definition/revision, session name and referenced node, then create a fresh incarnation.
+ * @param saved Borrowed stable completed-boundary values. The uint64 step is not proof of a path; maximum is accepted but cannot advance.
+ * @return New session or explicit rejection, with no handlers invoked or existing session modified. Copies/allocations may throw.
+ * Stage application flags and this result before nonthrowing adoption on the same idle owner. No migration or effect replay occurs.
+ */
+
+/**
+ * @fn std::expected<CE::Dialogue::View, CE::Dialogue::SessionError> CE::Dialogue::Session::view(const ConditionHandler& test)
+ * @brief Copy authored-order presentation and scoped selections, evaluating only supplied pure conditions synchronously.
+ * @return Owned values, including terminal/disabled rows, or a state/missing-handler rejection. No effect runs.
+ * Predicate/copy/allocation exceptions leave a healthy unchanged cursor; the nonthrowing busy guard clears on every exit.
+ */
+
+/**
+ * @fn std::expected<void, CE::Dialogue::SessionError> CE::Dialogue::Session::choose(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply)
+ * @brief Check live incarnation, logical identity, membership, capacity and current condition before one synchronous effect.
+ * @return Empty success after advancing once, or explicit rejection without effects. No owned success payload is copied.
+ * Keys borrow stable retained definition storage. All lookup/argument/result preparation finishes before effect entry.
+ * After its return only nonthrowing cursor/step changes and an allocation-free success return occur.
+ * Guard exceptions preserve healthy progress. Effect exceptions fault the session, retain the source cursor and rethrow the original
+ * failure; application changes may be partial. Faulted choices/views/snapshots reject; no rollback or automatic retry is supplied.
+ */
+
+/**
+ * @fn std::expected<CE::Dialogue::Snapshot, CE::Dialogue::SessionError> CE::Dialogue::Session::snapshot()
+ * @brief Copy an idle healthy completed boundary without invoking handlers or effects.
+ * @return Owned logical values or a state rejection; never an incarnation marker. Copy failures preserve the session.
  */
