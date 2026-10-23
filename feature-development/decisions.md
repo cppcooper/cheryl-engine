@@ -1,9 +1,12 @@
+> **Parked by user direction, 2026-10-23.** See [parked.md](parked.md).
+> U4 is an unverified interrupted draft; earlier U3 checks do not accept it.
+
 # Settings milestone decisions
 
 U1 implements app-private values/files in SET-002/006/007; U2 implements only
 snapshot queries/metadata in SET-003/005. U3 implements the private score owner and
-candidate lifecycle in SET-005. Game integration, editor, modal gating and runtime
-Apply remain proposed engineering policy,
+candidate lifecycle; U4 composes CPU Apply in SET-005/006/007. Game integration,
+editor, modal gating and runtime scheduling remain proposed engineering policy,
 not direct user preferences. Design checkpoint:
 `157c75736bf5d325c8ea5174430b5dbbd75a2ae4`, branch `feat/settings`.
 [Agent notes](agent-notes.md) carry the matching IDs, contracts, alternatives,
@@ -48,32 +51,30 @@ Confidence is high in identity handling, medium in the selected key subset.
 
 ## SET-005 — Observe a staged score context before adopting it
 
-U3's app-private `ScoreInput` owns active input and move-only Candidate/Prepared
-tokens. One weak slot rejects a second pending stage; generation changes invalidate
-it. Consumed polls plus live leases establish readiness, latched only for that
-lease/generation. Preparation validates; noexcept adoption transfers ownership.
-Unchanged keys return no candidate. This adds one pending allocation to keep
-drop/move/foreign-owner behavior explicit. Confidence is high in the tested CPU
-protocol; modal admission and persistence composition remain unimplemented
-engineering work.
+`ScoreInput` owns active input and move-only Candidate/Prepared tokens. U4's private
+`SettingsApply` retains one candidate, advancing generation for edits and retries.
+Consumed polls and live leases establish readiness; preflight precedes saving,
+then private unchecked noexcept adoption transfers ownership. U3's guarded adoption
+remains available. Unchanged keys keep their lease. Borrowed owners require serialized
+access and stable lifetimes. This trades composability for a small explicit boundary;
+confidence is high in the engineering protocol, with modal admission still deferred.
 
 ## SET-006 — Store one complete, strictly validated JSON snapshot
 
-U1 resolves paths once and acquires at most 64 KiB plus one detection byte.
-Shallow SAX rejects raw NUL, duplicate/unknown/missing fields, wrong types/versions
-and invalid values. Absent files use defaults; invalid/unreadable files recover
-wholly with diagnostics. Loading rejects symlink leaves; saving replaces the leaf
-link without changing its referent. Strict rejection sacrifices tolerant
-compatibility. Confidence is high after focused Linux checks; this engineering
-policy is not inferred user taste.
+Keep U1's complete version-1 schema, resolved path, shared validator, 64 KiB plus
+one-byte acquisition and shallow SAX rejection. Loading rejects symlink leaves;
+saving replaces the leaf link without changing its referent. U4 validates the entire
+draft before staging; save validates and serializes again before temporary creation.
+No setup/destructor autosaves. Strict rejection trades tolerant compatibility for
+explicit recovery. Confidence is high in the Linux CPU/file boundary; these are
+engineering choices, not inferred personal preferences.
 
 ## SET-007 — Commit the file before nonthrowing active adoption
 
-U1 validates and serializes before exclusive sibling `.pending` creation, then
-writes, flushes, closes, and renames once. Collision or pre-rename failure preserves
-old bytes; cleanup owns only this attempt. Rename replaces leaf links, preserving
-referents. No fallible work follows rename.
-U3 prepares nonthrowing score adoption; file composition remains later work. Synchronous I/O and visible stale-file
-collisions trade convenience for explicit failure. Focused Linux checks support
-high confidence; durability, other platforms, and multi-process guarantees remain
-outside scope.
+U4 prepares the complete value and score token before U1's exclusive temporary
+write/flush/close/rename. Rename commits; only allocation-free noexcept ownership,
+value and enum completion follows. File failure propagates its diagnostic, releases
+pending ownership and retains the draft for explicit retry. Cancellation/staleness
+before saving writes nothing; repeated completion has no effects. Synchronous I/O
+trades latency for a clear boundary. Confidence is high under serialized access;
+concurrent teardown, power-loss durability and external effects remain excluded.

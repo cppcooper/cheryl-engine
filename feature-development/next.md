@@ -1,3 +1,6 @@
+> **Parked by user direction, 2026-10-23.** See [parked.md](parked.md).
+> U4 is an unverified interrupted draft; earlier U3 checks do not accept it.
+
 # SETTINGS-U3 handoff and next unit
 
 U3 implements only the app-private `ScoreInput` owner and move-only

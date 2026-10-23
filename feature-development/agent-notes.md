@@ -1,3 +1,6 @@
+> **Parked by user direction, 2026-10-23.** See [parked.md](parked.md).
+> U4 is an unverified interrupted draft; earlier U3 checks do not accept it.
+
 # Settings milestone: design and evidence
 
 The original design was prepared against source commit
@@ -6,9 +9,10 @@ The original design was prepared against source commit
 checkpoint `e4529aa9229334433a135b51598ebb50c11b8f4f` implements the app-private
 value, validator, and file boundary in SET-002/006/007. Accepted U2 checkpoint
 `2d9bdd873ab6ab23ab032465f76d1b2ed9cd8f0d` adds snapshot queries/metadata in
-SET-003/005. U3 implements the app-private `ScoreInput` owner/candidate protocol
-in SET-005. Game integration, the editor, modal gate, and runtime Apply remain
-proposed. [Decisions](decisions.md) distinguish those boundaries;
+SET-003/005. Accepted U3 checkpoint `afc3d17b164650e754379f72e59bac9abbf0ec72`
+implements the app-private `ScoreInput` owner/candidate protocol. U4 composes
+CPU Apply in SET-005/006/007. Game integration, editor, modal gate and runtime
+scheduling remain proposed. [Decisions](decisions.md) distinguish those boundaries;
 [next.md](next.md) records actual commands, results, limits, and the next unit.
 
 ## U1 caller and implemented boundary
@@ -113,10 +117,48 @@ Its neutral boundary still needs genuinely new consumed polls beyond the release
 watermark, even when candidate readiness has latched. Detailed choices and costs
 are in SET-005; none is new evidence of personal v3 API taste.
 
+## U4 private CPU Apply caller
+
+`SettingsApply` borrows an active `GameSettings`, `ScoreInput` and `SettingsFile`
+that outlive it. It owns its editable draft and optional candidate. Access is
+serialized with the score owner; while the helper lives, it exclusively controls
+score generation/pending requests. Ordinary score observation/reading still belongs
+to that same caller. Keep input clear/shutdown, owner moves, edits and foreign or
+reentrant callbacks outside the entire synchronous `commit` call. No helper polls,
+waits, registers handlers, renders, or changes gameplay admission.
+
+```cpp
+using Key = CE::Input::KeyboardKey;
+Tutorial::SettingsFile file("tutorial-settings.json");
+auto active = file.load_or_defaults().value;
+Tutorial::ScoreInput score(contexts, keyboard, active.add_score);
+Tutorial::SettingsApply apply(active, score, file); // no load/save/attachment here
+score.observe(tick);                            // initial active installation
+const auto score_button = score.read(tick);      // active namespace only
+apply.edit({200, false, Key::B});                 // owned draft; advances generation
+auto request = apply.request();                 // validate, stage changed key, retain lease
+// On subsequent owner updates; no separate polling loop:
+const auto observed = apply.observe(request, tick); // only tick.polls() adds evidence
+const auto outcome = cancel_requested
+    ? apply.cancel(request)                     // no write; draft retained
+    : apply.commit(request);                    // Pending or prepare -> save -> adopt
+// Only after outcome == Applied; presentation/diagnostics are separate:
+const auto saved = file.load_or_defaults();       // Loaded, value == active
+```
+
+Consume the statuses and score button in the eventual application. A failed save
+throws `SettingsFileError` with the existing operation/path diagnostic; the caller
+may show it later, then explicitly call `request()` to retry the retained draft.
+Allocation/programming exceptions retain their original types. An unchanged key
+creates no candidate; it still waits for witnessed active installation and saves
+the other values without changing context identity. Tests are CPU consumers of
+this exact composition. Game remains unwired. SET-003 still gates the eventual
+gameplay path; this caller does not establish input isolation.
+
 ## Proposed caller sequence
 
 This is an API sketch for app-private code, not an available Engine API or a
-compiled example. `SettingsFile` and `ScoreInput` are implemented helpers;
+compiled example. `SettingsFile`, `ScoreInput` and `SettingsApply` are implemented helpers;
 `SettingsEditor` and Game integration remain proposed. U2 supplies the snapshot queries
 for context membership and the published device gate used by the future caller.
 
@@ -380,12 +422,33 @@ the weak slot. It allocates nothing and formats no status text. Context move
 assignment retires the old lease; Engine publishes its final release/zero namespace
 before retirement, while historical ticks remain usable.
 
-Future Apply must validate the complete settings value, stage/observe/prepare,
-commit the file [SET-007], then adopt under serialized owner access without an
-intervening generation change/cancel/clear or concurrent input teardown. U3 supplies
-no file commit and promises no transaction across concurrent teardown. Its readiness
-is separate from SET-003's new-poll/device-admission/neutral-rearming conditions.
-An unchanged binding will retain its existing active lease through later Apply.
+U4's private `SettingsApply` composes this protocol with [SET-007]. Its generation
+starts at the score owner's current generation. Every edit and new request advances
+it (checked uint64 exhaustion throws before mutation); retry cannot reuse an old
+request identity. Requests belong only to this helper's lifetime. One candidate is
+retained until preparation, cancellation, edit, failure or destruction. A second
+pending request rejects without replacing it; changing the draft cancels that
+request before starting another. A stale observation/cancel/commit cannot affect
+the current request. Successful completion is terminal/idempotent for its identity;
+another request requires an explicit edit, even to the same value. No hidden retry.
+
+U4 adds only friendship, a private candidate-status query, and private
+`adopt_ready(Prepared&&) noexcept` to `ScoreInput`. The existing U3 `adopt` retains
+its guarded false-on-invalid contract and delegates successful moves to that body.
+Apply validates ownership/generation/readiness and calls fallible `prepare` before
+save. After save it calls only the private unchecked transfer, never a guard that
+could discover invalidity after disk commit. The borrowed active value cannot be
+modified externally; generation/pending management is exclusively this helper's.
+All three borrowed owners remain stable/alive, with no intervening cancel/edit,
+clear/shutdown, owner move or foreign/reentrant callback throughout synchronous
+save/adopt. Concurrent polling retains its existing Engine contracts, but teardown
+cannot be concurrent. This is a precondition, not a lock or shutdown transaction.
+
+Unchanged-key Apply retains its active lease; both changed and unchanged requests
+need witnessed active installation. Candidate evidence latches only for that exact
+live record/generation. Clear/shutdown invalidates ownership even when old samples
+still contain it. These checks are distinct from SET-003's new-poll/device-admission/
+neutral-rearming obligations; U4 supplies none of that modal workflow.
 
 Alternatives: raw owner pointers complicate moves and lifetime; bare context IDs
 cannot prove live ownership; automatic supersession hides pending-work cancellation.
@@ -424,8 +487,11 @@ unsupported/noninteger version, missing fields, malformed/trailing JSON, raw NUL
 files larger than 64 KiB, nonfinite/out-of-range speed, and unsupported/reserved
 key tokens. Explicit typed validation, parsing, and save share one validator.
 Both JSON integer and floating speed numbers are accepted, with range checking before
-conversion to float. Numeric editing text and Apply validation remain later work;
-they must parse completely without locale-specific separators or silent clamping.
+conversion to float. U4 validates the complete typed draft before staging or any
+file I/O; save revalidates and serializes before opening its temporary. Numeric
+editing text remains later work and must parse completely without locale-specific
+separators or silent clamping. U4 may retain an invalid intermediate typed draft;
+request validation rejects it without changing active ownership or file bytes.
 
 U1 acquires at most 64 KiB plus one detection byte into a fixed buffer. Its SAX
 reader permits only root/bindings objects and schema scalars; arrays/deeper objects
@@ -462,14 +528,20 @@ a private parser/API swap is inexpensive before runtime callers exist.
 
 ## SET-007 — Make successful Apply a saved, nonthrowing adoption
 
-The externally visible states are Closed, Editing, Listening, AwaitingContext,
-Saving, and Rearming. Only one Apply may be pending. Validation failure leaves
-the draft editable and active/file/context unchanged. Successful validation
-prepares the complete serialized bytes before any publication; a changed key
-then follows SET-005. Cancel before Saving resets the candidate and discards the
-draft without writing. No further edit/Apply is accepted while awaiting context;
-Cancel remains available. Saving is a single synchronous operation, so Cancel
-cannot interrupt or undo its commit point.
+The eventual editor states are Closed, Editing, Listening, AwaitingContext,
+Saving and Rearming; they are not implemented by U4. The CPU helper instead returns
+Idle, Pending, Ready, Applied, Cancelled, Stale, Invalidated or Failed for one exact
+request generation. It owns a draft, validates it before staging a changed key,
+and returns Pending without any file I/O until SET-005 evidence is ready. Editing
+explicitly drops pending work, advances generation and replaces only the draft.
+Repeat Apply while pending rejects; Cancel drops only that candidate and retains
+the draft, active state and file. Future panel Cancel may discard the draft by
+closing the editor. Cancel cannot interrupt or undo synchronous saving.
+
+Construction checks active value/key agreement and rejects an existing score
+candidate, without load, attachment or save. Destruction releases only its own
+candidate; neither setup nor teardown autosaves. The helper is deliberately
+noncopyable/nonmovable so its borrowed-owner and request lifetime stay explicit.
 
 For this tiny bounded file, load occurs before runtime and Save runs on the
 simulation owner at the explicit Apply boundary, while gameplay is gated. Do not
@@ -478,8 +550,8 @@ preparation. Sequential execution briefly stops polling during that call;
 concurrent execution can queue polls. This latency is accepted for the first
 consumer; asynchronous persistence requires a later contract.
 
-U1's `SettingsFile::save` implements only the file portion of this planned Apply
-transaction. Validation and complete serialization precede opening
+U1's `SettingsFile::save` implements the file portion now composed by U4.
+Validation and complete serialization precede opening
 `<resolved-path>.pending` in exclusive binary mode. Its deterministic name makes
 stale/conflicting attempts visible: fail once without touching that file instead
 of retrying names or deleting another attempt. This private engineering choice
@@ -500,10 +572,25 @@ replacement must not throw after committing. Ordinary save I/O failures become
 `SettingsFileError`; invalid typed saves throw `invalid_argument` without creating
 a temporary. Unexpected exceptions propagate after owned cleanup.
 
-Successful rename is the commit point. All fallible allocation/serialization and
-context installation precedes it. Afterwards only nonthrowing value assignment,
-context move/reset, and editor-state change adopt the candidate; store the key
-as an enum so publication needs no string allocation; format status text later.
+Successful rename is the commit point. U4 rechecks active/candidate ownership,
+generation and consumed evidence before save, copies the accepted complete value,
+and prepares an optional score token. It never does throwing value/result/handler
+preparation after save: there are no callbacks, strings, UI or result containers in
+completion. Invalidated, stale or cancelled requests reject before writing. U1's
+validation/serialization also finish before exclusive temporary creation. Ordinary
+file failure propagates its primary diagnostic, marks Failed, releases the prepared
+candidate during unwinding, and keeps exact predecessor bytes, active value/key/
+identity and draft. Only an explicit new request retries with a new generation.
+Cleanup failure preserves the primary error and names the owned leftover temporary.
+
+After save returns, `complete(...) noexcept` calls the private unchecked lease
+transfer for a changed key, copies the trivial enum/bool/float value, and assigns
+Applied. Static assertions require trivial/nothrow value copies, nonthrowing token
+move/destruction and completion/adoption. Source review follows only shared/weak
+pointer moves/reset, Context's atomic release/reset and primitive assignments;
+none allocates. There is no conditional readiness rejection after disk commit.
+Terminal Applied calls return the same status without another save or adoption.
+Format status text and invoke presentation later.
 Toolkit presentation is separate: its later failure follows normal UI/runtime
 failure handling and must
 not report that the saved model rolled back. The new model affects the next
@@ -520,9 +607,16 @@ other hosts need replacement behavior checked before claiming support.
 Alternatives: save-after-live-apply is simpler but creates accepted values that
 may not survive restart; independent asynchronous setters require rollback and
 completion semantics expressly deferred by the brief. Confidence is high in the
-bounded file implementation based on U1's focused Linux tests. These cover real
+bounded CPU composition and file implementation based on the focused checks in
+[next.md](next.md). U1's file cases cover real
 replacement, all injected I/O failures, collision, cleanup failure, and unexpected
-exceptions. Runtime adoption remains unimplemented. No
+exceptions; U4 adds generation/poll/adoption and failure/retry composition cases.
+Borrowing owners instead of relocating them keeps future Game ownership intact
+but makes their stable lifetime/exclusive protocol access an explicit precondition.
+Returning enums and propagating existing exceptions avoids a second error framework
+and post-commit diagnostic allocations. Using guarded adoption after save was
+rejected because its failure could leave disk/live state divergent. Synchronous
+CPU composition is implemented; Game/runtime adoption remains unimplemented. No
 existing general settings saver was found in the baseline [E05].
 
 ## Source evidence at the reviewed baseline

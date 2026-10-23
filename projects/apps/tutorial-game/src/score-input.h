@@ -48,6 +48,8 @@ namespace Tutorial {
         };
 
     private:
+        friend class SettingsApply;
+
         CE::Input::Actions::ContextSubmission endpoint_;
         CE::Input::DeviceId keyboard_;
         CE::Input::Actions::Context active_;
@@ -59,7 +61,11 @@ namespace Tutorial {
         std::weak_ptr<Replacement> pending_;
 
         [[nodiscard]] Status status(const std::shared_ptr<Replacement>& replacement) const noexcept;
+        [[nodiscard]] Status status(const Candidate& candidate) const noexcept;
         void invalidate(Status reason) noexcept;
+        // Only after a Ready check under serialized access, excluding input teardown.
+        // The private Apply composition checks before saving and transfers after it.
+        void adopt_ready(Prepared&& prepared) noexcept;
 
     public:
         // Validates using the settings validator; attachment may throw. Starts Waiting.

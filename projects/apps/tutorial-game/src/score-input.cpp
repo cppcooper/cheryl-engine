@@ -128,6 +128,10 @@ namespace Tutorial {
         return replacement->state;
     }
 
+    ScoreInput::Status ScoreInput::status(const Candidate& candidate) const noexcept {
+        return status(candidate.replacement_);
+    }
+
     ScoreInput::Status ScoreInput::observe(const CE::Input::Tick& tick) noexcept {
         if (!active_) {
             observed_ = false;
@@ -157,11 +161,15 @@ namespace Tutorial {
     bool ScoreInput::adopt(Prepared&& prepared) noexcept {
         if (status(prepared.replacement_) != Status::Ready)
             return false;
+        adopt_ready(std::move(prepared));
+        return true;
+    }
+
+    void ScoreInput::adopt_ready(Prepared&& prepared) noexcept {
         auto replacement = std::move(prepared.replacement_);
         active_ = std::move(replacement->lease);
         key_ = replacement->key;
         observed_ = true;
         pending_.reset();
-        return true;
     }
 }
