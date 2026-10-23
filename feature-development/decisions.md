@@ -1,6 +1,7 @@
 # Map-storage decisions
 
 U1's CPU values/codec and U2's private Linux file adapter are implemented.
+U2F corrects native path meaning across ancestor symlinks.
 Executed checks and remaining limits are in [next.md](next.md). The CLI remains
 proposed U3. These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
@@ -50,23 +51,23 @@ reversal changes private limits/tests and records.
 
 ## MS-005 Ownership and failure reporting
 
-Use synchronous owned results and the same owning Error for anticipated codec
-and file failures. U2 adds file phases and separate cleanup/leftover fields;
-allocation/programming failures still propagate. A signaling native read buffer
-distinguishes errors from EOF without changing the codec's stream contract.
-Callers keep inputs stable and adopt only successful returns. This costs private
-adapter machinery. Confidence is high in ownership, medium in exception shape;
-reversal affects private callers/tests only.
+Use synchronous owned results and the same private Error. Path operations retain
+an absolute path with components intact for native lookups and owning diagnostics,
+including ancestor symlinks followed by `..`. Cleanup retains primary errors and
+owned leftover details; allocation/programming failures propagate. The tradeoff
+is a noncanonical diagnostic spelling. Confidence is high in tested path identity,
+medium in exception shape; reversal affects only the private adapter/tests.
 [Details](agent-notes.md#ms-005-ownership-and-failure-reporting).
 
 ## MS-006 Failed-write preservation
 
-U2 resolves paths once, encodes completely, exclusively stages with mkostemp,
-checks unbuffered writes/close, and renames once. Linux close ownership is released
-before the syscall; cleanup preserves the primary error and names leftovers.
-Controlled regular-or-absent local files keep the scope testable, at the cost of
-Linux-only support and new mode 0600. Confidence is high in the checked sequence,
-medium beyond the local filesystem; reversing the adapter leaves the codec intact.
+Make paths absolute once without lexical normalization or final-link
+canonicalization, honoring native ancestor-symlink/`..` meaning even for absent
+targets. Encode fully, exclusively stage in the native parent, check writes and
+release ownership before checked close, then rename once; cleanup preserves
+primary errors. This retains controlled single-writer Linux scope and mode 0600,
+at the cost of noncanonical spelling and limited guarantees. Confidence is high
+locally, medium elsewhere; reversal changes the private adapter/tests.
 [Details](agent-notes.md#ms-006-failed-write-preservation).
 
 ## MS-007 Integration and implementation placement

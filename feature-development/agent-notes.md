@@ -3,7 +3,9 @@
 U1 implements private owning CPU snapshots and a bounded memory-stream JSON codec.
 Accepted U1 checkpoint `847d2a9c8fa8c190d2b55e0e59b596a9cbc4ff54` passed 86 focused
 cases. U2 adds private checked Linux path loading and safe replacement. The CLI
-remains proposed U3; this is not acceptance of the full persistence milestone.
+remains proposed U3. U2F corrects path selection through ancestor symlinks and
+parent components; its execution evidence is in [next.md](next.md). This
+is not acceptance of the full persistence milestone.
 The reader summary is [decisions.md](decisions.md);
 actual commands/results and the next unit are in [next.md](next.md).
 
@@ -11,6 +13,9 @@ The inspected baseline is `3542f883391d4225329dab8d5d61a5987e69c8f0` on
 `feat/map-storage`, matching the workspace's recorded source snapshot. Design
 checkpoint `20cd3f74dd94932d18745b1e0d90eb68538378f7` contains the initial records.
 U1 started from that clean checkpoint; U2 started clean at the accepted U1 commit.
+U2F started clean at reviewed U2 checkpoint
+`4751b271b1c7c75ae8951d71cddd1e8e303930f6` and changes only path resolution,
+its private regression tests/comments and these internal records.
 Changes are confined to the private
 `projects/tests/map-storage/` implementation/tests/build entry and these records.
 
@@ -19,7 +24,7 @@ The [workspace instructions](../../../AGENTS.md),
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
 and Git instructions were read, including `docs/AGENTS.md`. The current assignment
-authorizes U2 implementation, focused native verification and its local commit,
+authorizes U2F correction, focused native verification and its local commit,
 and stops before U3. Protected source workspaces and sibling implementations are
 not prerequisites or execution sites.
 
@@ -292,13 +297,18 @@ and an I/O error code when a stream signals one. U1 categories are `Read`,
 `Malformed`, `UnsupportedFormat`, `UnsupportedVersion`, `InvalidValue` and
 `LimitExceeded`. U2 appends `Open`, `Write`, `Replace`, `UnsupportedPlatform`,
 retaining the same final Error type. File errors identify operation `load` or
-`save`, resolved path (original input when invalid/unresolvable) and `$path`,
+`save`, the retained absolute path (original input when invalid/unresolvable) and `$path`,
 `$open`, `$create`, `$write`, `$close` or
 `$replace`, plus native errno. Codec errors retain `parse`/`encode` operation and
 their locations; encoding diagnostics use origin `<snapshot>`. NUL in a diagnostic
 path is printed as `\0`, while the owned `origin` retains the exact input.
 `cleanup_error` and owned `staging_leftover` identify a failed unlink separately
 from the primary error; they do not change its category/location/message.
+U2F retains the original component order, including `.`/`..`, in that absolute
+path. Native lookup and owning diagnostics therefore refer to the same target
+even when an ancestor is a symlink. This is not canonical spelling or a security
+boundary. Relative inputs use the captured current directory once; the adapter
+does not change process cwd. Invalid empty/NUL paths still reject before syscalls.
 Messages distinguish malformed bytes from an unsupported version and identify
 the failing field. Unexpected allocation errors can propagate normally. Cleanup
 must not replace the primary failure or throw from a destructor.
@@ -336,12 +346,15 @@ replacement behavior; unsupported platforms reject before touching the target.
 The implemented private file adapter (`file-storage.cpp`, E11) does the following:
 
 1. Reject empty paths and embedded native NUL before any filesystem syscall.
-   Resolve once with `absolute(...).lexically_normal()`, retaining that path for
-   all syscalls/diagnostics. Validate and encode the complete bounded snapshot
+   Make absolute once with `absolute(...)`, preserving every path component for
+   native Linux lookup and owning diagnostics. Never lexically collapse `..`
+   across an ancestor symlink: `base/link/../map.json`, with link pointing to
+   `other/sub`, selects `other/map.json`, not `base/map.json`. Keep existing
+   empty/`.`/`..` leaf checks. Validate and encode the complete bounded snapshot
    before staging. Inspect the existing parent with stat and final target with
    lstat; reject final symlinks (including dangling links) and nonregular targets.
-   Ancestor symlinks are allowed within the controlled-directory assumption;
-   this is lexical normalization, not hostile-tree canonicalization.
+   Ancestor symlinks remain allowed within the controlled-directory assumption;
+   the final entry is not canonicalized through or silently accepted as a symlink.
 2. Exclusively create a uniquely named staging file in the same directory, retaining
    its handle and ownership. Linux `mkostemp(..., O_CLOEXEC)` uses a six-character
    unique suffix and exclusive create. Its fixed prefix is selected to be
@@ -395,6 +408,25 @@ successful reload, followed by successful explicit retry. This is native syscall
 failure evidence, not a permission/quotas claim. A separate real save proves a
 read-only target file can be replaced; mode 0400 is not used to fake rename
 failure. All fixture changes/cleanup stay in unique clone-build child directories.
+
+U2F's `files.ancestor_parent_*` regressions (E12) seed distinct valid A/B byte
+sentinels at both native and lexically simplified candidate locations. Before
+the production change, all four cases fail: load selects B, save replaces B
+instead of A, and absent native destinations remain absent. The correction
+retains components in the absolute path. Final checks cover absolute/relative
+forms and existing/absent native targets, exact untouched B bytes and decoded B,
+correct load and C replacement/reload, retained diagnostic origin, and cleanup
+after an injected replacement failure in the native parent. Fixtures never
+change process cwd; they derive relative inputs from their existing cwd and
+assert it is unchanged. Actual commands/results are in [next.md](next.md).
+
+Canonicalizing only the existing parent is a viable alternative, but adds a
+lookup and a different diagnostic spelling policy. Canonicalizing the complete
+path would require target existence and extra care to reject final symlinks.
+Keeping components is the narrow correction and works for absent destinations.
+**Confidence: high** in native selection for the tested Linux profile; reversal
+cost is limited to this private resolver/tests and diagnostic spelling. No
+personal preference inference or concurrency/security guarantee is added.
 
 This profile covers ordinary process-visible I/O failures, not power-loss
 durability, media corruption, network filesystems, hostile directory races, or
@@ -461,6 +493,7 @@ and executed-test evidence are identified separately as E10/E11.
 | E09 | [Status](../docs/STATUS.md), lines 100-103; [manifest metadata gaps](../docs/planning/long-term/asset-manifest-metadata.md); [discovery guide](../docs/site/assets/file-and-font-discovery.md), lines 16-62. Documented intent distinguishes save serialization from manifest parsing and defers world storage. Missing semantic artwork metadata must not be invented. The current task selects this narrow experiment without reconciling published roadmaps. |
 | E10 | U1 [values](../projects/tests/map-storage/snapshot.h), [private API](../projects/tests/map-storage/codec.h), [codec](../projects/tests/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
 | E11 | U2 [path API](../projects/tests/map-storage/file-storage.h), [native adapter](../projects/tests/map-storage/file-storage.cpp), [private fault boundary](../projects/tests/map-storage/file-operations.h), [real-file/fault tests](../projects/tests/map-storage/file-storage-tests.cpp). The unchanged schema/codec is used through its existing stream boundary; Error gains only file categories/cleanup fields and printable NUL path handling. Build/test commands, saved logs, nonempty selections and outcome limits are in [next.md](next.md). This is current agent-authored compatibility evidence, not user preference evidence. |
+| E12 | U2F [resolver](../projects/tests/map-storage/file-storage.cpp) `Detail::resolve` preserves components in `absolute(input)`; [file regressions](../projects/tests/map-storage/file-storage-tests.cpp) `files::ancestor_parent` and four `files.ancestor_parent_*` cases distinguish native and lexically simplified targets. Expected pre-fix failure and final discovery/build/native outcomes are saved separately in [next.md](next.md). This corrects the E11 implementation contract; no historical preference is inferred. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -502,7 +535,7 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-U1 is accepted. This assignment implements U2 only; U3 requires a later
+U1 is accepted. This assignment corrects U2 path selection only; U3 requires a later
 coordinator assignment. Executed evidence is recorded in [next.md](next.md).
 
 1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
@@ -513,6 +546,8 @@ coordinator assignment. Executed evidence is recorded in [next.md](next.md).
 2. **U2 — File publication adapter, implemented.** Explicit-path load/save,
    checked native reads, same-directory exclusive staging and Linux replacement,
    with a narrow private file-operations seam and focused real-file/fault tests.
+   U2F preserves native ancestor-symlink/`..` semantics; coordinator acceptance
+   of this correction is the next boundary.
    No expansion to general save slots,
    recovery scanning, background services or cross-platform guarantees.
 3. **U3 — CLI acceptance.** Add the literal two-layer fixture and round-trip/verify

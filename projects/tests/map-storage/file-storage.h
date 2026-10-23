@@ -5,7 +5,9 @@
 namespace MapFixture {
     // Private Linux profile: existing caller-controlled directory, single writer,
     // regular-or-absent final entry. Final symlinks/nonregular entries reject.
-    // Resolve once; returned values own their data. No renderer/asset lookup.
+    // Make absolute once, preserving components for native ancestor-symlink/..
+    // lookup; diagnostics keep that path. Returned values own their data.
+    // No renderer/asset lookup.
     [[nodiscard]] Snapshot load(const std::filesystem::path& path);
 
     // Encode completely, exclusively stage beside the target, check writes/close,

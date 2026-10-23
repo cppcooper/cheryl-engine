@@ -39,7 +39,9 @@ namespace MapFixture::Detail {
             if (input.empty() || input.native().find('\0') != std::string::npos)
                 fail(Code::InvalidValue, operation, input, "$path", "empty path or embedded NUL");
             std::error_code error;
-            auto result = fs::absolute(input, error).lexically_normal();
+            // Linux follows ancestor symlinks before interpreting later '..'.
+            // Preserve components so every lookup selects the caller's target.
+            auto result = fs::absolute(input, error);
             if (error)
                 throw Error(Code::Open, operation, input, "$path", "cannot resolve absolute path", {}, error);
             if (result.filename().empty() || result.filename() == "." || result.filename() == "..")

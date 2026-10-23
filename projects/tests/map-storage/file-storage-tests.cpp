@@ -262,7 +262,72 @@ namespace {
             EXPECT_EQ(MF::load(target), fixture());
             EXPECT_EQ(bytes(unrelated), "unrelated staging-like bytes");
         }
+
+        void ancestor_parent(bool relative, bool existing) {
+            const auto cwd = fs::current_path();
+            ASSERT_EQ(directory.parent_path(), cwd);
+            const auto base = directory / "base";
+            const auto other = directory / "other";
+            fs::create_directory(base);
+            fs::create_directories(other / "sub");
+            fs::create_directory_symlink(other / "sub", base / "link");
+            const auto native_target = other / "map.json";
+            const auto lexical_target = base / "map.json";
+            const auto a = fixture();
+            const auto b = replacement();
+            auto c = replacement();
+            c.id = "fixture:through-link";
+            c.layers[0].cells[1] = "fixture:third";
+            c.spawns[0].y = 0;
+            const auto a_bytes = MF::encode(a) + " \n";
+            const auto b_bytes = MF::encode(b) + "\t\n";
+            const auto c_bytes = MF::encode(c);
+            put(lexical_target, b_bytes); // Valid byte sentinel at the other candidate.
+            ASSERT_EQ(MF::load(lexical_target), b);
+            if (existing) {
+                put(native_target, a_bytes);
+                ASSERT_EQ(MF::load(native_target), a);
+            } else {
+                ASSERT_FALSE(fs::exists(native_target));
+            }
+            // Preserve the components; computing fs::relative here could resolve
+            // the link and accidentally hide the production bug. No cwd mutation.
+            const auto path = (relative ? directory.filename() : directory) / "base" / "link" / ".." / "map.json";
+            const auto origin = relative ? cwd / path : path;
+            if (existing) {
+                EXPECT_EQ(bytes(path), a_bytes); // Native lookup, before storage calls.
+                EXPECT_EQ(MF::load(path), a);
+                EXPECT_EQ(bytes(native_target), a_bytes);
+                EXPECT_EQ(bytes(lexical_target), b_bytes);
+            }
+            MF::save(path, c);
+            EXPECT_EQ(bytes(lexical_target), b_bytes);
+            EXPECT_EQ(MF::load(lexical_target), b);
+            ASSERT_TRUE(fs::exists(native_target));
+            EXPECT_EQ(bytes(native_target), c_bytes);
+            EXPECT_EQ(MF::load(native_target), c);
+            EXPECT_EQ(MF::load(path), c);
+
+            FaultOps ops;
+            ops.fault = Fault::Replace;
+            static_cast<void>(rejected([&] { MF::Detail::save(path, a, ops); },
+                                      MF::Code::Replace, "save", origin, "$replace"));
+            EXPECT_EQ(bytes(native_target), c_bytes);
+            EXPECT_EQ(MF::load(native_target), c);
+            EXPECT_EQ(bytes(lexical_target), b_bytes);
+            EXPECT_EQ(MF::load(lexical_target), b);
+            EXPECT_FALSE(fs::exists(fs::path(ops.staging_name.data())));
+            EXPECT_EQ(std::distance(fs::directory_iterator(other), fs::directory_iterator{}), 2);
+            EXPECT_EQ(std::distance(fs::directory_iterator(base), fs::directory_iterator{}), 2);
+            EXPECT_EQ(fs::current_path(), cwd);
+            EXPECT_EQ(bytes(unrelated), "unrelated staging-like bytes");
+        }
     };
+
+    TEST_F(files, ancestor_parent_absolute) { ancestor_parent(false, true); }
+    TEST_F(files, ancestor_parent_relative) { ancestor_parent(true, true); }
+    TEST_F(files, ancestor_parent_absolute_absent) { ancestor_parent(false, false); }
+    TEST_F(files, ancestor_parent_relative_absent) { ancestor_parent(true, false); }
 
     TEST_F(files, round_trip) {
         const auto original = fixture();
