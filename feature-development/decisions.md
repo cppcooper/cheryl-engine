@@ -1,8 +1,9 @@
 # Settings milestone decisions
 
 U1 implements app-private values/files in SET-002/006/007; U2 implements only
-snapshot queries/metadata in SET-003/005. Editor, score-context integration, modal
-gating, and runtime Apply remain proposed engineering policy,
+snapshot queries/metadata in SET-003/005. U3 implements the private score owner and
+candidate lifecycle in SET-005. Game integration, editor, modal gating and runtime
+Apply remain proposed engineering policy,
 not direct user preferences. Design checkpoint:
 `157c75736bf5d325c8ea5174430b5dbbd75a2ae4`, branch `feat/settings`.
 [Agent notes](agent-notes.md) carry the matching IDs, contracts, alternatives,
@@ -47,14 +48,14 @@ Confidence is high in identity handling, medium in the selected key subset.
 
 ## SET-005 — Observe a staged score context before adopting it
 
-U2 adds `Snapshot::has_context` for sample membership, including final departing
-release; zero, pending and retired identities are absent. It neither retains nor
-validates a lease. Future Apply must retain a valid candidate, matching editor
-generation and consumed publication evidence before replacing the old score
-context. This avoids inactive-action probes and frame guesses without changing
-mapper ownership. Tradeoff: membership is historical, so ownership checks stay
-with callers. Confidence is high in the snapshot contract; the editor protocol
-remains proposed.
+U3's app-private `ScoreInput` owns active input and move-only Candidate/Prepared
+tokens. One weak slot rejects a second pending stage; generation changes invalidate
+it. Consumed polls plus live leases establish readiness, latched only for that
+lease/generation. Preparation validates; noexcept adoption transfers ownership.
+Unchanged keys return no candidate. This adds one pending allocation to keep
+drop/move/foreign-owner behavior explicit. Confidence is high in the tested CPU
+protocol; modal admission and persistence composition remain unimplemented
+engineering work.
 
 ## SET-006 — Store one complete, strictly validated JSON snapshot
 
@@ -72,7 +73,7 @@ U1 validates and serializes before exclusive sibling `.pending` creation, then
 writes, flushes, closes, and renames once. Collision or pre-rename failure preserves
 old bytes; cleanup owns only this attempt. Rename replaces leaf links, preserving
 referents. No fallible work follows rename.
-Later Apply will adopt state separately. Synchronous I/O and visible stale-file
+U3 prepares nonthrowing score adoption; file composition remains later work. Synchronous I/O and visible stale-file
 collisions trade convenience for explicit failure. Focused Linux checks support
 high confidence; durability, other platforms, and multi-process guarantees remain
 outside scope.

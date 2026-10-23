@@ -4,9 +4,11 @@ The original design was prepared against source commit
 `3542f883391d4225329dab8d5d61a5987e69c8f0` and saved in checkpoint
 `157c75736bf5d325c8ea5174430b5dbbd75a2ae4` on `feat/settings`. Accepted U1
 checkpoint `e4529aa9229334433a135b51598ebb50c11b8f4f` implements the app-private
-value, validator, and file boundary in SET-002/006/007. U2 adds only the snapshot
-queries/metadata in SET-003/005. The editor, score-context integration, modal gate,
-and runtime Apply transaction below remain proposed. [Decisions](decisions.md) distinguish those boundaries;
+value, validator, and file boundary in SET-002/006/007. Accepted U2 checkpoint
+`2d9bdd873ab6ab23ab032465f76d1b2ed9cd8f0d` adds snapshot queries/metadata in
+SET-003/005. U3 implements the app-private `ScoreInput` owner/candidate protocol
+in SET-005. Game integration, the editor, modal gate, and runtime Apply remain
+proposed. [Decisions](decisions.md) distinguish those boundaries;
 [next.md](next.md) records actual commands, results, limits, and the next unit.
 
 ## U1 caller and implemented boundary
@@ -78,11 +80,44 @@ listening. Closing the panel/window discards uncommitted edits. Engine options
 requiring restart, asynchronous option setters, additional settings, gamepad/mouse
 rebinding, and a general settings registry remain later work.
 
+## U3 private score-input caller and protocol
+
+`src/score-input.h/.cpp` implements the value/lease protocol; it does not replace
+Game's direct Space mapping. Construct from the retained endpoint and cached
+keyboard ID. All helper access, token moves/destruction, and generation changes
+belong to one serialized caller. No helper borrows mutable `Bindings`, polls
+devices, blocks on a future, or saves files. A small caller is:
+
+```cpp
+using Key = CE::Input::KeyboardKey;
+Tutorial::ScoreInput score(contexts, keyboard, Key::Space);
+score.observe(tick);                         // initial installation from tick.polls()
+const auto score_button = score.read(tick);  // only the active namespace
+score.set_generation(editor_generation);    // call on every generation change
+auto candidate = score.stage(Key::B);        // nullopt explicitly means unchanged
+if (cancel_requested) {
+    score.cancel();                         // releases only the pending lease
+    candidate.reset();
+} else if (candidate &&
+           score.observe(*candidate, tick) == Tutorial::ScoreInput::Status::Ready) {
+    auto prepared = score.prepare(std::move(*candidate)); // fallible checks; active unchanged
+    const bool adopted = score.adopt(std::move(prepared)); // noexcept, no allocation
+}
+```
+
+The client consumes `score_button`/`adopted`; this is a private-protocol caller,
+not a Game/UI integration example. Readiness is not gameplay admission. The held
+seeding case deliberately shows a candidate press readable immediately after
+adoption; SET-003's future gate/rearm policy must suppress that editing-era input.
+Its neutral boundary still needs genuinely new consumed polls beyond the release
+watermark, even when candidate readiness has latched. Detailed choices and costs
+are in SET-005; none is new evidence of personal v3 API taste.
+
 ## Proposed caller sequence
 
 This is an API sketch for app-private code, not an available Engine API or a
-compiled example. `SettingsFile` is the U1 helper; `SettingsEditor`, `ScoreInput`,
-and their integration remain proposed. U2 supplies the Engine snapshot queries
+compiled example. `SettingsFile` and `ScoreInput` are implemented helpers;
+`SettingsEditor` and Game integration remain proposed. U2 supplies the snapshot queries
 for context membership and the published device gate used by the future caller.
 
 ```cpp
@@ -95,7 +130,7 @@ Game game(engine, assets, loaded.value, std::move(file), loaded.issue);
 auto& input = engine.input();
 keyboard = input.keyboard_id();
 contexts = input.action_contexts();   // retain endpoint; never borrow Bindings in update
-score_input = ScoreInput(contexts.attach(score_definition(keyboard, active.add_score)));
+score_input.emplace(contexts, keyboard, active.add_score); // future optional<ScoreInput> Game member
 // Keep the existing non-score mappings and controller contexts.
 
 // Game::init_simulation(), on the simulation/UI owner:
@@ -105,9 +140,10 @@ editor.connect(ui, active, file, contexts, keyboard);
 // Game::update(tick), on the simulation/UI owner:
 ui.route_input(tick.input.records()); // callbacks enqueue editor intents
 editor.finish_batch(tick.input);      // open/edit/cancel/stage/observe/save
+score_input->observe(tick.input);     // active installation from consumed polls
 if (!editor.suppress_gameplay_this_tick()) {
     pan_camera(active.camera_pan_speed, tick.delta_seconds, tick.input);
-    if (score_input.read(tick.input).pressed()) add_one_point();
+    if (score_input->read(tick.input).pressed()) add_one_point();
     update_other_gameplay(tick);
 }
 ui.present(active.show_health);       // time, HUD, scene adoption/publication continue
@@ -279,54 +315,86 @@ scope. No v3 preference supports this particular scheme [H3].
 
 ## SET-005 — Stage a replacement and observe publication before adopting it
 
-Replace the tutorial's direct score mapping with a dedicated score context.
-Keep existing player contexts and other direct mappings. A private
-`score_definition(keyboard, key)` maps one chord to a context-local action ID;
-the persisted identity is `add_score`, never an `Actions::Id`, `ContextId`,
-`BindingId`, device ID, or native key integer.
+U3 implements `ScoreInput` only as an app-private protocol. Game still uses its
+current direct Space binding. Future integration will replace that mapping with
+the helper's dedicated context while preserving direct/non-score/player mappings.
+A single `.cpp`-private semantic action maps one physical key in that namespace;
+no runtime context/action/device ID is persisted. Constructor and stage reuse the
+U1 validator with an otherwise default `GameSettings`, so there is no second key
+whitelist, JSON API exposure, or settings behavior change.
 
-Apply first validates the whole draft. If its key changed, attach a candidate
-context while retaining the old lease, active model, and modal gate. Acceptance
-can throw synchronously, and a valid lease is not proof of installation. Continue
-updates and require a consumed complete sample containing the candidate namespace.
-Then attempt the file commit [SET-007]. On success, move the new lease into the
-score owner and reset the old lease; query only the new namespace thereafter.
-No global `Bindings::clear`, simulation-side mapper mutation, or unbind-first gap
-is allowed. An unchanged key keeps its current context. Scope each pending Apply
-to its draft generation so cancelled work cannot commit a later edit.
+The helper retains `ContextSubmission` and the cached keyboard identity, owns its
+active context/key and installation evidence, and keeps one weak pending slot.
+A move-only `Candidate` owns a separate record containing the replacement lease,
+key, generation and evidence. `prepare` transfers that record to a move-only
+`Prepared` token. The slot itself does not keep the lease alive: dropping either
+token releases it. Owner destruction or move assignment cancels its old pending
+record even when a token outlives the owner. There is no dangling owner pointer.
 
-Absent and inactive buttons both return defaults. U2 adds the minimal
-`bool Snapshot::has_context(ContextId) const noexcept` over its immutable
-`contexts_` map. It means membership in **this published sample**, not a live
-lease/installation acknowledgment beyond that sample. Zero is absent; a departing
-context remains present for its final release/zero sample, then disappears.
-Pending/not-yet-published, cancelled-before-installation, and subsequently retired
-identities are absent. Empty and inactive installed namespaces are present.
-Clear invalidates leases but retains installed namespaces for their final sample;
-shutdown invalidates leases without rewriting retained samples. Do not use a fake axis, held-key probe,
-sleep, future `.get()`, or mere poll-number advance as acknowledgment.
+A second request, including an unchanged-key request, rejects while a token is
+pending (`logic_error`). Otherwise an unchanged key explicitly returns `nullopt`
+without a new lease or replacement. Invalid keys throw the shared validator's
+`invalid_argument`; moved-from/invalid active owners reject locally. Attachment
+and allocation failures occur before changing active ownership or assigning the
+pending slot. A closed endpoint invalidates existing leases; constructor attachment
+then reports the Engine failure, while a surviving helper rejects stage as invalid.
+These outcomes preserve its stored active identity/key, without claiming liveness.
 
-The future adoption precondition combines a valid retained candidate lease,
-matching editor generation, and membership in a newly consumed sample, as in the
-U2 caller above. Historical membership alone cannot acknowledge live ownership.
-Initial attachment uses the same publication gate
-before gameplay starts. No-progress stays pending, with Cancel available; it does
-not invent a timeout success. Input clear/closure invalidates the lease: show a
-failure and preserve active/disk values. Poll/publication errors remain runtime
-failures under the existing runtime contract; no settings-specific retry loop
-or second polling owner is introduced. This context-observation path uses no
-future; the separate release watermark in SET-003 retrieves a future only after
-readiness, without waiting.
+Active observation latches installation only from a namespace in `tick.polls()`.
+Candidate observation additionally requires this exact pending record, a live
+active lease, its live candidate lease and the current generation. Evidence belongs
+only to that record/generation and may survive an empty later tick; an empty tick
+cannot manufacture evidence from `latest_poll()`'s baseline. Do not use action
+activity, `has_changes()`, frame counts, sleeps, futures or current focus as proof.
+Empty/inactive installed namespaces count. Zero, pending/not-yet-published,
+cancelled-before-installation and subsequently retired identities are absent.
+Departing membership includes the final release/zero sample and remains historical:
+clear/shutdown invalidation wins over retained membership or prior readiness.
 
-Alternatives: dispatching a mutation to platform would still need evidence of a
-completed poll and would tie the editor to mutable mapper lifetime. Waiting one
-frame is incorrect when polling and updates run independently. Confidence is
-high in the publication boundary; focused query/lifecycle/retry evidence is in
-[next.md](next.md). The future replacement/editor protocol remains unverified.
-The additive queries are engineering choices, not a historical taste inference.
-Reversal is inexpensive before app integration; adding the private gate set changes
-`Snapshot` layout, so Engine and consumers must rebuild together. No binary
-compatibility promise is inferred from the source-additive query signatures.
+The owner generation starts at zero. `set_generation` accepts any uint64 value;
+a change permanently marks the pending record Stale and releases its lease. Calling
+it with the same value preserves evidence. Reusing an earlier number cannot revive
+an old token. The application must call it whenever its editor generation changes.
+`cancel()` marks only the current candidate/prepared record Cancelled and releases
+that lease; active ownership/key/evidence remain unchanged. Nonterminal tokens associated
+with another owner's weak slot report Foreign and cannot be prepared/adopted there.
+Empty tokens and owned engine-invalidated tokens report Invalidated; Waiting and Ready distinguish
+accepted requests from witnessed publication. Terminal Stale/Cancelled outcomes
+remain terminal even though their old slot is no longer pending.
+
+`read(tick)` summarizes only the active namespace after active installation has
+been observed and while its lease is valid. Owned Tick summaries may allocate.
+Staging, observing and preparing a candidate never change this namespace, key or
+active lease. They never combine old/candidate presses. Owner moves transfer active
+lease/evidence, generation and the exact pending association; sources read inactive
+and cannot cancel/adopt the transferred candidate. Candidate/Prepared moves transfer
+one record; overwriting a token releases its preceding lease and slot naturally.
+
+`prepare(Candidate&&)` revalidates live/current/owned/witnessed readiness and throws
+`logic_error` without consuming invalid or non-ready tokens. Success consumes only
+the candidate token; the prepared token still reserves the pending slot. No active
+state changes. `adopt(Prepared&&) noexcept` rechecks those conditions: rejection
+returns false without consuming the token or changing active ownership, including
+wrong-owner attempts. Success moves the lease, assigns key/evidence, and clears
+the weak slot. It allocates nothing and formats no status text. Context move
+assignment retires the old lease; Engine publishes its final release/zero namespace
+before retirement, while historical ticks remain usable.
+
+Future Apply must validate the complete settings value, stage/observe/prepare,
+commit the file [SET-007], then adopt under serialized owner access without an
+intervening generation change/cancel/clear or concurrent input teardown. U3 supplies
+no file commit and promises no transaction across concurrent teardown. Its readiness
+is separate from SET-003's new-poll/device-admission/neutral-rearming conditions.
+An unchanged binding will retain its existing active lease through later Apply.
+
+Alternatives: raw owner pointers complicate moves and lifetime; bare context IDs
+cannot prove live ownership; automatic supersession hides pending-work cancellation.
+The weak record costs one small bookkeeping allocation per replacement in addition
+to Engine attachment allocations, but makes drop/move/foreign-owner semantics
+explicit without a global registry or task framework. Confidence is high after the
+focused CPU checks in [next.md](next.md). API reversal is cheap before Game callers
+exist. These are engineering decisions; [H1–H3] add no specific preference support.
+U2 changes `Snapshot` layout, so Engine and consumers still rebuild together.
 
 ## SET-006 — Use one explicit, versioned settings file and strict validation
 
@@ -479,6 +547,12 @@ U1 evidence, added after the reviewed baseline: [settings declarations](../proje
 [tutorial registration](../projects/apps/tutorial-game/CMakeLists.txt). These are
 app-private additions; they do not change the historical preference evidence.
 
+U3 evidence is the private [owner/tokens](../projects/apps/tutorial-game/src/score-input.h),
+[implementation](../projects/apps/tutorial-game/src/score-input.cpp), and
+[controlled mapper/tick cases](../projects/apps/tutorial-game/tests/score-input.cpp),
+registered in the existing tutorial suite. Game, UI, runtime and Engine source are
+unchanged by U3. Actual checks and limits are in [next.md](next.md).
+
 U2 evidence extends [Snapshot](../projects/engine/include/cheryl/core/controls/action-snapshot.h)
 and [publication](../projects/engine/src/core/controls/input-bindings.cpp), using
 the existing context map and an owned gate set prepared before commit.
@@ -581,20 +655,21 @@ git show -s --format=fuller 8854ef84f360fafa3572b58ee5440b5aabc0e67c
 2. **U2 snapshot presence and admission:** implement only `Snapshot::has_context`
    and `Snapshot::device_enabled`, publication metadata, and their focused cases.
    No score-context/editor integration or runtime gate belongs to U2.
-3. **App-private score-context owner:** introduce its definition/lease/candidate
-   ownership and stage replacement behind the future application's admission policy.
-   Exercise inactive publication, retained gates, release watermarks, queued
-   focus-suppressed polls and quick open/close without a focused poll,
-   held seeding, old/new coexistence, release retirement, validation failure, and
-   shutdown invalidation. Keep other mappings and PlayerController behavior intact.
-4. **One TGUI editor:** draft controls, explicit input ordering, dedicated rebind
+3. **U3 app-private score-context owner** (implemented): retain active/candidate
+   leases and generations, observe real consumed polls, cancel/drop/move safely,
+   and validate a nonthrowing adoption. No Game wiring, file commit or modal policy.
+   Preserve existing direct/player mappings and verify final release/retirement.
+4. **CPU Apply composition** (proposed next boundary): combine validated settings,
+   SettingsFile and the prepared score lease under explicit owner/teardown rules.
+   Verify file failures preserve old active values/context and candidate lifecycle.
+5. **One TGUI editor:** draft controls, explicit input ordering, dedicated rebind
    target/epoch, save-before-adoption, Cancel, focus loss, rearming, and lifecycle.
    Extend only directly affected application/test registration. Run the proposed
    focused checks and then the selected native consumer acceptance when execution
    is authorized. Update both decision views if evidence changes a choice.
 
-The U2 assignment activates only step 2, its focused checks, and the U1 symlink
-contract clarification. Steps 3–4 remain later coordinator assignments. Current build
+The U3 assignment activates only step 3 and its focused checks. Steps 4–5 remain
+later coordinator assignments, not work activated by this record. Current build
 and test work uses the resource-gated shared-lock wrapper and one job. Exit 75
 means checkpoint idle rather than an unchanged retry or an unrestricted fallback.
 
@@ -612,7 +687,7 @@ means checkpoint idle rather than an unchanged retry or an unrestricted fallback
 | Rebind identity | Repeat, release, Text, modifiers, another device/target, stale epochs, and reserved keys cannot select a binding. Queued old-session Text/widget input cannot change draft values or Apply during Listening. A fresh permitted physical press changes only the draft; Cancel keeps the prior mapping. |
 | Ownership/lifecycle | Focus preemption does not erase a newer owner's lease; cancel pending apply and close while editing/listening without autosave, deadlock, or calls after session/input teardown. Retained scene behavior remains intact. |
 
-This table remains whole-consumer acceptance. U1 value/file and U2 snapshot cases
+This table remains whole-consumer acceptance. U1 value/file, U2 snapshot and U3 owner cases
 are reported in [next.md](next.md). Those results do not establish the future
 editor, runtime Apply, input isolation, context replacement, or GUI presentation.
 
@@ -630,8 +705,9 @@ establish building the graphical/native/TGUI targets.
 File replacement evidence is bounded to the Linux host/filesystem in [next.md](next.md).
 Power-loss durability/fsync, multi-process writers, network filesystems, OS
 preference directories, other platforms, and reusable settings APIs remain later
-scope. U2 supplies observable history; the future editor still must retain its
-candidate/generation and fence rearming with genuinely new consumed polls. UI
-isolation and sequential/concurrent application scheduling remain unimplemented.
+scope. U3 retains candidate/generation and validates adoption, but future composition
+still must coordinate file commit with serialized owner access and input teardown.
+Its latched readiness cannot rearm gameplay. UI isolation, release watermarks and
+sequential/concurrent application scheduling remain unimplemented.
 The archived squash cannot recover finer authorship or design
 intent; stronger personal-preference claims remain unsupported.
