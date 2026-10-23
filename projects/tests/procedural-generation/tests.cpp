@@ -470,6 +470,10 @@ int main(int argc, char** argv) {
     passed += traversal.passed;
     failed += traversal.failed;
     assertions += traversal.assertions;
+    const auto configuration = ProcGenTests::run_configuration_cases(selection);
+    passed += configuration.passed;
+    failed += configuration.failed;
+    assertions += configuration.assertions;
     std::cout << "Cases: " << passed << " passed, " << failed << " failed, 0 skipped; " << assertions << " assertions\n";
     return failed == 0 && passed != 0 ? 0 : 1;
 }

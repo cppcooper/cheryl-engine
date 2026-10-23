@@ -93,6 +93,12 @@ namespace ProcGen {
                 return "total queue push budget refused or exhausted";
             case Reason::path:
                 return "chosen path must be simple and join the selected endpoints";
+            case Reason::traversability:
+                return "traversability must be finite and in [0,1]";
+            case Reason::coverage:
+                return "only full rectangular coverage is supported";
+            case Reason::endpoint_policy:
+                return "fixed endpoints contradict the route contract or are unsupported by this construction";
         }
         return "unknown failure reason";
     }

@@ -95,7 +95,46 @@ Search success is not a difficulty or ambiguity guarantee.
 **User requirement; high confidence.** Preserve U1 regressions and validate routes
 with independent BFS/Dijkstra and literal metric fixtures. Wrapper-only Debug/UBSan
 execution passes 23 entries, zero failures/skips: 22 cases contain 2680 assertions,
-including all 1470 U1 assertions. Both consumer demonstrations pass. U3 remains
-proposed: strict labyrinth construction and measured traversability controls with
-requested/achieved constraints. Distinguish proven incompatibility from bounded
-construction failure; no U3 generator is implemented.
+including all 1470 U1 assertions. Both U2 consumer demonstrations pass. This
+records U2 acceptance; U3 is now authorized and implemented separately below.
+Preserve proven incompatibility versus exhausted-resource distinctions.
+
+## PROCGEN-011 — Exact traversal profile
+
+**User endpoint requirement; engineering mapping, medium confidence.** Normalize
+finite binary64 [0,1] to 65536 ticks, nearest with half upward. For C>=2 reserve
+`L=2+floor(ticks*(C-2)/65536)` route cells; singleton L=1. Every cell stays active,
+with exactly C-L off-route. Increasing ticks decreases that exposure while
+lengthening the route and changing auto goal. This is a coverage prototype,
+not perceptual difficulty or monotonic branch/depth control. Tiny domains quantize.
+
+## PROCGEN-012 — Constructive strict endpoint and policies
+
+**Engineering choice; high confidence for rectangular domains.** Seed axis
+permutation/reflections, reserve a serpentine prefix, then attach each remaining
+cell to an earlier visited neighbor. At L=C this is one spanning path with the
+selected endpoints, not merely a successful search. Auto endpoints are supported;
+fixed accepts the constructed pair in either orientation. Proven endpoint/color
+contradictions, unavailable pairs, invalid options and resource exhaustion remain
+distinct. Arbitrary fixed endpoints/masks/loops and extra growth controls are deferred.
+
+## PROCGEN-013 — Separate replay, ownership and accounting
+
+**User requirements plus engineering choice; high confidence.** Keep DFS v1 intact;
+new `serpentine_tree` v1 retains exact request/key/domain/budgets, effective ticks,
+selected endpoints, owned topology/route and measured achievements. Reuse U1
+integer streams. Preflight all buffers, including U2 analysis after order scratch
+is released; charge scans and every draw, including rejection. Cap at 1M cells,
+999999 edges, 64 MiB accounted storage and 100M work. No partial publication or
+catch-all exception conversion; budgets affect admission only.
+
+## PROCGEN-014 — Independent evidence and review boundary
+
+**User requirement; implemented checks, execution recorded in agent notes.** Keep
+all U1/U2 tests, add pairwise-coordinate BFS comparisons, strict degree/coverage
+checks and literal replay/metric fixtures. Exercise true 4D, unit axes, rounding,
+endpoint refusals, overflow/budget and ownership boundaries. The text caller uses
+0/0.5/1 on both domains. Final wrapper Debug/UBSan execution passes 33 entries,
+zero failures/skips: 32 cases/8635 assertions plus the eight-demo consumer.
+The saved logs retain a corrected literal-count failure. Stop for coordinator
+review; broader portability, ASan and public extraction remain unverified.

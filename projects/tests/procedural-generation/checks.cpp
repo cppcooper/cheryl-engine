@@ -30,15 +30,15 @@ namespace ProcGenChecks {
         }
     }
 
-    Topology verify(const ProcGen::Maze& maze) {
-        const auto extents = maze.domain().extents();
+    static Topology verify_topology(ProcGen::MazeView graph, const ProcGen::Maze* legacy) {
+        const auto extents = graph.domain.extents();
         ProcGen::Index cells = 1;
         for (const auto extent : extents) {
             require(extent > 0 && extent <= 4096 && cells <= 4096 / extent, "validator cell cap exceeded");
             cells *= extent;
         }
         require(!extents.empty() && extents.size() <= ProcGen::max_dimensions, "invalid dimension count");
-        require(cells == maze.domain().cells() && cells == maze.passages().size(), "cell count mismatch");
+        require(cells == graph.domain.cells() && cells == graph.passages.size(), "cell count mismatch");
         const auto size = static_cast<std::size_t>(cells);
         std::vector<std::vector<std::size_t>> adjacency(size);
         std::vector<std::size_t> parents(size);
@@ -53,9 +53,9 @@ namespace ProcGenChecks {
         for (std::size_t cell = 0; cell < size; ++cell) {
             const auto coordinate = decode(cell, extents);
             require(encode(coordinate, extents) == cell, "independent coordinate round trip failed");
-            require(maze.domain().coordinates(cell).value() == coordinate, "domain coordinates mismatch");
-            require(maze.domain().index({coordinate.data(), extents.size()}).value() == cell, "domain index mismatch");
-            const auto bits = maze.passages()[cell];
+            require(graph.domain.coordinates(cell).value() == coordinate, "domain coordinates mismatch");
+            require(graph.domain.index({coordinate.data(), extents.size()}).value() == cell, "domain index mismatch");
+            const auto bits = graph.passages[cell];
             if (extents.size() < ProcGen::max_dimensions) {
                 require((bits >> (2 * extents.size())) == 0, "passage on inactive axis");
             }
@@ -64,8 +64,9 @@ namespace ProcGenChecks {
                     const bool present = (bits & (std::uint32_t{1} << (2 * axis + sign))) != 0;
                     auto next_coordinate = coordinate;
                     const bool in_bounds = sign == 0 ? coordinate[axis] != 0 : coordinate[axis] < extents[axis] - 1;
-                    const auto grid_neighbor = maze.domain().neighbor(cell, axis, static_cast<ProcGen::Direction>(sign)).value();
-                    const auto passage_neighbor = maze.neighbor(cell, axis, static_cast<ProcGen::Direction>(sign)).value();
+                    const auto grid_neighbor = graph.domain.neighbor(cell, axis, static_cast<ProcGen::Direction>(sign)).value();
+                    const auto passage_neighbor = legacy ? legacy->neighbor(cell, axis, static_cast<ProcGen::Direction>(sign)).value()
+                                                         : (present ? grid_neighbor : std::nullopt);
                     require(grid_neighbor.has_value() == in_bounds, "domain boundary mismatch");
                     require(passage_neighbor.has_value() == present, "passage query mismatch");
                     if (!in_bounds) {
@@ -84,7 +85,7 @@ namespace ProcGenChecks {
                     }
                     require(passage_neighbor == next, "passage endpoint mismatch");
                     const auto opposite = std::uint32_t{1} << (2 * axis + (sign ^ 1U));
-                    require((maze.passages()[next] & opposite) != 0, "nonreciprocal passage");
+                    require((graph.passages[next] & opposite) != 0, "nonreciprocal passage");
                     adjacency[cell].push_back(next);
                     if (sign == 1) {
                         ++report.edges;
@@ -113,5 +114,12 @@ namespace ProcGenChecks {
         report.reached = queue.size();
         require(report.reached == cells, "disconnected maze");
         return report;
+    }
+
+    Topology verify(const ProcGen::Maze& maze) {
+        return verify_topology(ProcGen::maze_view(maze), &maze);
+    }
+    Topology verify(ProcGen::MazeView graph) {
+        return verify_topology(graph, nullptr);
     }
 }

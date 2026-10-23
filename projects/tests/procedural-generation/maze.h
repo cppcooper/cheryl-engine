@@ -15,7 +15,7 @@ namespace ProcGen {
     inline constexpr std::size_t max_dimensions = 16;
     using Coordinate = std::array<Index, max_dimensions>;
 
-    enum class FailureKind { invalid_input, budget_refused };
+    enum class FailureKind { invalid_input, budget_refused, unsupported, contradiction };
     enum class Reason {
         dimensions,
         extent,
@@ -38,7 +38,10 @@ namespace ProcGen {
         expansions,
         queue_entries,
         queue_pushes,
-        path
+        path,
+        traversability,
+        coverage,
+        endpoint_policy
     };
 
     struct Failure {

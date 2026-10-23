@@ -7,10 +7,10 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp)
 add_library(procgen-checks STATIC checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
-add_executable(procgen-tests tests.cpp traversal-tests.cpp)
+add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
 add_executable(procgen-consumer consumer.cpp)
 target_link_libraries(procgen-consumer PRIVATE procgen-private procgen-checks)
@@ -39,6 +39,11 @@ foreach(case IN ITEMS rng domain topology four_d replay ownership invalid overfl
 endforeach()
 foreach(case IN ITEMS route_unit route_weighted route_cycles route_limits route_invalid route_overflow route_ownership
                       metrics_path metrics_branch metrics_cycle metrics_invalid metrics_limits)
+    add_test(NAME procgen.${case} COMMAND procgen-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+foreach(case IN ITEMS config_profile config_four_d config_tiny config_rounding config_fixed config_invalid config_replay
+                      config_ownership config_limits config_exhaustion)
     add_test(NAME procgen.${case} COMMAND procgen-tests ${case})
     set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
 endforeach()

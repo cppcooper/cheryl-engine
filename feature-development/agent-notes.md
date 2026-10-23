@@ -514,3 +514,295 @@ or navigation guarantee. U3 remains proposed: checked strict labyrinth construct
 useful traversability mapping and selected controls with requested/achieved
 constraints. Distinguish proven incompatibility from bounded construction failure.
 No automatic U3 or general graph/sibling integration.
+
+## U3 authority and proposed caller (PROCGEN-011–014)
+
+U2 is accepted at `e4a735bf793287eb3126edff0e3feab4828b7e81`; initial
+status/diffs are clean. U3 is authorized, not a proposal awaiting approval. Read
+updated workspace AGENTS, autonomy/memory policy, brief/workstream, W018/W019,
+worker assignment and clone instructions/records. Adaptive resource admission
+belongs to the shared wrapper/monitor; no worker-side cap or slot changes.
+
+Proposed success-path caller recorded before dependent APIs (errors checked in
+the executable):
+
+```cpp
+for (double value : {0.0, 0.5, 1.0}) {
+    auto maze2 = ProcGen::generate_configured(plane, key,
+        {.traversability = value}, budgets); // plane {6,4}
+    auto maze4 = ProcGen::generate_configured(volume, key,
+        {.traversability = value}, budgets); // volume {3,2,2,3}
+    // Each success owns topology, selected endpoints, main route, replay and
+    // U2 measurements; independent checker/search compare the full topology.
+}
+```
+
+Engineering plan: normalize finite binary64 [0,1] requests to 65536 integer
+ticks (nearest, half upward); reserve `L=2+floor(ticks*(C-2)/65536)` route cells
+for C>=2, otherwise L=1. Seeded axis order/reflection gives a rectangular
+serpentine spanning order; reserve its prefix, then attach each remaining cell
+to an already visited neighbor. No other growth control is needed in U3.
+Measure the completed tree with U2 and charge that analysis in generation's
+peak/work model. Exact off-route cells C-L decrease as ticks increase, while
+auto goal and route length change. This is not perceptual difficulty or a
+branch-count/depth monotonicity promise.
+
+Fixed endpoints will accept the selected prefix pair in either orientation.
+Other feasible pairs are unsupported by this construction; proven
+distinctness/checkerboard contradictions have a separate failure.
+No bounded search is presented as a feasibility proof. Full rectangular
+coverage only; masks, arbitrary fixed endpoints and separate route/branch/run/loop
+controls remain future work. A separate descriptor preserves DFS v1.
+
+Assumptions: this normalized coverage profile is useful as a first measurable
+prototype (engineering choice, medium confidence); rectangular serpentine
+construction is sufficient for auto-endpoint strict coverage (high confidence,
+requires independent tests). PROCGEN-002 retains exact reference provenance and
+counterevidence; neither legacy C nor v3 history establishes this mapping/API.
+Implementation and execution are pending at this entry.
+
+### PROCGEN-011 — Implemented profile and representation
+
+Owners: `projects/tests/procedural-generation/configuration.h` and
+`configuration.cpp`, `Configuration`, `normalize`, `preflight`,
+`generate_configured` and `replay_configured`. Existing DFS source behavior and
+logical replay stay unchanged; appended failure enumerators do not renumber old
+reasons. Private spelling/mapping is an engineering choice, not new user taste
+inferred from HyperMaze/v3. Source provenance remains PROCGEN-002 at its exact
+revisions/paths/symbols; W018 supplies the strict endpoint and rectangular
+construction suggestion, W019 supporting verification. No protected reference
+was mutated, built or used as an output/cache owner during U3.
+
+Requested traversability must be finite binary64 in [0,1]. Scale by 2^16 exactly,
+truncate the nonnegative scaled value to u32, then add one iff its fractional
+part is >=0.5. Unlike adding .5 before truncation, this preserves the just-below-
+half distinction. IEEE binary64 (IEC559, 53-bit significand, exponent limit1024)
+is checked statically. Negative zero is accepted as zero; positive subnormals
+normalize to zero. Remaining construction is integer arithmetic. All successful
+logical replay inherits U1's byte/integer/container contract plus this binary64
+normalization requirement. No cross-compiler/OS execution is established.
+
+Ticks q are in [0,65536]. For C>=2, select exactly
+`L=2+floor(q*(C-2)/65536)` route cells. C=1 selects L=1. Distinct endpoints are
+mandatory when C>1. Minimum two-cell route keeps zero solvable. Output coverage
+is always C/C, selected-route coverage L/C and off-route cells C-L. These integer
+counts are the exact achieved profile, not a probability or difficulty score.
+The normalized input controls the fraction of cells beyond the minimum two
+assigned to the route; it is not the raw ratio L/C. Quantized effective ticks,
+route cells, requested options and full U2 measurements are returned. No targets
+are silently relaxed. C<=2 collapses all requests to a whole-domain path; other
+tiny domains have plateaus. Near-one values rounding to 65536 also construct the
+strict endpoint. As q increases for the same domain, L never decreases and C-L
+never increases; the auto goal moves along the same prefix order. Branch count,
+false depth, number/placement of choices, and subjective difficulty have no
+monotonicity guarantee. Branch attachments at entrance or goal count per U2;
+the profile does not promise where a player encounters a choice.
+
+### PROCGEN-012 — Construction proof, ordering and endpoint failures
+
+New algorithm `ConfiguredAlgorithm::serpentine_tree(1)`, version1. Fresh U1 stage
+stream uses exact StreamKey, derivation and SplitMix64/sampler. Initialize axis
+ranks 0..D-1; descending Fisher–Yates counts D..2 draw uniformly below count and
+swap rank count-1 with the selected rank. Then visit ranks ascending, computing
+permuted strides and one sample_below(2) reflection each. These geometry draws
+are independent of the traversal profile; no global registry or consumption by
+another stage can perturb output. Draws at bound1 during attachment still count.
+
+For ordinal i, rank r has permuted axis a, lower stride s and extent e. Start
+with digit `(i/s)%e`; replace it by `e-1-digit` when `(i/(s*e))%2` is odd; then
+apply the seeded rank reflection. Convert to canonical axis-0-fastest index by
+the validated domain strides. Inverse mapping recovers higher ranks first, so
+this is a bijection over all C cells. On incrementing i, a mixed-radix carry
+changes one digit by one; lower wrapped digits also flip reflection parity and
+therefore retain their coordinates. Higher coordinates stay fixed. Thus adjacent
+ordinals differ on exactly one axis by one, including unequal/unit extents.
+This is iterative O(C*D), not recursive Hamiltonian search.
+
+Reserve the first L cells as an immutable main chain. Scan remaining ordinals
+ascending; enumerate candidate neighbors in canonical axis ascending, negative
+then positive order, keeping those already visited (nonzero mask). For C>1 the
+core has L>=2 and every visited cell has a passage; the preceding ordinal is an
+available visited neighbor. Choose uniformly among candidates and open exactly
+one reciprocal edge. Each newly added vertex attaches once, so connectedness
+and acyclicity are preserved, and the unique selected-endpoint route remains
+exactly the reserved chain. At L=C no attachment occurs: selected endpoints have
+degree1, all others degree2, E=C-1. Singleton has E=0, endpoint0/0 and degree0.
+Axis order/reflection randomization is not uniform spanning-tree/path sampling.
+Strict internal traversal has one onward edge after excluding arrival; reversal,
+orientation, player difficulty and playtesting are not addressed.
+
+`Configuration::endpoints=nullopt` means auto, the prefix's first/last cells.
+A fixed pair must be valid indexes. C>1 equal fixed endpoints contradict a simple
+route of L>=2 cells. For L=C, checkerboard parity is a necessary obstruction:
+even C needs opposite colors; odd rectangular C means all extents odd and color0
+has one extra cell, requiring both endpoints color0. These failures are
+`FailureKind::contradiction/Reason::endpoint_policy`, proved by alternating colors
+along a spanning path, not inferred from construction failure. Passing the check
+is not a proof of feasibility. This implementation accepts the seeded prefix pair
+in either orientation, reversing the owned main route for the reverse pair.
+Another pair returns `unsupported/endpoint_policy`, BEFORE allocating owned
+buffers, without moving endpoints or claiming mathematical impossibility.
+`configured_requirements` checks arithmetic/resources and necessary endpoint
+conditions only: without a stream key it cannot certify that pair membership.
+Full rectangular coverage is explicit; unknown Coverage values return
+`unsupported/coverage`. No masks/subset/loops placeholders are implemented.
+Bad scalar/endpoint/domain/version values are invalid input; overflow is invalid
+input, finite budget limits/refusal or runtime exhaustion are budget_refused.
+No construction-search exhaustion is confused with impossibility.
+
+### PROCGEN-013 — Ownership, replay and peak/work model
+
+`ConfiguredMaze` owns const-viewable masks and the selected route, a separate
+versioned descriptor, effective configuration, endpoints, U2 Measurements and
+Usage. Copies deep-copy both buffers; views expire on owner destruction/move/
+assignment; moved-from values only destroy/assign. No scratch/global aliases.
+The borrowed U2 MazeView adapts either old or new owner, without changing U2 cost/
+heuristic behavior. The independent checker now has a view overload but retains
+old Maze neighbor-query checks and all original topology/coordinate/union/BFS
+checks. Synthetic cyclic/disconnected fixtures remain in U2's suite.
+
+Replay retains Domain/extents, seed/stage/stream, exact requested binary64 value,
+endpoint policy/pair, full coverage, budgets, algorithm and version. Effective q/L
+are deterministically recomputed and returned; unsupported algorithm/version
+reject before buffer allocation. Sufficient budgets change admission metadata
+only, never topology/endpoints/main route. Reusing U1 numeric stage derivation
+is intentionally a small consumer helper, neither cryptographic independence nor
+collision-free streams. There is no file format or Engine/SDK export.
+
+Preflight validates all checked products/sums and vector capacities before owned
+buffer allocation. Hard caps: 1,000,000 cells, C-1<=999,999 edges, 64 MiB accounted
+peak storage, 100,000,000 work. Effective limits are min(caller, hard). Let M be
+`metric_requirements(domain).storage_bytes`. Accounted peak is
+`8192 + 4*C + 8*L + max(8*C, M)` bytes. Output is masks 4*C and route8*L;
+construction scratch is a C-index order (8*C). Release that scratch before
+calling U2 measure, whose full initialized cell/queue buffers and 4096 fixed
+allowance are in M. On this ABI M=4096+24*C, so peak=12288+28*C+8*L.
+8192 covers bounded outer/candidate/metadata/return helpers, protected by a
+static size assertion. This counts requested element payload plus allowances,
+not exact RSS: allocator/runtime/sanitizer/exception/OS overhead and existing
+caller-owned results/copies are excluded. No huge rejected allocation or memory
+pressure experiment occurs. Allocation/programming exceptions propagate; only
+the existing private typed Stop is caught for expected failures.
+
+Work charges all initialized array elements (2*C+L), each order-map action/axis
+(C*(D+1)), route copies L, core links and directional probes, each tail iteration,
+all 2*D tail probes, each attachment action, stage setup/map actions and EVERY raw
+sampling word including rejection. U2 measures the completed topology and chosen
+route using the remaining work allowance; its actual work is charged into outer
+Usage. No successful topology is published before measurement completes.
+
+The checked lower bound is the sum of:
+
+- `2*C+L`, `C*(D+1)`, `L`, `2*(L-1)`;
+- `(C-L)*(2*D+3)` for tail loop/probes/link/minimum draw;
+- `6*D+1` for axis setup/minimum geometry draws and two endpoint maps;
+- U2 base `C*(7+4*D)`, chosen-route minimum `2*L-1`, and tree flood `C*(2+2*D)`.
+
+Bounded O(D) input validation/metadata arithmetic precedes traversal work, as in
+U1/U2. For this connected-tree construction the only extra charged work beyond
+that lower bound is additional core and measured-route direction probes (at most
+`2*(2*D-1)*(L-1)`), plus rejected raw draws. Minimum raw draws are
+`2*D-1+(C-L)`. Unbiased rejection has no finite automatic worst-case draw bound;
+runtime Work limits every draw, scan and metric operation. Admission at the
+minimum cannot promise completion. Work exhaustion discards local buffers and
+returns no partial topology/path/measurements. Time is O(C*D+raw draws), successful
+charged work never exceeds the effective cap. Existing outputs remain unchanged
+on invalid, unsupported, contradiction, early/runtime budget and allocation failures.
+
+### PROCGEN-014 — Executed U3 evidence and handoff
+
+Source: this coherent U3 checkpoint based on accepted
+`e4a735bf793287eb3126edff0e3feab4828b7e81`. GNU16.2.1/C++23/Debug/Ninja,
+`PROCGEN_UBSAN=ON`, no recovery, warnings as errors, same preserved
+`builds/procedural-generation` cache. No new dependencies, pin/configuration
+changes, Engine/GUI build or public extraction. All configure/build/native
+commands use `/mnt/projects/cheryl-features/scripts/build --`, one job.
+Queued commands retained their existing tool sessions until completion; no
+resource refusal/exit75, cancellation, unchanged admission retry or model
+substitution occurred.
+
+New tests in `configuration-tests.cpp` contribute ten cases/5955 assertions;
+all 22 old cases/2680 assertions remain, including U1's 1470 golden/topology
+assertions. Independent `checks.cpp` checks masks/coordinates/reciprocity/
+boundaries/edge count/union acyclicity and BFS connectivity. New small Oracle
+extracts edges by pairwise independently decoded coordinates, then FIFO BFS;
+it does not reuse construction order, Domain neighbor traversal or A* internals.
+Verify every route index/edge/endpoints/uniqueness/cost, both U2 heuristics versus
+BFS, literal and reported metrics, strict degree/coverage invariant, and exact
+monotonic L/C-L definition (not branch/depth/difficulty). Three seeds on {5,3}
+and four seeds on unequal true4D {3,2,2,3} exercise the profiles. At .5 and1 every
+4D fixture route has a real fourth-axis step. Each full topology reaches C cells
+with E=C-1. Largest constructed test is C36; references cap at64, checker at4096.
+
+Other coverage: 1D/unit/singleton domains and axis15; half-tick and adjacent
+binary64 rounding, near-one and subnormal/negative-zero quantization; invalid
+finite/out-of-range/NaN/infinity/options/dimensions/extents/endpoints/versions;
+compatible fixed pairs/reversal, proven even/odd color conflicts and unsupported
+pairs; replay and unrelated stage isolation; deep copies/moves, previous values
+preserved on invalid/unsupported/contradiction/budget/allocation errors; checked
+product/byte overflow and exact/just-too-small C/E/storage/work. Allocation denial
+confirms preflight and unsupported-pair refusals avoid owned buffers, and actual
+bad_alloc propagates without memory pressure. Algebraically derived U1 key with
+first raw word0 forces rejection of the initial 3-axis shuffle draw; finite work
+refuses without publishing topology. Exact observed work and one-unit-short
+runtime refusal are checked, not merely minimum-work admission.
+
+Pinned hand-traced new 2x2 replay, seed42/stage0x6d617a65/stream7:
+axis order [1,0], no reflection, ordinal cells [0,2,3,1]. At q32768, selected
+route [0,2,3] and remaining1 attaches to3, masks [8,8,6,5], off-route cells1/
+branches1/false dead ends1/depth1, strict false. Work147/raw draws4. At q65536
+selected route [0,2,3,1], same masks, no off-route cells/branches/depth, degrees
+one:2/two:2 and strict true. Work150/raw draws3. Same graph with different
+selected endpoints illustrates why a unique route alone does not establish the
+strict endpoint. This does not require seed uniqueness.
+
+Complete stdout/stderr and immediate exit manifest are clone-local/ignored in
+`builds/procedural-generation/logs/u3/` (not truncated terminal excerpts):
+
+| Wrapped command | Logs and actual result |
+| --- | --- |
+| `clang-format -i` on owned changed C++ | `format-1.log`, `format-2.log`, exit0 |
+| `cmake --build builds/procedural-generation --parallel 1` | `build-1.log` (standalone CMake regeneration), `build-2.log`, `build-3.log`, all exit0 |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1` | `ctest-1.log`: exit0, 33 passed/0 failed/0 skipped, 32 cases/8620 assertions before final test additions |
+| Same CTest selection after added literals | `ctest-2.log`: exit8, 32 passed/1 failed/0 skipped; config_profile fails at a mistaken hand-summed work expectation247 instead of147; the unreached second literal250 is also corrected to150. No production accounting change; complete failing diagnostic retained |
+| Final same CTest selection | `ctest-3.log`: exit0, 33 passed/0 failed/0 skipped; 32 cases/8635 assertions (1470 U1 +1210 U2 +5955 U3), plus consumer; zero UBSan diagnostics |
+| Separate `builds/procedural-generation/procgen-consumer` | `consumer-1.log`: exit0, 8 demonstrations passed/0 failed/0 skipped; final CTest consumer also passes8/8 |
+| Immediate command statuses | `exits.tsv`, including resolved exit8; no failed diagnostics discarded |
+
+Text consumer retains both original DFS demonstrations, then 0/.5/1 on the SAME
+2D {6,4} and 4D {3,2,2,3} domains, exact key above. All full topology checks and
+U2 route checks pass. Measured achievements:
+
+| Domain/value | Route cells/edges(cost) | Off-route/branches/max false depth | Endpoints | Full topology edges by axis |
+| --- | --- | --- | --- | --- |
+| 2D/0 | 2/1 | 22/2/11 | 0→6 | 12,11 |
+| 2D/.5 | 13/12 | 11/2/4 | 0→21 | 9,14 |
+| 2D/1 | 24/23 | 0/0/0 | 0→5 | 5,18 |
+| 4D/0 | 2/1 | 34/3/10 | 27→24 | 9,5,10,11 |
+| 4D/.5 | 19/18 | 17/6/8 | 27→1 | 9,12,4,10 |
+| 4D/1 | 36/35 | 0/0/0 | 27→35 | 2,18,3,12 |
+
+All 2D outputs C24/E23/reached24; all 4D C36/E35/reached36. Values1 are strict,
+with every cell on the selected route and 12 actual fourth-axis edges in the
+4D route. These are full N-D topology reports, not projections/slices/viewers.
+DFS masks/seed/work and original route metrics remain accepted U1/U2 fixtures.
+No claims about player experience, other compilers/OSes, ASan, large-domain
+performance or public Engine/SDK behavior are verified.
+
+Confidence: high for the bounded rectangular construction and finite measured
+contracts; medium that this coverage-coupled profile is the best long-term user
+control. No unresolved source/resource blocker. Next useful proposed unit is a
+wider bounded fixed-endpoint construction with explicit coverage/length constraints,
+not implementing every advanced control. Route length, endpoints/waypoints,
+coverage/masks, loops and branch/depth/style controls remain separate future work.
+General HyperMaze endpoint/port/loopback graphs remain separate from axis steps.
+Caves/dungeons may need regions/room graphs, geography fields/drainage,
+settlements sites/roads/parcels, tectonic changes affected regions and explicit
+remap/revalidation; no implementation or universal World architecture is implied.
+Stop at this local checkpoint for coordinator review; publisher owns transport.
+
+Staged review covers the 14 owned task files and matching records; no unrelated
+work, root dependency/export or protected/sibling content is staged. Full staged
+diff is saved locally as `logs/u3/staged-review.diff` under the existing build.
+Whitespace checks pass. The final C++ sources are those built/tested above; only
+internal handoff records change after final CTest.

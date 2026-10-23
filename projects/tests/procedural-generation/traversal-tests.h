@@ -11,4 +11,5 @@ namespace ProcGenTests {
     };
 
     [[nodiscard]] Counts run_traversal_cases(std::string_view selection);
+    [[nodiscard]] Counts run_configuration_cases(std::string_view selection);
 }
