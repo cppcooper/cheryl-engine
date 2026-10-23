@@ -1,8 +1,8 @@
-# Tilemap milestone: CPU U1 and proposed consumer
+# Tilemap milestone: CPU values and retained packets
 
-This branch implements U1's CPU map values and visible-cell range helper. The
-rendering adapter and first graphical consumer remain proposals. Executable
-acceptance and current verification limits are recorded in [next.md](next.md).
+This branch implements U1's CPU map values/visible-cell ranges and U2's retained
+bindings/CPU packet adapter. The first graphical consumer remains a proposal.
+Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
 Decision IDs TM-001 through TM-010 identify the same choices in both views.
@@ -11,8 +11,10 @@ The design inspected source baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`;
 U1 starts at design checkpoint `2e74a09ccd56f55d6256699ed69668ba6dbd7c00` on
 `feat/tilemap`, with a clean index and tree. Workspace authority remains the
 parent `AGENTS.md`, `coordination/autonomy-policy.md`, tilemap feature brief and
-the bounded TILEMAP-U1 assignment. Only this clone is owned. No palettes, native
-draw submission, demo controls, persistence, resizing or chunking are implemented.
+the bounded coordinator assignments. U1 was accepted at
+`dec1ec55b1c8d55cfed22ffcf2003238a9878a09`; U2 starts there with a clean index/tree.
+Only this clone is owned. No pass integration, native backend work, demo controls,
+persistence, resizing or chunking is implemented by U2.
 
 ## CPU caller implemented in U1
 
@@ -32,10 +34,40 @@ const auto visible = CE::Tilemaps::visible_cells(
 The `tilemap.caller` case exercises this shape. Exact new naming remains a
 reversible engineering choice with low personal-preference confidence.
 
+## Small U2 caller
+
+The selected shape, now implemented in the separate submission adapter, uses the
+existing retained `Tilesets::Asset`, `DrawStyle2D` and `Context2D` owners:
+
+```cpp
+#include <assets/submission/tilemap2d.h>
+
+namespace Submit = CE::Rendering::Submission;
+// retained_tileset is a stable shared_ptr<const CE::Assets::Tilesets::Asset>.
+const CE::Rendering::DrawStyle2D style{}; // source material, identity model, scale 1
+const Submit::Context2D context{};        // existing automatic image binding
+const Submit::TilemapView view{
+    .origin = {100, 200}, .cell_size = {20, 12},
+    .visible = {0, 0, 60, 24}, .elapsed = std::chrono::milliseconds{0}
+};
+Submit::TilemapBindings bindings;
+bindings.add({7}, retained_tileset, 0); // nonempty map identity -> drawable atlas zero
+CE::Tilemaps::Map map({3, 2}, 2);
+map.set({0}, {1, 0}, {7});
+auto packets = Submit::resolve_tilemap_layer(map, {0}, bindings, view, style, context);
+```
+
+The `tilemap_submission.caller` case exercises this sequence with synthetic
+resources. One packet is returned; the five empty cells emit none. This is CPU
+resolution only, with no pass insertion. New naming follows current submission
+vocabulary, not an asserted user preference. H1's explicit caller setup intent
+is weak supporting evidence; H3's legacy mutable selection is not adopted.
+
 ## Proposed caller sequence
 
-The broader consumer below remains a proposal. `Tilemaps` CPU values now exist;
-`TilemapBindings`, `TilemapView`, and `resolve_tilemap_layer` are not implemented.
+The broader graphical consumer below remains a proposal. `CE::Tilemaps` CPU
+values and `Submission::{TilemapBindings,TilemapView,resolve_tilemap_layer}` exist;
+this full runtime/pass sequence has not been exercised by U2.
 `FrameWriter`, `Context2D`, and asset handles follow the current engine. Exact new naming has low
 preference confidence and should stay local to one consumer until exercised.
 
@@ -129,19 +161,33 @@ requiring callers to hold vector addresses.
 ## TM-002
 
 **Separate logical tile IDs, atlas cells, and retained bindings.** The implemented
-strong `TileId` wraps `uint32_t`; zero denotes empty (a later adapter will skip it).
+strong `TileId` wraps `uint32_t`; zero denotes empty and U2 skips it.
 Atlas cell zero remains an ordinary drawable cell. Nonzero IDs are application
 identities within a palette domain, not global asset IDs, terrain labels, vertex
 offsets, or animation frames. `Map::get` returns a `TileId` by value. The CPU map
 accepts every representable ID; it cannot validate a renderer's palette.
 
-For U2, proposed setup-owned `Submission::TilemapBindings` maps an ID to a retained
+Setup-owned `Submission::TilemapBindings` now maps an ID to a retained
 `shared_ptr<const Tilesets::Asset>` plus an original `Grids::CellIndex`. `add`
-rejects zero IDs, duplicate bindings, null assets, and out-of-grid targets with
-`invalid_args`, preserving existing bindings. Bindings remain stable during
+rejects zero IDs, duplicate bindings, null assets/images and out-of-grid targets
+with `invalid_args`, preserving existing bindings. It validates nonzero grid/frame
+axes, checked cell/vertex counts, finite normalized pivots and the complete source
+grid inside its image. Axis comparisons precede multiplication to reject enormous
+source origins/spacing/counts safely. Every clip needs an in-grid original target
+and all in-grid frames; authoritative `Clip::cell_at(0ms)` validates nonempty,
+positive, nonoverflowing timelines at setup. This validation does not advance time
+or animate a final selection. Unrelated named views/autotile rules are not used or
+validated. Geometry/material/range/parameter compatibility remains with existing
+`resolve_tile` for each emitted packet. Bindings remain stable during
 resolution; there is no hot replacement API in this milestone. Missing nonzero
-bindings fail resolution with the logical ID and map location; no silent blank
-fallback. The consumer paints only registered IDs.
+bindings throw `bad_request` with logical ID, layer and cell coordinates; no silent blank
+fallback. The future consumer paints only registered IDs. Copies own independent binding
+tables while sharing immutable assets; no lookup reference or mutation handle
+escapes. A private friend resolver keeps the public table surface at `add`.
+Reversal cost is local to this new submission header/source and its caller cases;
+changing exposed STL layout still needs consumer recompilation. Requiring an image
+at binding setup is narrower than generic manually assembled `Content2D`; manual
+sampler insertion remains supported when that source image is retained.
 
 Alternative direct atlas ordinals in cells are smaller conceptually but attach
 map meaning to an atlas layout and cannot distinguish empty from cell zero.
@@ -176,8 +222,14 @@ before division, including directly constructed assets that bypass loading.
 For source frame size `(fw,fh)` and top-left pivot `(px,py)`, place its pivot at
 `(Ox+(x+px)*w, Oy-(y+py)*h)`, then scale source geometry by `(w/fw,h/fh)`.
 This preserves the source's Y-up geometry without vertically flipping artwork
-(S5). Reject origins, scales or resulting transforms that cannot be represented
-as finite floats in the current rendering matrices. The first adapter requires
+(S5). Reject origins, cell dimensions, whole-map far edges, scales or resulting
+transforms that cannot remain finite floats, and nonfinite pass matrices.
+Positive source-to-cell scales must stay positive after float conversion, including subnormal cases. Per-cell source
+corner arithmetic also checks finite results after the float model transform.
+This follows metadata-compatible Y-up source geometry; Buffer2D cannot prove that
+an arbitrary producer uploaded vertices matching its declared frame/pivot.
+Ordinary float rounding may collapse adjacent positions at extreme magnitudes;
+there is no arbitrary-scale pixel precision guarantee. The first adapter requires
 identity base model and `style.scale == 1`;
 placement owns translation/size and rejects other transforms rather than letting
 culling disagree. It preserves alpha, material override, custom parameters, and
@@ -188,7 +240,7 @@ row-major authoring and future neighbor offsets direct.
 
 ## TM-004
 
-**Select positive-area visible intersections using half-open bounds.** A proposed
+**Select positive-area visible intersections using half-open bounds.** The implemented
 pure CPU helper `visible_cells(extent, cell_size, LocalRect)` returns a copied
 cell range `[first_column,end_column) × [first_row,end_row)`. `LocalRect` is
 continuous `{left,top,right,bottom}` in map-local Y-down units. Validate nonzero
@@ -228,10 +280,13 @@ For an 8×6 map with 16-unit cells, expected ranges include:
 
 Given an axis-aligned world view with left/right/bottom/top edges `(L,R,B,T)`,
 the consumer supplies local rectangle `(L-Ox, Oy-T, R-Ox, Oy-B)` per instance.
-The same inverse conversion followed by `floor` maps a world editor point to a
-cell; exact right/bottom map edges are outside. Camera translation/positive zoom
-are consumer responsibilities. Selection is culling, not a scissor: a partially
-visible cell is emitted whole and the existing viewport/optional clip cuts pixels.
+Future picking must use that inverse conversion and the same computed grid
+boundaries as visible_cells: edge i is double(i)*size. Bare floor(point/size)
+is insufficient at decimal boundaries; any candidate index must be corrected by
+comparisons against those edges, with no arbitrary epsilon. Exact right/bottom
+map edges are outside. No picking/editor API is implemented in U2.
+Camera translation/positive zoom are consumer responsibilities. Selection is
+culling, not a scissor: a partially visible cell is emitted whole and the existing viewport/optional clip cuts pixels.
 
 Alternatives are scanning every cell against `Math::overlaps`, an inclusive
 maximum index, floor/ceil candidates corrected against grid edges, or having the
@@ -258,7 +313,10 @@ traverses the visible range by increasing row, then column. The caller explicitl
 submits ground before detail; it may insert actors, reorder layers, or hide one.
 There is no sorting by texture, logical ID, Z value, or unordered container order.
 Two instances' relative order is likewise the caller's sequence. Layer count is
-fixed; names, visibility and editor selection belong to the consumer.
+fixed between whole-value assignments; names, visibility and editor selection belong to the consumer.
+U2 returns only one vector and leaves every packet's default `authored_order`
+untouched (zero). The existing pass writer, not this adapter, assigns insertion
+order later. No pass, renderer or backend code changes are part of U2.
 
 Default 2D pass constraints and ordinary textured materials disable depth;
 straight-alpha composition makes later detail draws visible over earlier ground
@@ -277,13 +335,17 @@ all preceding owner-thread edits; packets already prepared keep their old values
 Setting the same value is harmless. Invalid edits preserve the map. Consumer
 selection/highlights are separate state, not a third logical layer.
 
-The remaining rendering/time behavior is proposed for U2/U3. Each visible
-nonempty binding supplies its original target to
+U2 implements CPU packet/time resolution. Each visible nonempty binding
+supplies its original target to
 `tileset.cell_at(target, view.elapsed)` before packet resolution. Each instance's
 nonnegative elapsed milliseconds are advanced by update, even when the runtime
 skips preparation. No tilemap-owned thread, clock, or animation cursor is needed.
 The shared tileset is never mutated. Editing map A or changing its clock cannot
-change map B (S3, S12). Alternatives: bake frames into map cells, or rebuild a mesh
+change map B (S3, S12). U2 exposes elapsed as a copied input, not a clock
+owner. `resolve_tile(asset, final_cell, ...)` receives the already-final index
+and performs no second animation lookup. Edit/erase is observed on the next
+resolution while earlier vectors preserve retained values. Alternatives: bake
+frames into map cells, or rebuild a mesh
 after each edit. These complicate identity and stale state. Confidence: high for
 existing playback compatibility, medium for the intentionally simple recompute
 strategy. A cache later needs explicit invalidation and animation handling.
@@ -314,21 +376,24 @@ no deliberate v3 map example resolves the preference.
 ## TM-008
 
 **Resolve one retained packet per visible nonempty cell through existing owners.**
-The proposed adapter is a free CPU function in `Rendering::Submission`, separate
+The implemented adapter is a free CPU function in `Rendering::Submission`, separate
 from CPU map storage. It borrows stable map/bindings/view/style/context for one
 call, computes the visible range, resolves target animation and pivot placement,
 then calls existing `resolve_tile(asset, final_cell, style, context)` (S6). It
 returns an owned ordered vector of packets; there are no native binds, draws,
 uploads, retained map references, or live camera references.
 
-Validate the layer, view (including nonnegative elapsed), base transform and
-binding metadata before use; source material/geometry/range validation remains
-authoritative. Unbound visible IDs, bad view inputs, incompatible resources or
-allocation failures return no vector. Use `pass.add(vector)` for the whole layer:
-current group validation/reservation leaves earlier draws intact on failure (S7).
-Earlier successfully added layers remain in the private frame; no whole-map
-transaction is promised. Let runtime preparation failure discard/recycle that
-frame rather than publish a partial result. Offscreen IDs need no resolution.
+Validate the layer, nonnegative time, identity base model, unit style scale,
+finite pass projection/view matrices, valid clip and visible-region/placement
+inputs even when no cells emit packets. Only visible nonzero IDs are looked up;
+offscreen misses and incompatible offscreen resource ranges are ignored. Source
+metadata was validated before insertion; existing material/geometry/range/parameter
+validation remains authoritative for each visible cell. Any exception destroys
+the function-local vector, returning no result and leaving map, bindings, view,
+style and context unchanged. Tests fail after a proven earlier valid packet and
+preserve a preexisting caller vector. There is no output-parameter partial result,
+pass insertion, native call, or whole-frame transaction in U2. A later consumer
+can use `pass.add(vector)` under the existing separate group contract (S7).
 
 Bindings retain assets; packets independently retain geometry, material/pipeline
 and images, with copied matrices. They do not keep the map, binding table or asset
@@ -336,12 +401,14 @@ metadata alive. Native resource-domain validity still depends on the original
 live backend. Existing runtime graphics-owner recycling/cleanup remains required,
 even though resolution is CPU-only (S7, S8, S12).
 
-For V visible cells and N nonempty cells on a layer, traversal/resolution costs
-O(V) with expected constant-time binding lookup, output storage O(N), and current
-playback performs one pipeline invocation per packet (up to N native draws;
-an empty clip can suppress drawing). No batching or performance target is
-claimed. An all-filled 8×6 two-layer map emits
-96 packets; two such maps emit 192. Temporary vectors and repeated packet
+For V visible cells and N nonempty cells on a layer, traversal visits O(V) cells
+with expected constant-time binding lookup and O(N) output storage. Per-cell costs
+also include existing timeline scans and packet/material validation; this is not
+a constant-time animation claim. Setup revalidates all clips on each add rather
+than caching asset-validation state. Current playback performs one pipeline
+invocation per packet (up to N native draws; an empty clip can suppress drawing).
+No batching or performance target is claimed. An all-filled 8×6 two-layer map
+emits 96 packets; two such maps emit 192. Temporary vectors and repeated packet
 validation are a conscious bounded cost. Do not concatenate atlas strips into
 one strip: it connects unrelated geometry and lacks per-cell transforms (S5).
 Confidence: high compatibility; medium cost choice. Reuse output storage or chunk
@@ -369,7 +436,7 @@ fixture explicitly; an optional-demo skip does not count as acceptance.
 Unit acceptance uses synthetic retained geometry/image/material fixtures from
 S10 and needs no installed image files or native backend. Later visual acceptance
 does need a feature-local asset checkout and compatible renderer. Neither is a
-reason to alter dependency pins or retrieve anything during this design phase.
+reason to alter dependency pins or retrieve tile artwork during CPU U2.
 Alternative a standalone application is possible but adds target/setup work;
 the existing demo supplies the lifecycle already. Confidence: high explicit
 consumer requirements, medium scaffold choice; exact editor action bindings will
@@ -400,7 +467,7 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 
 These are source observations, not executed acceptance. S1–S12 line spans refer
 to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
-branch-local files. Links resolve in this clone.
+branch-local files; S14 identifies U2. Links resolve in this clone.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -417,12 +484,13 @@ branch-local files. Links resolve in this clone.
 | S11 | [Rectangle overlap](../projects/engine/include/cheryl/math/collision.h), lines 7–38. Existing Y-up positive-area overlap excludes touching edges; it does not compute a cell range or convert map/camera coordinates. |
 | S12 | [Game hooks](../projects/engine/include/cheryl/core/game-framework/abstract-game.h), lines 9–34 and 64–102. Upload/binding setup belongs to platform init, updates/preparation share simulation ownership, preparation may be skipped, writers are borrowed, cleanup waits for frames. |
 | S13 | U1's current [CPU header](../projects/engine/include/cheryl/maps/tilemap.h), [implementation](../projects/engine/src/maps/tilemap.cpp) and [focused cases](../projects/engine/tests/unit/src/tilemap.cpp). These own map values, assignment/move invariants and computed-edge visibility; current command outcomes are in next.md. |
+| S14 | U2's [submission header](../projects/engine/include/cheryl/assets/submission/tilemap2d.h), [implementation](../projects/engine/src/assets/submission/tilemap2d.cpp) and [synthetic cases](../projects/engine/tests/unit/src/tilemap-submission.cpp). Retained ID bindings, checked source metadata, pivot transforms, once-only animation and local ordered vectors; exact executed selections are in next.md. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
 [asset system limits](../docs/site/engine-systems/assets.md) at lines 138–141
 corroborate this separation. They describe current intent/example use, not an
-already implemented tilemap or user endorsement of the proposed API.
+already implemented graphical consumer or user endorsement of the new API.
 
 ## Historical preference evidence and limits
 
@@ -456,20 +524,22 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-TILEMAP-U1 activates only CPU values/ranges and focused verification. U2/U3 remain
-future coordinator assignments; U1's actual acceptance status is in next.md.
+U1 is coordinator-accepted. TILEMAP-U2 activates only retained bindings, CPU layer
+packet vectors and their focused verification; U3 remains a future assignment.
+Actual command outcomes and limitations are in next.md.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
 | U1 — implemented source | CPU map values, checked edits/queries, assignment/move invariants and computed-edge visible ranges; 15 focused cases. Owners: `include/cheryl/maps/tilemap.h`, `src/maps/tilemap.cpp`, `tests/unit/src/tilemap.cpp` under `projects/engine/`. No rendering/assets dependency in the CPU API. See [next.md](next.md) for actual verification limits. |
-| U2 | Stable retained bindings and `Submission::resolve_tilemap_layer` in a separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, placement, order, snapshot retention, invalid groups and animation. Exercise the small caller shape before adding other callers. |
-| U3 | Dedicated existing-demo sample helper: authored fixture, two instances, two layers, paint/erase/show/pan controls using existing input contexts; actual visual checks once authorized prerequisites are available. Keep optional UI modules unnecessary. |
+| U2 — implemented source | Retained bindings and `Submission::resolve_tilemap_layer` in separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, metadata, placement, vector order, retention, atomic result failure and animation. No pass insertion or backend work. |
+| U3 — next proposed step | Small synthetic consumer inserting two instances/layers through existing pass writers; assert assigned authored_order, caller sequence and group failure preservation. No new pass/backend API. A dedicated demo/editor helper remains later, separately assigned work. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
-commands and the LeakSanitizer limitation are in next.md. The downstream
-rendering/editor observations below remain unimplemented, so the first graphical
-consumer's acceptance is still pending:
+commands and the LeakSanitizer limitation are in next.md. U2's 15 synthetic packet
+cases and all 15 U1 regressions passed together under the same instrumentation.
+The broader rendering/editor observations below remain milestone acceptance targets, with
+graphical consumer acceptance still pending:
 
 | Check | Required observable result |
 | --- | --- |
@@ -487,5 +557,5 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. U1's exact commands,
+registration. Presence in that runner is not a test run. U1/U2 exact commands,
 sanitizer status and public-header/ABI limits are recorded in [next.md](next.md).

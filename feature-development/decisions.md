@@ -1,7 +1,8 @@
 # Tilemap milestone decisions
 
-U1 implements CPU values and visible ranges; rendering and the first graphical
-consumer remain proposals. These choices are not user-confirmed API preferences.
+U1 implements CPU values/ranges; U2 implements retained bindings and ordered CPU
+packet vectors. The first graphical consumer and pass integration remain proposals.
+These choices are not user-confirmed API preferences.
 The matching IDs in [agent-notes.md](agent-notes.md)
 hold contracts, alternatives, provenance and pending acceptance. Each entry below
 states the outcome, reason, tradeoff and confidence. The proposed next unit is
@@ -18,51 +19,54 @@ is high; the representation remains a proposal about taste, with little v3 evide
 
 ## TM-002
 
-Store application-defined logical tile IDs, reserving zero for empty, and plan to
-resolve nonzero IDs through separate retained tileset/target bindings. This distinguishes
-an empty map cell from drawable atlas cell zero and avoids copying resource
-handles into every cell. The extra binding step can fail for unregistered IDs;
-it does not define a save format. Engineering confidence is medium, and personal
-API preference confidence is low.
+Bind nonzero logical IDs to retained immutable tilesets and original atlas targets;
+zero stays empty while atlas zero remains drawable. Setup rejects duplicates,
+null assets/images, invalid grids/pivots/targets and invalid timelines before
+insertion. Resource compatibility stays with existing per-cell resolution. This
+retains metadata longer and restricts directly assembled assets, but avoids
+per-cell handles and delayed metadata failures. Engineering confidence is high;
+naming and palette ergonomics have low personal-preference confidence.
 
 ## TM-003
 
-Use signed 64-bit points and layer indices, checked against nonzero uint32 map
-dimensions and layer count before indexing. Columns/rows increase right/down
-within half-open bounds; invalid edits reject without mutation. This makes
-negative external input safe and keeps atlas coordinates separate. Future drawing
-must convert to Y-up geometry and adjust pivots. Engineering confidence is high
-for checked access, medium for the reversible coordinate choice; personal-preference
-evidence remains low.
+Keep signed map points/layers checked before storage access. Place Y-down cells
+in Y-up world space using normalized source pivots and independent positive X/Y
+source-to-cell scaling. Require identity base model, unit style scale and finite
+float-representable placement/pass matrices. This supports non-square frames
+without reversed artwork, but excludes arbitrary transforms and extreme-scale
+precision guarantees. Engineering confidence is high from synthetic corner checks;
+coordinate/naming preference confidence remains low and the adapter restriction
+can change without altering CPU maps.
 
 ## TM-004
 
-Intersect the view with the finite map, then binary-search computed double grid
-edges for half-open cell bounds. Exact touching edges are excluded without an
-epsilon, including decimal sizes where bare floor/ceil division misclassifies
-edges. Empty regions return nothing and malformed inputs reject. Logarithmic
-search costs more comparisons than raw division but avoids rounded-index repairs.
-Engineering confidence is high; an executed independent intersection oracle covers
-the boundary risk, while personal-preference confidence stays low.
+Intersect views with the finite map, then binary-search computed double grid
+edges for half-open cell bounds. Exact touches exclude neighboring cells without
+an epsilon, including decimal sizes where bare division misclassifies edges.
+Future picking must agree with those boundaries. Logarithmic search costs more
+comparisons than division but avoids rounded-index repairs. Engineering confidence
+is high from the independent intersection oracle; no picking API or personal
+coordinate preference is implied.
 
 ## TM-005
 
-Submit layers explicitly in caller order, traversing each visible layer by row
-then column. The consumer draws ground before detail and chooses the order of
-map instances or inserted actors. Existing packet playback already preserves
-insertion order with depth-disabled ordinary materials. This gives up automatic
-texture sorting and requires deliberate submission calls. Confidence is high
-from the brief and current rendering contracts; exact layer naming remains provisional.
+Return each requested layer's visible nonempty cells in increasing row/column
+vector order. The caller chooses layer/instance order; packets retain default
+zero authored_order until the existing pass writer assigns it. This preserves
+explicit composition without texture sorting, at the cost of deliberate layer
+calls and one packet per cell. Engineering confidence is high from ordered
+synthetic outputs and current pass contracts; actual pass/graphical integration
+is deferred, and exact API vocabulary has low preference confidence.
 
 ## TM-006
 
-Apply CPU edits immediately on the caller's owner; no allocation, palette check or
-notification accompanies a cell replacement. Future rendering will regenerate
-visible packets and resolve animation using independently updated instance clocks.
-This separates map mutation from shared asset state and avoids stale edit caches,
-at the cost of repeated resolution. Confidence is high for CPU ownership and
-existing playback compatibility, medium for future rendering cost, and low for
-inferred personal taste.
+Read current cells and resolve each visible binding's original target exactly
+once at caller-provided nonnegative milliseconds. Return new packets without
+mutating shared assets or owning a clock. Immediate edits and independent times
+therefore affect only subsequent resolutions; older vectors retain their values.
+Repeated lookup/resolution costs CPU work instead of cache invalidation machinery.
+Engineering confidence is high from animation-boundary, independent-instance and
+erase cases; future consumer scheduling and performance remain unverified.
 
 ## TM-007
 
@@ -75,12 +79,14 @@ is high about compatibility and medium about this scope choice, without v3 prefe
 
 ## TM-008
 
-Resolve each visible nonempty cell through existing CPU tile submission, returning
-an ordered retained packet vector for one layer. Add that group through the
-existing pass writer so failure preserves earlier draws. Packets copy placement
-and retain resources independently of maps; native domain lifetime still belongs
-to the runtime. This accepts per-cell draws and temporary vectors. Compatibility
-confidence is high; performance suitability is unmeasured and therefore medium.
+Resolve one layer through existing resolve_tile into a function-local owned
+packet vector, with copied matrices and retained geometry/material/images.
+Failure after a valid cell exposes no partial vector and preserves caller inputs;
+there is no whole-frame transaction. Native calls and pass insertion remain
+outside this adapter. This accepts temporary vectors and repeated validation.
+Engineering confidence is high from synthetic retention/failure checks; native
+domain lifetime still belongs to the backend, and performance suitability remains
+unmeasured.
 
 ## TM-009
 
