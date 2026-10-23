@@ -1,8 +1,8 @@
-# Tilemap milestone: CPU values, packets and pass consumer
+# Tilemap milestone: CPU values, packets and demo display
 
 This branch implements U1's CPU values/ranges, U2's retained binding/packet
-adapter, and U3's synthetic pass consumer. The first graphical consumer remains
-a proposal.
+adapter, U3's synthetic pass consumer, and U4's private fixed demo display.
+The broader editable consumer remains a proposal.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
@@ -15,10 +15,12 @@ parent `AGENTS.md`, `coordination/autonomy-policy.md`, tilemap feature brief and
 the bounded coordinator assignments. U1 was accepted at
 `dec1ec55b1c8d55cfed22ffcf2003238a9878a09`; U2 starts there with a clean index/tree.
 U2 was accepted at `c77496f0adace3e76c9a59fc573a1a0ef138eb63`; U3 starts there
-with a clean index/tree. Only this clone is owned. U3 adds consumer cases and a
-binding lifetime comment, with no production Map, resolver, frame/pass or backend
-behavior/API changes. Demo controls, persistence, resizing and chunking remain
-unimplemented.
+with a clean index/tree. U3 was accepted at
+`f91e181b2eb2870f90baea61161ddd38e1803db6`; U4 starts there with a clean
+index/tree. Only this clone is owned. U4 adds a private demo helper/mode and app
+wiring; production Map, resolver, frame/pass, backend and reusable startup APIs
+remain unchanged. Editor controls, persistence, resizing and chunking remain
+unimplemented. The publisher owns assigned-branch transport.
 
 ## CPU caller implemented in U1
 
@@ -103,12 +105,46 @@ constructs an actually const Asset and follows that obligation. No scene wrapper
 separate runner, asset file, runtime startup or rendering is introduced. Executed
 counts/results and lifetime limits belong to [next.md](next.md).
 
-## Proposed caller sequence
+## Small U4 private demo caller
 
-The broader graphical consumer below remains a proposal. `CE::Tilemaps` CPU
+The application-local `--tilemap-display` mode bypasses optional samples, UI,
+audio, fonts, shader reload and input controls. The existing startup/runtime still
+owns the native context, finite `--max-updates` stop and frame lifecycle:
+
+```cpp
+// GameImpl members: optional<DemoTilemaps> tilemaps_; image_shader_; camera_.
+// init_platform(), after existing main:images material loading:
+tilemaps_.emplace(); // two independent 3x2/two-layer CPU values
+tilemaps_->load(asset_root_, engine_.resources()); // required atlas; no optional skip
+
+// prepare_render_frame(), using the existing writer supplied by the runtime:
+auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
+const CE::Rendering::Submission::Context2D context{
+    pass.semantics(), pass.parameters(), pass.constraints()
+};
+CE::Rendering::DrawStyle2D images; // identity model, unit scale
+images.material = image_shader_;
+tilemaps_->write(pass, images, context); // west ground/detail, east ground/detail
+
+// deinit_platform(), after the runtime has finished/recycled its frames:
+tilemaps_.reset(); // release bindings before the image material/backend
+```
+
+The helper calls `resolve_tilemap_layer` and `pass.add` four times directly, as
+in U3. It creates no scene, capture service, engine API or runner. TM-009 records
+its data, validation, ownership and alternatives; actual build/native/image
+evidence belongs to next.md. Fixture names, flag spelling, colors and placement
+are local engineering choices under delegated authority, with low personal-taste confidence
+and reversal cost confined to private app files.
+
+## Proposed editable caller sequence
+
+The broader editable/animated consumer below remains a proposal. `CE::Tilemaps` CPU
 values and `Submission::{TilemapBindings,TilemapView,resolve_tilemap_layer}` exist;
-U3 exercises synthetic pass composition; this full runtime/artwork sequence
-remains unimplemented and unexecuted.
+U3 exercises synthetic pass composition; U4 adds a static local-art display path;
+this full editor/animation sequence remains unimplemented and unexecuted.
+Its historical Puny World example needs artwork absent from the current pin;
+it is not a prerequisite for U4 or the next bounded editing proposal.
 `FrameWriter`, `Context2D`, and asset handles follow the current engine. Exact new naming has low
 preference confidence and should stay local to one consumer until exercised.
 
@@ -228,8 +264,10 @@ lifetime of **any binding** retaining it, including copies of the table. A
 an object reachable through another alias. Synchronizing a mutation between
 resolution calls does not satisfy this bind-once metadata obligation. Setup
 validation and the asset's target lookup index rely on it. Per-call table, asset
-and resource stability obligations still apply. This is the explicit U3 caller
-contract, with high confidence; no metadata-copy layer, hot replacement or ongoing
+and resource stability obligations still apply. This is a coordinator-selected
+engineering contract under delegated authority, clarified in U3, with high
+compatibility confidence; it is not an explicit user API preference. No
+metadata-copy layer, hot replacement or ongoing
 revalidation is implemented. There is no hot replacement API in this milestone. Missing nonzero
 bindings throw `bad_request` with logical ID, layer and cell coordinates; no silent blank
 fallback. The future consumer paints only registered IDs. Copies own independent binding
@@ -261,7 +299,7 @@ there is no wrap or clamp on edits. The constructor's checked storage count make
 the subsequent linear index representable.
 
 Rows increase south/down, columns east/right. `CellSize{width,height}` supplies
-finite positive map-local units (16×16 in the fixture), independent of the source
+finite positive map-local units (64×48 in U4), independent of the source
 image's cell dimensions. The map-local footprint is
 `[0, columns*width) × [0, rows*height)`; all products used for placement must remain
 finite. A view's world origin `O` is the map's top-left, with world Y increasing
@@ -505,31 +543,53 @@ meshes only after measurement, retaining order and animation semantics.
 
 ## TM-009
 
-**Use one small independent editor consumer with two instances.** Extend the
-existing demo via a dedicated tilemap sample helper, rather than inventing a level
-loader or requiring an optional UI module. Keep two 8×6 maps, two layers each,
-16-unit cells, separated world origins, and independent edit/visibility/time
-state. Paint/erase a selected cell/layer; switch active instance; toggle either
-instance and layer; pan across boundary positions. The fixture is authored in
-memory on startup and may be reset in memory. No map files are read or written.
+**Use a dedicated fixed display mode before adding editing.** U4 implements
+private `DemoTilemaps` in the existing demo, selected by `--tilemap-display`.
+Two independent dense 3×2 maps each have ground/detail layers. Their full local
+views are `{0,0,192,96}` with 64×48 cells; west/east world top-left origins are
+`{48,240}` and `{328,208}`. Base model is identity, style scale one, detail alpha
+0.5 and elapsed zero. No input, camera pan, animation or editor state is added.
+Rows are authored top-to-bottom:
 
-Reuse current image/tileset loading and the existing runtime/input/render path
-(S9, S12). For the art sample, load the existing Puny World manifest, find entry
-`overworld`, and retrieve its actual qualified `definition.id()`; do not guess its
-namespace. Source demo requests cells 0 and 1 and animated target 309. The assets
-submodule was uninitialized during design; the coordinator later initialized its
-unchanged pin for U1's required embedded font. Tile artwork and these targets
-were not independently validated by U1. Validate required cells/clips and report an unavailable
-fixture explicitly; an optional-demo skip does not count as acceptance.
+| Instance | Ground rows | Detail rows |
+| --- | --- | --- |
+| west | `7,8,9 / 10,0,7` | `0,10,0 / 9,0,0` |
+| east | `9,7,0 / 8,10,9` | `10,0,10 / 0,7,0` |
 
-Unit acceptance uses synthetic retained geometry/image/material fixtures from
-S10 and needs no installed image files or native backend. Later visual acceptance
-does need a feature-local asset checkout and compatible renderer. Neither is a
-reason to alter dependency pins or retrieve tile artwork during CPU U2.
-Alternative a standalone application is possible but adds target/setup work;
-the existing demo supplies the lifecycle already. Confidence: high explicit
-consumer requirements, medium scaffold choice; exact editor action bindings will
-be chosen against the demo's active input contexts in its implementation unit.
+IDs 7–10 bind to original targets 0–3 (brown/black/grey/red). Empty zero has no
+binding; target zero draws. Four explicit submissions emit 5+2+5+3 packets.
+Translucent details overlap ground and one east detail covers an empty ground
+cell, distinguishing later-layer blending from a fully opaque replacement.
+The maps have distinct placement/content; no hidden instance sorting or Z policy
+is introduced. Fixed full-map visible rectangles exercise the existing range
+helper; camera-driven culling and visual edits remain future work.
+
+Platform init uses the authoritative Reader for the committed local
+`graphics/definitions/tilesets/tileset.json`, requiring qualified ID
+`tileset:tileset`, its exact resolved texture path, parsed 1×4/100×100 grid,
+zero origin/spacing, pivot `{0,1}` and no clips. Decode must yield 400×100 RGBA8;
+validate all chosen source rectangles, upload those pixels through Images::Manager,
+then load/retrieve through Tilesets::Manager and recheck retained metadata/image
+dimensions before binding. Bound metadata is never mutated through any alias.
+Failures propagate with the required ID/source path, never an optional skip.
+No Puny World/dungeon/magecity artwork is required or downloaded.
+
+The existing material loader provides main:images and default depth-disabled
+pass/camera contracts. Platform owns loading; simulation/preparation only reads
+fixed helper state and copies packets. Existing runtime shutdown finishes frames
+before deinit_platform resets the helper, then materials/caches/backend follow
+their existing cleanup owners. No reusable API or build file changes are needed;
+the demo source glob includes the helper. Existing-pinned native dependencies
+are prepared with independent local Git storage; no new dependency/pin is added.
+
+An optional sample would hide required failures and clutter the image. A separate
+app/scene would duplicate lifecycle/setup. The private mode is a narrow reversible
+choice, with high engineering confidence from existing ownership/contracts and
+low confidence as personal UI/API taste. Changing fixture constants/selection
+only affects these app files and records. Build, context access, actual display
+and captured observation are separate evidence in next.md. Painting/picking,
+independent visibility/time controls and editor acceptance are deferred; they do
+not gate this fixed display step.
 
 ## TM-010
 
@@ -556,7 +616,7 @@ policy. Surface overlaps to the coordinator through handoff; edit only this clon
 
 These are source observations, not executed acceptance. S1–S12 line spans refer
 to `3542f883391d4225329dab8d5d61a5987e69c8f0`; S13 describes U1's current
-branch-local files; S14 identifies U2 and S15 the U3 consumer. Links resolve here.
+branch-local files; S14 identifies U2, S15 the U3 consumer and S16 the U4 app. Links resolve here.
 
 | ID | Owner and concrete evidence |
 | --- | --- |
@@ -575,6 +635,7 @@ branch-local files; S14 identifies U2 and S15 the U3 consumer. Links resolve her
 | S13 | U1's current [CPU header](../projects/engine/include/cheryl/maps/tilemap.h), [implementation](../projects/engine/src/maps/tilemap.cpp) and [focused cases](../projects/engine/tests/unit/src/tilemap.cpp). These own map values, assignment/move invariants and computed-edge visibility; current command outcomes are in next.md. |
 | S14 | U2's [submission header](../projects/engine/include/cheryl/assets/submission/tilemap2d.h), [implementation](../projects/engine/src/assets/submission/tilemap2d.cpp) and [synthetic cases](../projects/engine/tests/unit/src/tilemap-submission.cpp). Retained ID bindings, checked source metadata, pivot transforms, once-only animation and local ordered vectors; exact executed selections are in next.md. |
 | S15 | U3's [synthetic pass consumer](../projects/engine/tests/unit/src/tilemap-consumer.cpp) composes unchanged Map, binding/packet and FrameWriter/PassWriter owners. Six cases cover caller order, independent frame snapshots, isolated resolver/group failures and weak lifetimes. The submission header clarifies all-alias metadata stability over binding lifetime; execution results are in next.md. |
+| S16 | U4's private [display helper](../projects/apps/demo/src/tilemap-demo.cpp), [mode option](../projects/apps/demo/src/demo-options.cpp), [main caller](../projects/apps/demo/src/main.cpp) and [platform/preparation/cleanup owner](../projects/apps/demo/src/demo-game.cpp). Reader -> decode -> image upload -> tileset manager -> stable bindings -> four layer vectors -> existing pass; runtime results and ignored local artifacts are in next.md. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -614,24 +675,25 @@ preference remains low and is never presented as a user decision.
 
 ## Implementation units and observable acceptance
 
-U1/U2 are coordinator-accepted. TILEMAP-U3 activates only the synthetic pass
-consumer and bind-once lifetime contract clarification. Actual command outcomes
-and limitations are in next.md. Later graphical work needs another assignment.
+U1/U2/U3 are coordinator-accepted. TILEMAP-U4 activates only the private fixed
+demo display and necessary local app wiring/dependency setup. Actual command
+outcomes and limitations are in next.md. Editing needs another assignment.
 
 | Unit | Coherent result and boundary |
 | --- | --- |
 | U1 — implemented source | CPU map values, checked edits/queries, assignment/move invariants and computed-edge visible ranges; 15 focused cases. Owners: `include/cheryl/maps/tilemap.h`, `src/maps/tilemap.cpp`, `tests/unit/src/tilemap.cpp` under `projects/engine/`. No rendering/assets dependency in the CPU API. See [next.md](next.md) for actual verification limits. |
 | U2 — implemented source | Retained bindings and `Submission::resolve_tilemap_layer` in separate `assets/submission/tilemap2d` header/source; synthetic CPU packet cases for IDs, metadata, placement, vector order, retention, atomic result failure and animation. No pass insertion or backend work. |
 | U3 — implemented consumer | Six synthetic cases compose two instances/layers through existing pass writers; assert authored_order, caller sequence, snapshots, separate failure boundaries and resource release. Header comments clarify the whole binding-lifetime metadata obligation; no production behavior/API change. |
-| U4 — proposed display step | Minimal existing-demo display fixture for two in-memory maps/two layers using suitable existing local art. Check actual layered display and placement before choosing editor/picking controls. Requires a later coordinator assignment. |
+| U4 — implemented display step | Private --tilemap-display helper/mode; required local four-color atlas validation, two independent 3×2/two-layer maps, explicit ground/detail order and platform cleanup. The display-access gap and all 36 CPU regressions are recorded in next.md; no editor/picking controls. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
 commands and the LeakSanitizer limitation are in next.md. U2's 15 synthetic packet
 cases and all 15 U1 regressions passed together under the same instrumentation.
 U3's six consumer cases and all 30 prior regressions passed together under the
-same instrumentation. Exact execution/logs are recorded in next.md. The broader rendering/editor observations below remain milestone
-acceptance targets, with graphical consumer acceptance still pending:
+same instrumentation. U4 reruns all 36 successfully, but cannot open DISPLAY=:1;
+no demo/capture is launched. Exact execution/logs are in next.md. The broader
+rendering/editor observations below remain milestone acceptance targets:
 
 | Check | Required observable result |
 | --- | --- |
@@ -649,31 +711,53 @@ Existing registration was traced: `projects/engine/tests/CMakeLists.txt` lines
 4–13 routes the older submission/frame cases into shared unit sources;
 `tests/unit/CMakeLists.txt` lines 1–8 includes them and new unit sources in
 `tests-engine`. `cmake/CherylTests.cmake` lines 39–73 supplies its runner and case
-registration. Presence in that runner is not a test run. U1/U2/U3 exact commands,
-sanitizer status and public-header/ABI limits are recorded in [next.md](next.md).
+registration. Presence in that runner is not a test run. U4 commands, sanitizer
+status and public-header/ABI limits are in [next.md](next.md); prior U1/U2/U3
+configurations/results remain in committed record history and preserved local logs.
 
-## U3 execution and next action
+## U4 execution and next action
 
-U3's final run passed six consumer cases plus all 30 U1/U2 regressions: 36/36,
-no skips, 28.26 seconds, Debug ASan/UBSan. Build, discovery and execution exited 0.
-The checks establish caller-controlled order, old/new frame independence, separate
-resolver/group failure preservation and weak resource release. Leak checking,
-real graphics-domain/visual behavior, installed SDK/Windows and other ABI/Release
-contexts remain unverified. The next proposed action is U4's minimal two-map,
-two-layer display fixture, after suitable local-art validation and a later
-coordinator assignment; no next unit starts here.
+The separate clone-local graphics configuration exits 0 with GNU 16.2.1, Debug,
+shared Engine/WARN, X11-only GLFW, native input, OpenGL, Startup and demo enabled;
+optional modules/apps/test families remain off. Only target demo is built, one
+job. It links successfully without source warnings; the helper's header-first
+source has `-g -Wall -fsanitize=address,undefined`. Existing GLAD REPRODUCIBLE
+uses pinned local specification bytes. The four missing existing-pin dependencies
+were independently populated from read-only source Git objects; no pins, remotes,
+protected worktrees/metadata/caches or system installations are changed.
 
-The final source uses an actually const bound Asset and keeps all borrowed frame
-views outside writing/recycling phases. That honors the metadata caller contract;
-it does not enforce every external alias or establish concurrent publication.
-The header clarification changes no callable/layout or implementation. Detailed
-logs, intermediate passing fixture refinements and policy boundaries are in
-[next.md](next.md). Exact executed commands, all from this clone:
+The admitted bounded `glxinfo -B` capability probe exits **255**:
+
+```text
+Error: unable to open display :1
+```
+
+That is an X11-access gap for this required execution route, not a diagnosed
+server/auth cause. It is not retried unchanged. No demo, watchdog or capture is
+launched; no rendered image, update completion, app Reader/decode/load, blending,
+pivot alignment or platform cleanup is claimed. The committed local PNG was
+viewed as source art (400×100, four colored cells); this is not rendered evidence.
+The implementation checks parsed metadata and decoded/uploaded dimensions before
+binding, but those guards remain unexecuted in the app until display access works.
+The ignored one-shot check script and exact finite demo command are prepared in
+next.md; their execution/ownership/capture behavior is still unverified.
+
+All 36 CPU regressions run again through the preserved U1 Debug runner: six U3
+consumer cases, 15 U2 submission cases and 15 U1 map/range cases. Discovery and
+execution exit 0, **36/36 pass, no skips, 26.48 seconds**, with ASan/UBSan
+halt_on_error and no diagnostics. Leak detection alone is invocation-local off
+for the known tracing limitation; leak checking remains unverified. Synthetic
+bind/draw/upload counters remain zero, and the existing snapshot/failure/lifetime
+cases still pass. This is CPU evidence, not a native graphics-domain proof.
+
+Actual commands follow; the full configure flags, exact dependency preparation,
+nonempty test registration and complete log paths are in
+[next.md](next.md#actual-commands-and-results). No new runner or mechanical
+constant-only test is added; the app-mode/image coverage gap is explicit.
 
 ```sh
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- timeout --signal=TERM --kill-after=2s 15s glxinfo -B
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -683,3 +767,18 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
   --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
 ```
+
+CPU Map, binding/resolver, frame/pass, backend and reusable startup contracts and
+unit cases are unchanged from accepted U3. No reusable ABI is added/changed;
+existing STL/GLM public layouts still need compatible consumer toolchains.
+Installed SDK/Windows/other ABI/Release, leaks, visual editing, camera-driven
+culling and native cleanup remain unverified. Engineering confidence in the
+private integration is high from compatibility/source and regressions; the real
+image outcome is unresolved. Fixture aesthetics/API taste confidence stays low.
+
+Next bounded action: after X11 access changes, one wrapper capability probe and,
+if accessible, the preserved finite owned-window observation. Compare two map
+footprints, empty cells, translucent later details and pivot placement; an update
+count cannot establish them. No user reply is expected and no unchanged retry is
+authorized. Editing/picking requires a later assignment and computed-boundary
+agreement (TM-004). Stop at this local checkpoint; publisher owns transport.

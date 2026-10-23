@@ -29,7 +29,8 @@ public:
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
-        bool text_runs
+        bool text_runs,
+        bool tilemap_display
     );
     ~DemoGame() override;
     DemoGame(const DemoGame&) = delete;

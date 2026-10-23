@@ -21,6 +21,8 @@ void DemoOptions::register_with(CE::Application::Startup& startup) {
         options.add_flag("--full-assets", load_all_assets, "Load all discovered images and indexed graphics assets")->trigger_on_parse();
         options.add_flag("--unicode-text", unicode_preview, "Show the Unicode text preview")->trigger_on_parse();
         options.add_flag("--text-runs", text_runs, "Draw text with positioned atlas-page runs")->trigger_on_parse();
+        options.add_flag("--tilemap-display", tilemap_display, "Show only the required fixed two-map/two-layer fixture")
+            ->trigger_on_parse();
         options
             .add_flag_callback(
                 "--builtin-font", [this] { font_selection.automatic_system_fonts = false; }, "Disable automatic system font discovery"

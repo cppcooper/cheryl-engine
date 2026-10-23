@@ -17,6 +17,7 @@
 #include "asset-demo.h"
 #include "audio-demo.h"
 #include "demo-game.h"
+#include "tilemap-demo.h"
 
 #ifdef CHERYL_DEMO_TGUI
 #include "tgui-demo.h"
@@ -79,12 +80,14 @@ class GameImpl : public CE::Game::AbstractGame {
     CE::Runtime::Context& engine_;
     CE::Rendering::Camera2D camera_;
     DemoAssets assets_;
+    std::optional<DemoTilemaps> tilemaps_;
     DemoAudio audio_;
     std::filesystem::path asset_root_;
     bool load_all_assets_;
     CE::Text::FontSelection font_selection_;
     CE::Text::LayoutOptions text_options_;
     bool unicode_preview_;
+    bool tilemap_display_;
     CE::Text::Rendering::RasterOptions raster_options_;
     std::optional<CE::Text::Font> fonts_;
     std::shared_ptr<const CE::Text::Rendering::Generation> target_text_;
@@ -112,7 +115,8 @@ public:
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
-        bool text_runs
+        bool text_runs,
+        bool tilemap_display
     )
     : engine_(engine),
       camera_(),
@@ -123,6 +127,7 @@ public:
       font_selection_(std::move(fonts)),
       text_options_(std::move(text_options)),
       unicode_preview_(unicode_preview),
+      tilemap_display_(tilemap_display),
       raster_options_{.positioned_runs = text_runs} {}
 
     void stop_after_updates(const std::uint64_t count, std::function<void()> stop) {
@@ -139,6 +144,13 @@ public:
         asset_root_ = std::filesystem::absolute(asset_root_).lexically_normal();
 
         auto& resources = engine_.resources();
+        if (tilemap_display_) {
+            auto materials = load_materials(asset_root_, resources, false, engine_.events().publisher());
+            image_shader_ = std::move(materials.images);
+            tilemaps_.emplace();
+            tilemaps_->load(asset_root_, resources);
+            return;
+        }
         CE::Assets::Loading::Loader loader(asset_root_);
         loader.publish_events_to(engine_.events().publisher());
         bool files_registered = false;
@@ -209,6 +221,8 @@ public:
     }
 
     void init_simulation() override {
+        if (tilemap_display_)
+            return;
 #ifdef CHERYL_DEMO_TGUI
         ui_->init_simulation();
 #endif
@@ -233,6 +247,7 @@ public:
         hud_text_.reset();
         target_text_.reset();
         assets_.reset();
+        tilemaps_.reset();
         fonts_.reset();
         pending_shader_ = {};
         image_shader_.reset();
@@ -240,6 +255,12 @@ public:
     }
 
     void update(const CE::Game::TickContext& tick) override {
+        if (tilemap_display_) {
+            camera_.set_framebuffer_size(tick.framebuffer_size);
+            if (++updates_ == update_limit_ && stop_)
+                stop_();
+            return;
+        }
         if (tick.input.button(DemoActions::QuitGame).held()) {
             tick.request_stop();
         }
@@ -376,6 +397,10 @@ public:
         text.material = font_shader_;
         CE::Rendering::DrawStyle2D images;
         images.material = image_shader_;
+        if (tilemap_display_) {
+            tilemaps_->write(pass, images, context);
+            return;
+        }
         assets_.write(pass, images, text, context);
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)
@@ -530,9 +555,19 @@ struct DemoGame::GameState {
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         const bool unicode_preview,
-        const bool text_runs
+        const bool text_runs,
+        const bool tilemap_display
     )
-    : game(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs) {}
+    : game(
+          engine,
+          std::move(asset_root),
+          load_all_assets,
+          std::move(fonts),
+          std::move(text_options),
+          unicode_preview,
+          text_runs,
+          tilemap_display
+      ) {}
 };
 
 DemoGame::DemoGame(
@@ -542,11 +577,20 @@ DemoGame::DemoGame(
     CE::Text::FontSelection fonts,
     CE::Text::LayoutOptions text_options,
     const bool unicode_preview,
-    const bool text_runs
+    const bool text_runs,
+    const bool tilemap_display
 )
 : game_state_(
-      std::make_unique<
-          GameState>(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs)
+      std::make_unique<GameState>(
+          engine,
+          std::move(asset_root),
+          load_all_assets,
+          std::move(fonts),
+          std::move(text_options),
+          unicode_preview,
+          text_runs,
+          tilemap_display
+      )
   ) {}
 
 DemoGame::~DemoGame() = default;

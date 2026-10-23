@@ -1,101 +1,201 @@
-# U3 checkpoint and next unit
+# U4 checkpoint and next action
 
-TILEMAP-U3 starts at coordinator-accepted U2 checkpoint
-`c77496f0adace3e76c9a59fc573a1a0ef138eb63`, with a clean index/tree. This unit
-adds only a synthetic pass consumer and clarifies the existing bind-once source
-contract. Six consumer cases compose two independent 3×2/two-layer maps through
-existing FrameWriter/PassWriter APIs. The final Debug ASan/UBSan selection passed
-36/36 with no skips, including all 30 U1/U2 regressions. There is no unresolved U3 assertion/build failure.
-No graphical consumer, production behavior/API, dependency pin or build-file
-change belongs to U3. The next unit is proposed below, not activated.
+TILEMAP-U4 starts at coordinator-accepted U3 checkpoint
+`f91e181b2eb2870f90baea61161ddd38e1803db6` with a clean index/tree. This unit
+adds only a private fixed display helper, an application-local mode and necessary
+app wiring. U1 CPU Map/ranges, U2 bindings/resolver, production frame/pass/backend
+and reusable startup APIs, build files and dependency pins remain unchanged.
+The demo configures/links successfully and all 36 CPU regressions pass. The
+capability probe cannot open DISPLAY=:1, so no demo/capture is launched and U4
+visual acceptance remains blocked. Build, native access and image observations
+are separate checks; source completion or a successful link is not visual acceptance.
 
-## Owners and decisions
+## Owners and small caller
 
-- [Consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp):
-  `tilemap_consumer.{caller,sequence,snapshots,resolver_failure,group_failure,retention}`.
-  The small caller is also in [agent-notes.md](agent-notes.md#small-u3-pass-caller).
-- [Submission header](../projects/engine/include/cheryl/assets/submission/tilemap2d.h):
-  comments only; retained handles do not deep-copy/freeze an asset. Existing
-  declarations/layout, CPU Map, binding/packet implementation, and production
-  frame/pass/backend owners remain unchanged.
+- [Private helper](../projects/apps/demo/src/tilemap-demo.h) and
+  [implementation](../projects/apps/demo/src/tilemap-demo.cpp): two independent
+  3×2/two-layer maps, stable retained bindings, required atlas validation and four
+  explicit layer submissions. The new header is included first by its source.
+- [Demo options](../projects/apps/demo/src/demo-options.cpp) exposes
+  `--tilemap-display`; [main](../projects/apps/demo/src/main.cpp) passes it to the
+  [existing lifecycle owner](../projects/apps/demo/src/demo-game.cpp). The existing
+  demo source glob includes the helper; there is no new target or scene service.
 - Matching [reader decisions](decisions.md) and [detailed decisions](agent-notes.md)
-  update TM-002/005/006/008, retaining all stable TM-001–010 IDs.
+  retain TM-001–010. TM-009 now describes the fixed display rather than the older
+  8×6/Puny World editor proposal. TM-002 corrects the alias-contract attribution.
 
-TM-002 is an explicit caller obligation: bound source metadata must remain
-unchanged through **every alias** for the lifetime of **any binding** retaining
-it, including copied tables. A const shared handle does not freeze an Asset.
-Per-call table/asset/resource stability obligations still apply. Synchronizing a
-metadata mutation between resolutions is insufficient; validation occurs at add,
-and no hot replacement, metadata-copy layer or ongoing revalidation is introduced.
-Fixtures construct actually const assets and obey this contract. Passing tests do
-not mechanically prove arbitrary external aliases comply with it.
+```cpp
+// init_platform(): image_shader_ comes from existing main:images material loading.
+tilemaps_.emplace();
+tilemaps_->load(asset_root_, engine_.resources()); // required, never an optional skip
+// prepare_render_frame(), using the existing runtime's borrowed writer:
+auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
+const CE::Rendering::Submission::Context2D context{
+    pass.semantics(), pass.parameters(), pass.constraints()
+};
+CE::Rendering::DrawStyle2D images; // identity model, scale 1
+images.material = image_shader_;
+tilemaps_->write(pass, images, context); // west ground/detail, east ground/detail
+// deinit_platform(), after runtime frame recycling:
+tilemaps_.reset(); // before materials/backend teardown
+```
 
-The consumer deliberately uses direct calls, not a scene abstraction or new runner:
-begin a pass, copy its semantics/parameters/constraints into Context2D, resolve one
-layer at a time, then add each vector in caller order. Writers end before frame
-observations. Borrowed frame spans/packet references never survive a recycle;
-explicit retained snapshots are owned vector copies. No concurrent writing,
-reading/recycling or graphics-domain retirement is exercised.
+The dedicated mode returns before optional sample loading, font/text/UI/audio
+samples and controls. The existing material loader still discovers the asset
+root for its explicit shader-only index; it loads no optional tile/sprite packages. Fixed updates only copy framebuffer size and honor
+the existing finite stop callback. Required failures retain the atlas ID/source
+path; hook failure follows existing runtime stop/cleanup. Partial initialization
+is tolerated by optional helper reset. Existing startup/window-close behavior is
+reused. There is no editing, picking, camera input, animation, persistence,
+procedural generation, resizing/chunking or sibling integration.
 
-## Observable consumer checks
+TM-002 is a **coordinator-selected engineering contract under delegated authority**,
+not the user's explicit bind-once API preference. Bindings retain handles rather
+than freeze/deep-copy assets. Metadata must stay unchanged through every alias
+for the lifetime of any retaining binding, including table copies. Per-call
+binding/resource stability still applies. U4 never mutates that metadata; it
+introduces no hot replacement, copy layer or runtime revalidation machinery.
 
-- `caller`: west ground/detail then east ground/detail add 3+2+2+1 packets.
-  PassWriter assigns 0–7 consecutively across vectors, preserving each vector's
-  row/column order. Projection, view, custom pass weight and constraints are
-  copied; changing the original caller inputs after preparation cannot change
-  frame/packet values. Every model retains Z=0.
-- `sequence`: reversing the four caller groups changes the expected order while
-  keeping within-group traversal. A distinct retained image/material pair moves
-  from packet position 0 to position 5, so texture/material grouping could not
-  silently pass. Expected ranges/positions are authored constants, not derived
-  by iterating the resolver output.
-- `snapshots`: prepare an older frame, end writer scope, paint one west-map cell
-  and move only the west view, then prepare a separate newer frame. Only the newer
-  west ranges/matrices change. The older packet payloads/resources/order, every
-  east cell and all three east packet payloads/order remain unchanged.
-- `resolver_failure`: insert two valid prior packets and successfully resolve the
-  west layer before changing only a later visible cell to missing ID 999. The
-  negative assertion calls only the resolver; a geometry metadata counter proves
-  its earlier valid cell reached packet validation. No failed result is inserted,
-  and all pre-existing pass payloads/order survive.
-- `group_failure`: resolve a valid two-packet group, validate both packets against
-  the actual pass constraints, then invalidate only the later packet's
-  vertex_count (4 to 0). Existing group add rejects it, appending neither packet
-  and preserving both prior draws/order. This is distinct from resolver rejection.
-- `retention`: destroy maps, bindings, provider and all fixture resource owners
-  while the frame alone remains. Asset metadata expires, but geometry/image/
-  material/pipeline weak handles remain live. Copy the frame's packets to an
-  owned vector, then recycle the frame; the vector still retains resources.
-  Clearing that final vector expires all four resource weak handles. Checks run
-  outside writer/borrowed-view lifetimes.
+## Fixture observations to establish
 
-Synthetic bind/draw counters and provider image/font/geometry/program upload-entry
-counters stay zero. Stand-ins are constructed directly; the consumer receives no
-provider capability. This bounds the evidence to local synthetic resources, not
-a native backend, visual result or global upload interception. Resource release
-here establishes shared ownership release, not a LeakSanitizer pass or real GPU
-teardown. Allocation exhaustion/OOM is never used as a probe.
+West/east top-left world origins are `{48,240}` / `{328,208}`, cells 64×48,
+full local views `{0,0,192,96}`, elapsed zero. The parsed source pivot `{0,1}`
+places each source bottom-left at its cell bottom-left without reversing rows.
+With a 640×360 framebuffer, west occupies X `[48,240]`, screen Y `[120,216]`;
+east X `[328,520]`, screen Y `[152,248]`. These are display predictions before
+image observation, not proof from update counts.
+
+| Instance | Ground rows | Detail rows (alpha 0.5) |
+| --- | --- | --- |
+| west | `7,8,9 / 10,0,7` | `0,10,0 / 9,0,0` |
+| east | `9,7,0 / 8,10,9` | `10,0,10 / 0,7,0` |
+
+IDs 7–10 bind to original targets 0–3 (brown/black/grey/red); zero is empty.
+The four groups emit 5+2+5+3 packets in explicit caller order. Ground/detail
+blends and a detail over empty ground distinguish composition. A black tile is
+still drawable and is not the empty cell. No implicit sorting or Z policy is added.
+
+## Prerequisite inventory versus preparation
+
+The coordinator's package/environment/socket inventory was read-only and did not
+establish context authorization, renderer readiness or visual acceptance.
+Assets stay at `98453b2a6e0edfcfba22eea3fde801526d72b861`, clean. The helper
+uses Reader on committed `graphics/definitions/tilesets/tileset.json`, checks
+qualified `tileset:tileset`, the resolved texture path, parsed 1×4/100×100 grid,
+zero origin/spacing, pivot `{0,1}` and no animations. It decodes the PNG and
+requires 400×100 RGBA8, checks chosen targets 0–3 against image bounds, uploads
+through Images::Manager, then loads/retrieves through Tilesets::Manager. Retained
+metadata/image dimensions are checked again before binding. Missing Puny World,
+dungeon and magecity PNGs are neither prerequisites nor accepted optional skips.
+No artwork, tools or packages were downloaded/installed/copied from dirty trees.
+
+Each previously empty dependency directory and absent local metadata was checked
+against the exact HEAD gitlink and the corresponding protected read-only Git
+store's commit object before population:
+
+| Dependency | Unchanged pin |
+| --- | --- |
+| extern/glfw | dbadda26835ec5089ef922e6c290bcf58cf12056 |
+| extern/gainput | 0ed32c7619ea1cf8047441e330f7729f1ff72a31 |
+| extern/glad | 01277173613cdb0339f58de9f6d090474ddbeab2 |
+| extern/cli11 | eced4d837d0ab57242b1c25d03780d35bf2b0d52 |
+
+For each NAME/PIN, the actual preparation was:
+
+```sh
+git init --quiet extern/NAME
+git -C extern/NAME -c protocol.file.allow=always fetch --no-tags --depth=1 \
+  /mnt/projects/cheryl-engine/.git/modules/extern/NAME PIN
+git -C extern/NAME checkout --quiet --detach PIN
+```
+
+This is local committed-object transfer only, not a network fetch or protected
+worktree/config/index/cache copy. Each checkout is clean, detached at its exact
+pin, with independent .git/object storage, no hardlinks/symlinks/alternates and no
+remote. The feature origin/global configuration is unchanged. Complete commands
+and diagnostics are in `build/tilemap-u4-display-debug/u4-dependencies.log`.
 
 ## Actual commands and results
 
-Reused `build/tilemap-u1-debug` and its incremental outputs. Cache remains Debug,
-GNU 16.2.1, shared Engine/tests/WARN ON, CMake policy minimum 3.5, and all assigned
-optional native/module/app/docs/test families plus CHERYL_STARTUP_OPENGL OFF.
-Existing unit globs register the new source in tests-engine; GoogleTest discovery
-adds the tests-engine prefix. The first build's glob-triggered CMake regeneration
-is expected; no new configuration/directory or runner was created. The new unit
-compile database entry retains `-g -Wall -fsanitize=address,undefined`.
+All configure/build/native probe/run/capture/test work uses
+`/mnt/projects/cheryl-features/scripts/build --`, one job, existing shared lock,
+fixed 4 GiB aggregate / 3 GiB throttling / 2 GiB worker / no-swap limits and 4 GiB
+MemAvailable admission floor. Queued sessions are retained through normal waiting.
+An exit-75 resource refusal requires its exact diagnostic and checkpoint idle,
+without an unchanged retry. No subagents or external agents are used.
 
-Every configure/build/native check uses the existing wrapper and one job. It
-keeps the fixed 4 GiB aggregate, 3 GiB throttling, 2 GiB worker/no-swap limits and
-4 GiB MemAvailable admission floor. Live sessions are retained through ordinary
-lock queueing. No exit-75 refusal occurred; an actual refusal must be recorded
-exactly and checkpointed idle without an unchanged retry.
+Preserve `build/tilemap-u1-debug`; it disables native/startup/demo modules. The
+separate ignored `build/tilemap-u4-display-debug` is justified by those missing
+module contracts, not a new test runner. Configuration actually executed:
 
 ```sh
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- cmake -S . -B build/tilemap-u4-display-debug -G Ninja \
+  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCHERYL_BUILD_SHARED_LIBS=ON -DWARN=ON \
+  -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_NATIVE_INPUT=ON -DCHERYL_BUILD_OPENGL=ON \
+  -DCHERYL_BUILD_STARTUP=ON -DCHERYL_STARTUP_OPENGL=ON -DCHERYL_BUILD_DEMO=ON \
+  -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+  -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF \
+  -DCHERYL_BUILD_TESTS=OFF -DCHERYL_BUILD_NATIVE_SDL3=OFF -DCHERYL_BUILD_WORKERS=OFF \
+  -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+  -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+  -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF \
+  -DCHERYL_BUILD_FIRST_GAME=OFF -DCHERYL_BUILD_TUTORIAL_GAME=OFF \
+  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF -DCHERYL_BUILD_CONSUMER_TESTS=OFF
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- timeout --signal=TERM --kill-after=2s 15s glxinfo -B
+```
+
+Configuration exited 0 with GNU 16.2.1, Debug sanitizer instrumentation and WARN ON.
+Optional `Could NOT find libdwarf` is nonblocking. GLAD uses the existing
+REPRODUCIBLE path and pinned gl.xml/khrplatform files; its static opener's
+intercepted-URL log describes local packaged bytes, not a download. No build
+behavior is changed to bypass a prerequisite.
+
+The demo build exited 0, with no source warnings/errors. Its new header is
+included first and compiles in the real app target. Compile commands retain
+`-g -Wall -fsanitize=address,undefined`. The build compiled Engine, NativeGLFW,
+OpenGL, Startup and the app using one job; only target demo was requested. No
+resource refusal occurred. The lock queue was allowed to finish without relaunch.
+Complete configure/build logs are `u4-configure.log` and `u4-build.log` under the
+graphics output directory; GLAD's `gladsources/gl46/args.txt` records --reproducible.
+
+The bounded capability probe actually exited **255** with the complete diagnostic:
+
+```text
+Error: unable to open display :1
+```
+
+This confirms unavailable X11 access for this invocation, without diagnosing an
+authorization/server cause. Environment/socket/package inventory is insufficient
+to override that result. No unchanged retry, alternate display route, session/
+driver/global setting change, headless server, demo execution or capture was
+attempted. Its full diagnostic is `u4-display-probe.log`. No resource/lock error
+or build error is being conflated with this display-access failure.
+
+The ignored one-shot `u4-display-check.py` is prepared but **unexecuted**. It would
+start a 40-second internal watchdog only after wrapper admission, launch its own
+finite demo, then use X11 metadata to require the live child PID and unique title
+before a single ImageMagick import of that window. It has no desktop capture or
+unrelated-process control. It requires a later changed display condition. The
+intended child command, **not run**, is:
+
+```sh
+build/tilemap-u4-display-debug/demo --tilemap-display --builtin-font --max-updates 600 \
+  --window-width 640 --window-height 360 --window-title 'Cheryl tilemap U4 UNIQUE' --swap-interval 1
+```
+
+The committed local PNG was inspected as a source image (400×100; brown, black,
+grey and burnt-red cells), not a rendered screenshot. Runtime Reader/decode and
+manager validation are implemented/compiled but were not executed by the app.
+No update completion, pixels, layer blending, map placement, native cleanup or
+rendered resource lifetime is claimed. There is no u4-fixture.png artifact.
+
+The existing CPU runner/configuration and incremental outputs were reused;
+Engine/module source and all 36 cases are byte-identical to accepted U3. No CPU
+reconfigure/rebuild was needed for private app changes. Actual commands:
+
+```sh
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -106,63 +206,65 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
 ```
 
-Initial build and discovery exited 0. Registration selected exactly 36 cases:
-6 tilemap_consumer (#200–205), all 15 tilemap_submission (#206–220) and all 15
-tilemap (#221–235). The initial native run passed 36/36 in 28.84 seconds. Review
-then strengthened the frame-only lifetime observation before adding a vector
-owner, and a rebuild/rerun passed 36/36 in 31.14 seconds. The same commands are
-used for the final distinct-image/material sequence fixture. Its build and test
-commands both exited 0; all 36 cases passed in 28.26 seconds, with no skips or
-address/undefined sanitizer diagnostics in the full test log. No assertion or
-sanitizer failure occurred in any of these completed U3 runs.
+Discovery exited 0 and selected exactly 36 cases: six tilemap_consumer (#200–205),
+15 tilemap_submission (#206–220), 15 tilemap (#221–235). Execution exited 0,
+**36/36 passed, no skips, 26.48 seconds**. Full outputs are preserved as
+`build/tilemap-u1-debug/u4-registration.log`, `u4-ctest.log`, `u4-LastTest.log`
+and the normal Testing/Temporary/LastTest.log. ASan/UBSan stay enabled with
+halt_on_error and no sanitizer diagnostic. Only command-local leak detection is
+disabled for the known tracing limitation; leak checking remains unverified.
 
-Complete diagnostics are preserved in this clone's build directory:
+The cases retain the established invalid-bound/overflow/computed-edge oracle,
+independent values/edits/clocks, resolver/group failure preservation and weak
+resource lifetime observations. Synthetic native bind/draw/upload counters stay
+zero in those CPU fixtures. No new unit merely restates app constants; actual
+app-mode/lifecycle/image evidence remains pending display access. No broad suite,
+extra native runner, documentation build or performance campaign is run.
+Static Git whitespace and focused formatting checks pass. Production Engine/
+module APIs, source/build files, unit cases and gitlinks match accepted U3.
 
-- `u3-build.log`, `u3-registration.log`, `u3-ctest.log` for the initial run.
-- `u3-build-final.log`, `u3-ctest-final.log` for frame-only lifetime checks.
-- `u3-build-mixed.log`, `u3-ctest-mixed.log` and final
-  `Testing/Temporary/LastTest.log` for the final mixed-resource fixture.
+## Confidence, limitations and next action
 
-The builds emit no new source warnings. CMake's existing optional
-`Could NOT find libdwarf` diagnostic does not prevent build/test completion.
-clang-format dry-run/Werror and Git whitespace checks pass. No files are fetched,
-installed, replaced from protected caches or run in protected/sibling workspaces.
-Earlier U1/U2 exact configurations/results remain in committed next.md history at
-`dec1ec55` and `c77496f0`; all `u1-*` and `u2-*` local logs are preserved.
+Engineering confidence in using existing ownership/submission contracts is high.
+The mode flag, fixed data/placements and translucent style are narrow reversible
+app choices with low personal-preference confidence. The attribution correction
+changes no source contract. Reversal cost stays within the private helper/wiring
+and these records; no reusable ABI change is introduced by U4.
 
-ASan/UBSan stay enabled with halt_on_error. Only command-local leak detection is
-disabled for the already diagnosed LeakSanitizer tracing limitation:
+U1/U2/U3 synthetic coverage remains source for value/range/failure/retention
+contracts, not visual edit acceptance. The fixed fixture does not establish
+interactive paint/erase/picking, camera-driven visibility, concurrent metadata
+mutation, performance, graphics-domain lifetime proofs or full milestone acceptance.
+Installed SDK/Windows exports, other compiler/STL/GLM ABIs and Release remain
+unverified. Existing exposed STL/GLM layouts require matching consumer toolchains;
+U4 neither changes nor certifies a stable cross-toolchain public ABI.
+
+Leak checking remains unverified because the previous LeakSanitizer run reported:
 
 ```text
 LeakSanitizer has encountered a fatal error.
 HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
 ```
 
-Leak checking remains unverified. There is no global sanitizer/configuration change.
-No broad suite, device/GUI run or documentation generation is performed.
+Only invocation-local detect_leaks=0 is permitted; ASan/UBSan and halt_on_error
+remain enabled. No global sanitizer setting is changed.
 
-## Confidence, limits and next action
+The next bounded action is **complete U4's visual observation after X11 access
+changes**. Re-run the recorded capability probe once under the wrapper only when
+that prerequisite changes. If accessible, run the preserved one-shot check with
+command-local sanitizer options through scripts/build, inspect only its owned
+fixture image and compare the two map footprints, empty cells and later detail
+blends above. The bounded orchestrator command is proposed, not executed:
 
-Engineering confidence in the scoped composition/failure/lifetime contracts is
-high from source plus focused synthetic results. Alias stability is the user's
-explicit bind-once contract, not inferred taste or runtime enforcement. Fixture
-names/data and exact consumer shape are routine reversible test choices, with low
-personal-preference confidence. Reversal cost is local to these cases and records;
-no production layout or public callable changes were introduced.
+```sh
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- python3 build/tilemap-u4-display-debug/u4-display-check.py
+```
 
-Linux GNU shared Engine use is exercised. Leak checking, installed SDK/Windows
-exports and other compiler/STL/GLM ABIs, Release, real native-domain retirement,
-concurrent publication, shader execution, performance and visual edit feedback
-remain unverified. A successful local checkpoint is not graphical acceptance.
-
-The next proposed bounded action is **U4's minimal display fixture**, requiring a
-later coordinator assignment: use an existing-demo helper to display two finite
-in-memory maps with two layers through the already exercised pass sequence.
-Validate suitable existing local tile artwork/targets before using them, then
-observe actual layered order and pivot/placement visually. Editor/picking
-controls, persistence, auto-tiling, resize and chunking remain later work. No art
-download, module enablement, runtime startup or next-unit work starts in U3.
-
-Commit only this consumer, header comment and internal records. Leave upstream
-transport to the coordinator publisher for assigned feat/tilemap; do not claim a
-remote push was performed here. Stop after the coherent U3 local checkpoint.
+No user response is expected. Do not retry unchanged display access or treat a
+future update count as an image check. Editing/picking needs a later coordinator
+assignment, and must agree with computed grid boundaries rather than bare floor.
+No next feature unit or recurring schedule is activated. Checkpoint only this
+helper/app wiring and internal records, preserve outputs/pins, leave assigned-
+branch transport to the coordinator publisher, and stop.

@@ -2,29 +2,28 @@
 
 U1 implements CPU values/ranges; U2 implements retained bindings and ordered CPU
 packet vectors. U3 composes them through existing pass writers in synthetic cases.
-The first graphical consumer remains a proposal.
+U4 adds a private fixed demo display; editing remains proposed.
 These choices are not user-confirmed API preferences.
 The matching IDs in [agent-notes.md](agent-notes.md)
 hold contracts, alternatives, provenance and pending acceptance. Each entry below
-states the outcome, reason, tradeoff and confidence. The proposed next unit is
+states the outcome, reason, tradeoff and confidence. The next bounded action is
 described in [next.md](next.md), which records actual checks and acceptance limits.
 
-U3's final run passed six consumer cases plus all 30 U1/U2 regressions: 36/36,
-no skips, 28.26 seconds, Debug ASan/UBSan. Build, discovery and execution exited 0.
-The checks establish caller-controlled order, old/new frame independence, separate
-resolver/group failure preservation and weak resource release. Leak checking,
-real graphics-domain/visual behavior, installed SDK/Windows and other ABI/Release
-contexts remain unverified. The next proposed action is U4's minimal two-map,
-two-layer display fixture, after suitable local-art validation and a later
-coordinator assignment; no next unit starts here.
+U4 configures and builds target demo successfully with GNU 16.2.1, Debug,
+shared Engine, WARN and ASan/UBSan instrumentation. The preserved CPU runner
+registers and passes all 36 U1/U2/U3 regressions (no skips, 26.48 seconds).
+The capability probe exits 255: `Error: unable to open display :1`. No demo,
+watchdog, capture or rendered observation is executed. Required atlas Reader/
+decode/manager checks are compiled but not executed by the app. The local source
+PNG is inspected; it is not display evidence. Visual acceptance remains blocked.
 
-Commands executed from this clone (one job through the shared wrapper; leak
-detection disabled only per invocation):
+Actual commands below use the shared wrapper/one job. The full separate graphics
+configuration, independent existing-pin preparation, logs and unexecuted bounded
+display command are in [next.md](next.md#actual-commands-and-results).
 
 ```sh
-ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
-UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug --target tests-engine --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- timeout --signal=TERM --kill-after=2s 15s glxinfo -B
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -34,6 +33,16 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
   --output-on-failure --no-tests=error -R '^tests-engine\.(tilemap|tilemap_submission|tilemap_consumer)\.'
 ```
+
+The six consumer cases still establish caller order, old/new frame independence,
+isolated resolver/group failure preservation and resource weak lifetimes, with
+zero synthetic native counters. U4 changes only private app files/records; no
+reusable API/ABI or pin changes. Leak checking remains unverified (detect_leaks=0
+only per command); ASan/UBSan halt_on_error stays enabled. Visual blends/placement,
+app cleanup, installed SDK/Windows exports, other compiler/STL/GLM ABIs and Release
+remain unverified. Next action: after display access changes, one wrapper probe
+then the preserved bounded owned-window observation. Do not retry unchanged
+access or start editing/picking; transport stays with the coordinator publisher.
 
 ## TM-001
 
@@ -51,8 +60,9 @@ atlas zero draws. Retention neither deep-copies nor freezes an asset. Metadata
 must remain unchanged through every alias while any binding retains it, including
 table copies. Per-call table/resource stability also applies. Setup validation
 preserves earlier entries, trading flexibility for bind-once safety. Confidence
-is high from the explicit user contract and source; exact API ergonomics remain
-a low-confidence taste inference.
+is high from source and this coordinator-selected engineering contract under
+delegated authority; it is not an explicit user API preference. Exact ergonomics
+remain a low-confidence taste inference.
 
 ## TM-003
 
@@ -79,11 +89,11 @@ coordinate preference is implied.
 
 Compose two maps/two layers by adding resolved vectors in explicit caller order.
 Existing PassWriter assigns consecutive authored_order values across groups;
-vector row/column order remains intact. U3's synthetic consumer changes group
-sequence to expose implicit sorting or Z policies. This keeps composition
-flexible without a scene abstraction, at the cost of explicit calls. Engineering
-confidence is high in the source contract; actual commands/results are in next.md.
-Rendering and user preference beyond the explicit requirement remain unverified.
+vector row/column order remains intact. U3 changes group sequence to expose
+sorting/Z policies. U4 code submits four atlas-backed groups, with image observation
+blocked by display access. This keeps composition flexible at the cost of
+explicit calls. Engineering confidence is high from source and CPU cases;
+visual outcome and personal API taste remain unverified.
 
 ## TM-006
 
@@ -93,7 +103,7 @@ copied matrices, selected ranges and retained resources, while the other map's
 values/output stay independent. This requires separate frame ownership and
 observations outside writer/recycle phases, not concurrent-read guarantees.
 Repeated packet generation costs CPU work. Confidence is high in the engineering
-boundary; native execution status is recorded separately from future visual acceptance.
+boundary; U4 is fixed display only and does not establish visual edit acceptance.
 
 ## TM-007
 
@@ -117,12 +127,14 @@ actual native results and leak/visual limits are recorded in next.md.
 
 ## TM-009
 
-Use a dedicated sample helper in the existing demo for two editable 8×6,
-two-layer maps, with separate placement, visibility and clocks. Reuse the current
-tileset loading and input/frame path, keeping map authoring entirely in memory.
-This minimizes new application setup but needs available artwork for visual
-acceptance; synthetic CPU checks remain independent. Scope confidence is high,
-scaffold confidence medium, and unavailable artwork must never count as a pass.
+Use private --tilemap-display mode for two fixed 3×2/two-layer maps, separate
+placements and translucent details. Validate the local four-color atlas through
+Reader/decode/managers before binding; fail with required-source diagnostics.
+Reuse platform loading/cleanup and existing packet/pass/camera contracts,
+bypassing optional samples and controls. This limits setup and ambiguity but
+defers editing/animation. Engineering confidence is high; fixture ergonomics
+have low taste confidence and local reversal cost. Actual build/display/image
+evidence is separate in next.md; an unavailable observation never counts as acceptance.
 
 ## TM-010
 
