@@ -2,10 +2,11 @@
 
 The original design was prepared against source commit
 `3542f883391d4225329dab8d5d61a5987e69c8f0` and saved in checkpoint
-`157c75736bf5d325c8ea5174430b5dbbd75a2ae4` on `feat/settings`. SETTINGS-U1
-implements only the app-private value, shared validator, and file boundary in
-SET-002/006/007. The editor, input queries/contexts, and runtime Apply transaction
-below remain proposed. [Decisions](decisions.md) distinguish those boundaries;
+`157c75736bf5d325c8ea5174430b5dbbd75a2ae4` on `feat/settings`. Accepted U1
+checkpoint `e4529aa9229334433a135b51598ebb50c11b8f4f` implements the app-private
+value, validator, and file boundary in SET-002/006/007. U2 adds only the snapshot
+queries/metadata in SET-003/005. The editor, score-context integration, modal gate,
+and runtime Apply transaction below remain proposed. [Decisions](decisions.md) distinguish those boundaries;
 [next.md](next.md) records actual commands, results, limits, and the next unit.
 
 ## U1 caller and implemented boundary
@@ -25,11 +26,44 @@ file.save(candidate);                                // synchronous file commit 
 supplies a path and field/operation diagnostic. `Loaded` supplies the complete
 valid snapshot. Saving never adopts application state or changes input mappings.
 U1 registers settings source in both app and test cases, with private JSON includes.
-Its 21 settings cases and five existing gameplay cases pass in the selected Linux
-Release runner; graphical and full-feature behavior remain outside that evidence.
+The accepted U1 checkpoint passed 21 settings cases and five gameplay cases in the
+Linux Release runner; current regression evidence is in [next.md](next.md).
+Graphical and full-feature behavior remain outside that evidence.
 
-The requested consumer is the existing `tutorial-game` with its existing TGUI
-session. It exposes exactly two game settings and one rebindable gameplay action:
+## U2 queries and future caller obligation
+
+The public additions are read-only `Snapshot::has_context(ContextId) const noexcept`
+and `device_enabled(DeviceId) const noexcept`. They do not schedule, attach, retain,
+or validate a lease. A future editor may use them as follows; this is an application
+sketch, not an implemented Apply/rearming workflow:
+
+```cpp
+struct PendingCandidate {
+    CE::Input::Actions::Context lease;
+    std::uint64_t generation;
+};
+PendingCandidate candidate{endpoint.attach(definition), editor_generation};
+// Retain candidate across updates on its owner; do not retain just its identity.
+const auto newest = tick.latest_poll();
+const bool candidate_observed =
+    candidate.lease && candidate.generation == editor_generation &&
+    !tick.polls().empty() && newest->has_context(candidate.lease.id());
+const bool new_admitted_poll =
+    !tick.polls().empty() && newest->poll() > release_watermark &&
+    newest->device_enabled(keyboard);
+```
+
+`candidate_observed` is only publication evidence for a still-valid retained
+candidate of the current editor generation. Reset, clear/shutdown invalidation,
+or a stale generation blocks adoption even if a historical sample contains the
+identity. Future Apply still validates/persists before adopting. `new_admitted_poll`
+is a necessary rearming predicate, not sufficient neutrality: SET-003 still
+requires the active context and neutral gameplay controls/edges for the consumed
+batch, tagged to the same editor cycle. `latest_poll()` on an empty batch returns
+its baseline; it never proves a newly consumed poll beyond the release watermark.
+
+The planned consumer is the existing `tutorial-game` with its existing TGUI
+session. It will expose exactly two game settings and one rebindable gameplay action:
 
 | Value | Default | Valid values and visible effect |
 | --- | --- | --- |
@@ -48,8 +82,8 @@ rebinding, and a general settings registry remain later work.
 
 This is an API sketch for app-private code, not an available Engine API or a
 compiled example. `SettingsFile` is the U1 helper; `SettingsEditor`, `ScoreInput`,
-and their integration remain proposed. The proposed Engine additions are immutable
-snapshot queries for context membership and the published device gate.
+and their integration remain proposed. U2 supplies the Engine snapshot queries
+for context membership and the published device gate used by the future caller.
 
 ```cpp
 // main, before runtime.run(): choose the data path once, independently of assets.
@@ -177,14 +211,17 @@ cannot satisfy this boundary. Starting gameplay after initial context installati
 requires a real gate-enabled neutral poll too; there is no prior modal release
 to fence at startup.
 
-Current snapshots do not expose device gates. Propose
-`bool Snapshot::device_enabled(DeviceId) const noexcept`, preserving an immutable
-copy of `Bindings::disabled_devices_` at semantic publication. A device absent
+U2 implements `bool Snapshot::device_enabled(DeviceId) const noexcept`, preserving
+an immutable copy of `Bindings::disabled_devices_` at semantic publication. A device absent
 from that set is enabled, matching the mapper's existing default policy; this is
 admission state, not evidence that hardware exists. Use the cached live keyboard
-ID and a real newly consumed poll. Copy gates consistently into root and contextual
-snapshots in `make_snapshot`; retained samples never change when live policy
-changes. Checking current focus or a larger tick-local poll ID alone is
+ID and a real newly consumed poll. `make_snapshot` copies the publishing mapper's
+gate set into each root/context candidate before any publication commit. A copy
+can allocate; failure leaves the preceding complete publication untouched. Retained
+samples never change when live policy changes. Metadata-only polls can have
+`has_changes() == false`; the existing backlog/accumulator still transfers their
+handles and policy in order. Do not filter progress by `has_changes()`. Checking
+current focus or a larger tick-local poll ID alone is
 insufficient: concurrent runtime may already have queued newer polls before
 release. The watermark also covers open/close before Exclusive focus ever
 latches. Test both backlog cases before integration.
@@ -196,7 +233,10 @@ and leaves pointer Cancel available; it must not silently enable gameplay.
 Alternatives: focus-only isolation leaks already collected input and permits a
 held key to press again when the gate reopens [E02]. Disabling the input system
 would also starve the editor. Confidence is high in the need for the explicit
-gate; combined-batch and owner scheduling checks are still required.
+gate; combined-batch and editor scheduling checks are still required. The copied
+policy is an engineering choice, not inferred user taste. It costs one set copy
+per mapper sample; shared mutable policy would invalidate historical observations.
+No poll owner, mapper mutation rule, focus behavior, or scheduling policy changes.
 
 ## SET-004 — Capture a portable physical key in a separate focus epoch
 
@@ -255,17 +295,21 @@ No global `Bindings::clear`, simulation-side mapper mutation, or unbind-first ga
 is allowed. An unchanged key keeps its current context. Scope each pending Apply
 to its draft generation so cancelled work cannot commit a later edit.
 
-Current `Snapshot` has contextual queries but no membership query: absent and
-inactive buttons both return defaults. Propose the minimal additive
+Absent and inactive buttons both return defaults. U2 adds the minimal
 `bool Snapshot::has_context(ContextId) const noexcept` over its immutable
 `contexts_` map. It means membership in **this published sample**, not a live
 lease/installation acknowledgment beyond that sample. Zero is absent; a departing
-context remains present for its final release/zero sample, then disappears. This
-must be tested before relying on it. Do not use a fake axis, held-key probe,
+context remains present for its final release/zero sample, then disappears.
+Pending/not-yet-published, cancelled-before-installation, and subsequently retired
+identities are absent. Empty and inactive installed namespaces are present.
+Clear invalidates leases but retains installed namespaces for their final sample;
+shutdown invalidates leases without rewriting retained samples. Do not use a fake axis, held-key probe,
 sleep, future `.get()`, or mere poll-number advance as acknowledgment.
 
-The valid candidate lease plus `tick.latest_poll()->has_context(candidate.id())`
-is the adoption precondition. Initial attachment uses the same publication gate
+The future adoption precondition combines a valid retained candidate lease,
+matching editor generation, and membership in a newly consumed sample, as in the
+U2 caller above. Historical membership alone cannot acknowledge live ownership.
+Initial attachment uses the same publication gate
 before gameplay starts. No-progress stays pending, with Cancel available; it does
 not invent a timeout success. Input clear/closure invalidates the lease: show a
 failure and preserve active/disk values. Poll/publication errors remain runtime
@@ -277,8 +321,12 @@ readiness, without waiting.
 Alternatives: dispatching a mutation to platform would still need evidence of a
 completed poll and would tie the editor to mutable mapper lifetime. Waiting one
 frame is incorrect when polling and updates run independently. Confidence is
-high that publication must be observable, medium in adding these snapshot queries;
-confirm it is sufficient with the installation/removal/retry cases [E02].
+high in the publication boundary; focused query/lifecycle/retry evidence is in
+[next.md](next.md). The future replacement/editor protocol remains unverified.
+The additive queries are engineering choices, not a historical taste inference.
+Reversal is inexpensive before app integration; adding the private gate set changes
+`Snapshot` layout, so Engine and consumers must rebuild together. No binary
+compatibility promise is inferred from the source-additive query signatures.
 
 ## SET-006 — Use one explicit, versioned settings file and strict validation
 
@@ -321,8 +369,10 @@ is used only to serialize the fixed, validated schema.
 Load produces an owned result: `Missing` selects all defaults without writing;
 `Loaded` selects the entire valid snapshot; `Recovered` selects all defaults plus
 a diagnostic containing path, field/operation, and reason. Inspection/open/read
-failures are distinct from genuine absence. Directory and symlink leaves,
-including dangling symlinks, recover as errors rather than following a target.
+failures are distinct from genuine absence. Loading rejects directory and symlink
+leaves, including dangling symlinks, rather than following a target. Saving has
+different leaf semantics: rename replaces the leaf link itself without writing
+its referent. Ancestor traversal/race hardening remains outside this boundary.
 Only settings data/I/O errors recover; allocation and programming errors propagate.
 There is no partial adoption, automatic repair, or save during load/destruction.
 The later editor must retain rejected bytes until deliberate successful Apply,
@@ -331,7 +381,8 @@ including unsupported-version files, and explain that replacement to the player.
 The populated pinned nlohmann headers are private to `.cpp` files. App and
 case targets each receive the private include, because Engine's include is not
 transitive [E06]. `settings.cpp` is registered in both, with existing gameplay
-cases preserved. There are no pin, Workers, or public Engine API changes.
+cases preserved. U1 introduced no pin, Workers, or public Engine API changes;
+U2's two Engine queries are the separate boundary described above.
 
 Alternatives: handwritten JSON would add escaping/number/duplicate-key risks;
 INI could suffice, but the repository already uses versioned JSON configuration.
@@ -368,7 +419,8 @@ is cheap to reverse if later consumers need unique attempt names.
 
 Write only a newly and exclusively created same-directory temporary file owned
 by this attempt. Write all bytes, check write/flush/close, then replace the target
-with a single rename operation. Never truncate/remove the old target first and
+with a single rename operation. This replaces a symlink leaf itself and preserves
+its referent bytes; it does not follow the leaf for writes. Never truncate/remove the old target first and
 never reuse/delete a temporary file belonging to another attempt. On any failure
 before rename, leave the old target bytes and active model/old context intact,
 drop the candidate lease, retain the draft, and show the operation/path error.
@@ -427,7 +479,17 @@ U1 evidence, added after the reviewed baseline: [settings declarations](../proje
 [tutorial registration](../projects/apps/tutorial-game/CMakeLists.txt). These are
 app-private additions; they do not change the historical preference evidence.
 
-Baseline tests corroborate intended contracts but were only inspected:
+U2 evidence extends [Snapshot](../projects/engine/include/cheryl/core/controls/action-snapshot.h)
+and [publication](../projects/engine/src/core/controls/input-bindings.cpp), using
+the existing context map and an owned gate set prepared before commit.
+[Context/query cases](../projects/engine/tests/unit/src/action-contexts.cpp) cover
+history/lifetime, metadata-only backlog consumption, and controlled publication
+failure/retry. The U1 [symlink case](../projects/apps/tutorial-game/tests/settings.cpp)
+clarifies load-versus-save behavior without changing the writer. Actual execution
+and its limits are recorded in [next.md](next.md), not inferred from source presence.
+
+At the design checkpoint, these baseline tests were only inspected; current U2
+execution is recorded separately in [next.md](next.md):
 [action_contexts](../projects/engine/tests/unit/src/action-contexts.cpp) covers
 `poll_boundary`, `latched_departure`, `focus_gate`, `attach_under_focus`,
 `lifetime`, `validation`, and `retry`;
@@ -516,21 +578,23 @@ git show -s --format=fuller 8854ef84f360fafa3572b58ee5440b5aabc0e67c
    shared validation, strict parse/load, complete serialization, replacement save,
    and CPU/file failure tests. No GUI or input mutation yet. This settles data
    recovery and save preservation without accumulating callers.
-2. **Poll-visible score context and device gate:** add/test
-   `Snapshot::has_context` and `Snapshot::device_enabled`, introduce the private
-   score context definition/owner, and stage replacement behind a modal gate.
+2. **U2 snapshot presence and admission:** implement only `Snapshot::has_context`
+   and `Snapshot::device_enabled`, publication metadata, and their focused cases.
+   No score-context/editor integration or runtime gate belongs to U2.
+3. **App-private score-context owner:** introduce its definition/lease/candidate
+   ownership and stage replacement behind the future application's admission policy.
    Exercise inactive publication, retained gates, release watermarks, queued
    focus-suppressed polls and quick open/close without a focused poll,
    held seeding, old/new coexistence, release retirement, validation failure, and
    shutdown invalidation. Keep other mappings and PlayerController behavior intact.
-3. **One TGUI editor:** draft controls, explicit input ordering, dedicated rebind
+4. **One TGUI editor:** draft controls, explicit input ordering, dedicated rebind
    target/epoch, save-before-adoption, Cancel, focus loss, rearming, and lifecycle.
    Extend only directly affected application/test registration. Run the proposed
    focused checks and then the selected native consumer acceptance when execution
    is authorized. Update both decision views if evidence changes a choice.
 
-The U1 assignment activates only step 1 and focused checks. Steps 2–3 remain
-later coordinator assignments, not work activated by this record. Current build
+The U2 assignment activates only step 2, its focused checks, and the U1 symlink
+contract clarification. Steps 3–4 remain later coordinator assignments. Current build
 and test work uses the resource-gated shared-lock wrapper and one job. Exit 75
 means checkpoint idle rather than an unchanged retry or an unrestricted fallback.
 
@@ -548,8 +612,8 @@ means checkpoint idle rather than an unchanged retry or an unrestricted fallback
 | Rebind identity | Repeat, release, Text, modifiers, another device/target, stale epochs, and reserved keys cannot select a binding. Queued old-session Text/widget input cannot change draft values or Apply during Listening. A fresh permitted physical press changes only the draft; Cancel keeps the prior mapping. |
 | Ownership/lifecycle | Focus preemption does not erase a newer owner's lease; cancel pending apply and close while editing/listening without autosave, deadlock, or calls after session/input teardown. Retained scene behavior remains intact. |
 
-This table remains whole-consumer acceptance. U1 executes the focused value/file
-cases reported in [next.md](next.md). Those results do not establish the future
+This table remains whole-consumer acceptance. U1 value/file and U2 snapshot cases
+are reported in [next.md](next.md). Those results do not establish the future
 editor, runtime Apply, input isolation, context replacement, or GUI presentation.
 
 ## Material questions retained for the next phase
@@ -566,7 +630,8 @@ establish building the graphical/native/TGUI targets.
 File replacement evidence is bounded to the Linux host/filesystem in [next.md](next.md).
 Power-loss durability/fsync, multi-process writers, network filesystems, OS
 preference directories, other platforms, and reusable settings APIs remain later
-scope. The snapshot queries must still preserve final-release membership and
-historical device gates under delayed/failed/queued polls before an editor can
-depend on them. The archived squash cannot recover finer authorship or design
+scope. U2 supplies observable history; the future editor still must retain its
+candidate/generation and fence rearming with genuinely new consumed polls. UI
+isolation and sequential/concurrent application scheduling remain unimplemented.
+The archived squash cannot recover finer authorship or design
 intent; stronger personal-preference claims remain unsupported.

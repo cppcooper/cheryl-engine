@@ -247,6 +247,7 @@ namespace CE::Input::Actions {
         auto next = std::make_shared<Snapshot>();
         next->poll_ = next_poll_++;
         next->observed_at_ = observed_at;
+        next->disabled_devices_ = disabled_devices_;
 
         // Complete all bindings before publishing. Retain one release/zero sample for actions unbound
         // since the last poll, so consumers can observe their departure instead of a silent disappearance.

@@ -1,7 +1,8 @@
 # Settings milestone decisions
 
-SETTINGS-U1 implements app-private value/file portions of SET-002/006/007.
-Editor, input, and runtime Apply choices remain proposed engineering policy,
+U1 implements app-private values/files in SET-002/006/007; U2 implements only
+snapshot queries/metadata in SET-003/005. Editor, score-context integration, modal
+gating, and runtime Apply remain proposed engineering policy,
 not direct user preferences. Design checkpoint:
 `157c75736bf5d325c8ea5174430b5dbbd75a2ae4`, branch `feat/settings`.
 [Agent notes](agent-notes.md) carry the matching IDs, contracts, alternatives,
@@ -27,13 +28,13 @@ setup moderately, not application ownership as a personal preference.
 
 ## SET-003 — Combine Exclusive focus with a modal gameplay gate
 
-Runtime alone polls input; simulation routes immutable records and owns TGUI.
-The editor requests Exclusive keyboard focus and suppresses every gameplay
-command through opening, editing, apply, closing, and a later neutral poll with
-the published keyboard gate enabled after a platform-owned release watermark.
-This covers collected edges, pointer input, and held-key reactivation that focus
-alone cannot prevent. Gameplay pauses while UI/rendering continue. Confidence is
-high in the boundary; sequential/concurrent scheduling acceptance remains outstanding.
+U2 copies publication-time device admission into immutable snapshots; unlisted
+IDs default enabled without implying hardware existence. Future modal editing still needs Exclusive
+focus, whole-batch gameplay suppression, and neutral rearming from a new consumed
+poll beyond its release watermark. Empty batches return a baseline and cannot
+rearm. This preserves queued policy history at the cost of copying a gate set per
+mapper poll. Confidence is high in the query boundary; editor isolation and
+scheduling remain unverified.
 
 ## SET-004 — Bind portable physical presses in a dedicated epoch
 
@@ -46,30 +47,31 @@ Confidence is high in identity handling, medium in the selected key subset.
 
 ## SET-005 — Observe a staged score context before adopting it
 
-Retain the old score context while attaching a candidate, then wait across
-updates for a consumed published snapshot containing it. Propose the additive
-`Snapshot::has_context` query because inactive actions cannot prove installation;
-also publish `device_enabled` for reliable rearming past queued focused polls.
-Save before moving the candidate into active ownership; keep gameplay gated
-through rearming. This adds a small input contract instead of frame-count guesses
-or mapper mutation. Confidence is medium until publication/removal/gate cases
-establish sufficiency.
+U2 adds `Snapshot::has_context` for sample membership, including final departing
+release; zero, pending and retired identities are absent. It neither retains nor
+validates a lease. Future Apply must retain a valid candidate, matching editor
+generation and consumed publication evidence before replacing the old score
+context. This avoids inactive-action probes and frame guesses without changing
+mapper ownership. Tradeoff: membership is historical, so ownership checks stay
+with callers. Confidence is high in the snapshot contract; the editor protocol
+remains proposed.
 
 ## SET-006 — Store one complete, strictly validated JSON snapshot
 
-U1 fixes the caller's path and acquires at most 64 KiB plus one byte. A shallow
-SAX reader rejects raw NUL, duplicate/unknown/missing fields, wrong types/versions,
-and invalid values without a nested DOM. Absence selects defaults; invalid,
-unreadable, or symlink files recover wholly with diagnostics. Strict rejection
-costs tolerant compatibility; schema changes require versioning. Focused Linux
-checks support high confidence in this bounded policy. History establishes no
-JSON or recovery-format preference.
+U1 resolves paths once and acquires at most 64 KiB plus one detection byte.
+Shallow SAX rejects raw NUL, duplicate/unknown/missing fields, wrong types/versions
+and invalid values. Absent files use defaults; invalid/unreadable files recover
+wholly with diagnostics. Loading rejects symlink leaves; saving replaces the leaf
+link without changing its referent. Strict rejection sacrifices tolerant
+compatibility. Confidence is high after focused Linux checks; this engineering
+policy is not inferred user taste.
 
 ## SET-007 — Commit the file before nonthrowing active adoption
 
 U1 validates and serializes before exclusive sibling `.pending` creation, then
 writes, flushes, closes, and renames once. Collision or pre-rename failure preserves
-old bytes; cleanup owns only this attempt. No fallible work follows rename.
+old bytes; cleanup owns only this attempt. Rename replaces leaf links, preserving
+referents. No fallible work follows rename.
 Later Apply will adopt state separately. Synchronous I/O and visible stale-file
 collisions trade convenience for explicit failure. Focused Linux checks support
 high confidence; durability, other platforms, and multi-process guarantees remain

@@ -343,6 +343,35 @@ TEST(tutorial_settings, read_errors) {
 #endif
 }
 
+#ifndef _WIN32
+TEST(tutorial_settings, symlink_leaf) {
+    Files files;
+    const auto referent = files.root() / "referent.json";
+    {
+        std::ofstream output(referent, std::ios::binary);
+        output.exceptions(std::ios::badbit | std::ios::failbit);
+        output << document;
+        output.close();
+    }
+    fs::create_symlink(referent, files.path());
+    const SettingsFile file(files.path());
+    const auto rejected = file.load_or_defaults();
+    EXPECT_EQ(rejected.status, SettingsLoadStatus::Recovered);
+    EXPECT_EQ(rejected.value, GameSettings{});
+    EXPECT_NE(rejected.issue.find("symlinks"), std::string::npos);
+    EXPECT_EQ(fs::read_symlink(files.path()), referent);
+    EXPECT_EQ(Files::read(referent), document);
+    file.save(GameSettings{});
+    EXPECT_FALSE(fs::is_symlink(files.path()));
+    EXPECT_TRUE(fs::is_regular_file(files.path()));
+    const auto loaded = file.load_or_defaults();
+    EXPECT_EQ(loaded.status, SettingsLoadStatus::Loaded);
+    EXPECT_EQ(loaded.value, GameSettings{});
+    EXPECT_EQ(Files::read(referent), document);
+    EXPECT_FALSE(fs::exists(files.pending()));
+}
+#endif
+
 TEST(tutorial_settings, invalid_save) {
     Files files;
     files.write(document);

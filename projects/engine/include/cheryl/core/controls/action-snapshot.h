@@ -1,11 +1,14 @@
 #pragma once
 
+#include "input-types.h"
+
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace CE::Input {
@@ -68,10 +71,13 @@ namespace CE::Input::Actions {
         std::unordered_map<Id, ButtonPollState> buttons_;
         std::unordered_map<Id, AxisPollState> axes_;
         std::unordered_map<ContextId, std::shared_ptr<const Snapshot>> contexts_;
+        std::unordered_set<CE::Input::DeviceId> disabled_devices_;
 
     public:
         [[nodiscard]] std::uint64_t poll() const { return poll_; }
         [[nodiscard]] std::chrono::steady_clock::time_point observed_at() const { return observed_at_; }
+        [[nodiscard]] bool has_context(ContextId context) const noexcept { return contexts_.contains(context); }
+        [[nodiscard]] bool device_enabled(CE::Input::DeviceId device) const noexcept { return !disabled_devices_.contains(device); }
         [[nodiscard]] bool has_changes() const {
             for (const auto& [id, state] : buttons_)
                 if (state.pressed() || state.released())
@@ -150,7 +156,15 @@ namespace CE::Input::Actions {
  */
 
 /** @fn bool CE::Input::Actions::Snapshot::has_changes() const
- * Report any button edge/axis delta in direct or contextual state. An unchanged poll still represents a completed observation.
+ * Report any button edge/axis delta in direct or contextual state. Context membership/device admission alone does not count as a change; an unchanged poll still represents a completed observation.
+ */
+
+/** @fn bool CE::Input::Actions::Snapshot::has_context(ContextId context) const noexcept
+ * Test namespace presence in this immutable sample, including a departing context's final release/zero sample. Zero, pending/not-yet-published and subsequently retired identities are absent. Retention preserves history, not a live lease; callers requiring a live candidate must also retain and validate its lease and generation. Read-only queries may cross threads.
+ */
+
+/** @fn bool CE::Input::Actions::Snapshot::device_enabled(CE::Input::DeviceId device) const noexcept
+ * Return this sample's publication-time admission policy. Unlisted devices are enabled, including before the first poll; this does not establish hardware existence. Later mapper/focus changes never rewrite retained samples. Read-only queries may cross threads.
  */
 
 /** @fn CE::Input::Actions::ButtonPollState CE::Input::Actions::Snapshot::button(Id action) const
