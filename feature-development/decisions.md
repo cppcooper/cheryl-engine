@@ -2,8 +2,8 @@
 
 U1's CPU values/codec and U2's private Linux file adapter are implemented.
 U2F corrects native path meaning across ancestor symlinks.
-Executed checks and remaining limits are in [next.md](next.md). The CLI remains
-proposed U3. These are engineering choices, not user preference declarations.
+U3 adds the private process CLI. Executed checks and remaining limits are in
+[next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
 
@@ -13,8 +13,8 @@ U1 implements private CPU snapshots and a memory-stream codec for two logical
 layers and one named spawn. Indexing discovers paths; graphics publication has
 native ownership and partial effects. Keeping these responsibilities separate
 allows independent native checks. U2 layers explicit-path I/O over the codec;
-the CLI is deferred. The tradeoff is a small private boundary. Confidence is high
-in isolation and medium in API shape; reversal affects only private callers/tests
+U3 exercises it through a private CLI. The tradeoff is a small private boundary.
+Confidence is high in isolation and medium in API shape; reversal affects only private callers/tests
 today.
 [Details](agent-notes.md#ms-001-cpu-boundary).
 
@@ -54,9 +54,10 @@ reversal changes private limits/tests and records.
 Use synchronous owned results and the same private Error. Path operations retain
 an absolute path with components intact for native lookups and owning diagnostics,
 including ancestor symlinks followed by `..`. Cleanup retains primary errors and
-owned leftover details; allocation/programming failures propagate. The tradeoff
-is a noncanonical diagnostic spelling. Confidence is high in tested path identity,
-medium in exception shape; reversal affects only the private adapter/tests.
+owned leftover details; allocation/programming failures reach CLI exit 1, while
+owning storage errors use exit 2 and stderr. The tradeoff is a noncanonical
+diagnostic spelling. Confidence is high in tested path identity, medium in
+exception shape; reversal affects only the private adapter/tests.
 [Details](agent-notes.md#ms-005-ownership-and-failure-reporting).
 
 ## MS-006 Failed-write preservation
@@ -66,18 +67,28 @@ canonicalization, honoring native ancestor-symlink/`..` meaning even for absent
 targets. Encode fully, exclusively stage in the native parent, check writes and
 release ownership before checked close, then rename once; cleanup preserves
 primary errors. This retains controlled single-writer Linux scope and mode 0600,
-at the cost of noncanonical spelling and limited guarantees. Confidence is high
+at the cost of noncanonical spelling and limited guarantees. CLI failures after
+save completion report that publication separately. Confidence is high
 locally, medium elsewhere; reversal changes the private adapter/tests.
 [Details](agent-notes.md#ms-006-failed-write-preservation).
 
 ## MS-007 Integration and implementation placement
 
-Keep U1/U2 under `projects/tests/map-storage/` with the existing standalone CMake
-runner linking only private codec/adapter and pinned gtest archives. Source/link
-inspection and focused native checks establish this boundary without Engine
-initialization. Tilemap adapters and active-level adoption remain future
-responsibilities. Private placement may cost later
-extraction, but keeps siblings independent. Confidence is high in checked
-isolation and medium in final placement; relocation changes private targets
-without public SDK migration.
+Keep all units under `projects/tests/map-storage/`. The CLI links private
+codec/adapter and the C++ runtime; tests add pinned gtest and an existing Python
+standard-library process harness. Engine initialization and siblings remain
+independent. Private placement and literal test duplication cost later extraction
+but keep acceptance reviewable. Confidence is high in verified isolation and medium
+in final placement; source/link and executable evidence belong in next.md.
 [Details](agent-notes.md#ms-007-integration-and-implementation-placement).
+
+## MS-008 Private CLI contract
+
+Require exactly one explicit nonempty path for round-trip or verify. Round-trip
+deliberately writes/replaces then loads; verify only reads. Compare the complete
+owned snapshot to an independent literal fixture. Use exits 0/2/3/64/1 for success,
+storage rejection, valid mismatch, usage and unexpected failure, with stderr
+diagnostics retaining primary/cleanup details. Check output failures and report
+completed saves accurately. Confidence is high in checked behavior, medium in
+private output wording; reversal affects this consumer/harness.
+[Details](agent-notes.md#ms-008-private-cli-contract).

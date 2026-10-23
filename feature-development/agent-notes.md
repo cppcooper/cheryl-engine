@@ -2,9 +2,10 @@
 
 U1 implements private owning CPU snapshots and a bounded memory-stream JSON codec.
 Accepted U1 checkpoint `847d2a9c8fa8c190d2b55e0e59b596a9cbc4ff54` passed 86 focused
-cases. U2 adds private checked Linux path loading and safe replacement. The CLI
-remains proposed U3. U2F corrects path selection through ancestor symlinks and
-parent components; its execution evidence is in [next.md](next.md). This
+cases. U2 adds private checked Linux path loading and safe replacement. Accepted
+U2F checkpoint `ef1d0ac741cdbe888d06d3f6216f8d1d2104f077` preserves native path
+meaning through ancestor symlinks/parent components and passed 122 cases.
+U3 adds the private CPU CLI; actual execution evidence is in [next.md](next.md). This
 is not acceptance of the full persistence milestone.
 The reader summary is [decisions.md](decisions.md);
 actual commands/results and the next unit are in [next.md](next.md).
@@ -16,6 +17,9 @@ U1 started from that clean checkpoint; U2 started clean at the accepted U1 commi
 U2F started clean at reviewed U2 checkpoint
 `4751b271b1c7c75ae8951d71cddd1e8e303930f6` and changes only path resolution,
 its private regression tests/comments and these internal records.
+U3 started clean at accepted U2F; the codec/adapter and format/resource limits
+remain intact. Only the private consumer, its fixture/diagnostics/tests, direct
+standalone target/registration and internal records belong to this assignment.
 Changes are confined to the private
 `projects/tests/map-storage/` implementation/tests/build entry and these records.
 
@@ -24,11 +28,11 @@ The [workspace instructions](../../../AGENTS.md),
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
 and Git instructions were read, including `docs/AGENTS.md`. The current assignment
-authorizes U2F correction, focused native verification and its local commit,
-and stops before U3. Protected source workspaces and sibling implementations are
+authorizes U3 implementation, focused native verification and its local commit,
+and stops for coordinator acceptance. Protected source workspaces and sibling implementations are
 not prerequisites or execution sites.
 
-Implemented U1/U2 contracts and future U3 proposals are distinguished below. These
+Implemented contracts and actually executed checks are distinguished below. These
 are engineering choices under delegated authority; confidence in a requirement
 or observed contract does not establish the user's personal taste.
 
@@ -37,7 +41,7 @@ or observed contract does not establish the user's personal taste.
 U1 uses a private finite-map snapshot and CPU codec. It reconstructs two logical
 tile layers and a named spawn from memory, then compares values. U2 adds an
 explicit-path adapter in `file-storage.h`, with no Engine dependency. The CLI
-remains a future unit. Neither unit creates an engine Context, game,
+now exercises these same operations in a fresh process. No unit creates an engine Context, game,
 provider, window,
 image cache, or asset loader. Discovery may locate content in a later application;
 it does not own persistence, select an output path, or make a write transactional.
@@ -83,14 +87,22 @@ const bool equal = restored == original;
 The caller owns directory creation, single-writer access, candidate adoption and
 any explicit retry. `files.round_trip` exercises this path against real files,
 including independent owned values and exact encoded-byte comparison. No CLI
-or implicit application path is introduced.
+or implicit application path is introduced by the adapter itself.
 
-The eventual CLI takes an explicit file under a caller-created disposable
-directory. Planned `round-trip <file>` will save then load; `verify <file>` only loads
-and compares against the literal fixture, including in a fresh process. Its outer
-boundary prints operation/path/field diagnostics: exit 0 for success, 2 for a
-storage rejection, 3 for a value mismatch, 64 for usage, and 1 for an unexpected
-exception. These are proposed consumer outcomes, not observed results.
+The implemented small U3 consumer is:
+
+```text
+map_storage_cli round-trip <file>
+map_storage_cli verify <file>
+```
+
+The caller creates/controls the directory. Round-trip deliberately saves the
+literal fixture, may replace an existing regular target, then loads and compares
+all owned values. Verify only loads and compares; it creates/rewrites/repairs
+nothing and never supplies defaults. `fixture.h` holds independent literal C++
+expectations with the exact identities/cells above. MS-008 owns the CLI's argument,
+exit/output and diagnostic contract; [next.md](next.md) distinguishes source
+inspection, process checks and remaining acceptance.
 
 Extending `FileIndex` or `FileRegistry` with map state would mix discovery and
 serialization and would not supply publication guarantees. Extending graphics
@@ -317,7 +329,7 @@ Failed parsing/assignment leaves existing snapshots intact; encoding also
 preserves its input. Path load checks close before returning a candidate;
 MS-006 implements file preservation. Borrowed paths/snapshots and private FileOps
 references/handles never escape a synchronous call.
-The future CLI owns process exit handling and prints diagnostics; the codec does not log
+The CLI owns process exit handling and prints diagnostics; the codec does not log
 to global engine services. A caller can adopt a successful return by moving it
 into its own state after validation.
 
@@ -333,6 +345,16 @@ passed focused checks. U2 adds native-read, close, file-phase and leftover tests
 see [next.md](next.md) for actual results. Changing error style affects only the
 private caller/tests now; no general result abstraction or public exception
 hierarchy is selected.
+
+U3 renders owning Error fields through `Cli::print_error`: category, operation,
+origin and location, known byte offset and native error category/value/message,
+the primary `what()` detail, then separate cleanup category/value/message and
+owned staging leftover when present. Private formatter cases cover fields not
+reliably produced by ordinary CLI fixtures (including combined primary/cleanup
+failures); real process tests cover normal storage diagnostics. No error data is
+borrowed from JSON or native handle lifetimes. Storage errors map to exit 2;
+allocation/programming and output/reporting failures reach the outer process
+boundary as exit 1, preserving the codec's narrow exception translation.
 
 ## MS-006 Failed-write preservation
 
@@ -444,14 +466,27 @@ commands/results and platform limits are in [next.md](next.md).
 Changing the platform replacement mechanism is isolated to this private adapter;
 the CPU codec and logical format need not change.
 
+The U3 permission fixture executed the actual normal CLI against a distinct valid
+predecessor with exact byte sentinels. Its owned mode-0500 parent rejected native
+exclusive staging at `$create` with EACCES (13), CLI exit 2; `finally` restored
+only that parent's original 0755 mode. Bytes stayed exact and verify returned 3
+before/after: a successful full load intentionally differs from the fixed fixture,
+rather than a storage rejection. Explicit retry and a fresh verify both returned
+0. No test-only write fault control was needed on this UID-1000 Linux/ext4 host.
+Read-only stdout and broken-pipe cases each returned 1 after completed publication;
+their diagnostics reported that fact and separate verification returned 0.
+Exact commands/counts/evidence are in [next.md](next.md).
+
 ## MS-007 Integration and implementation placement
 
 The implementation is private under `projects/tests/map-storage/` with namespace
-`MapFixture`. Its standalone CMake entry compiles C++23 codec/adapter/tests and pinned
-gtest/gtest_main, using the repository JSON header privately. Generated compile
-commands list only codec, file adapter, their tests, gtest-all and gtest_main sources. The executable
-link edge contains only the codec/adapter and gtest archives, with no Engine,
-platform or graphics target. This boundary passed native Debug checks. The current Engine target has
+`MapFixture`. The standalone CMake entry adds `map_storage_cli`, linking only
+codec/adapter and the ordinary C++ runtime. The existing test runner adds pinned
+gtest/gtest_main; CLI acceptance uses the already available Python interpreter
+and standard library (no package install). CLI cases are registered for Linux,
+the accepted file profile. No Engine/platform/graphics target or sibling is used.
+Generated compile/link inputs and executed headless evidence are recorded in
+[next.md](next.md). The current Engine target has
 additional dependency edges (E08), so an
 Engine-linked headless process alone would not establish this smaller boundary.
 Do not export a new SDK component before the caller and failure checks work.
@@ -472,13 +507,58 @@ and deferred lifecycle policy; medium in this private placement. Relocating thes
 private targets is cheap; public extraction remains deferred. Final public
 names, integration ownership, and save-game composition remain unselected.
 
+## MS-008 Private CLI contract
+
+`round-trip <file>` and `verify <file>` each require exactly one explicit nonempty
+path. Unknown commands (case-sensitive), missing/extra arguments and empty paths
+write usage to stderr and return 64 before file work. Standalone `--help` writes
+usage to stdout and returns 0; usage explicitly states that round-trip writes
+and may replace an existing regular file, and verify only reads. No implicit
+filename, asset search, cwd change, confirmation or automatic retry exists.
+
+Round-trip calls save, records successful completion, then calls load. Verify
+only calls load. Both compare `Snapshot` equality against a newly constructed
+literal fixture: map ID, dimensions, layer count/order/IDs, every cell/empty,
+spawn count/order/names/references/coordinates. Success prints the map identity,
+3x2 dimensions, `[ground,overlay]` and `entry@ground(1,1)` to stdout. Valid but
+different content writes a complete-snapshot mismatch to stderr and returns 3.
+Storage/format Error writes structured fields plus primary/cleanup detail to
+stderr and returns 2. Unexpected exceptions/failures return 1. Output failure
+also returns 1; error-reporting failure cannot claim a successful diagnostic.
+
+The CLI flushes and checks stdout, detaches stderr's tie to stdout, and ignores
+SIGPIPE in its own process where available so broken pipe output becomes an
+ordinary checked failure rather than an unreported signal exit. Once save has
+returned successfully, any later failure also prints that save completed and
+subsequent failure does not undo publication. It does not claim prior-byte
+preservation for load/comparison/output failures after that commit point.
+
+The process harness uses independent literal JSON expectations and actual execs,
+not a function standing in for main. It retains per-invocation stdout/stderr,
+actual/expected status, PID and argv in unique build-local child directories.
+Coverage includes fresh verification, valid changes across all fields/cells,
+format failures, path/argument rejections, U2F native path meaning, actual parent
+permission failure with reliable restoration/retry and post-save stdout failure
+through a read-only descriptor and a pipe without a reader. It uses no normal-CLI
+fault controls. Nonzero CLI outcomes are deliberate fixture results, not passing
+claims based on a zero-test runner; actual counts/results belong in next.md.
+
+An in-process main shim would be smaller but would not establish independent
+executable/stream/exit behavior. A generic serializer/comparator/result framework
+would add policy without a new consumer. These engineering choices are narrow
+and private, not recovered personal taste. **Confidence: high** in the explicit
+requirements, selected isolation and checked behavior; medium in private output
+wording, which is not a published machine protocol.
+Reversal affects only private CLI, formatter and harness. No SDK extraction or
+new persistence format is selected by this unit.
+
 ## Source evidence
 
 Current-source references E01-E09 describe inspection at
 `3542f883391d4225329dab8d5d61a5987e69c8f0`. They are compatibility facts, not
 evidence of personal preference, even where Git lists the established author
 identity. The baseline manifest tests below were not executed; private implementation
-and executed-test evidence are identified separately as E10/E11.
+and executed-test evidence are identified separately as E10-E13.
 
 | ID | Exact source locations and observed contract |
 | --- | --- |
@@ -494,6 +574,7 @@ and executed-test evidence are identified separately as E10/E11.
 | E10 | U1 [values](../projects/tests/map-storage/snapshot.h), [private API](../projects/tests/map-storage/codec.h), [codec](../projects/tests/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
 | E11 | U2 [path API](../projects/tests/map-storage/file-storage.h), [native adapter](../projects/tests/map-storage/file-storage.cpp), [private fault boundary](../projects/tests/map-storage/file-operations.h), [real-file/fault tests](../projects/tests/map-storage/file-storage-tests.cpp). The unchanged schema/codec is used through its existing stream boundary; Error gains only file categories/cleanup fields and printable NUL path handling. Build/test commands, saved logs, nonempty selections and outcome limits are in [next.md](next.md). This is current agent-authored compatibility evidence, not user preference evidence. |
 | E12 | U2F [resolver](../projects/tests/map-storage/file-storage.cpp) `Detail::resolve` preserves components in `absolute(input)`; [file regressions](../projects/tests/map-storage/file-storage-tests.cpp) `files::ancestor_parent` and four `files.ancestor_parent_*` cases distinguish native and lexically simplified targets. Expected pre-fix failure and final discovery/build/native outcomes are saved separately in [next.md](next.md). This corrects the E11 implementation contract; no historical preference is inferred. |
+| E13 | U3 [consumer](../projects/tests/map-storage/cli.cpp), [literal fixture](../projects/tests/map-storage/fixture.h), [diagnostic renderer](../projects/tests/map-storage/cli-diagnostics.h), [formatter tests](../projects/tests/map-storage/cli-diagnostics-tests.cpp), [process harness](../projects/tests/map-storage/cli-checks.py), and direct [standalone target/registration](../projects/tests/map-storage/CMakeLists.txt). No codec/adapter/schema change. Implementation facts and delegated CLI requirements are engineering evidence; actual commands/counts/outcomes and source/link inspection are in [next.md](next.md), not preference evidence. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -535,8 +616,8 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-U1 is accepted. This assignment corrects U2 path selection only; U3 requires a later
-coordinator assignment. Executed evidence is recorded in [next.md](next.md).
+U1 and U2F are accepted. This assignment implements U3 only and stops for
+coordinator acceptance. Executed evidence is recorded in [next.md](next.md).
 
 1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
    validation, bounded JSON parse/encode and 86 passing focused checks under
@@ -546,14 +627,15 @@ coordinator assignment. Executed evidence is recorded in [next.md](next.md).
 2. **U2 — File publication adapter, implemented.** Explicit-path load/save,
    checked native reads, same-directory exclusive staging and Linux replacement,
    with a narrow private file-operations seam and focused real-file/fault tests.
-   U2F preserves native ancestor-symlink/`..` semantics; coordinator acceptance
-   of this correction is the next boundary.
+   Accepted U2F preserves native ancestor-symlink/`..` semantics with 122 passing
+   file/codec cases.
    No expansion to general save slots,
    recovery scanning, background services or cross-platform guarantees.
-3. **U3 — CLI acceptance.** Add the literal two-layer fixture and round-trip/verify
-   commands, compare every reconstructed field in a fresh process, exercise the
-   rejection and preservation matrix below, then review the private API for
-   extraction. No rendering, game startup, sibling merge, or artwork is needed.
+3. **U3 — CLI acceptance, implemented.** Literal fixture, round-trip/verify,
+   complete equality, owning stderr diagnostics and process-level checks. Keep
+   source/observed-results distinctions and acceptance with the coordinator;
+   extraction and integration require a later assignment. No rendering, game
+   startup, sibling merge or artwork is needed.
 
 Each unit keeps the decision summary and next action consistent with actual
 evidence. The U1 pre-interruption checks used the then-current shared
@@ -568,8 +650,11 @@ system installation, device run or documentation generation was performed.
 This table retains the full milestone requirements. U1 demonstrates the
 in-memory portions of A3/A4 and codec isolation in A7, plus memory round-trip,
 ownership and deterministic encoding. U2 exercises A5/A6 via private real-file
-and fault tests, plus checked load and codec regressions. CLI observations in
-A1/A2 and the CLI portion of A7 remain unimplemented/unexecuted.
+and fault tests, plus checked load and codec regressions. U3's standalone round-trip
+and fresh verify both exited 0; all 136 cases passed (the accepted 122, two formatter
+cases and twelve process cases with 71 actual CLI invocations). These demonstrate
+the private CLI portions of A1/A2/A7 on this host; coordinator acceptance remains
+separate. Commands, outputs/statuses and limits are recorded in [next.md](next.md).
 
 | Check | Required observation |
 | --- | --- |
@@ -588,6 +673,6 @@ deliberately private so findings can revise them before public callers accumulat
 
 U1's accepted verification was the standalone Debug build and 86 executed codec
 cases. U2 adds the native adapter/file cases and source/link review, with actual
-counts/commands in [next.md](next.md). No CLI exists yet. Successful checks and
-these local checkpoints do not establish the
+counts/commands in [next.md](next.md). U3 adds a private CLI; its actual checks and
+limits are recorded there. Successful checks and these local checkpoints do not establish the
 full map-storage feature's acceptance.

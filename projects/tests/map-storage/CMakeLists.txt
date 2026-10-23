@@ -22,7 +22,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(map_storage_codec PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp)
+add_executable(map_storage_cli cli.cpp)
+target_link_libraries(map_storage_cli PRIVATE map_storage_codec)
+set_target_properties(map_storage_cli PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(map_storage_cli PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp)
 target_link_libraries(map_storage_tests PRIVATE map_storage_codec GTest::gtest_main)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(map_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
@@ -30,3 +37,16 @@ endif()
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(map_storage_tests TEST_PREFIX "map_storage." PROPERTIES LABELS "map_storage" DISCOVERY_MODE PRE_TEST)
+
+# Test tooling only; the CLI itself needs only the codec/adapter and C++ runtime.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    foreach(map_storage_case IN ITEMS round_trip comparison malformed truncated format_version missing profiles
+                                     arguments help native_path failed_write_retry output_failure)
+        add_test(NAME "map_storage.cli.${map_storage_case}"
+            COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli-checks.py"
+                --cli "$<TARGET_FILE:map_storage_cli>" --case "${map_storage_case}"
+                --work-root "${CMAKE_CURRENT_BINARY_DIR}/cli-checks")
+        set_tests_properties("map_storage.cli.${map_storage_case}" PROPERTIES LABELS "map_storage")
+    endforeach()
+endif()
