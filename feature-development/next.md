@@ -1,6 +1,136 @@
-# U4 bounded authored definitions
+# U5 headless authored-dialogue inspection
 
-Current assignment STORYTELLING-U4 starts from clean accepted U3
+STORYTELLING-U5 starts from clean accepted U4
+`509bfcb12157815f621dae8d1cd07c3622b43694`. Private report/helper, CLI selection,
+focused graph tests and actual child-process cases are implemented. Configure and
+incremental builds exited 0; discovery and execution contain exactly **98** cases,
+including **15 new and all 83 retained names**. **98/98 passed**, with no skips,
+unrun cases or ASan/UBSan diagnostics. All 54 real child-console outcomes match
+expected statuses. Assigned native checks are complete, ready for coordinator
+review. No Engine/public header, loader/schema/key allowlist, save/session contract
+or pin changed.
+
+## U5 caller and implemented contract
+
+`dialogue-console --inspect-definition PATH` loads/compiles with the unchanged
+private loader, calls `inspect_definition(*definition)` and prints
+`format_definition_report(report)`, returning before Encounter/Session or stdin.
+The header-first `dialogue_console_report.consumer` and literal report in
+agent-notes.md show the complete small caller. Both decision views add matching
+ST-013/014. Reports own definition/revision/entry/counts and three authored-order
+ID lists after all input/draft/definition owners disappear. Terminal means the
+compiled Terminal kind; nonfirst entry uses `Definition::entry()`. All choice
+edges, including conditional/parallel/cyclic edges, participate without handlers.
+Forward traversal starts at entry; reverse traversal starts at every terminal.
+
+Output is explicitly advisory topology, not evidence of gameplay reachability,
+effect history, termination or guaranteed completion. Closed cycles and other
+advisories remain successful inspections, with no repairs/warnings added to the
+compiler. IDs escape control bytes/quotes/backslashes; classic-locale counts and
+authored-order lists give deterministic lines. Usage errors exit 2, rejected
+input exits 3, valid reports exit 0, unexpected exceptions keep exit 1. Inspection
+cannot combine interactive --definition or --trace-effects flags; normal built-in
+and explicit-definition interactive commands retain their existing behavior.
+
+The loader's 64 KiB/+1 read, 256-node/2048-choice, decoded string/aggregate/depth
+limits remain unchanged. The independent helper rechecks node/edge/copied-ID caps
+before report copies, uses subtraction-checked totals and fixed flat adjacency/
+iterative visited queues. About 41 KiB of index/visited element storage is fixed,
+excluding sanitizer/ordinary frame overhead. Target lookup costs O(N E L), L<=128;
+then construction/traversal costs O(N+E). Exact scratch, string-copy and work
+bounds/assumptions are in ST-014. Engine compilation alone has no consumer caps;
+therefore direct compiled fixtures exercise true 256-node/2048-edge capacity and
++1 rejection, while actual JSON remains bounded more strongly by 64 KiB. No JSON
+budget enforcement is claimed for arbitrary direct helper inputs.
+
+## Actual U5 checks
+
+Existing GNU/Linux Debug profile, CMake policy minimum 3.5, Engine-only headless
+app linkage, OFF options, pins and incremental outputs are retained. Every
+configure/build/native command uses the shared wrapper and one job. The current
+adaptive memory policy/monitor controls cap/worker admission; no swap and the
+4 GiB host admission floor remain in force. No cap manipulation, queue
+cancellation/relaunch or unwrapped native child was used. ASan/UBSan remain
+instrumented with halt-on-error; invocation-only detect_leaks=0 is ST-008's known
+tracing accommodation. Leak detection remains **unverified**, not passing.
+
+Commands from clone root (each exited **0**; complete stdout/stderr and immediate
+exits are saved):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target dialogue-console tests-dialogue-console tests-engine --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session)\.|tests-dialogue-console\.dialogue_console_)'
+```
+
+| Clone-local log under `builds/storytelling-u1-debug/` | Actual result |
+| --- | --- |
+| `u5-configure.log`, `.exit` | 0; existing profile retained. |
+| `u5-build-1.log`, `.exit` | 0; private helper/main/cases compiled and linked, discovery completed. |
+| `u5-build-2.log`, `.exit` | 0; final additional all-terminal/full reverse-seed boundary assertions compiled; no implementation defect or flag change. |
+| `u5-registration.log`, `.exit` | 0; 98 nonempty cases. |
+| `u5-registration-audit.log` | Exact source/discovery order matches; all 83 U4 names retained, 15 new. |
+| `u5-ctest-1.log`, `.exit` | 0; 98/98 passed, 14.33 seconds, no skips/unrun cases. Original queue wait completed without cancellation/relaunch. |
+| `u5-ctest-details-1.log` | Complete preserved LastTest.log: all 98 RUN/OK/CTest pass records and 54 child arguments/stdin/stdout/stderr/immediate statuses. |
+| `u5-results-audit.log` | Discovery/execution names match; 32 retained plus 22 new child outcomes match expectations (total exits 0:21 / 2:15 / 3:18); no ASan/UBSan diagnostics. |
+
+These logs stay ignored and clone-local. Children are spawned by the wrapped
+native test process, inherit its sanitizer/resource environment and never acquire
+the build lock themselves. Source fixtures are read-only; disposable inputs,
+requested-save markers and transcripts belong to clone-local CTest workspaces.
+Generated rules confirm ASan/UBSan on every changed translation unit and explicit
+private pinned JSON includes remain in place. Five changed C++ files pass
+clang-format dry-run/Werror; whitespace checks pass. No source defect required
+an implementation fix or sanitizer/build-flag change.
+
+| New passed cases | Observed boundary |
+| --- | --- |
+| report.consumer, crossroads | Header-first loader/report caller and literal complete gate/crossroads output, authored IDs/counts/order. |
+| report.branch_rejoin, closed_cycle, terminal_and_loop | Nonfirst entry, branch/rejoin/cycle with terminal route, isolated unreachable terminal, closed cycle, terminal-only and zero-terminal self-loop; advisories never reject valid compiled structure. |
+| report.ignores_conditions | Conditional/effect-bearing edges analyzed without a Session, flag store or handlers; explicit advisory distinguishes static edges from gameplay. |
+| report.ownership | Input/draft mutation/destruction, weak definition owner actually expires, report/copy strings and output survive independently. |
+| report.graph_capacity, id_capacity, display_escaping | Direct 256-node/2048-edge graph with parallel edges/long paths, +1 rejection, full 256-terminal reverse seeding, nonfirst terminal entry, 128-byte ID/+1, quoted/control/NUL/DEL output on one line per field. |
+| transcript.inspect_gate, inspect_crossroads, inspect_advisories | Three actual inspection processes print exact literal reports, including a nonfirst-entry closed loop with condition/effect keys; stdin choice/effect/save/resume commands produce no encounter/effect/command output, save or source sidecar. Valid advisory exits 0. |
+| transcript.inspect_rejections | Nine actual rejected inputs (truncation, escaped duplicate, multiple semantic errors, raw-NUL variants, trailing document, byte cap, missing file) exit 3 with exact existing origin/field/compiler formatting. Source bytes and source-directory entry counts are unchanged. |
+| transcript.inspect_usage | Nine invalid argument combinations exit 2 before input; empty path exits 3. Missing/unknown/extra/repeated/mixed-mode arguments are deterministic. |
+
+All 83 retained cases ran, preserving both interactive startup modes, both gate
+routes, paired save/resume in same/fresh processes, live-incarnation rejection,
+strict codec/file/definition rejection, immutable ownership and session failures.
+The previous 32 child names/statuses are retained; U5 adds 22 (three valid exit 0,
+nine usage exit 2, ten rejected input exit 3), for 54 total. Full output assertions
+and source control flow establish inspection's no-handler/no-Session boundary;
+absence of an effects trace alone is not claimed as its proof.
+
+## U5 next action and limits
+
+No assigned blocker remains. The shared native queue completed normally; no
+resource refusal/exit 75 occurred. Next concrete action: coordinator review of
+this coherent U5 source/records/checkpoint and the complete logs listed above.
+Stop after U5. A second application-owned condition/effect context is only a
+candidate for a separately selected unit; no implementation is started and no
+user response is expected.
+
+Confidence is high in semantics/ownership/bounds, medium in private CLI/report
+spelling, with low local reversal cost. Cap changes require loader/storage/work
+review. These are engineering choices, not evidence of personal API taste.
+Portability/C libraries, LSan, SDK/runtime integration and read latency remain
+unverified/outside scope; topology supplies no history/authentication guarantee.
+No second application context/operation, graphical work, SDK/tutorial work,
+sibling integration, publication transport or later unit starts in U5.
+
+## Retained U4 bounded authored definitions
+
+STORYTELLING-U4 started from clean accepted U3
 `1a71629f51d0515d6203dc0dd014e1329da8f038`. The private loader, owned diagnostic
 boundary, gate/crossroads JSON fixtures and explicit startup path are implemented;
 **83/83 focused native cases passed**: 23 new plus all 60 accepted regressions,

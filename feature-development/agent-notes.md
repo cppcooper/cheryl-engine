@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-012` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-014` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -38,6 +38,11 @@ Its implementation and exact format are below; 23 new plus all 60 accepted cases
 passed (83/83), with full source/log evidence in [next.md](next.md).
 No new personal preference evidence is
 inferred from this format or the existing agent-authored APIs.
+
+STORYTELLING-U5 authorizes private headless authored-content inspection only, from
+accepted U4 `509bfcb12157815f621dae8d1cd07c3622b43694`. ST-013/014 below describe
+its implemented report and cost boundary; all 15 new plus 83 retained cases passed
+(98/98), with 54 expected child statuses. [next.md](next.md) records full evidence.
 
 **ST-001 — Small reusable boundary.** U1/U2 implement CPU dialogue definition
 validation and an explicitly advanced session; U3 adds the private console adapter
@@ -462,10 +467,10 @@ GateConsole::Encounter encounter(std::move(*loaded), trace ? &effects : nullptr)
 return GateConsole::run_console(encounter, std::cin, std::cout);
 ```
 
-The actual CLI compiles either the explicit path or built-in gate before creating
-Encounter. Options --definition PATH and --trace-effects may each appear once in
-either order. Missing/duplicate/unknown options exit 2; read/decode/compile rejection
-exits 3 before command processing; later unexpected exceptions retain the existing
+In interactive mode the CLI compiles either the explicit path or built-in gate
+before creating Encounter. Options --definition PATH and --trace-effects may each
+appear once in either order. Missing/duplicate/unknown options exit 2; read/decode/
+compile rejection exits 3 before command processing; later unexpected exceptions retain the existing
 exit 1 behavior. A supplied bad path never falls back. No argument preserves the
 built-in encounter. This is a medium-confidence private CLI choice, not user API
 taste; its reversal cost is confined to this consumer/tests.
@@ -544,6 +549,117 @@ compiler/loader in Engine would duplicate semantic authority and expand scope.
 U4 instead changes only private app startup, data and tests, preserving the save
 codec, file-save guarantees, public headers, Session/incarnation/fault contracts
 and Runtime. Native results and portability/leak limits are in next.md.
+
+## U5 advisory authored-content inspection
+
+**ST-013 — Own structural facts without starting play.**
+`dialogue-console --inspect-definition PATH` uses the unchanged bounded loader,
+operation-key allowlist, validation order and owned diagnostic formatter. It
+compiles before analysis and returns before Encounter/Session construction, handler
+creation or stdin processing. This mode accepts no --definition, --trace-effects
+or extra arguments. Existing interactive options remain compatible. Usage exits
+2, rejected files exit 3, valid advisory reports exit 0; unexpected exceptions
+retain exit 1. No predicate/effect, flag interpretation, save/adoption, source
+write, generated sidecar, implicit search or content repair occurs.
+
+The header-first report consumer implements this small caller; errors return
+before accessing a rejected value:
+
+```cpp
+auto definition = GateConsole::load_definition(path);
+if (!definition) {
+    std::cerr << GateConsole::format_definition_error(definition.error()) << '\n';
+    return 3;
+}
+auto report = GateConsole::inspect_definition(**definition);
+if (!report) {
+    std::cerr << path << ": " << report.error() << '\n';
+    return 3;
+}
+std::cout << GateConsole::format_definition_report(*report);
+```
+
+Literal gate output is stable and independent of command input:
+
+```text
+Definition: "gate-encounter"
+Revision: 1
+Entry: "approach"
+Nodes: 4
+Choices: 4
+Terminals: 2
+Entry-reachable (4): ["approach", "gate", "admitted", "departed"]
+Unreachable (0): []
+No terminal route (0): []
+Advisory topology: conditions are ignored; no proof of gameplay reachability, effect history, termination or guaranteed completion.
+```
+
+The private DefinitionReport owns definition ID, revision, entry, counts and all
+three ID lists, retaining neither the compiled definition nor input/draft buffers.
+Copies remain independent. Lists follow authored node order, never queue order.
+Entry is the actual `Definition::entry()` node even when nonfirst. Terminals are
+exactly `NodeKind::Terminal`; the empty path gives every terminal a route to
+itself. Each authored choice is one directed edge, including parallel targets,
+conditional rows and self-loops. Reverse analysis seeds **all** terminals, even
+unreachable ones. Thus unreachable terminals are not mislabeled as lacking a
+terminal route, and reachability and terminal-route lists answer different questions.
+IDs are quoted with quote/backslash/C0/DEL escaping, and counts use the classic
+locale, preserving one deterministic line per field.
+
+Conditions are ignored rather than evaluated with invented flags. The gate's
+pass edge counts even before introduction; a conditional-only exit also counts.
+A cycle with an exit has a structural terminal route but can loop forever by
+choice; a closed cycle can be intentional and remains valid. Neither positive
+nor negative topology results prove gameplay feasibility, effect history,
+termination or guaranteed completion. Report advisories never become compiler
+warnings/errors. The inspector changes no Engine API or validation semantics.
+
+**ST-014 — Bound topology storage and work.** The loader still enforces all
+ST-012 byte/text/depth/schema caps **before** freezing/analysis. The helper also
+accepts a borrowed already-compiled definition, so it checks node count <=256,
+total choices <=2048 using remaining-budget subtraction, and every copied
+definition/node ID <=128 bytes before allocating report values. It relies on
+successful immutable compilation for entry/target membership, kinds and scope;
+it never reconstructs draft validation or scans/copies prose. Compiler-valid
+direct inputs exceeding these private graph/ID caps return an owned limit error.
+These helper checks do not claim to reserialize or enforce JSON document bytes.
+
+Scratch uses two flat adjacency arrays of 2048 indices, three arrays of 257
+offsets/cursors, one queue of 256 indices and two visited arrays of 256 booleans.
+On this 64-bit build their element storage is 41496 bytes (about 41 KiB), excluding
+ordinary locals/ASan stack overhead. Compile-time size/product checks protect
+arithmetic for these constants. Prefix sums and indices cannot exceed E; visited
+is set before enqueue, so each traversal enqueues each node at most once and its
+queue never exceeds N. There is no recursion or input-sized graph allocation.
+Resolving targets by bounded linear ID comparison costs O(N E L), at most 524288
+comparisons of <=128-byte names; adjacency construction/traversal then costs
+O(N+E). Report construction/formatting is proportional to copied/output bytes.
+At most 2N+2 IDs are copied (65792 ID bytes at the caps); vector/string capacities,
+allocator metadata and stream growth add bounded overhead, not a claimed exact
+process-memory limit. Display escaping expands each ID byte by at most six.
+The monitor/wrapper separately controls native process budgets. File-read latency,
+allocator failure and filesystem behavior are not bounded by topology analysis;
+allocation exceptions retain the existing unexpected-failure exit.
+
+The real loader cannot fit 2048 complete JSON choices within 64 KiB, as ST-012
+records. A directly compiled 256-node/2048-edge graph therefore exercises the
+helper's genuine capacity, +1 edge/node rejection, parallel edges and long paths;
+an all-terminal 256-node fixture exercises full reverse seeding and nonfirst entry.
+An exact 128-byte ID and +1 checks cover copied storage. Small literal fixtures
+cover branch/rejoin, cycles with/without exits, unreachable terminal and ignored
+condition/effect keys. Complete CLI transcripts cover gate/crossroads/literal loop,
+usage/rejection and absence of command execution/source writes. Actual execution
+counts/logs remain in next.md rather than inferred from these implemented cases.
+
+An Engine warning pass was rejected because it would change validation/public
+scope; recursive DFS adds unnecessary stack dependence, and a graph package or
+global index service exceeds this small private responsibility. Linear lookup
+with fixed flat adjacency is sufficient under the caps. Confidence is high in
+semantics/ownership/bounds, medium in CLI/report spelling; private presentation
+and helper replacement are cheap to reverse. Raising caps needs explicit review
+of loader, fixed storage, lookup work and tests. No new user API-taste inference
+follows from these engineering choices. Portability, leaks and runtime/SDK
+integration remain outside executed acceptance.
 
 ## Verification environment
 
@@ -635,10 +751,11 @@ UI would consume copied views and send scoped selections to simulation.
 | U2: explicit session | Implemented and verified: all 18 session cases plus the 16 definition regressions passed under Debug ASan/UBSan. Incarnation freshness, owning views, checked moves/lifecycle, borrowed handlers, exceptions, reentrancy, overflow and value resume are covered. A separate allocation-rejection probe passed for owned-copy failures and the post-effect path. |
 | U3: console acceptance | Accepted private headless gate, numbered selections, complete paired JSON envelope and exclusive fresh-path save/resume, with 26 new plus 34 retained cases passing. Full evidence/limits are in next.md. |
 | U4: authored startup | Private bounded definition_schema 1 input compiles before Encounter construction with fixed application keys. 17 definition cases and six new transcript cases passed with all 60 regressions (83/83); all 32 child statuses match expected normal/usage/rejection outcomes. |
+| U5: advisory inspection | Private owned report and bounded iterative analysis; 10 report and five new transcript cases passed with all 83 regressions (98/98). All 54 child outcomes match, including 22 inspection invocations. next.md records full evidence/limits. |
 
 U1V completed U1 verification; U2 completed CPU sessions/values; U3 completed the
-console milestone. Current U4 completes only authored startup; later scope requires
-coordinator selection.
+console milestone. U4 completes authored startup; U5 adds only private inspection.
+Later scope requires coordinator selection.
 [next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
@@ -737,3 +854,16 @@ were exercised. The lower-only guard seam and stronger document limit remain
 distinguished above. Public headers/Engine/Runtime and save-codec/file contracts
 were preserved. Exact commands, full logs, counts and portability/leak/integration
 limits are in [next.md](next.md). This accepts only assigned U4; stop for coordinator review.
+
+U5's [owned report and analysis](../projects/apps/dialogue-console/src/definition-report.cpp),
+[header-first graph cases](../projects/apps/dialogue-console/tests/definition-report.cpp)
+and executable inspection transcripts now have assigned native evidence: **98/98**
+passed, including ten report cases, five new transcript cases and all 83 retained
+regressions. All 54 child outcomes match expected exits; 22 exercise inspection's
+valid/advisory, usage and rejected-input paths. Literal output, ignored stdin
+commands, no requested save/sidecars, unchanged rejected source bytes, complete
+original diagnostics, retained report lifetime, nonfirst entry and exact graph/ID
+bounds are exercised. No ASan/UBSan diagnostic, skipped/unrun case or resource
+refusal occurred. Leak coverage and platform/SDK/runtime integration remain
+unverified. These observations complete assigned native U5 checks, ready for
+coordinator review; no later context/operation or unit is implemented automatically.

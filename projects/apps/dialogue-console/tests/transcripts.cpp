@@ -355,3 +355,141 @@ TEST(dialogue_console_transcript, authored_usage) {
     EXPECT_TRUE(empty.output.empty());
     EXPECT_NE(empty.error.find("path is empty"), std::string::npos);
 }
+
+TEST(dialogue_console_transcript, inspect_gate) {
+    GateTesting::Directory directory;
+    std::filesystem::create_directory(directory.file("sources"));
+    const auto path = directory.file("sources/gate.dialogue.json");
+    const auto bytes = GateTesting::contents(std::string(DIALOGUE_CONSOLE_FIXTURES) + "/gate.dialogue.json");
+    GateTesting::write_fixture(path, bytes);
+    const auto save = directory.file("sources/must-not-save.json");
+    const auto result = console(
+        directory, "inspect-gate", "show\nchoose 1 introduce\nintroduce\nsave " + save + "\nresume " + save + "\nchoose 2 pass\nquit\n",
+        {"--inspect-definition", path}
+    );
+    EXPECT_EQ(result.exit, 0);
+    EXPECT_TRUE(result.error.empty());
+    EXPECT_EQ(
+        result.output,
+        "Definition: \"gate-encounter\"\nRevision: 1\nEntry: \"approach\"\nNodes: 4\nChoices: 4\nTerminals: 2\n"
+        "Entry-reachable (4): [\"approach\", \"gate\", \"admitted\", \"departed\"]\nUnreachable (0): []\nNo terminal route (0): []\n"
+        "Advisory topology: conditions are ignored; no proof of gameplay reachability, effect history, termination or guaranteed completion.\n"
+    );
+    EXPECT_FALSE(std::filesystem::exists(save));
+    EXPECT_EQ(GateTesting::contents(path), bytes);
+    EXPECT_EQ(std::distance(std::filesystem::directory_iterator(directory.file("sources")), std::filesystem::directory_iterator()), 1);
+}
+
+TEST(dialogue_console_transcript, inspect_crossroads) {
+    GateTesting::Directory directory;
+    const auto path = std::string(DIALOGUE_CONSOLE_FIXTURES) + "/crossroads.dialogue.json";
+    const auto bytes = GateTesting::contents(path);
+    const auto result = console(directory, "inspect-crossroads", "choose 1 rest\nquit\n", {"--inspect-definition", path});
+    EXPECT_EQ(result.exit, 0);
+    EXPECT_TRUE(result.error.empty());
+    EXPECT_EQ(
+        result.output,
+        "Definition: \"crossroads\"\nRevision: 7\nEntry: \"arrival\"\nNodes: 2\nChoices: 1\nTerminals: 1\n"
+        "Entry-reachable (2): [\"arrival\", \"camp\"]\nUnreachable (0): []\nNo terminal route (0): []\n"
+        "Advisory topology: conditions are ignored; no proof of gameplay reachability, effect history, termination or guaranteed completion.\n"
+    );
+    EXPECT_EQ(GateTesting::contents(path), bytes);
+}
+
+TEST(dialogue_console_transcript, inspect_advisories) {
+    GateTesting::Directory directory;
+    const std::string bytes = R"({"definition_schema":1,"id":"intentional-loop","revision":3,"entry":"a","nodes":[
+        {"id":"unused","text":"You must not see encounter text","kind":"terminal","choices":[]},
+        {"id":"a","text":"Loop A","kind":"prompt","choices":[
+            {"id":"next","text":"Go B","target":"b","condition":"introduced","effect":"introduce"}]},
+        {"id":"b","text":"Loop B","kind":"prompt","choices":[{"id":"next","text":"Go A","target":"a"}]}]})";
+    const auto path = directory.file("loop.dialogue.json");
+    GateTesting::write_fixture(path, bytes);
+    const auto save = directory.file("must-not-save.json");
+    const auto result = console(directory, "inspect-loop", "choose 1 next\nsave " + save + "\nquit\n", {"--inspect-definition", path});
+    EXPECT_EQ(result.exit, 0);
+    EXPECT_TRUE(result.error.empty());
+    EXPECT_EQ(
+        result.output,
+        "Definition: \"intentional-loop\"\nRevision: 3\nEntry: \"a\"\nNodes: 3\nChoices: 2\nTerminals: 1\n"
+        "Entry-reachable (2): [\"a\", \"b\"]\nUnreachable (1): [\"unused\"]\nNo terminal route (2): [\"a\", \"b\"]\n"
+        "Advisory topology: conditions are ignored; no proof of gameplay reachability, effect history, termination or guaranteed completion.\n"
+    );
+    EXPECT_FALSE(std::filesystem::exists(save));
+    EXPECT_EQ(GateTesting::contents(path), bytes);
+}
+
+TEST(dialogue_console_transcript, inspect_rejections) {
+    GateTesting::Directory directory;
+    std::filesystem::create_directory(directory.file("sources"));
+    const auto good = GateTesting::contents(std::string(DIALOGUE_CONSOLE_FIXTURES) + "/gate.dialogue.json");
+    auto semantic = good;
+    semantic.replace(semantic.find("\"entry\": \"approach\""), std::string("\"entry\": \"approach\"").size(), "\"entry\": \"missing\"");
+    // Keep several semantic failures, including an unreachable target failure,
+    // to compare the complete existing formatter/diagnostic order verbatim.
+    semantic.replace(semantic.find("\"target\": \"gate\""), std::string("\"target\": \"gate\"").size(), "\"target\": \"also-missing\"");
+    auto duplicate = good;
+    duplicate.insert(1, "\"definition_\\u0073chema\":1,");
+    const std::vector<std::string> cases{good.substr(0, good.find_last_of('}')),
+                                         duplicate,
+                                         semantic,
+                                         good + '\0',
+                                         good + '\0' + "junk",
+                                         good + '\0' + good,
+                                         good + " {}",
+                                         std::string(G::maximum_definition_bytes + 1, ' ')};
+    unsigned index = 0;
+    for (const auto& bytes : cases) {
+        const auto name = "inspect-invalid-" + std::to_string(++index);
+        const auto path = directory.file("sources/" + name + ".json");
+        const auto save = directory.file(name + "-must-not-save.json");
+        GateTesting::write_fixture(path, bytes);
+        const auto rejected = G::load_definition(path);
+        ASSERT_FALSE(rejected);
+        const auto result = console(directory, name, "choose 1 introduce\nsave " + save + "\nquit\n", {"--inspect-definition", path});
+        EXPECT_EQ(result.exit, 3);
+        EXPECT_TRUE(result.output.empty());
+        EXPECT_EQ(result.error, G::format_definition_error(rejected.error()) + '\n');
+        EXPECT_FALSE(std::filesystem::exists(save));
+        EXPECT_EQ(GateTesting::contents(path), bytes);
+    }
+    const auto missing = directory.file("sources/missing.json");
+    const auto result = console(directory, "inspect-missing-file", "choose 1 introduce\nquit\n", {"--inspect-definition", missing});
+    EXPECT_EQ(result.exit, 3);
+    EXPECT_TRUE(result.output.empty());
+    EXPECT_NE(result.error.find(missing + ": $"), std::string::npos);
+    EXPECT_NE(result.error.find("Cannot read definition"), std::string::npos);
+    EXPECT_EQ(
+        std::distance(std::filesystem::directory_iterator(directory.file("sources")), std::filesystem::directory_iterator()), cases.size()
+    );
+}
+
+TEST(dialogue_console_transcript, inspect_usage) {
+    GateTesting::Directory directory;
+    const auto path = std::string(DIALOGUE_CONSOLE_FIXTURES) + "/gate.dialogue.json";
+    const std::vector<std::vector<std::string>> cases{
+        {"--inspect-definition"},
+        {"--inspect-definition", "--trace-effects"},
+        {"--inspect-definition", path, "extra"},
+        {"--inspect-definition", path, "--trace-effects"},
+        {"--trace-effects", "--inspect-definition", path},
+        {"--inspect-definition", path, "--definition", path},
+        {"--definition", path, "--inspect-definition", path},
+        {"--inspect-definition", path, "--inspect-definition", path},
+        {"--inspect-unknown", path}
+    };
+    unsigned index = 0;
+    for (const auto& options : cases) {
+        const auto result = console(directory, "inspect-usage-" + std::to_string(++index), "choose 1 introduce\nquit\n", options);
+        EXPECT_EQ(result.exit, 2);
+        EXPECT_TRUE(result.output.empty());
+        EXPECT_EQ(
+            result.error,
+            "Usage: dialogue-console [--definition PATH] [--trace-effects]\n       dialogue-console --inspect-definition PATH\n"
+        );
+    }
+    const auto empty = console(directory, "inspect-empty-path", "choose 1 introduce\nquit\n", {"--inspect-definition", ""});
+    EXPECT_EQ(empty.exit, 3);
+    EXPECT_TRUE(empty.output.empty());
+    EXPECT_NE(empty.error.find("path is empty"), std::string::npos);
+}

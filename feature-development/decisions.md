@@ -13,6 +13,9 @@ and its isolated allocation probe. U3's 26 new cases and all 34 regressions pass
 No new preference evidence is inferred.
 U4's private startup-only authored input passed 23 new plus all 60 retained cases
 (83/83), with 32 child-console outcomes checked. Full evidence/limits are in next.md.
+U5 adds private advisory inspection under ST-013/014; all 15 new and 83 retained
+cases passed (98/98), with 54 expected child statuses. Full evidence is in next.md.
+These remain engineering choices, not personal taste evidence.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -135,3 +138,22 @@ decoding rejects duplicates, coercion, excess nesting and raw NUL before compila
 These limits bound lexer storage, draft growth and freeze copies. The byte cap
 precludes 2048 complete choices; a lower-only private seam tests its defensive
 guard. Confidence is high in bounds, medium in chosen text caps; changing caps is local.
+
+## ST-013 — Inspect topology without constructing an encounter
+
+Load and compile through the existing private loader, then return an independently
+owned report in authored order. Use the compiled entry and explicit terminal kind;
+all choices count as edges regardless of conditions. Valid cycles and advisories
+exit successfully. Inspection never constructs sessions or processes commands.
+This trades gameplay conclusions for useful structural facts without callbacks.
+Confidence is high in semantics, medium in CLI/report spelling; changing that
+private presentation has low reversal cost.
+
+## ST-014 — Bound graph work before copying report values
+
+Recheck 256 nodes, subtraction-checked 2048 total edges and 128-byte copied IDs,
+then use fixed adjacency arrays and iterative forward/reverse queues. Linear
+target lookup costs O(N E L); traversal costs O(N+E), with L at most 128 bytes.
+This trades modest bounded lookup work and roughly 41 KiB scratch for no graph
+framework or recursion. Confidence is high in bounds; cap changes need coordinated
+loader/storage review, while helper replacement stays private.

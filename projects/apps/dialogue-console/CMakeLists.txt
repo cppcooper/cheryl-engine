@@ -1,5 +1,5 @@
 # Private headless consumer; no module, SDK export or public JSON dependency.
-add_library(dialogue-console-state STATIC src/gate.cpp src/codec.cpp src/files.cpp src/definition-codec.cpp)
+add_library(dialogue-console-state STATIC src/gate.cpp src/codec.cpp src/files.cpp src/definition-codec.cpp src/definition-report.cpp)
 target_compile_features(dialogue-console-state PRIVATE cxx_std_23)
 target_link_libraries(dialogue-console-state PRIVATE Cheryl::Engine)
 target_include_directories(dialogue-console-state PRIVATE "${CHERYL_REPOSITORY_ROOT}/extern/json/single_include")
@@ -12,7 +12,7 @@ set_target_properties(dialogue-console PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CH
 if(CHERYL_BUILD_TESTS AND TARGET "${TARGET_TEST_ALL_TESTS}")
     set(CHERYL_TEST_AGGREGATE ${TARGET_TEST_ALL_TESTS})
     cheryl_add_test_suite(tests-dialogue-console
-        SOURCES tests/state.cpp tests/codec.cpp tests/files.cpp tests/definition-codec.cpp
+        SOURCES tests/state.cpp tests/codec.cpp tests/files.cpp tests/definition-codec.cpp tests/definition-report.cpp
         LIBRARIES dialogue-console-state Cheryl::Engine
         PRIVATE_INCLUDES "${CHERYL_REPOSITORY_ROOT}/extern/json/single_include")
     if(UNIX)
