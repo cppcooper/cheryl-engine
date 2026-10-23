@@ -1,4 +1,4 @@
-#include "file-storage.h"
+#include <cheryl/core/resources/map-storage/file-storage.h>
 #include "file-operations.h"
 
 #if defined(__linux__)
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <utility>
 
-namespace MapFixture::Detail {
+namespace CE::Maps::Detail {
     int FileOps::status(const char* path, struct stat* result, bool follow) noexcept {
         return follow ? ::stat(path, result) : ::lstat(path, result);
     }
@@ -199,7 +199,7 @@ namespace MapFixture::Detail {
 }
 #endif
 
-namespace MapFixture {
+namespace CE::Maps {
     Snapshot load(const std::filesystem::path& path) {
 #if defined(__linux__)
         Detail::FileOps ops;

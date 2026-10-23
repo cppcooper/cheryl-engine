@@ -1,12 +1,12 @@
 #pragma once
 
-#include "file-storage.h"
+#include <cheryl/core/resources/map-storage/file-storage.h>
 
 #if defined(__linux__)
 #include <sys/stat.h>
 #include <sys/types.h>
 
-namespace MapFixture::Detail {
+namespace CE::Maps::Detail {
     // Narrow private syscall boundary for deterministic I/O-failure tests. The
     // defaults perform real Linux calls; no global fault state or SDK surface.
     struct FileOps {

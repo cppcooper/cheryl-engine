@@ -6,7 +6,7 @@
 #include <sstream>
 
 TEST(cli_output, primary_details) {
-    const MapFixture::Error error(MapFixture::Code::Read, "parse", "fixture/input.map.json", "$.layers[1].cells[2]",
+    const CE::Maps::Error error(CE::Maps::Code::Read, "parse", "fixture/input.map.json", "$.layers[1].cells[2]",
                                   "primary read failure", 27, {EIO, std::generic_category()});
     std::ostringstream output;
     MapFixture::Cli::print_error(output, error);
@@ -23,7 +23,7 @@ TEST(cli_output, primary_details) {
 }
 
 TEST(cli_output, cleanup_keeps_primary) {
-    MapFixture::Error error(MapFixture::Code::Replace, "save", "fixture/output.map.json", "$replace",
+    CE::Maps::Error error(CE::Maps::Code::Replace, "save", "fixture/output.map.json", "$replace",
                             "primary replace failure", {}, {EACCES, std::generic_category()});
     error.cleanup_error = {EBUSY, std::generic_category()};
     error.staging_leftover = "fixture/.map-storage-owned";

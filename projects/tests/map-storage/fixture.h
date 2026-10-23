@@ -1,10 +1,10 @@
 #pragma once
 
-#include "snapshot.h"
+#include <cheryl/core/resources/map-storage/snapshot.h>
 
 namespace MapFixture {
     // Literal expected data, independent of any document being verified.
-    [[nodiscard]] inline Snapshot fixed_fixture() {
+    [[nodiscard]] inline CE::Maps::Snapshot fixed_fixture() {
         return {
             .id = "fixture:two-layers", .width = 3, .height = 2,
             .layers = {

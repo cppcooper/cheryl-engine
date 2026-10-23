@@ -1,4 +1,4 @@
-#include "file-storage.h"
+#include <cheryl/core/resources/map-storage/file-storage.h>
 #include "fixture.h"
 #include "cli-diagnostics.h"
 
@@ -7,7 +7,7 @@
 #include <string_view>
 
 namespace {
-    namespace MF = MapFixture;
+    namespace MF = CE::Maps;
 
     struct Progress {
         std::string_view phase = "arguments";
@@ -62,7 +62,7 @@ namespace {
         }
         const std::string_view command(argv[1]);
         progress.phase = "fixture";
-        const auto expected = MF::fixed_fixture();
+        const auto expected = MapFixture::fixed_fixture();
         const std::filesystem::path path(argv[2]);
         if (command == "round-trip") {
             progress.phase = "save";
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
         return consume(argc, argv, progress);
     } catch (const MF::Error& error) {
         try {
-            MF::Cli::print_error(std::cerr, error);
+            MapFixture::Cli::print_error(std::cerr, error);
             saved_note(progress);
             std::cerr.flush();
             return std::cerr ? 2 : 1;

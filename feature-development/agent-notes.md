@@ -5,8 +5,10 @@ Accepted U1 checkpoint `847d2a9c8fa8c190d2b55e0e59b596a9cbc4ff54` passed 86 focu
 cases. U2 adds private checked Linux path loading and safe replacement. Accepted
 U2F checkpoint `ef1d0ac741cdbe888d06d3f6216f8d1d2104f077` preserves native path
 meaning through ancestor symlinks/parent components and passed 122 cases.
-U3 adds the private CPU CLI; actual execution evidence is in [next.md](next.md). This
-is not acceptance of the full persistence milestone.
+Accepted U3 checkpoint `9efd4fd9f248fdd3aa7971d260d45c8449896bdc` adds the private CPU CLI
+with 136 passing cases. U4 extracts the same boundary into Engine-owned source and
+public CPU headers. Actual U4 execution evidence is in [next.md](next.md); this
+is not installed SDK, shared ABI or full persistence acceptance.
 The reader summary is [decisions.md](decisions.md);
 actual commands/results and the next unit are in [next.md](next.md).
 
@@ -17,18 +19,21 @@ U1 started from that clean checkpoint; U2 started clean at the accepted U1 commi
 U2F started clean at reviewed U2 checkpoint
 `4751b271b1c7c75ae8951d71cddd1e8e303930f6` and changes only path resolution,
 its private regression tests/comments and these internal records.
-U3 started clean at accepted U2F; the codec/adapter and format/resource limits
-remain intact. Only the private consumer, its fixture/diagnostics/tests, direct
-standalone target/registration and internal records belong to this assignment.
-Changes are confined to the private
-`projects/tests/map-storage/` implementation/tests/build entry and these records.
+U3 started clean at accepted U2F. U4 starts clean at the accepted U3 commit,
+retaining its logs and incremental build. Production values/codec/file operations
+move to `projects/engine/include/cheryl/core/resources/map-storage/` and
+`projects/engine/src/core/resources/map-storage/`. Only namespace, includes,
+visibility and boundary comments change there; wire/validation/I/O algorithms stay
+intact. Tests/CLI remain private and consume that implementation. The independent
+consumer lives at `projects/engine/tests/map-storage-consumer/`. No protected
+checkout, sibling, dependency pin, shared backend or published guide changes.
 
 The [workspace instructions](../../../AGENTS.md),
 [autonomy policy](../../../coordination/autonomy-policy.md), and
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
 and Git instructions were read, including `docs/AGENTS.md`. The current assignment
-authorizes U3 implementation, focused native verification and its local commit,
+authorizes U4 extraction, focused native verification and its local commit,
 and stops for coordinator acceptance. Protected source workspaces and sibling implementations are
 not prerequisites or execution sites.
 
@@ -38,22 +43,22 @@ or observed contract does not establish the user's personal taste.
 
 ## MS-001 CPU boundary
 
-U1 uses a private finite-map snapshot and CPU codec. It reconstructs two logical
+U1 introduced the finite-map snapshot and CPU codec, now owned by Engine in U4. It reconstructs two logical
 tile layers and a named spawn from memory, then compares values. U2 adds an
-explicit-path adapter in `file-storage.h`, with no Engine dependency. The CLI
+explicit-path adapter in `file-storage.h`, with no Engine startup dependency. The CLI
 now exercises these same operations in a fresh process. No unit creates an engine Context, game,
 provider, window,
 image cache, or asset loader. Discovery may locate content in a later application;
 it does not own persistence, select an output path, or make a write transactional.
 
-The private namespace is `MapFixture`, aliased as `MF` below. `Snapshot` owns
+The U4 production namespace is `CE::Maps`, aliased as `MF` in the retained fixture example below. `MapFixture` remains only in private fixture/CLI helpers. `Snapshot` owns
 strings, dimensions, ordered layers, optional tile keys, and spawn records; all
 constituent types support value equality. This caller fragment uses the
-implemented API from `codec.h` plus `<sstream>`; the corresponding complete
+implemented API from `<cheryl/core/resources/map-storage/codec.h>` plus `<sstream>`; the corresponding complete
 fixture and comparisons run in `codec-tests.cpp`:
 
 ```cpp
-namespace MF = MapFixture;
+namespace MF = CE::Maps;
 
 bool memory_round_trip() {
     const MF::Snapshot original{
@@ -108,12 +113,47 @@ Extending `FileIndex` or `FileRegistry` with map state would mix discovery and
 serialization and would not supply publication guarantees. Extending graphics
 `Loader::upload()` would introduce native ownership and its partial effects.
 Evidence: E01-E04, E07, H01-H04. **Confidence: high** in the required CPU boundary;
-medium in the private API shape. Reversal affects only private codec/tests and
-records; no public callers exist. No historical persistence preference is proven.
+medium in the public API naming. Reversal affects this branch's tests/CLI and the
+small source-tree consumer; there is no installed SDK acceptance. No historical persistence preference is proven.
+
+The U4 non-fixture caller (with `<iostream>`, `<sstream>` and
+`<cheryl/core/resources/map-storage/file-storage.h>`) is:
+
+```cpp
+namespace Maps = CE::Maps;
+Maps::Snapshot source{
+    "demo:garden", 2, 1,
+    {{"floor", {"demo:grass", std::nullopt}}},
+    {{"arrival", "floor", 0, 0}}
+};
+try {
+    auto bytes = Maps::encode(source);
+    std::istringstream input(bytes);
+    auto decoded = Maps::parse(input, "<memory>");
+    Maps::save(path, decoded); // caller-created controlled parent, single writer
+    auto restored = Maps::load(path);
+    const bool equal = restored == source; // every owned value, including empties
+    static_cast<void>(equal);
+} catch (const Maps::Error& error) {
+    const auto owned_error = error; // survives borrowed inputs and the catch scope
+    std::cerr << owned_error.operation << " " << owned_error.origin
+              << " at " << owned_error.location << ": " << owned_error.what();
+    if (owned_error.byte_offset)
+        std::cerr << " byte " << *owned_error.byte_offset;
+    // code, io_error, cleanup_error and staging_leftover retain separate details.
+}
+```
+
+This is a source-tree Engine API, not the CLI fixture's generalization into a save
+framework. Aggregate construction is intentionally unchecked; codec/save enforce
+all accepted validation. Errors remain synchronous/owning and CPU operations need
+no Context, assets, Runtime, Workers or renderer. The independent consumer authors
+`garden:north`, a different 2x3 soil/markers map with two named spawns, using only
+public includes and the declared target. MS-007/MS-009 own placement/build choices.
 
 ## MS-002 Logical identity and coordinates
 
-| Value | Private identity and meaning |
+| Value | Stored identity and meaning |
 | --- | --- |
 | Map | Owned qualified key `fixture:two-layers`; independent of filename or runtime instance address. Loading twice creates independent values with the same content identity. |
 | Layer | Map-local key, such as `ground` or `overlay`. Unique within that map. Vector order is authored order and must survive storage. |
@@ -147,7 +187,7 @@ ordered layers; low as a claim about personal taste. Coordinates are a reversibl
 fixture convention, not an agreement with the sibling tilemap branch. U1's value
 comparisons and independent copies pass. Changing semantic identity or coordinate
 meaning would require a deliberate format change once files acquire consumers;
-at present the reversal affects only this private codec and fixtures.
+in U4 reversal affects the public CPU representation and its branch-local callers.
 
 ## MS-003 Format and version
 
@@ -209,8 +249,8 @@ introduce semantics absent from this consumer. The existing graphics schema
 describes atlas assets, not world cells/spawns. None is ruled out for later needs.
 Evidence: E03, E05, E08, H02-H03. **Confidence: medium** in a reversible JSON
 prototype; low in any inference that the user prefers it for all persistence.
-Changing the private representation remains cheap while persisted files have
-only disposable private test consumers; a later accepted format needs explicit
+Changing the experimental representation still requires explicit compatibility
+review even though persisted files remain disposable test/consumer data; a later accepted format needs explicit
 version handling for incompatible changes.
 
 ## MS-004 Validation and load publication
@@ -268,13 +308,13 @@ Evidence: E03-E06 and the acceptance brief. **Confidence: high** in complete
 validation and unchanged caller state; medium in these initial budgets. U1's
 executed cases cover these limits, duplicate handling and preservation. Budgets
 are bounds on acquired bytes and logical DOM growth, not an exact heap-byte or
-latency guarantee. They remain private constants: revising them costs focused
-boundary tests and record updates. The current manifest parser alone would not
-have supplied these guarantees.
+latency guarantee. U4 exposes these fixed v1 constants: revisions change observable
+acceptance and require focused boundary checks, caller review and record updates.
+The current manifest parser alone would not have supplied these guarantees.
 
 ## MS-005 Ownership and failure reporting
 
-Implemented private operations:
+Implemented Engine-owned CPU operations:
 
 ```cpp
 Snapshot parse(std::istream& input, const std::filesystem::path& origin);
@@ -303,7 +343,7 @@ borrowed streams/snapshots stable, serializes access to the same input object, a
 settles calls before destroying inputs. No job acceptance/completion split,
 asynchronous cancellation, game thread, or shutdown pump is introduced.
 
-The owning private `Error` derives from `std::runtime_error` and carries a `Code`,
+The owning `CE::Maps::Error` derives from `std::runtime_error` and carries a `Code`,
 operation, diagnostic origin, field location, optional one-based byte offset,
 and an I/O error code when a stream signals one. U1 categories are `Read`,
 `Malformed`, `UnsupportedFormat`, `UnsupportedVersion`, `InvalidValue` and
@@ -338,13 +378,13 @@ become frequent in a future UI. Exceptions currently fit a short synchronous
 consumer and several existing readers, but historical errors are inconsistent.
 Reusing private engine exceptions would add unnecessary Engine coupling; empty
 returns would obscure failures. Evidence: E01-E04, E07, H02-H04.
-**Confidence: medium** in this private error shape; high in ownership isolation.
+**Confidence: medium** in this exception shape; high in ownership isolation.
 It is an engineering choice, not a recovered personal error-handling rule.
 U1 injected I/O, allocation and programming failures and retained diagnostics
 passed focused checks. U2 adds native-read, close, file-phase and leftover tests;
-see [next.md](next.md) for actual results. Changing error style affects only the
-private caller/tests now; no general result abstraction or public exception
-hierarchy is selected.
+see [next.md](next.md) for actual results. Changing error style now affects the public CPU declarations, private CLI/tests
+and independent source-tree consumer. No general result abstraction or shared
+exception hierarchy is selected; shared-library/CRT ABI remains unverified.
 
 U3 renders owning Error fields through `Cli::print_error`: category, operation,
 origin and location, known byte offset and native error category/value/message,
@@ -365,7 +405,7 @@ nonregular destination. Assume the caller controls the directory and does not
 concurrently change paths. A future platform adapter must establish equivalent
 replacement behavior; unsupported platforms reject before touching the target.
 
-The implemented private file adapter (`file-storage.cpp`, E11) does the following:
+The Engine-owned file adapter (`file-storage.cpp`, E11/E14) does the following:
 
 1. Reject empty paths and embedded native NUL before any filesystem syscall.
    Make absolute once with `absolute(...)`, preserving every path component for
@@ -479,17 +519,30 @@ Exact commands/counts/evidence are in [next.md](next.md).
 
 ## MS-007 Integration and implementation placement
 
-The implementation is private under `projects/tests/map-storage/` with namespace
-`MapFixture`. The standalone CMake entry adds `map_storage_cli`, linking only
-codec/adapter and the ordinary C++ runtime. The existing test runner adds pinned
-gtest/gtest_main; CLI acceptance uses the already available Python interpreter
-and standard library (no package install). CLI cases are registered for Linux,
-the accepted file profile. No Engine/platform/graphics target or sibling is used.
-Generated compile/link inputs and executed headless evidence are recorded in
-[next.md](next.md). The current Engine target has
-additional dependency edges (E08), so an
-Engine-linked headless process alone would not establish this smaller boundary.
-Do not export a new SDK component before the caller and failure checks work.
+U4 moves the single authoritative implementation into Engine public headers and
+source under `core/resources/map-storage`, using `CE::Maps`. This is an engineering
+choice following existing Engine resource placement and concern-specific nested
+namespaces (E02/E03/E14), not recovered personal taste. The standard owned values
+remain aggregates; the real noninline parse/encode/load/save and Error constructor
+carry `CE_API`. Error also uses `CE_TYPE_API` for public ELF RTTI, consistent with
+existing member-exported types. JSON and `FileOps` stay in production source/private
+includes; only fault tests receive a private source-directory include.
+
+Existing Engine recursive source discovery already selects the moved .cpp files;
+no root build/integration refactor is needed. The small Engine-owned
+`cmake/MapStorageCpu.cmake` defines source-tree `Cheryl::MapStorageCPU` (backed by
+`map_storage_codec`) for CPU verification, compiling exactly those production
+files. It declares C++23, Engine's public include root and `CE_ENGINE_STATIC`
+publicly; JSON 3.11.3 is private. It neither configures nor links the full Engine.
+The ordinary Engine build retains its own visibility owner and compiles these
+same files directly. Mixing the two alternate producers in one binary is not an
+accepted configuration; no new installed component/export manifest is added.
+
+Tests, literal fixture, diagnostic renderer and CLI stay under
+`projects/tests/map-storage/`, consuming the same public API. `MapFixture` now
+names only private fixture/formatter helpers. The CLI's exact behavior and wire
+identity stay accepted as MS-003/MS-008. Test-only gtest/Python dependencies are
+conditional (MS-009). Source/link/probe and execution evidence is in [next.md](next.md).
 
 | Neighbor | Overlap to record | Boundary retained |
 | --- | --- | --- |
@@ -498,14 +551,14 @@ Do not export a new SDK component before the caller and failure checks work.
 | Future level lifecycle | A map identity and a named spawn can select content and an entry point. | Loading returns an inactive candidate. A future lifecycle owner validates/resolves it and decides when to replace an active level. Storage creates no entity, changes no active game, schedules no unload, and owns no renderer resource lifetime. |
 | Settings/dialogue and save games | They may eventually benefit from the publication mechanism. | Do not share a new format or make a sibling branch a dependency. Session flags, entity IDs, RNG/time, save slots, content migrations and multi-file transactions need their own demonstrated consumers. |
 
-A shared world model now would lock in sibling choices that have not been
-reviewed. Private duplication costs a later adapter/extraction, but leaves both
-branches independently demonstrable. Promote only the proven reusable boundary
-after the CLI and fault cases, keeping internal decision IDs current. Evidence:
-E05-E09, H02-H05 and the workspace brief. **Confidence: high** in independence
-and deferred lifecycle policy; medium in this private placement. Relocating these
-private targets is cheap; public extraction remains deferred. Final public
-names, integration ownership, and save-game composition remain unselected.
+A shared world model would lock in unreviewed sibling choices. The selected
+extraction reuses only the proven value/codec/file boundary, leaving future
+adapters and level adoption separate. Keeping a test-tree implementation or
+copying it into production would leave competing authorities. A large resource
+manager API would add lifetime policy without a consumer. **Confidence: high**
+in CPU isolation and source ownership; medium in final namespace/header/target
+names. Reversal changes branch-local includes and its small callers; persisted
+wire bytes do not change. Full Engine/shared/installed ABI acceptance is deferred.
 
 ## MS-008 Private CLI contract
 
@@ -552,13 +605,41 @@ wording, which is not a published machine protocol.
 Reversal affects only private CLI, formatter and harness. No SDK extraction or
 new persistence format is selected by this unit.
 
+## MS-009 Source-tree CPU usage requirements and tests-off consumer
+
+The standalone entry retains tests on by default. `MAP_STORAGE_BUILD_TESTS=OFF`
+returns before any gtest or Python check/discovery, while leaving the CLI and
+production CPU link target available. This explicit local option avoids changing
+shared infrastructure. Static visibility and include/language requirements belong
+to the producer; consumers link `Cheryl::MapStorageCPU` without definitions or
+private include patches. This is a build-tree proof, not an installed SDK target.
+
+The independent Engine test-consumer CMake entry configures that tests-off path
+and builds its own main plus three header-first translation units. It includes
+no test-tree headers, fault seam or JSON. Its CMake-only process checks need no
+Python/gtest: memory ownership/retained errors; author then separate literal
+verify after source mutation/destruction; invalid B save preserving exact valid A
+bytes followed by separate A reload/compare. Unique build children retain outputs
+and exit statuses. The regular 136-case suite keeps every accepted name/behavior.
+
+Link/source inspection distinguishes source-tree CPU execution from full Engine,
+shared DLL/RTTI/CRT, installation/relocation or SDK packaging acceptance. The latter
+remain unverified. A separate configuration is necessary to expose accidental
+Python/gtest/Engine usage that the existing tests-on build could mask. Reusing
+root Engine consumer infrastructure would introduce unwanted dependencies; a
+consumer-local implementation copy would not prove production consumption.
+**Confidence: high** in the scoped usage requirements; medium in this provisional
+proof target's final name. Reversal is limited to source-tree CMake/consumer files
+and declared names, with no wire or semantic migration. No user-taste inference.
+
 ## Source evidence
 
 Current-source references E01-E09 describe inspection at
 `3542f883391d4225329dab8d5d61a5987e69c8f0`. They are compatibility facts, not
 evidence of personal preference, even where Git lists the established author
-identity. The baseline manifest tests below were not executed; private implementation
-and executed-test evidence are identified separately as E10-E13.
+identity. The baseline manifest tests below were not executed; implementation
+and executed-test evidence are identified separately as E10-E14. E10-E12 links
+follow the U4 moves; historical source/checkpoint provenance remains unchanged.
 
 | ID | Exact source locations and observed contract |
 | --- | --- |
@@ -571,10 +652,11 @@ and executed-test evidence are identified separately as E10-E13.
 | E07 | [First-game consumer](../projects/apps/first-game/src/first-game.cpp), lines 35-56; [tutorial consumer](../projects/apps/tutorial-game/src/game.cpp), lines 37-54; [asset demo](../projects/apps/demo/src/asset-demo.cpp), lines 73-100; [audio demo](../projects/apps/demo/src/audio-demo.cpp), lines 32-44. Games upload then retrieve named assets; demo can parse an explicit manifest, then load resources. Audio opens/streams a discovered path separately. Discovery, parsing, and native realization have different owners. |
 | E08 | [Engine build declarations](../projects/engine/CMakeLists.txt), lines 21-45; [.gitmodules](../.gitmodules), lines 28-30; baseline tree gitlink `extern/json` at `b36f4c477c40356a0ae1204b567cca3c2a57d201`. Engine uses C++23 and private JSON includes, with other dependency links. The header was absent at the design checkpoint; it is now populated by the coordinator. Engine itself was not configured/built for U1. |
 | E09 | [Status](../docs/STATUS.md), lines 100-103; [manifest metadata gaps](../docs/planning/long-term/asset-manifest-metadata.md); [discovery guide](../docs/site/assets/file-and-font-discovery.md), lines 16-62. Documented intent distinguishes save serialization from manifest parsing and defers world storage. Missing semantic artwork metadata must not be invented. The current task selects this narrow experiment without reconciling published roadmaps. |
-| E10 | U1 [values](../projects/tests/map-storage/snapshot.h), [private API](../projects/tests/map-storage/codec.h), [codec](../projects/tests/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
-| E11 | U2 [path API](../projects/tests/map-storage/file-storage.h), [native adapter](../projects/tests/map-storage/file-storage.cpp), [private fault boundary](../projects/tests/map-storage/file-operations.h), [real-file/fault tests](../projects/tests/map-storage/file-storage-tests.cpp). The unchanged schema/codec is used through its existing stream boundary; Error gains only file categories/cleanup fields and printable NUL path handling. Build/test commands, saved logs, nonempty selections and outcome limits are in [next.md](next.md). This is current agent-authored compatibility evidence, not user preference evidence. |
-| E12 | U2F [resolver](../projects/tests/map-storage/file-storage.cpp) `Detail::resolve` preserves components in `absolute(input)`; [file regressions](../projects/tests/map-storage/file-storage-tests.cpp) `files::ancestor_parent` and four `files.ancestor_parent_*` cases distinguish native and lexically simplified targets. Expected pre-fix failure and final discovery/build/native outcomes are saved separately in [next.md](next.md). This corrects the E11 implementation contract; no historical preference is inferred. |
+| E10 | U1 [values](../projects/engine/include/cheryl/core/resources/map-storage/snapshot.h), [codec API, public after U4](../projects/engine/include/cheryl/core/resources/map-storage/codec.h), [codec](../projects/engine/src/core/resources/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
+| E11 | U2 [path API](../projects/engine/include/cheryl/core/resources/map-storage/file-storage.h), [native adapter](../projects/engine/src/core/resources/map-storage/file-storage.cpp), [private fault boundary](../projects/engine/src/core/resources/map-storage/file-operations.h), [real-file/fault tests](../projects/tests/map-storage/file-storage-tests.cpp). The unchanged schema/codec is used through its existing stream boundary; Error gains only file categories/cleanup fields and printable NUL path handling. Build/test commands, saved logs, nonempty selections and outcome limits are in [next.md](next.md). This is current agent-authored compatibility evidence, not user preference evidence. |
+| E12 | U2F [resolver](../projects/engine/src/core/resources/map-storage/file-storage.cpp) `Detail::resolve` preserves components in `absolute(input)`; [file regressions](../projects/tests/map-storage/file-storage-tests.cpp) `files::ancestor_parent` and four `files.ancestor_parent_*` cases distinguish native and lexically simplified targets. Expected pre-fix failure and final discovery/build/native outcomes are saved separately in [next.md](next.md). This corrects the E11 implementation contract; no historical preference is inferred. |
 | E13 | U3 [consumer](../projects/tests/map-storage/cli.cpp), [literal fixture](../projects/tests/map-storage/fixture.h), [diagnostic renderer](../projects/tests/map-storage/cli-diagnostics.h), [formatter tests](../projects/tests/map-storage/cli-diagnostics-tests.cpp), [process harness](../projects/tests/map-storage/cli-checks.py), and direct [standalone target/registration](../projects/tests/map-storage/CMakeLists.txt). No codec/adapter/schema change. Implementation facts and delegated CLI requirements are engineering evidence; actual commands/counts/outcomes and source/link inspection are in [next.md](next.md), not preference evidence. |
+| E14 | U4 [production declarations](../projects/engine/include/cheryl/core/resources/map-storage/codec.h), [native adapter](../projects/engine/src/core/resources/map-storage/file-storage.cpp), [CPU target](../projects/engine/cmake/MapStorageCpu.cmake), [independent consumer](../projects/engine/tests/map-storage-consumer/main.cpp) and [probes/process registration](../projects/engine/tests/map-storage-consumer/CMakeLists.txt). Placement/visibility follow [Engine source discovery](../projects/engine/CMakeLists.txt), [export macros](../projects/engine/include/cheryl/export.h), E02/E03 and existing [Camera type/member decorators](../projects/engine/include/cheryl/core/rendering/camera.h). Current agent-written conventions establish compatibility, not personal preference. Actual U4 checks and gaps are recorded in next.md. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -616,12 +698,12 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-U1 and U2F are accepted. This assignment implements U3 only and stops for
-coordinator acceptance. Executed evidence is recorded in [next.md](next.md).
+U1 through U3 are accepted. This assignment implements U4 only and stops for
+coordinator review. Executed evidence is recorded in [next.md](next.md).
 
 1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
    validation, bounded JSON parse/encode and 86 passing focused checks under
-   `projects/tests/map-storage/`. Its codec uses only standard C++ and private
+   `projects/tests/map-storage/` originally (moved in U4). Its codec uses standard C++ and private
    declared JSON headers; the test runner adds pinned gtest. [next.md](next.md)
    owns reproducible commands and verification limits.
 2. **U2 — File publication adapter, implemented.** Explicit-path load/save,
@@ -634,8 +716,13 @@ coordinator acceptance. Executed evidence is recorded in [next.md](next.md).
 3. **U3 — CLI acceptance, implemented.** Literal fixture, round-trip/verify,
    complete equality, owning stderr diagnostics and process-level checks. Keep
    source/observed-results distinctions and acceptance with the coordinator;
-   extraction and integration require a later assignment. No rendering, game
+   U4 extraction is now assigned; integration remains separate. No rendering, game
    startup, sibling merge or artwork is needed.
+
+4. **U4 — Engine-owned CPU boundary, implemented.** Move the single value/codec/file
+   implementation; adapt CLI/tests, target usage requirements and tests-off entry;
+   add header-first probes and an independent public-API non-fixture consumer.
+   No installed SDK export or full Engine/shared/ABI acceptance is claimed.
 
 Each unit keeps the decision summary and next action consistent with actual
 evidence. The U1 pre-interruption checks used the then-current shared
@@ -653,8 +740,8 @@ ownership and deterministic encoding. U2 exercises A5/A6 via private real-file
 and fault tests, plus checked load and codec regressions. U3's standalone round-trip
 and fresh verify both exited 0; all 136 cases passed (the accepted 122, two formatter
 cases and twelve process cases with 71 actual CLI invocations). These demonstrate
-the private CLI portions of A1/A2/A7 on this host; coordinator acceptance remains
-separate. Commands, outputs/statuses and limits are recorded in [next.md](next.md).
+the private CLI portions of A1/A2/A7 on this host; U4 extends proof to the
+Engine-owned source-tree CPU boundary. Coordinator review remains separate. Commands, outputs/statuses and limits are recorded in [next.md](next.md).
 
 | Check | Required observation |
 | --- | --- |
@@ -668,11 +755,22 @@ separate. Commands, outputs/statuses and limits are recorded in [next.md](next.m
 
 Material open points are filesystem behavior beyond this tested local profile, future
 Windows/durability support, additional toolchain acceptance, and future
-tilemap/asset binding and level adoption contracts. The API and budgets are
-deliberately private so findings can revise them before public callers accumulate.
+tilemap/asset binding and level adoption contracts. The Engine CPU API preserves the accepted v1 representation/budgets. Findings
+can still revise provisional source-tree names before installed callers accumulate;
+compatibility costs now include the private CLI/tests and independent consumer.
 
 U1's accepted verification was the standalone Debug build and 86 executed codec
 cases. U2 adds the native adapter/file cases and source/link review, with actual
 counts/commands in [next.md](next.md). U3 adds a private CLI; its actual checks and
 limits are recorded there. Successful checks and these local checkpoints do not establish the
 full map-storage feature's acceptance.
+
+U4 actual evidence: the exact accepted 136 names all passed after extraction;
+three independent consumer checks have passing outcomes, with three header-first
+probes built. One overly strict new consumer assertion on the truncated diagnostic
+location failed initially; only that memory assertion/output changed, then its
+focused rerun passed. Production algorithms remained byte-identical after
+namespace/include substitution. The unchanged two process cases were not rerun.
+Full commands, initial failure/fix provenance, complete logs and remaining full
+Engine/shared/SDK gaps are in next.md. These observations establish only the
+source-tree CPU boundary, not complete map-storage or installed acceptance.

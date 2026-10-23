@@ -1,4 +1,4 @@
-#include "codec.h"
+#include <cheryl/core/resources/map-storage/codec.h>
 
 #include <nlohmann/json.hpp>
 
@@ -11,7 +11,7 @@
 
 static_assert(NLOHMANN_JSON_VERSION_MAJOR == 3 && NLOHMANN_JSON_VERSION_MINOR == 11 && NLOHMANN_JSON_VERSION_PATCH == 3);
 
-namespace MapFixture {
+namespace CE::Maps {
     namespace {
         std::string diagnostic_path(const std::filesystem::path& origin) {
             auto text = origin.string();

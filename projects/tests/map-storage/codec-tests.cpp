@@ -1,4 +1,4 @@
-#include "codec.h"
+#include <cheryl/core/resources/map-storage/codec.h>
 
 #include <gtest/gtest.h>
 
@@ -10,7 +10,7 @@
 #include <utility>
 
 namespace {
-    namespace MF = MapFixture;
+    namespace MF = CE::Maps;
     const std::filesystem::path source = "fixture/input.map.json";
 
     MF::Snapshot fixture() {

@@ -1,169 +1,187 @@
-# Map-storage U3 local checkpoint and next action
+# Map-storage U4 checkpoint and next action
 
-U3 implements the private CPU CLI over accepted U2F
-`ef1d0ac741cdbe888d06d3f6216f8d1d2104f077`. The codec/adapter, versioned format,
-resource limits and native path semantics are unchanged. All **136 focused cases
-passed**, with no failures/skips: the exact 122 accepted file/codec names, two
-formatter cases and twelve process cases. Coordinator acceptance of this local
-U3 checkpoint is next. No SDK extraction, integration or later phase was started.
-The coordinator publisher owns checkpoint transport; this worker does not push
-or alter remotes.
+U4 extracts the accepted U3 boundary (`9efd4fd9f248fdd3aa7971d260d45c8449896bdc`)
+into Engine-owned public CPU headers/source. The exact **136 accepted regression
+names all passed** after extraction; the three new independent consumer cases
+have passing outcomes, and all three public header-first probes built. One new
+consumer diagnostic assertion failed initially, was corrected, and passed its
+focused rerun as detailed below. Coordinator review of this coherent local
+checkpoint is the next action. No subsequent unit starts automatically; the
+coordinator publisher owns checkpoint transport.
 
-## Small consumer and implemented behavior
+## Implemented boundary and small caller
 
-```text
-map_storage_cli round-trip <file>
-map_storage_cli verify <file>
-```
+Public headers are `cheryl/core/resources/map-storage/{snapshot,codec,file-storage}.h`,
+namespace `CE::Maps`. Snapshot/Layer/Spawn own standard values and support complete
+equality. parse/encode/load/save and Error's constructor declare CE_API; Error
+also has CE_TYPE_API for public ELF type visibility. No JSON or native FileOps
+appears in the public headers. The only authoritative codec/adapter files now
+live in `projects/engine/src/core/resources/map-storage/`; private FileOps stays
+beside them. Tests/CLI retain their existing fixture, behavior and names, consuming
+those exact files. `MapFixture` remains only in private fixture/formatter helpers.
 
-Both require exactly one explicit nonempty path. Round-trip deliberately writes
-the literal asymmetric 3x2 fixture through save (and may replace an existing
-regular file), loads it and compares the complete owned Snapshot. Verify only
-loads/compares; it never creates, rewrites, repairs or supplies defaults. No
-implicit filenames, asset search, cwd changes, interaction or automatic retry
-exist. Standalone --help exits 0 and usage states the writing/read-only behavior.
+The small non-fixture caller in [agent-notes.md](agent-notes.md#ms-001-cpu-boundary)
+authors an owned Snapshot, encodes/parses it, saves/loads an explicit path and
+inspects a copied owned Error. MS-007/MS-009 in both [decision views](decisions.md)
+record placement, export/usage requirements, alternatives, confidence and reversal.
+The independent executable authors a different `garden:north` 2x3 soil/markers
+map with gate at soil(0,2), lookout at markers(1,0), twelve literal cells/empties
+and complete equality; it includes no fixture/test headers or private seams.
 
-Success 0 prints map ID, dimensions, ordered layers and named entry to stdout.
-Storage/format rejection 2, valid mismatch 3, usage 64 and unexpected failure 1
-use stderr. Owning storage diagnostics retain category, operation, origin/location,
-known byte offset/native error, primary detail and separate cleanup/leftover
-fields. Completed saves are explicitly reported if a later load/comparison/output
-failure occurs; those failures do not claim old-byte preservation. Stdout is
-flushed/checked, stderr is untied from stdout, and SIGPIPE is ignored only in the
-CLI process where available. Full contracts, confidence and alternatives are
-[MS-008](agent-notes.md#ms-008-private-cli-contract), with matching
-[decisions](decisions.md).
+Wire identity remains `cheryl.map-fixture`, integer version 1. No validation,
+budget, deterministic encoding, diagnostic precedence, ownership or I/O algorithm
+changed. `u4-logs/algorithm-identity.txt` confirms codec.cpp, file-storage.cpp and
+file-operations.h are identical to accepted U3 after namespace/include
+substitution. Header changes add Engine visibility and necessary CPU contracts.
+Native paths remain absolute once with original components, honoring ancestor
+symlink/.. selection and rejecting final symlinks/nonregular targets. Staging,
+checked short I/O/EINTR, descriptor relinquishment before exactly-once close,
+owned cleanup/primary diagnostics and one rename commit remain intact.
 
 ## Actual configure/build/native commands
 
-All commands ran from this clone through the existing shared wrapper, one job,
-reusing `build/map-storage-u1-debug` (Ninja, GNU C++ 16.2.1, Debug). Complete
-stdout/stderr and final statuses are retained under `u3-logs`. Each command also
-captured `$?` to its matching `.exit` file and returned that status. The original
-configure session remained active until completion; it was not cancelled or
-relaunched while waiting under the shared wrapper. No resource/admission refusal occurred.
+All commands ran from this clone through `/mnt/projects/cheryl-features/scripts/build`,
+one job, with complete output and immediate status retained in the indicated
+build's `u4-logs/`. Existing Debug outputs/logs were preserved. The separate
+configuration exposes a tests-off dependency/usage boundary that tests-on cannot
+establish. It configures the standalone entry with MAP_STORAGE_BUILD_TESTS=OFF,
+then consumes only Cheryl::MapStorageCPU's declared public interface. The CLI
+is still available as an excluded target; no fixture source is compiled/linked
+into the independent consumer.
 
 ```bash
-/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/tests/map-storage -B build/map-storage-u1-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON > build/map-storage-u1-debug/u3-logs/configure.log 2>&1
-/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u1-debug --target map_storage_cli map_storage_tests --parallel 1 > build/map-storage-u1-debug/u3-logs/build.log 2>&1
-/mnt/projects/cheryl-features/scripts/build -- build/map-storage-u1-debug/map_storage_cli round-trip '/mnt/projects/cheryl-features/projects/map-storage/build/map-storage-u1-debug/u3-logs/smoke-xhnmggww/fixture.map.json' > build/map-storage-u1-debug/u3-logs/round-trip.stdout 2> build/map-storage-u1-debug/u3-logs/round-trip.stderr
-/mnt/projects/cheryl-features/scripts/build -- build/map-storage-u1-debug/map_storage_cli verify '/mnt/projects/cheryl-features/projects/map-storage/build/map-storage-u1-debug/u3-logs/smoke-xhnmggww/fixture.map.json' > build/map-storage-u1-debug/u3-logs/verify.stdout 2> build/map-storage-u1-debug/u3-logs/verify.stderr
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug -R '^map_storage\.' --show-only=json-v1 --no-tests=error --parallel 1 > build/map-storage-u1-debug/u3-logs/discovery.json 2> build/map-storage-u1-debug/u3-logs/discovery.stderr
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug -R '^map_storage\.' --output-on-failure --no-tests=error --parallel 1 > build/map-storage-u1-debug/u3-logs/all-tests.log 2>&1
+/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/tests/map-storage -B build/map-storage-u1-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u1-debug --target map_storage_cli map_storage_tests --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/engine/tests/map-storage-consumer -B build/map-storage-u4-consumer-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMAP_STORAGE_BUILD_TESTS=OFF -DCMAKE_DISABLE_FIND_PACKAGE_Python3=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u4-consumer-debug --target map_storage_consumer map_storage_header_probes --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug -R '^map_storage\.' --show-only=json-v1 --no-tests=error --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u4-consumer-debug -R '^map_storage\.consumer\.' --show-only=json-v1 --no-tests=error --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug -R '^map_storage\.' --output-on-failure --no-tests=error --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u4-consumer-debug -R '^map_storage\.consumer\.' --output-on-failure --no-tests=error --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u4-consumer-debug --target map_storage_consumer --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u4-consumer-debug -R '^map_storage\.consumer\.memory$' --output-on-failure --no-tests=error --parallel 1
 ```
 
-Every command exited 0. Configure used existing `/usr/bin/python3.14` (3.14.7),
-standard library only; no package/tool/dependency download, install or pin change
-was needed. The build emitted no warnings. JSON remains privately pinned to
-3.11.3 (`b36f4c477c40356a0ae1204b567cca3c2a57d201`), gtest remains
-`6dae7eb4a5c3a169f3e298392bff4680224aa94a`. No asset input was required.
+Configure/build outputs were redirected to `configure.log`/`build.log` (both
+stdout/stderr), discovery JSON to `discovery.json` with separate
+`discovery.stderr`, and CTest output to `all-tests.log`. The final consumer-only
+build/check use `build-fix.log` and `memory-after-fix.log`. Each command saved its
+immediate `$?` in the corresponding `.exit` and returned that status. All exited
+0 except the first three-case consumer CTest, which exited 8 on the assertion
+below; it remains saved as both `all-tests.*` and `initial-all-tests.*`.
+Initial and final consumer LastTest logs are retained separately. No output
+truncation prevents inspection of an actual error.
 
-Discovery was nonempty and compared by exact names against accepted
-`u2f-logs/discovery-after.json`: all 122 retained, plus 12 `map_storage.cli.*`
-and two `map_storage.cli_output.*` cases. The comparison is saved in
-`u3-logs/discovery-comparison.json`. CTest executed 136/136 passes in 9.19 seconds
-(9.05 summed test seconds), no skips. `u3-logs/all-tests.log` and the updated
-`Testing/Temporary/LastTest.log` retain full results/per-case output. No passing
-broad selection was repeated and no test failure or acceptance gap was hidden by
-zero discovery or runner status alone.
+The tests-on Ninja/GNU C++ 16.2.1 Debug build reused pinned gtest
+`6dae7eb4a5c3a169f3e298392bff4680224aa94a` and private JSON 3.11.3
+`b36f4c477c40356a0ae1204b567cca3c2a57d201`. No dependency/pin/asset or system-tool
+change was needed. Tests-off configures/builds with no gtest or Python discovery,
+and no legacy dependency policy override is needed there. It produced one CMake
+unused-variable warning for CMAKE_DISABLE_FIND_PACKAGE_Python3 because no find
+call reached it; neither native build emitted compiler warnings. Both build
+configurations declare C++23 and CE_ENGINE_STATIC through the producer interface,
+not consumer compile-definition patches.
 
-## Actual independent smoke and process outcomes
+## Discovery and executed results
 
-The standalone commands used a unique `u3-logs/smoke-xhnmggww` child. Both exited
-0, wrote no stderr and printed:
+`build/map-storage-u1-debug/u4-logs/discovery-comparison.json` records exact set
+equality with preserved U3 discovery: 136 retained, zero missing/added; independent
+consumer discovery is nonempty with memory, round_trip and preservation. Discovery
+commands finished with exit 0. An early static JSON comparison read the pending
+output too soon and got JSONDecodeError; the original live sessions completed and
+only that static comparison was rerun successfully. No native command was
+cancelled/relaunched or repeated to work around queueing/admission.
 
-```text
-round-trip: map=fixture:two-layers dimensions=3x2 layers=[ground,overlay] spawn=entry@ground(1,1)
-verify: map=fixture:two-layers dimensions=3x2 layers=[ground,overlay] spawn=entry@ground(1,1)
-```
+- **Accepted regressions:** 136/136 passed, no failures/skips, 9.14 seconds real
+  (9.05 summed test seconds). This retains 86 codec, 36 file, two formatter and
+  twelve CLI process cases. Full `all-tests.log` and copied `LastTest.log` are
+  under the reused build's u4-logs. The CLI harness made 71 real invocations;
+  `cli-process-summary.json` inventories their unique retained fixture roots and
+  expected/actual statuses: eighteen 0, two 1, sixteen 2, twenty-five 3 and ten 64.
+  Every deliberate rejection/mismatch/output-failure exit matched expectations.
+  Native path meaning, genuine rename/staging failure, exact predecessor
+  preservation, explicit retry, fresh verification and honest post-save output
+  failures remain covered. The unchanged passing selection was not rerun.
+- **Independent consumer:** initial run passed round_trip and preservation but
+  failed memory because the new assertion demanded exactly `$` for input `{`.
+  The unchanged SAX parser correctly reports `$[""]` (pending decoded object
+  member), offset 2. Only consumer memory assertion/output changed: require an
+  owned root-based location consistent with what(), plus exact Malformed code,
+  parse operation, retained origin and known positive offset. The focused memory
+  rerun passed 1/1 in 0.01 seconds. The two unaffected passing file cases were
+  not repeated; aggregate latest evidence covers all three cases.
+- **Owned memory/error boundary:** source Snapshot, string and streams are
+  mutated/destroyed; both parsed values and an independent copy remain completely
+  equal to the literal. Editing one result leaves another unchanged. A failed
+  parse preserves the existing destination; copied Error retains category,
+  operation, original origin, location/message and offset after inputs disappear.
+- **Actual fresh processes:** round_trip executes author then fresh-verify.
+  Save completes before the authored source is mutated/destroyed. A new process
+  loads twice, compares every field/cell/empty/spawn against its literal expected
+  data and checks independence. The CMake harness compares exact bytes around
+  verification. `garden.map.json` is 509 bytes, SHA-256
+  `ce8f5a705167332edf2b1791be94c314a59ba43647874b6d5ec3b37efbfe0308`.
+- **Public checked preservation:** preservation seeds distinct valid A, captures
+  exact bytes, then passes invalid B with one cell removed to save. It catches
+  owned InvalidValue / encode / <snapshot> / $.layers[0].cells before staging,
+  checks no cleanup/leftover/native error, exact A bytes and full reload. A separate
+  verify-predecessor process compares literal A completely, retaining bytes.
+  This new case is a validation failure, not a claim of another native write
+  fault. The accepted 136 retain native I/O fault coverage. A is 514 bytes,
+  SHA-256 `035e663fd38c8115cafe667aff8ba3249e67e9bc12175f051672c4e605e2ea94`.
 
-The first bytes were saved as `round-trip.bytes`. Separate verification left
-exact bytes unchanged; decoded content also equals the independent Python literal,
-including all twelve values/empties and entry on ground at (1,1). SHA-256 before
-and after was `9704e93957e9fe26ae30476e12879ebc4d7c47d85d070cef4c2b90bf7c087a1e`.
-`smoke.json` retains the explicit file path. These were actual separate executable
-invocations before the automated CLI selection, not an in-process main shim.
+Consumer fixtures live only in unique children under
+`build/map-storage-u4-consumer-debug/consumer-checks/`. Their stdout/stderr,
+commands and immediate exits remain in each child; `u4-logs/process-summary.json`
+inventories six actual invocations: the initial memory check failure, its passing
+rerun and four passing author/verify/preserve/fresh-predecessor invocations.
+This initial exit 1 was a failed check, not a deliberate rejection fixture.
+`published-files.json` retains paths, sizes, hashes and decoded identities.
 
-The twelve process cases made **71 actual CLI invocations**, each with saved
-stdout/stderr, PID, argv, cwd and expected/actual exit under unique build-local
-`cli-checks/<case>-<suffix>/calls/` children. `process-summary.json` inventories
-these retained artifacts. Intentional outcomes were 18 exits 0, two exits 1,
-16 exits 2, 25 exits 3 and ten exits 64; all matched expectations. These nonzero
-child results are deliberate fixtures, not failed CTest checks.
+## Source/link/header proof and limits
 
-- Round-trip/fresh verify and repeated replacement compare against an independent
-  literal and exact deterministic bytes. Twenty-three valid differing documents
-  exercise map ID, dimensions, layer order/count/identity, each cell/empty in both
-  layers, each spawn field and extra/absent spawns; every verify returns 3 and
-  leaves bytes unchanged. Equality compares all owned fields, not counts/sizes.
-- Malformed/truncated JSON returns 2 with category/operation/origin/location and
-  known byte offsets. Unsupported integer version 2 and another format return 2
-  with their specific categories/fields. Existing files stay byte-for-byte intact.
-- Missing file/parent, final/dangling symlinks, directory/FIFO targets and all
-  missing/extra/unknown/empty-path argument cases return expected rejection/usage
-  statuses. Verify creates/repairs nothing, including on absence/failure. The
-  profile tests also preserve symlink targets and rejected-entry identities.
-- Absolute/relative ancestor-symlink/.. calls select the native parent, retain
-  untouched lexical-neighbor bytes, and work for both existing/absent native
-  targets. Child working directories are set at process creation; the CLI never
-  changes cwd. The four accepted U2F regressions also pass unchanged.
-- The normal CLI's genuine failed-write case ran as UID 1000 on this clone's ext4:
-  owned parent mode 0500 prevented mkostemp, yielding exit 2, category Open,
-  operation save, location $create and native `generic:13` (Permission denied).
-  Exact predecessor bytes remained and verify returned 3 before/after, proving a
-  valid full reload of intentionally different A. Status sequence was 3,2,3,0,0:
-  finally restored original parent mode 0755, explicit round-trip retry and
-  separate verify then succeeded. No target-read-only trick or CLI fault control
-  was needed; the disposable directory alone was changed/restored.
-- Read-only stdout descriptor and pipe-without-reader fixtures each returned 1
-  after save, reported `unexpected failure during output` and `save completed;
-  subsequent failure does not undo that publication`. The published literal
-  remained readable; independent verify returned 0 after each. The stdout
-  sentinel was unchanged and no old-byte/rollback claim was made.
-- Two formatter cases check known offset/native errors and combined primary plus
-  cleanup error/owned leftover. They retain primary details/category/location;
-  combined cleanup failure is injected directly in the private formatter test,
-  not claimed as a native CLI cleanup fault. Accepted U2 tests still exercise
-  actual staging ownership and adapter cleanup error behavior.
+Engine's existing recursive .cpp discovery selects the moved production files.
+The Engine-owned MapStorageCpu.cmake defines a source-tree STATIC proof target
+and alias Cheryl::MapStorageCPU, exposing only Engine's public include root,
+C++23 and CE_ENGINE_STATIC; pinned JSON stays PRIVATE. Existing Engine retains
+its own normal target/visibility configuration. The proof target is an alternate
+producer; linking both copies into one binary is not accepted. No installed
+export/package manifest or shared infrastructure changed.
 
-Earlier U1/U2/U2F command/result records remain in their committed next.md views
-at `847d2a9c8fa8c190d2b55e0e59b596a9cbc4ff54`,
-`4751b271b1c7c75ae8951d71cddd1e8e303930f6`, and
-`ef1d0ac741cdbe888d06d3f6216f8d1d2104f077`. The accepted U2F handoff was also
-retained locally as `u3-logs/accepted-u2f-next.md`; earlier unit log directories
-remain intact. CTest's standard LastTest.log now contains this U3 run.
+Both u4-logs directories retain `compile-inputs.json` and `link-inputs.txt`.
+The independent executable/probes receive only Engine public includes, language
+and static requirements, without test headers, internal FileOps or JSON include
+paths. Its link edge is main.cpp plus the archive of the two real Engine .cpp
+files and the ordinary C++ runtime. The CLI has the same production archive;
+gtest archives appear only on the focused test runner. Tests-off compile commands
+also describe the available excluded CLI target; it is not a consumer input.
+There is no renderer/platform/Runtime/Workers target, Engine stub or native
+startup dependency. Actual headless execution supports that inspected boundary.
 
-## CPU boundary, limits and next action
+Each of the three public headers compiled first and twice in its own translation
+unit. Probes instantiate complete value/equality declarations and assert inherited
+CE_ENGINE_STATIC; codec/file probes verify CE_API is empty for static consumption.
+They use no prefix/umbrella header or consumer-defined visibility override.
+These checks establish this source-tree static configuration, not shared ABI.
 
-Generated `compile_commands.json` lists only codec.cpp, file-storage.cpp, cli.cpp,
-the three focused test sources and pinned gtest-all/gtest_main. `build.ninja`
-links `map_storage_cli` with only its cli.cpp object and `libmap_storage_codec.a`;
-the gtest archives appear only on `map_storage_tests`. Codec JSON includes remain
-private. Source/link inspection and actual headless CLI execution establish no
-Engine/platform/graphics target, renderer, active game, asset lookup or sibling
-requirement. No shared build/test infrastructure or SDK export changed.
+No unresolved prerequisite or resource blocker remains. All native work used the
+shared one-job wrapper and retained sessions. The 4 GiB aggregate/3 GiB throttle,
+2 GiB worker, no-swap and 4 GiB host admission floor remain unchanged. No exit 75,
+subagent, external agent, download, system install, OOM test, push or sibling
+integration occurred. Protected workspaces/caches were not used.
 
-There is no unresolved U3 implementation/prerequisite blocker. The 4 GiB aggregate,
-3 GiB throttling, 2 GiB worker, no-swap and 4 GiB host-admission policies remain;
-all native work used one job. A future wrapper exit 75 requires exact error
-recording and idle without unchanged retry. Normal shared-lock queueing requires
-retaining its live session. No subagent or external agent was started.
+Confidence is high in the bounded extraction and executed CPU compatibility,
+medium in provisional namespace/header/target naming. These are engineering
+choices, not inferred personal preferences; reversal is limited to source-tree
+names and branch-local consumers. Wire changes still require compatibility review.
+The supported file profile remains Linux, controlled stable local tree,
+regular-or-absent final entry, serialized writer and staging mode 0600. No fsync,
+power-loss durability, hostile-race, network-filesystem, multiwriter or save-game
+framework guarantee is added. Other platforms/toolchains, sanitizers/fuzz, full
+Engine static/shared builds, cross-library exception/RTTI/CRT ABI, installed SDK,
+relocation and device/GUI acceptance are unverified.
 
-Acceptance remains the controlled local Linux/ext4, caller-owned stable tree,
-regular-or-absent file and serialized-writer profile. No fsync/power-loss, hostile
-race, network/media corruption, multiwriter, save-slot or general save-game
-contract is added. Permission-fault reliability is demonstrated on this host;
-privileged/DAC-override environments would need their own reliable test-only
-fault boundary. Non-Linux and other toolchains, sanitizers/fuzz, Engine integration,
-installed SDK and device/GUI acceptance were not attempted. Unknown C++ exception,
-SIGPIPE-setup failure and stderr-reporting failure fallbacks are source-reviewed;
-the executed unexpected-output cases cover read-only stdout and a broken pipe.
-No OOM was induced.
-Confidence is high in the checked private behavior/isolation, medium outside this
-profile and in private output wording. These are engineering choices, not user
-taste inferences; reversal remains limited to the consumer/formatter/harness.
-
-Stop for coordinator acceptance of this U3 checkpoint. The brief's private CPU
-consumer has been demonstrated here; public extraction, durability/platform work,
-new consumers, level lifecycle and sibling integration need a later assignment.
-No automatic phase progression or recurring scheduling follows this commit.
+**Next concrete action:** coordinator reviews this U4 extraction and saved
+source-tree evidence, then selects any later bounded Engine integration/ABI work.
+This worker stops at the local checkpoint; no SDK packaging, additional consumer,
+public guide or phase progression is started automatically.

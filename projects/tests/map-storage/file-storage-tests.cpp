@@ -1,4 +1,4 @@
-#include "file-storage.h"
+#include <cheryl/core/resources/map-storage/file-storage.h>
 #include "file-operations.h"
 
 #include <gtest/gtest.h>
@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 namespace {
-    namespace MF = MapFixture;
+    namespace MF = CE::Maps;
     namespace fs = std::filesystem;
 
     MF::Snapshot fixture() {
@@ -718,17 +718,17 @@ namespace {
 TEST(files, unsupported_platform) {
     const auto path = std::filesystem::current_path() / "unsupported-map-storage.json";
     try {
-        MapFixture::save(path, {});
+        CE::Maps::save(path, {});
         FAIL() << "unsupported save accepted";
-    } catch (const MapFixture::Error& error) {
-        EXPECT_EQ(error.code, MapFixture::Code::UnsupportedPlatform);
+    } catch (const CE::Maps::Error& error) {
+        EXPECT_EQ(error.code, CE::Maps::Code::UnsupportedPlatform);
         EXPECT_EQ(error.operation, "save");
     }
     try {
-        static_cast<void>(MapFixture::load(path));
+        static_cast<void>(CE::Maps::load(path));
         FAIL() << "unsupported load accepted";
-    } catch (const MapFixture::Error& error) {
-        EXPECT_EQ(error.code, MapFixture::Code::UnsupportedPlatform);
+    } catch (const CE::Maps::Error& error) {
+        EXPECT_EQ(error.code, CE::Maps::Code::UnsupportedPlatform);
         EXPECT_EQ(error.operation, "load");
     }
 }

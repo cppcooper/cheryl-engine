@@ -1,6 +1,8 @@
 #pragma once
 
-#include "snapshot.h"
+#include <cheryl/export.h>
+
+#include <cheryl/core/resources/map-storage/snapshot.h>
 
 #include <cstddef>
 #include <filesystem>
@@ -10,8 +12,8 @@
 #include <string>
 #include <system_error>
 
-namespace MapFixture {
-    // Fixed private operational budgets, not a general configuration/result API.
+namespace CE::Maps {
+    // Fixed v1 operational budgets, not a general configuration/result API.
     inline constexpr std::size_t max_document_bytes = 8 * 1024 * 1024;
     inline constexpr std::size_t max_depth = 16; // Root container has depth one.
     inline constexpr std::size_t max_key_bytes = 128;
@@ -30,7 +32,7 @@ namespace MapFixture {
 
     // All diagnostic data is owned, including when the source/stream has disappeared.
     // Printable diagnostics escape NUL in origin; the owned path remains exact.
-    class Error final : public std::runtime_error {
+    class CE_TYPE_API Error final : public std::runtime_error {
     public:
         Code code;
         std::string operation;
@@ -43,18 +45,23 @@ namespace MapFixture {
         std::string staging_leftover;
         std::error_code cleanup_error;
 
-        Error(Code code, std::string operation, std::filesystem::path origin, std::string location,
+        CE_API Error(Code code, std::string operation, std::filesystem::path origin, std::string location,
               const std::string& detail, std::optional<std::size_t> byte_offset = {}, std::error_code io_error = {});
     };
 
+    // Parses cheryl.map-fixture integer version 1 only; JSON stays private.
     // Synchronous; borrows only during the call and returns independent owned values.
     // Consumes stream-buffer bytes, without changing the stream's flags/exception mask.
     // Reads at most max_document_bytes + one detection byte. Raw NUL always rejects.
     // Early limits/duplicates may precede later syntax errors. Anticipated JSON/I/O
     // failures throw Error; bad_alloc and programming exceptions propagate unchanged.
-    [[nodiscard]] Snapshot parse(std::istream& input, const std::filesystem::path& origin);
+    // A streambuf reporting EOF is accepted as EOF; load() supplies checked native
+    // reads. Origin is diagnostic only. The caller synchronizes shared input access.
+    [[nodiscard]] CE_API Snapshot parse(std::istream& input, const std::filesystem::path& origin);
 
     // Revalidates aggregates and produces deterministic, bounded UTF-8 JSON with a
     // final LF. Failure never mutates the snapshot. No file or runtime state is used.
-    [[nodiscard]] std::string encode(const Snapshot& snapshot);
+    // Borrows only during this synchronous call; concurrent input mutation requires
+    // caller synchronization. Anticipated validation errors throw the owning Error.
+    [[nodiscard]] CE_API std::string encode(const Snapshot& snapshot);
 }

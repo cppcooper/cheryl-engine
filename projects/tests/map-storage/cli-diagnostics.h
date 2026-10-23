@@ -1,12 +1,14 @@
 #pragma once
 
-#include "codec.h"
+#include <cheryl/core/resources/map-storage/codec.h>
 
 #include <iomanip>
 #include <ostream>
 #include <string_view>
 
 namespace MapFixture::Cli {
+    using CE::Maps::Code;
+    using CE::Maps::Error;
     [[nodiscard]] inline std::string_view category(Code code) {
         switch (code) {
             case Code::Read: return "Read";
