@@ -2,19 +2,21 @@
 
 U1 implements validated immutable CPU definitions on `feat/storytelling`, from
 clean design checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978` (original source
-baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`). The definition implementation
-and 16 unit cases pass syntax checks and compile into the native runner. The
-pinned fallback font is now present and configuration succeeds, but post-link
-discovery failed; native assertions remain unexecuted. See [next.md](next.md).
+baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`). U1V verified the unchanged
+definition source at `25836ffb48fb25e9ed5e89d2805daf6e093ed5fc`: all 16 focused
+native cases passed under Debug ASan/UBSan. LeakSanitizer cannot run under this
+executor's tracing; command-local leak disabling is recorded in ST-008, with no
+passing leak claim. U1 definition acceptance is complete; see [next.md](next.md).
 Sessions and the console encounter remain proposed. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-007` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-008` IDs;
 [next](next.md) selects one subsequent implementation unit.
 
 ## Authority, scope and evidence limits
 
-The coordinator's STORYTELLING-U1 assignment authorizes the definition source,
-focused checks and updates to these internal records, superseding the earlier
-design-only task. The parent `AGENTS.md`,
+The coordinator's STORYTELLING-U1 assignment authorized the definition source;
+STORYTELLING-U1V completes focused native verification and these records, without
+starting sessions or changing the definition API. These assignments supersede the
+earlier design-only task. The parent `AGENTS.md`,
 `coordination/autonomy-policy.md`, `coordination/workers.json` and feature brief
 were read from `/mnt/projects/cheryl-features/`. Repository workflow,
 investigation, architecture, testing, Git and documentation instructions were
@@ -69,8 +71,9 @@ EXPECT_EQ(choice->text, "Ask to enter");
 
 This caller and the other cases in
 [dialogue-definition.cpp](../projects/engine/tests/unit/src/dialogue-definition.cpp)
-have passed warning-enabled C++23 syntax checking and native compilation/linking;
-their assertions have not yet executed successfully.
+have passed warning-enabled C++23 syntax checking and native compilation/linking.
+U1V executed all 16 successfully, including this header-first caller and its
+construction/type assertions; leak coverage remains unavailable (ST-008).
 [dialogue.h](../projects/engine/include/cheryl/core/game-framework/dialogue.h)
 exposes only CPU values, standard-library facilities and Engine visibility macros.
 [dialogue.cpp](../projects/engine/src/core/game-framework/dialogue.cpp) supplies
@@ -164,6 +167,9 @@ a handle through borrowed access. This is sufficient for the tiny graph and avoi
 an unneeded retained index; the private entry index preserves authored order.
 Stable definition reads can be concurrent; input mutation/destruction must be
 serialized with compilation. Owned diagnostic copies outlive their source inputs.
+U1V's native ownership and lookup cases passed after draft mutation/destruction
+and through retained-handle release; this supplies executable evidence for the
+observed lifetime boundary, subject to ST-008's leak-coverage limit.
 
 In later proposed units, a live move-only
 session retains `shared_ptr<const Definition>` plus its own numeric cursor, step
@@ -312,6 +318,24 @@ and capturing/saving a pair, or restoring progress alongside independently chang
 world state, has no exactly-once guarantee. Exact revision matching rejects old
 content; migration and hot reload wait for a demonstrated need.
 
+## Verification environment
+
+**ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
+script reproduced `LeakSanitizer has encountered a fatal error` and
+`LeakSanitizer does not work under ptrace (strace, gdb, etc)`, with result 1.
+Its complete output and exit status are preserved in clone-local U1V logs.
+The coordinator authorized this specific tracing limitation's accommodation:
+`ASAN_OPTIONS=detect_leaks=0:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1` on the build/discovery and focused CTest commands.
+No sanitizer build flag, timeout, source behavior or global setting changed.
+Both dialogue object rules retain `-fsanitize=address,undefined`; the incremental
+target and all 16 cases pass. Leak detection is unavailable, not passing.
+Confidence in this environment diagnosis is high from this clone's reproduced
+failure and adjusted success. Removing only `detect_leaks=0` on an LSan-compatible
+executor reverses the accommodation while retaining both halt-on-error settings,
+without code or build changes. Exact commands,
+logs, selected names and remaining acceptance limits belong to [next.md](next.md).
+
 ## Source evidence and confidence
 
 All current file locations below describe baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`.
@@ -362,6 +386,7 @@ new v3 intent nor present preference.
 | ST-005 | Wrap StateMachine hooks; introduce plan/ack transactions and durable effect receipts | Hook assignment/failure order does not fit the intended save boundary. A dedicated numeric cursor permits nonthrowing commit after the fixture's boolean effect; a transaction protocol is excessive for it. External effects would reopen this decision rather than silently inherit its limited guarantee. |
 | ST-006 | Lazy missing-reference errors during play; throw for every ordinary rejection | Eager diagnostics catch hidden branches and structured rejections distinguish unavailable choices from broken handlers. This adds a small diagnostic value type without rewriting existing engine error policy. |
 | ST-007 | Save cursor only; replay from entry; serialize arbitrary callbacks; general persistence service | A paired snapshot preserves application state without replay. Console JSON is replaceable without changing the core snapshot, but changing its value schema needs a new version. File overwrite/durability and save migration remain independent future work. |
+| ST-008 | Change sanitizer build/global settings or leave native checks unexecuted | A reproduced LSan tracing failure justifies only the authorized command-local leak accommodation. ASan/UBSan and halt-on-error remain active; leak coverage is unavailable. Reversal removes only detect_leaks=0 on a compatible executor, with no source or configuration migration. |
 
 ## Integration overlaps and implementation units
 
@@ -377,12 +402,12 @@ UI would consume copied views and send scoped selections to simulation.
 
 | Unit, in dependency order | Coherent deliverable and gate |
 | --- | --- |
-| U1: validated CPU definition | Source and 16 focused cases implemented; syntax checks and native compilation/linking succeeded. Private construction and a deep copy close the mutable-alias boundary. Post-link discovery failed, so no assertions establish native acceptance; see next.md. |
+| U1: validated CPU definition | Accepted for the assigned definition scope: all 16 focused native cases passed under Debug ASan/UBSan, including private construction, independent copied storage, retained ownership, lookup and eager owning diagnostics. Leak checking is unavailable under ST-008; see next.md for complete logs and commands. |
 | U2: explicit session | View, scoped selection, application handlers, checked progression, failure state and value snapshot/resume. Gate: both routes, rejection without effects, independent lifetimes, stale selections, throwing handlers and paired resume/no replay cases. Reassess the nonthrowing post-effect path before any extra API callers. |
 | U3: console acceptance | Branch-local console app/fixture, versioned JSON envelope, save/resume commands and focused codec/transcript cases. Wire only needed targets/dependencies, then run permitted checks when this unit is assigned. Gate: actual console outcomes and resumed effect count, malformed/mismatched saves, safe adoption and explicit I/O failures. |
 
-Only U1 is assigned now. U2/U3 await later coordinator assignments.
-[next.md](next.md) owns U1's verification gap and the next useful unit.
+U1V completes U1 verification. U2/U3 await later coordinator assignments.
+[next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
 
@@ -421,12 +446,14 @@ retrieval, installation, documentation generation or external service acceptance
 Material uncertainties: modern API taste is largely unproven; manual revision
 discipline cannot detect same-ID/revision content changes; generic effects can
 partially mutate before throwing; JSON/console target wiring and the nonthrowing
-commit/adoption path still need implementation evidence. U1's source immutability
-and diagnostic cases are syntax-checked and compiled/linked, but native assertions
-remain unexecuted. The coordinator restored `assets/fonts/DejaVuSans.ttf` at the
-recorded asset pin; the assigned Debug configuration now succeeds. The serial
-build failed during post-link GoogleTest discovery. Generated listing metadata
-contains all 16 expected dialogue cases but is not an executed acceptance result.
-No asset substitution, dependency pin change or alternate native runner was used.
-Actual commands, registration evidence, coverage and recovery action are recorded
-in [next.md](next.md).
+commit/adoption path still need implementation evidence. U1V completed the assigned
+definition acceptance: the incremental `tests-engine` target succeeded, CTest
+registration selected exactly 16 cases, and all 16 actually ran and passed, with
+no skipped or unrun cases. The header-first caller, ownership, lookup, invalid
+unreachable data and retained deterministic diagnostics have executable evidence.
+LSan's reproduced tracing failure required the command-local ST-008 accommodation;
+ASan/UBSan instrumentation and halt-on-error remained active. Leak detection is
+unavailable. This accepts U1 only; the broader console/session milestone above is
+still unimplemented and unexecuted. No U1 source, repository build configuration,
+dependency pin or global setting changed during U1V. Actual commands, logs,
+coverage and the next coordinator-selected unit are recorded in [next.md](next.md).

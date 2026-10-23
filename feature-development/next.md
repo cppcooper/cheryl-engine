@@ -1,19 +1,24 @@
-# U1 checkpoint and next action
+# U1 native acceptance and next unit
 
 U1 source is committed in `25836ffb48fb25e9ed5e89d2805daf6e093ed5fc`, from design
-checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978`. Native verification remains
-**incomplete**, not accepted. The font prerequisite is resolved: the coordinator
+checkpoint `716ec60984e6764a03ed375ac37826e5d92e6978`. U1V started at clean checkpoint
+`85b2280c512cd6638c1e67819a9539d2a44216e5` and completed definition acceptance:
+**16/16 focused native cases passed**, with no skipped or unrun cases. Debug
+ASan/UBSan instrumentation and halt-on-error remained active. Leak detection is
+unavailable under the reproduced LSan tracing limitation (ST-008), not passing.
+The font prerequisite remains resolved: the coordinator
 initialized assets at the unchanged pin
 `98453b2a6e0edfcfba22eea3fde801526d72b861`, and
 `assets/fonts/DejaVuSans.ttf` is present. The prescribed configuration now succeeds.
-The resumed serial build compiled its remaining objects and linked `tests-engine`,
-but failed during post-link GoogleTest discovery. No dialogue assertions have run.
-No repository build configuration, dependency pin or U1 source changed on resume.
+The incremental `tests-engine` target and its discovery now succeed with the
+authorized invocation-local environment adjustment. No repository build
+configuration, dependency pin, global setting or U1 source changed during U1V.
 
 Contracts: [agent-notes.md](agent-notes.md); compact choices:
-[decisions.md](decisions.md), ST-001/002/003/004/006. ST-005/007 remain proposals
-for later units. The header/source implement owned authored values, private
-deep-copy freezing, ordered inspection, scoped lookup and owned diagnostics.
+[decisions.md](decisions.md), ST-001/002/003/004/006 and verification decision ST-008.
+ST-005/007 remain proposals for later units. The header/source implement owned
+authored values, private deep-copy freezing, ordered inspection, scoped lookup and
+owned diagnostics.
 The four-node gate remains test data; no session, callback dispatch or save exists.
 
 ## Actual checks and registration
@@ -23,13 +28,13 @@ existing unit `src/*.cpp` glob: `projects/engine/tests/unit/CMakeLists.txt` feed
 `tests-engine-cases` through `cheryl_add_test_suite`, and
 `cmake/CherylTests.cmake` calls GoogleTest discovery with prefix `tests-engine.`.
 There are 16 `TEST(dialogue_definition, ...)` declarations in the source. The
-generated `cmake_test_discovery_fc8c995a1d.json` under the unit build directory
-contains exactly those 16 names in source order. That listing metadata is a
-nonempty discovery output, not assertion execution. The corresponding
-`tests_engine_6c1488ca_tests.cmake` was not produced, so CTest registration did not
-complete and no nonempty CTest selection has been verified.
+generated `cmake_test_discovery_fc8c995a1d.json` and
+`tests_engine_6c1488ca_tests.cmake` under the unit build directory contain those
+16 cases. The actual filtered CTest listing selected exactly those names in source
+order, and the subsequent run executed all 16. Per-case GoogleTest `[ RUN ]` /
+`[ OK ]` output and CTest `Test Passed.` records were checked against the source.
 
-| Compiled case(s) | Observable boundary covered when native execution is available |
+| Passed case(s) | Observable boundary exercised by the native selection |
 | --- | --- |
 | `consumer`, `ownership`, `lookup` | Header-first caller; constructor/copy/move restrictions; draft aliases remain separate even through std::move; draft mutation/destruction and retained-handle lifetime; stable text/order/keys; exact lookup and misses. |
 | `empty_ids`, `revision`, `duplicate_nodes`, `duplicate_choices`, `missing_references` | Empty definition/entry/node/choice/target, zero revision, scoped duplicates, unknown entry/target and empty node collection reject without a partial definition. |
@@ -43,14 +48,11 @@ confirms it only processes these concrete CPU values. A single `Draft` contains
 one definition ID, so duplicate-definition checking across compilations is not
 representable here and is deliberately not replaced with a global registry.
 
-The following commands ran from this clone through the shared-lock wrapper.
-The initial configure at the source checkpoint failed with the missing-font error
-at `projects/engine/cmake/FontFallback.cmake:4`; its CTest attempt exited **8** with
-`No tests were found!!!`. Those are historical failed checks, superseded by the
-restored pinned input and successful configure below, not acceptance results.
+## Configuration retained
 
-Clone-local Debug configuration (GNU C/C++ 16.2.1), retry after the font was
-restored, exit **0**:
+U1V reused the existing clone-local GNU C/C++ 16.2.1 Debug configuration and
+incremental objects. The following configure already exited **0** after the
+pinned font was restored; it was not rerun during U1V:
 
 ```sh
 /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug -G Ninja \
@@ -64,44 +66,73 @@ restored, exit **0**:
   -DCHERYL_BUILD_CONSUMER_TESTS=OFF -DCHERYL_STARTUP_OPENGL=OFF
 ```
 
-The cache retains all requested OFF settings, tests ON, Debug and policy minimum
-3.5. Debug uses the existing address/undefined sanitizers. An earlier parallel
-build was interrupted by the coordinator's memory stop; its outputs were retained.
-The current resume used only one compilation job:
+The cache retains all assigned OFF settings, tests ON, Debug and policy minimum
+3.5. Both dialogue object rules retain `-fsanitize=address,undefined`. The public
+header still exposes standard CPU values and Engine visibility macros only, with
+no JSON, UI or runtime dependency. The consumer includes that public header first.
+
+## Discovery diagnosis and actual U1V commands
+
+All commands below ran from this clone through the existing shared-lock wrapper,
+with one compilation/test job and its fixed resource controls. A queued live
+command is normal serialization: retain its tool session and wait with updates.
+The previous checkpoint's cancelled queue waits are historical, not an unresolved
+admission blocker. No admission exit **75** occurred during U1V. If a later command
+returns **75**, record its exact refusal and checkpoint without an unchanged retry.
+
+Discovery with leak detection still at its default setting and halt-on-error
+explicit exited **1**:
 
 ```sh
-/mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
-  --target tests-engine --parallel 1
-```
-
-This exited **1** at post-link discovery after the remaining compilation steps
-and executable link. The final exact error was
-`ninja: build stopped: subcommand failed.` CMake's discovery call stack was shown,
-but its causal result/error was truncated from the returned tool output. A timeout
-or sanitizer failure is therefore not established. The runner binary and generated
-listing JSON remain clone-local; no generated registration was manually substituted.
-
-Two focused diagnostic commands were then attempted:
-
-```sh
-/mnt/projects/cheryl-features/scripts/build -- builds/storytelling-u1-debug/tests-engine \
-  --gtest_filter=dialogue_definition.* --gtest_list_tests
-/mnt/projects/cheryl-features/scripts/build -- cmake -P \
+ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -P \
   builds/storytelling-u1-debug/projects/engine/tests/unit/tests_engine_6c1488ca_discovery.cmake \
-  > builds/storytelling-u1-debug/u1-discovery.log 2>&1
+  > builds/storytelling-u1-debug/u1v-discovery-default.log 2>&1
 ```
 
-Both remained pending without output and were interrupted, exit **130** each.
-The second log is empty. A nonblocking lock probe confirmed the shared native-work
-lock was occupied; no native command ran through that probe. The exact cause of
-the earlier post-link failure remains unresolved. No admission exit **75** was
-observed; this is an occupied-lock checkpoint, not a claimed memory-admission
-rejection. No further native attempt was made under unchanged conditions.
+Complete output captured this clone's causal error:
 
-The independent focused syntax/header check at source checkpoint `25836ff` exited
-**0**, with no diagnostics, after final C++ edits/formatting. This checks the
-implementation and all 16 cases for C++ syntax/types; it cannot establish runtime
-ownership, sanitizer behavior or assertion outcomes:
+```text
+==5==LeakSanitizer has encountered a fatal error.
+==5==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==5==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+```
+
+CMake reported `Error running test executable.` and `Result: 1`; this was not its
+five-second timeout. The coordinator-authorized ST-008 accommodation below is
+invocation-only. It disables only leak detection, retains ASan/UBSan and both
+halt-on-error settings, and changes no timeout or build flag. Each command exited
+**0**; the first completed incremental linking and discovery, the second listed
+exactly 16 cases, and the third ran all 16:
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine --parallel 1 > builds/storytelling-u1-debug/u1v-build.log 2>&1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^tests-engine\.dialogue_definition\.' > builds/storytelling-u1-debug/u1v-registration.log 2>&1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 -R '^tests-engine\.dialogue_definition\.' \
+  > builds/storytelling-u1-debug/u1v-ctest.log 2>&1
+```
+
+Complete clone-local logs live under `builds/storytelling-u1-debug/` and remain
+outside the commit. Each command's status was saved immediately to the matching
+`.exit` file; test details were copied before a later run could overwrite them.
+
+| Log | Actual result |
+| --- | --- |
+| `u1v-discovery-default.log`, `.exit` | Exit 1, reproduced LSan tracing failure with complete CMake diagnostic/listing. |
+| `u1v-build.log`, `.exit` | Exit 0, incremental `tests-engine` link and generated discovery completed. |
+| `u1v-registration.log`, `.exit` | Exit 0, `Total Tests: 16`, exactly the authored names in source order. |
+| `u1v-ctest.log`, `.exit` | Exit 0, `100% tests passed out of 16`, real time 1.81 seconds; no skips or unrun cases. |
+| `u1v-ctest-details.log` | Complete copy of `Testing/Temporary/LastTest.log`; all 16 GoogleTest cases ran and passed, matching source and registration. |
+
+The earlier syntax/header check at source checkpoint `25836ff` also exited **0**,
+after final C++ edits/formatting. It is supporting compilation evidence, separate
+from U1V's actual runtime checks:
 
 ```sh
 /mnt/projects/cheryl-features/scripts/build -- c++ -std=c++23 -Wall -Wextra -Wpedantic -fsyntax-only \
@@ -109,47 +140,31 @@ ownership, sanitizer behavior or assertion outcomes:
   projects/engine/src/core/game-framework/dialogue.cpp projects/engine/tests/unit/src/dialogue-definition.cpp
 ```
 
-The three new C++ files also passed `clang-format --dry-run --Werror` at that
-checkpoint using the repository style. Record-link/ID/decision-length and staged
-whitespace checks cover the follow-up internal records. No broader test campaign,
-documentation build or console acceptance ran. Unit acceptance and the later
-console milestone remain unexecuted.
+The three new C++ files passed `clang-format --dry-run --Werror` at that checkpoint
+using the repository style. U1V required no source fix or API change. Record links,
+matching IDs, decision lengths, commands/results and staged whitespace are checked
+for the follow-up records. No broader suite, SDK export, GUI or documentation
+generation ran. The four-node gate remains definition test data only.
 
-## Next action: finish U1 verification
+## Limits and next coordinator selection
 
-Current blocker: the shared native-work lock was occupied when probed while the
-captured diagnostic was pending, and the post-link discovery cause is still
-unknown. Checkpoint idle;
-no user response is expected. When admission and lock availability permit a later
-resume, first run the captured discovery command above to retain its exact error.
-The generated script already bounds discovery to five seconds. Diagnose that
-result before changing any U1 source or runner behavior. Do not substitute fonts,
-disable sanitizer checks or alter shared resource controls to get a green result.
-
-After resolving that failure, complete the existing incremental target and inspect
-the actual CTest registration before running assertions. These are **pending**
-commands, not successful checks:
-
-```sh
-/mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
-  --target tests-engine --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
-  -N -R '^tests-engine\.dialogue_definition\.'
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
-  --output-on-failure --no-tests=error --parallel 1 -R '^tests-engine\.dialogue_definition\.'
-```
-
-Require exactly the 16 authored dialogue cases in a nonempty selection and actual
-passing assertions. The header-first caller, ownership/mutation/destruction checks,
-lookup misses, all validation cases and deterministic owning diagnostics must run.
-Use the current one-job wrapper and clone-local outputs under its verified memory
-limits. On exit **75**, record the exact resource error and checkpoint idle without
-retrying unchanged conditions. A successful runner exit or commit alone is not
-feature acceptance.
+No U1 execution blocker remains within the assigned definition scope. Confidence
+is high in the reproduced LSan diagnosis and the behavior exercised by the 16
+native cases. Leak coverage remains unavailable here; remove only `detect_leaks=0`
+on an LSan-compatible executor to restore it while retaining both halt-on-error
+settings, with no code/configuration reversal cost. Acceptance covers this
+GNU/Linux Debug Engine-linked runner only.
+API spelling remains an agent engineering choice with medium confidence, not
+established personal user taste. Sessions, effect dispatch and snapshots have
+neither implementation nor executed acceptance yet.
 
 The next useful **implementation** unit is U2, the explicit session over these
-frozen definitions, subject to a later coordinator assignment after reviewing
-U1 and its native results. It owns the proposed views, scoped selection,
-application handlers, failure state and value resume boundary (ST-005/007).
-Review this header's borrowed observations and add the required lifetime and
-no-effect-replay checks there. Do not start U2 or recurring work automatically.
+frozen definitions, for coordinator selection after U1V. Its small caller and
+contracts remain proposed in [agent-notes.md](agent-notes.md). It owns the views,
+scoped selection, application handlers, failure state and value resume boundary
+(ST-005/007).
+First review the retained/borrowed definition boundary and the nonthrowing
+post-effect commit, then implement only that assigned session unit. Its checks
+must cover both routes, unavailable/stale/repeated selections without effects,
+independent retained lifetimes, throwing handlers and paired resume with no effect
+replay. Stop after U1V now; U2 and recurring work are not started automatically.

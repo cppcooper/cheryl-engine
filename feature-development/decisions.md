@@ -5,9 +5,9 @@ Definition choices implemented in U1 from design checkpoint
 These are agent engineering choices,
 not confirmed personal API preferences. Detailed contracts, alternatives,
 provenance and acceptance are in [agent-notes.md](agent-notes.md);
-[next.md](next.md) records U1 checks and the next unit. The font prerequisite is
-resolved and configuration succeeds; post-link discovery failed. Compilation
-and syntax checks alone do not accept U1 or the console milestone.
+[next.md](next.md) records U1 checks and the next unit. U1V completed definition
+acceptance with all 16 focused Debug ASan/UBSan cases passing; leak coverage is
+unavailable under ST-008. The console/session milestone remains proposed.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -35,8 +35,8 @@ const Definition; even std::move cannot transfer caller aliases into frozen
 storage. Definition copying/moving is disabled, handles retain it, and ordered
 observations borrow its lifetime. This closes the ownership gap left by
 shared_ptr<const> alone. Copies cost allocation; linear lookup avoids premature
-index machinery. Confidence is high in the source boundary, with native lifetime
-verification incomplete. Session ownership remains a later choice.
+index machinery. Confidence is high from the native ownership checks; leak
+coverage remains unavailable (ST-008). Session ownership remains a later choice.
 
 ## ST-004 — Keep condition and effect meaning in the application
 
@@ -65,8 +65,8 @@ usable definition. A dialogue-local std::expected returns either a retained
 definition or owned diagnostics with code, authored positions, field and value.
 Deterministic traversal makes multiple errors actionable; cycles are valid and
 reachability warnings are excluded. Allocation failures remain exceptions. The
-tradeoff is eager validation and diagnostic allocation. Confidence is high in the
-source contract; native acceptance awaits successful runner discovery and assertions.
+tradeoff is eager validation and diagnostic allocation. Confidence is high from
+source review and 16 passing native cases; leak checking remains unavailable (ST-008).
 
 ## ST-007 — Save progress and application flags as one boundary
 
@@ -77,3 +77,13 @@ checkpoint while keeping serialization outside core headers. Fresh checkpoint
 paths avoid overwrite policy; migrations, atomic replacement and external-effect
 crash recovery remain deferred. Confidence is high for paired resume semantics,
 medium for the console format and its unimplemented wiring.
+
+## ST-008 — Bound the native verification accommodation
+
+Use invocation-only ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 and
+UBSAN_OPTIONS=halt_on_error=1 for this traced native runner. Unadjusted discovery
+reproduced LeakSanitizer's fatal ptrace limitation; the adjusted build and all 16
+cases pass with ASan/UBSan instrumentation intact. This trades unavailable leak
+coverage for executable definition checks, without changing global settings or
+build flags. Confidence is high from this clone's captured diagnostics. Remove
+only detect_leaks=0 on an LSan-compatible executor; leak detection is unverified.
