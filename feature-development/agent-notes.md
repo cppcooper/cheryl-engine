@@ -1,15 +1,17 @@
 # First map-storage milestone
 
 U1 implements private owning CPU snapshots and a bounded memory-stream JSON codec.
-Its standalone Debug runner passed 86 focused cases on 2026-10-22. File loading,
-replacement and CLI publication remain later units; this is not acceptance of
-the full persistence milestone. The reader summary is [decisions.md](decisions.md);
+Accepted U1 checkpoint `847d2a9c8fa8c190d2b55e0e59b596a9cbc4ff54` passed 86 focused
+cases. U2 adds private checked Linux path loading and safe replacement. The CLI
+remains proposed U3; this is not acceptance of the full persistence milestone.
+The reader summary is [decisions.md](decisions.md);
 actual commands/results and the next unit are in [next.md](next.md).
 
 The inspected baseline is `3542f883391d4225329dab8d5d61a5987e69c8f0` on
 `feat/map-storage`, matching the workspace's recorded source snapshot. Design
 checkpoint `20cd3f74dd94932d18745b1e0d90eb68538378f7` contains the initial records.
-U1 started from that clean checkpoint. Its changes are confined to the private
+U1 started from that clean checkpoint; U2 started clean at the accepted U1 commit.
+Changes are confined to the private
 `projects/tests/map-storage/` implementation/tests/build entry and these records.
 
 The [workspace instructions](../../../AGENTS.md),
@@ -17,19 +19,20 @@ The [workspace instructions](../../../AGENTS.md),
 [map-storage brief](../../../coordination/feature-briefs.md#map-storage) set the
 scope. Repository workflow, investigation, architecture, documentation, testing,
 and Git instructions were read, including `docs/AGENTS.md`. The current assignment
-authorizes U1 implementation, focused native verification and its local commit,
-and stops before U2. Protected source workspaces and sibling implementations are
+authorizes U2 implementation, focused native verification and its local commit,
+and stops before U3. Protected source workspaces and sibling implementations are
 not prerequisites or execution sites.
 
-Implemented U1 contracts and future U2/U3 proposals are distinguished below. These
+Implemented U1/U2 contracts and future U3 proposals are distinguished below. These
 are engineering choices under delegated authority; confidence in a requirement
 or observed contract does not establish the user's personal taste.
 
 ## MS-001 CPU boundary
 
 U1 uses a private finite-map snapshot and CPU codec. It reconstructs two logical
-tile layers and a named spawn from memory, then compares values. An explicit-path
-file adapter and the CLI are future units. U1 creates no engine Context, game,
+tile layers and a named spawn from memory, then compares values. U2 adds an
+explicit-path adapter in `file-storage.h`, with no Engine dependency. The CLI
+remains a future unit. Neither unit creates an engine Context, game,
 provider, window,
 image cache, or asset loader. Discovery may locate content in a later application;
 it does not own persistence, select an output path, or make a write transactional.
@@ -62,6 +65,20 @@ bool memory_round_trip() {
     return restored == original;
 }
 ```
+
+The implemented small path caller, with `original` as the literal fixture above
+and `path` naming a file in a caller-created controlled directory, is:
+
+```cpp
+MF::save(path, original);
+auto restored = MF::load(path);
+const bool equal = restored == original;
+```
+
+The caller owns directory creation, single-writer access, candidate adoption and
+any explicit retry. `files.round_trip` exercises this path against real files,
+including independent owned values and exact encoded-byte comparison. No CLI
+or implicit application path is introduced.
 
 The eventual CLI takes an explicit file under a caller-created disposable
 directory. Planned `round-trip <file>` will save then load; `verify <file>` only loads
@@ -175,8 +192,9 @@ introduce semantics absent from this consumer. The existing graphics schema
 describes atlas assets, not world cells/spawns. None is ruled out for later needs.
 Evidence: E03, E05, E08, H02-H03. **Confidence: medium** in a reversible JSON
 prototype; low in any inference that the user prefers it for all persistence.
-Changing the private representation remains cheap before U2 creates persisted
-files; changing an accepted format later requires explicit version handling.
+Changing the private representation remains cheap while persisted files have
+only disposable private test consumers; a later accepted format needs explicit
+version handling for incompatible changes.
 
 ## MS-004 Validation and load publication
 
@@ -255,7 +273,11 @@ bytes directly and preserves flags/exception masks, so `bad_alloc` and programmi
 exceptions from a stream buffer are not swallowed by an istream catch-all. An
 unreadable initial state or a signaled `ios_base::failure` becomes `Read`; an EOF
 reported by the buffer is treated as EOF. Silent device errors are outside this
-memory-stream unit. Future path-based load/save remain U2 proposals.
+memory-stream unit. U2 uses a private native-read stream buffer: negative read
+results signal `ios_base::failure`, zero alone means EOF, and EINTR is retried.
+Even a read error after a complete valid JSON document must reject. Native reads
+fetch at most 8 MiB plus one detection byte; the existing parser still enforces
+NUL and all structural/semantic limits. No ordinary ifstream flag is relied on.
 Parsing and encoding perform no filesystem discovery or registry publication.
 
 All operations run synchronously on the calling CPU thread. Independent values
@@ -268,13 +290,23 @@ The owning private `Error` derives from `std::runtime_error` and carries a `Code
 operation, diagnostic origin, field location, optional one-based byte offset,
 and an I/O error code when a stream signals one. U1 categories are `Read`,
 `Malformed`, `UnsupportedFormat`, `UnsupportedVersion`, `InvalidValue` and
-`LimitExceeded`. Encoding diagnostics use origin `<snapshot>`.
+`LimitExceeded`. U2 appends `Open`, `Write`, `Replace`, `UnsupportedPlatform`,
+retaining the same final Error type. File errors identify operation `load` or
+`save`, resolved path (original input when invalid/unresolvable) and `$path`,
+`$open`, `$create`, `$write`, `$close` or
+`$replace`, plus native errno. Codec errors retain `parse`/`encode` operation and
+their locations; encoding diagnostics use origin `<snapshot>`. NUL in a diagnostic
+path is printed as `\0`, while the owned `origin` retains the exact input.
+`cleanup_error` and owned `staging_leftover` identify a failed unlink separately
+from the primary error; they do not change its category/location/message.
 Messages distinguish malformed bytes from an unsupported version and identify
 the failing field. Unexpected allocation errors can propagate normally. Cleanup
 must not replace the primary failure or throw from a destructor.
 
 Failed parsing/assignment leaves existing snapshots intact; encoding also
-preserves its input. File preservation remains MS-006's future requirement.
+preserves its input. Path load checks close before returning a candidate;
+MS-006 implements file preservation. Borrowed paths/snapshots and private FileOps
+references/handles never escape a synchronous call.
 The future CLI owns process exit handling and prints diagnostics; the codec does not log
 to global engine services. A caller can adopt a successful return by moving it
 into its own state after validation.
@@ -286,9 +318,11 @@ Reusing private engine exceptions would add unnecessary Engine coupling; empty
 returns would obscure failures. Evidence: E01-E04, E07, H02-H04.
 **Confidence: medium** in this private error shape; high in ownership isolation.
 It is an engineering choice, not a recovered personal error-handling rule.
-Injected I/O, allocation and programming failures and retained diagnostics passed
-the focused checks. Changing error style affects only the private caller/tests
-now; no general result abstraction or public exception hierarchy is selected.
+U1 injected I/O, allocation and programming failures and retained diagnostics
+passed focused checks. U2 adds native-read, close, file-phase and leftover tests;
+see [next.md](next.md) for actual results. Changing error style affects only the
+private caller/tests now; no general result abstraction or public exception
+hierarchy is selected.
 
 ## MS-006 Failed-write preservation
 
@@ -299,19 +333,28 @@ nonregular destination. Assume the caller controls the directory and does not
 concurrently change paths. A future platform adapter must establish equivalent
 replacement behavior; unsupported platforms reject before touching the target.
 
-The proposed file adapter must:
+The implemented private file adapter (`file-storage.cpp`, E11) does the following:
 
-1. Resolve the destination once, validate the snapshot, and encode the complete
-   bounded document. Check the parent/target profile without changing either.
+1. Reject empty paths and embedded native NUL before any filesystem syscall.
+   Resolve once with `absolute(...).lexically_normal()`, retaining that path for
+   all syscalls/diagnostics. Validate and encode the complete bounded snapshot
+   before staging. Inspect the existing parent with stat and final target with
+   lstat; reject final symlinks (including dangling links) and nonregular targets.
+   Ancestor symlinks are allowed within the controlled-directory assumption;
+   this is lexical normalization, not hostile-tree canonicalization.
 2. Exclusively create a uniquely named staging file in the same directory, retaining
-   its handle and ownership. A Linux exclusive-create facility such as `mkstemp`
-   is the initial mechanism; never open a guessed existing temporary path for
+   its handle and ownership. Linux `mkostemp(..., O_CLOEXEC)` uses a six-character
+   unique suffix and exclusive create. Its fixed prefix is selected to be
+   disjoint from the target name, including temporary-looking absent targets.
+   Never open a guessed existing path for
    truncation. A private staging file may become the new file with mode 0600;
    preserving old ACLs/permissions is outside this first consumer.
-3. Write every byte, handle short writes, and check write and close errors,
-   including flush errors if buffered output is used.
-   Close the staging file successfully before publication. Every preceding error
-   discards only this operation's staging file, best effort.
+3. Use unbuffered native writes; loop over short writes and EINTR, reject zero
+   progress, and check close. There is no output buffering/flush stage to test.
+   Relinquish descriptor ownership *before* Linux close, including on EINTR;
+   never retry a possibly reused descriptor. Close successfully before
+   publication. Every preceding error discards only this operation's staging
+   file, best effort.
 4. Perform one same-directory native replacement (`rename` for the initial Linux
    profile). Never delete/truncate the old target or use remove-then-rename as a
    fallback. Replacement failure must retain the old valid file; exercise this on
@@ -321,10 +364,37 @@ The proposed file adapter must:
 
 Before the commit point, failure leaves an existing valid file byte-for-byte
 unchanged, or leaves an absent target absent. Report the primary phase/error;
-on cleanup failure retain that failure and identify the owned staging path when
-possible. Do not sweep other temporary files or automatically retry. After a
-successful call, a new load reads the new complete document. A later CLI comparison
+on cleanup failure retain the primary Error and attach the owned staging path
+and separate cleanup errno without allocating (move the preexisting string).
+An already missing staging entry is clean. Cleanup attempts unlink once and
+never retries close; destructors are no-throw. Unexpected allocation/programming
+exceptions retain their types and receive best-effort cleanup rather than
+conversion to Error. Do not sweep other temporary files or automatically retry.
+After a successful call, a new load reads the new complete document. A later CLI comparison
 failure is a separate read/verification outcome, not a claim that save rolled back.
+
+Load opens with `O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK`, then fstat checks
+the retained handle. Nonblocking prevents accidental special-file open blocking;
+it does not extend the supported profile beyond regular files. Reads and close
+are checked as MS-005 describes. Unsupported-platform branches throw before
+resolving/opening the path or encoding the candidate. They are source-reviewed,
+not executed on this Linux host.
+
+E11 tests cover successful creation/replacement/reload, short I/O/EINTR, exact
+8 MiB input and one-byte detection, raw NUL/truncation/trailing bytes, file-phase
+errors, fd reuse after close failure, and preservation of valid A or absent target
+while attempting distinct B. A deliberate exclusive collision reaches native
+`open(O_EXCL)` and preserves the unowned entry. Cleanup failures keep primary
+errno and a readable B staging leftover; explicit retry neither sweeps it nor
+damages unrelated entries. Invalid/oversized encoding creates no staging file.
+
+The real-rename failure test closes the fully written staging file, removes only
+that owned entry inside a narrow injected boundary, then calls actual Linux
+`rename(staging, existing_A)`. It observes ENOENT, exact unchanged A bytes and
+successful reload, followed by successful explicit retry. This is native syscall
+failure evidence, not a permission/quotas claim. A separate real save proves a
+read-only target file can be replaced; mode 0400 is not used to fake rename
+failure. All fixture changes/cleanup stay in unique clone-build child directories.
 
 This profile covers ordinary process-visible I/O failures, not power-loss
 durability, media corruption, network filesystems, hostile directory races, or
@@ -336,18 +406,20 @@ work. Direct truncating writes are simpler but cannot satisfy preservation;
 backup rotation or a database adds recovery policy without a present consumer.
 Evidence: the acceptance brief; E01-E04/H01-H05 establish no existing transaction
 to reuse. **Confidence: high** in the preservation requirement and publication
-sequence; medium in the initial platform choice, unverified by execution.
-Changing the platform replacement mechanism is isolated to the future adapter;
+sequence; medium when generalizing beyond this local Linux filesystem. Routine
+native I/O choices are engineering decisions, not inferred user taste. Actual
+commands/results and platform limits are in [next.md](next.md).
+Changing the platform replacement mechanism is isolated to this private adapter;
 the CPU codec and logical format need not change.
 
 ## MS-007 Integration and implementation placement
 
 The implementation is private under `projects/tests/map-storage/` with namespace
-`MapFixture`. Its standalone CMake entry compiles C++23 codec/tests and pinned
+`MapFixture`. Its standalone CMake entry compiles C++23 codec/adapter/tests and pinned
 gtest/gtest_main, using the repository JSON header privately. Generated compile
-commands list only codec, tests, gtest-all and gtest_main sources. The executable
-link edge contains only the codec and gtest archives, with no Engine or native
-module. This boundary passed native Debug checks. The current Engine target has
+commands list only codec, file adapter, their tests, gtest-all and gtest_main sources. The executable
+link edge contains only the codec/adapter and gtest archives, with no Engine,
+platform or graphics target. This boundary passed native Debug checks. The current Engine target has
 additional dependency edges (E08), so an
 Engine-linked headless process alone would not establish this smaller boundary.
 Do not export a new SDK component before the caller and failure checks work.
@@ -373,8 +445,8 @@ names, integration ownership, and save-game composition remain unselected.
 Current-source references E01-E09 describe inspection at
 `3542f883391d4225329dab8d5d61a5987e69c8f0`. They are compatibility facts, not
 evidence of personal preference, even where Git lists the established author
-identity. The baseline manifest tests below were not executed; U1 implementation
-and executed-test evidence are identified separately as E10.
+identity. The baseline manifest tests below were not executed; private implementation
+and executed-test evidence are identified separately as E10/E11.
 
 | ID | Exact source locations and observed contract |
 | --- | --- |
@@ -388,6 +460,7 @@ and executed-test evidence are identified separately as E10.
 | E08 | [Engine build declarations](../projects/engine/CMakeLists.txt), lines 21-45; [.gitmodules](../.gitmodules), lines 28-30; baseline tree gitlink `extern/json` at `b36f4c477c40356a0ae1204b567cca3c2a57d201`. Engine uses C++23 and private JSON includes, with other dependency links. The header was absent at the design checkpoint; it is now populated by the coordinator. Engine itself was not configured/built for U1. |
 | E09 | [Status](../docs/STATUS.md), lines 100-103; [manifest metadata gaps](../docs/planning/long-term/asset-manifest-metadata.md); [discovery guide](../docs/site/assets/file-and-font-discovery.md), lines 16-62. Documented intent distinguishes save serialization from manifest parsing and defers world storage. Missing semantic artwork metadata must not be invented. The current task selects this narrow experiment without reconciling published roadmaps. |
 | E10 | U1 [values](../projects/tests/map-storage/snapshot.h), [private API](../projects/tests/map-storage/codec.h), [codec](../projects/tests/map-storage/codec.cpp), [focused cases](../projects/tests/map-storage/codec-tests.cpp) and [standalone build](../projects/tests/map-storage/CMakeLists.txt). Actual commands and saved 86-case results are recorded in [next.md](next.md). These are new engineering choices, not personal preference evidence. |
+| E11 | U2 [path API](../projects/tests/map-storage/file-storage.h), [native adapter](../projects/tests/map-storage/file-storage.cpp), [private fault boundary](../projects/tests/map-storage/file-operations.h), [real-file/fault tests](../projects/tests/map-storage/file-storage-tests.cpp). The unchanged schema/codec is used through its existing stream boundary; Error gains only file categories/cleanup fields and printable NUL path handling. Build/test commands, saved logs, nonempty selections and outcome limits are in [next.md](next.md). This is current agent-authored compatibility evidence, not user preference evidence. |
 
 Existing checks worth reusing as contract examples, not as storage coverage:
 [manifest tests](../projects/engine/tests/all-tests/src/assets/manifest.cpp),
@@ -429,18 +502,18 @@ the demonstrated caller shapes, with their counterevidence retained.
 
 ## Implementation units
 
-U1 is complete within this assignment. U2/U3 require a later coordinator
-assignment and have not started.
+U1 is accepted. This assignment implements U2 only; U3 requires a later
+coordinator assignment. Executed evidence is recorded in [next.md](next.md).
 
 1. **U1 — CPU value and codec, complete.** Private snapshot types, equality,
    validation, bounded JSON parse/encode and 86 passing focused checks under
    `projects/tests/map-storage/`. Its codec uses only standard C++ and private
    declared JSON headers; the test runner adds pinned gtest. [next.md](next.md)
    owns reproducible commands and verification limits.
-2. **U2 — File publication adapter.** Add explicit-path load/save, same-directory
-   exclusive staging and Linux replacement, with a narrow private file-operations
-   seam for deterministic failures. Check real filesystem publication and target
-   preservation as well as injected faults. Do not expand to general save slots,
+2. **U2 — File publication adapter, implemented.** Explicit-path load/save,
+   checked native reads, same-directory exclusive staging and Linux replacement,
+   with a narrow private file-operations seam and focused real-file/fault tests.
+   No expansion to general save slots,
    recovery scanning, background services or cross-platform guarantees.
 3. **U3 — CLI acceptance.** Add the literal two-layer fixture and round-trip/verify
    commands, compare every reconstructed field in a fresh process, exercise the
@@ -448,18 +521,20 @@ assignment and have not started.
    extraction. No rendering, game startup, sibling merge, or artwork is needed.
 
 Each unit keeps the decision summary and next action consistent with actual
-evidence. The completed pre-interruption checks used the then-current shared
+evidence. The U1 pre-interruption checks used the then-current shared
 wrapper and clone-local Debug output, with four compilation jobs. The memory
-continuation now permits only one compilation/test job through the wrapper;
-unchanged passing native checks were not repeated. No dependency retrieval,
+continuation permits only one compilation/test job through the wrapper.
+U2 reuses the incremental Debug build and reruns the 86 codec cases because the
+private Error diagnostics/header and target changed. No dependency retrieval,
 system installation, device run or documentation generation was performed.
 
 ## Observable acceptance
 
 This table retains the full milestone requirements. U1 demonstrates the
 in-memory portions of A3/A4 and codec isolation in A7, plus memory round-trip,
-ownership and deterministic encoding. CLI observations in A1/A2, all file effects
-in A5/A6, and the CLI portion of A7 remain unimplemented/unexecuted.
+ownership and deterministic encoding. U2 exercises A5/A6 via private real-file
+and fault tests, plus checked load and codec regressions. CLI observations in
+A1/A2 and the CLI portion of A7 remain unimplemented/unexecuted.
 
 | Check | Required observation |
 | --- | --- |
@@ -471,12 +546,13 @@ in A5/A6, and the CLI portion of A7 remain unimplemented/unexecuted.
 | A6 — Successful replacement | Saving B succeeds, then a new load reads B with no mixture of A/B. Repeat with an absent target; precommit failures leave it absent. Temp-name collisions never overwrite another file; cleanup touches only the operation's own staging file. Cleanup failure retains the primary diagnostic and does not damage A. |
 | A7 — CPU isolation | Codec and CLI target dependency/source inspection plus actual headless execution show no Engine startup, graphics/platform module, provider, global asset manager, renderer, active game or sibling branch requirement. An Engine-linked stub or mocked CLI is insufficient evidence. |
 
-Material open points are local filesystem replacement/error semantics, future
+Material open points are filesystem behavior beyond this tested local profile, future
 Windows/durability support, additional toolchain acceptance, and future
 tilemap/asset binding and level adoption contracts. The API and budgets are
 deliberately private so findings can revise them before public callers accumulate.
 
-U1's actual verification is the standalone Debug build, 86 executed codec cases,
-generated source/link inspection and record/diff review. No CLI or filesystem
-publication exists yet. Successful U1 checks and its commit do not establish the
+U1's accepted verification was the standalone Debug build and 86 executed codec
+cases. U2 adds the native adapter/file cases and source/link review, with actual
+counts/commands in [next.md](next.md). No CLI exists yet. Successful checks and
+these local checkpoints do not establish the
 full map-storage feature's acceptance.

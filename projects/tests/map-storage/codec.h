@@ -23,9 +23,13 @@ namespace MapFixture {
     inline constexpr std::size_t max_object_members = 256;
     inline constexpr std::size_t max_nodes = 300000; // Values/containers and decoded object keys.
 
-    enum class Code { Read, Malformed, UnsupportedFormat, UnsupportedVersion, InvalidValue, LimitExceeded };
+    enum class Code {
+        Read, Malformed, UnsupportedFormat, UnsupportedVersion, InvalidValue, LimitExceeded,
+        Open, Write, Replace, UnsupportedPlatform
+    };
 
     // All diagnostic data is owned, including when the source/stream has disappeared.
+    // Printable diagnostics escape NUL in origin; the owned path remains exact.
     class Error final : public std::runtime_error {
     public:
         Code code;
@@ -34,6 +38,10 @@ namespace MapFixture {
         std::string location;
         std::optional<std::size_t> byte_offset; // One-based input position, when known.
         std::error_code io_error;
+        // File-adapter cleanup never replaces the primary error. Empty unless an
+        // owned staging entry could not be removed; the caller owns any retry.
+        std::string staging_leftover;
+        std::error_code cleanup_error;
 
         Error(Code code, std::string operation, std::filesystem::path origin, std::string location,
               const std::string& detail, std::optional<std::size_t> byte_offset = {}, std::error_code io_error = {});

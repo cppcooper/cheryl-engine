@@ -1,8 +1,9 @@
 # Map-storage decisions
 
-U1's CPU values and codec are implemented and checked. File publication and the
-CLI remain proposals for later units. These are engineering choices, not user
-preference declarations. Full contracts, alternatives, provenance, confidence and
+U1's CPU values/codec and U2's private Linux file adapter are implemented.
+Executed checks and remaining limits are in [next.md](next.md). The CLI remains
+proposed U3. These are engineering choices, not user preference declarations.
+Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
 
 ## MS-001 CPU boundary
@@ -10,9 +11,10 @@ reversal costs are in [agent-notes.md](agent-notes.md).
 U1 implements private CPU snapshots and a memory-stream codec for two logical
 layers and one named spawn. Indexing discovers paths; graphics publication has
 native ownership and partial effects. Keeping these responsibilities separate
-allows independent native checks. The tradeoff is a small new boundary, with file
-publication deferred. Confidence is high in isolation and medium in API shape;
-reversal affects only private callers/tests today.
+allows independent native checks. U2 layers explicit-path I/O over the codec;
+the CLI is deferred. The tradeoff is a small private boundary. Confidence is high
+in isolation and medium in API shape; reversal affects only private callers/tests
+today.
 [Details](agent-notes.md#ms-001-cpu-boundary).
 
 ## MS-002 Logical identity and coordinates
@@ -48,32 +50,32 @@ reversal changes private limits/tests and records.
 
 ## MS-005 Ownership and failure reporting
 
-Use synchronous owned results and an owning private Error for anticipated codec
-failures. Direct stream-buffer consumption preserves allocation/programming
-exceptions and leaves stream flags/masks unchanged. Callers keep borrowed inputs
-stable; failed parsing does not replace their snapshots. This unusual stream
-contract needs explicit documentation and caller handling. Confidence is high in
-checked ownership and medium in exception style. Reversal affects only private
-callers/tests; historical styles are inconsistent.
+Use synchronous owned results and the same owning Error for anticipated codec
+and file failures. U2 adds file phases and separate cleanup/leftover fields;
+allocation/programming failures still propagate. A signaling native read buffer
+distinguishes errors from EOF without changing the codec's stream contract.
+Callers keep inputs stable and adopt only successful returns. This costs private
+adapter machinery. Confidence is high in ownership, medium in exception shape;
+reversal affects private callers/tests only.
 [Details](agent-notes.md#ms-005-ownership-and-failure-reporting).
 
 ## MS-006 Failed-write preservation
 
-For proposed U2, encode completely, exclusively stage beside the destination, check writes and
-close, then replace once. Before that commit point, errors preserve the prior
-file; afterward save returns success. Start with controlled regular local Linux
-files and reject unsupported capabilities. This adds platform and fault-testing
-work; power-loss durability and Windows replacement remain deferred. Confidence
-is high in the preservation requirement and medium in the unexecuted platform
-mechanism. Reversing the platform mechanism leaves the CPU codec intact.
+U2 resolves paths once, encodes completely, exclusively stages with mkostemp,
+checks unbuffered writes/close, and renames once. Linux close ownership is released
+before the syscall; cleanup preserves the primary error and names leftovers.
+Controlled regular-or-absent local files keep the scope testable, at the cost of
+Linux-only support and new mode 0600. Confidence is high in the checked sequence,
+medium beyond the local filesystem; reversing the adapter leaves the codec intact.
 [Details](agent-notes.md#ms-006-failed-write-preservation).
 
 ## MS-007 Integration and implementation placement
 
-Keep U1 under `projects/tests/map-storage/` with a standalone CMake runner linking
-only the codec and pinned gtest archives. Executed checks establish this CPU
-boundary without Engine initialization. Tilemap adapters and active-level
-adoption remain future responsibilities. Private placement may cost later
+Keep U1/U2 under `projects/tests/map-storage/` with the existing standalone CMake
+runner linking only private codec/adapter and pinned gtest archives. Source/link
+inspection and focused native checks establish this boundary without Engine
+initialization. Tilemap adapters and active-level adoption remain future
+responsibilities. Private placement may cost later
 extraction, but keeps siblings independent. Confidence is high in checked
 isolation and medium in final placement; relocation changes private targets
 without public SDK migration.

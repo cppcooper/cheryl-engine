@@ -12,9 +12,18 @@
 static_assert(NLOHMANN_JSON_VERSION_MAJOR == 3 && NLOHMANN_JSON_VERSION_MINOR == 11 && NLOHMANN_JSON_VERSION_PATCH == 3);
 
 namespace MapFixture {
+    namespace {
+        std::string diagnostic_path(const std::filesystem::path& origin) {
+            auto text = origin.string();
+            for (std::size_t at = 0; (at = text.find('\0', at)) != std::string::npos; at += 2)
+                text.replace(at, 1, "\\0");
+            return text;
+        }
+    }
+
     Error::Error(Code code, std::string operation, std::filesystem::path origin, std::string location,
                  const std::string& detail, std::optional<std::size_t> byte_offset, std::error_code io_error)
-    : std::runtime_error(operation + " '" + origin.string() + "' at " + location + ": " + detail),
+    : std::runtime_error(operation + " '" + diagnostic_path(origin) + "' at " + location + ": " + detail),
       code(code), operation(std::move(operation)), origin(std::move(origin)), location(std::move(location)),
       byte_offset(byte_offset), io_error(io_error) {}
 
