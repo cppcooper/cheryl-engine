@@ -16,6 +16,8 @@ U4's private startup-only authored input passed 23 new plus all 60 retained case
 U5 adds private advisory inspection under ST-013/014; all 15 new and 83 retained
 cases passed (98/98), with 54 expected child statuses. Full evidence is in next.md.
 These remain engineering choices, not personal taste evidence.
+U6 exposes Engine inspection under ST-013/014/015; next.md distinguishes its
+executed boundary checks and retained regressions.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -141,19 +143,29 @@ guard. Confidence is high in bounds, medium in chosen text caps; changing caps i
 
 ## ST-013 — Inspect topology without constructing an encounter
 
-Load and compile through the existing private loader, then return an independently
-owned report in authored order. Use the compiled entry and explicit terminal kind;
-all choices count as edges regardless of conditions. Valid cycles and advisories
-exit successfully. Inspection never constructs sessions or processes commands.
-This trades gameplay conclusions for useful structural facts without callbacks.
-Confidence is high in semantics, medium in CLI/report spelling; changing that
-private presentation has low reversal cost.
+Engine inspect returns independently owned topology in authored order using the
+compiled entry and terminal kind. Every choice is an edge regardless of conditions;
+cycles and terminal-free components remain valid. The console loads and formats
+outside Engine, without constructing sessions or processing commands. This trades
+gameplay conclusions for reusable structural facts with no callbacks. Confidence
+is high in semantics, medium in public spelling; no personal API taste is inferred.
 
 ## ST-014 — Bound graph work before copying report values
 
-Recheck 256 nodes, subtraction-checked 2048 total edges and 128-byte copied IDs,
-then use fixed adjacency arrays and iterative forward/reverse queues. Linear
-target lookup costs O(N E L); traversal costs O(N+E), with L at most 128 bytes.
-This trades modest bounded lookup work and roughly 41 KiB scratch for no graph
-framework or recursion. Confidence is high in bounds; cap changes need coordinated
-loader/storage review, while helper replacement stays private.
+Use explicit Engine node/edge, repeated-ID-byte, payload-storage and work budgets
+with typed refusals. Defaults cover the console; hard ceilings permit larger CPU
+definitions. Preflight counts/ID minima, checked arithmetic and exact payload
+estimates bound allocation. Charge actual comparisons, graph visits and copies;
+allocator exceptions propagate. This trades fixed private arrays for one budgeted
+scratch allocation. Confidence is high in mechanics, medium in chosen ceilings;
+tuning requires contract/test review.
+
+## ST-015 — Keep consumer policy outside the exported analysis
+
+Own inspection in the real Engine source glob with a normal CE_API declaration.
+The console aliases its owned report, delegates traversal, and retains only legacy
+cap/message checks and formatting. A separate public-header-first consumer links
+Cheryl::Engine, checks returned values/refusals/lifetimes and verifies shared symbol
+ownership. This trades a bounded compatibility preflight for unchanged CLI bytes
+without duplicate production algorithms. Confidence is high on verified Linux;
+SDK/platform ABI coverage remains deferred.

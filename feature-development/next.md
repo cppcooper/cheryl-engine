@@ -1,6 +1,182 @@
-# U5 headless authored-dialogue inspection
+# U6 reusable bounded Engine inspection
 
-STORYTELLING-U5 starts from clean accepted U4
+STORYTELLING-U6 starts from clean accepted U5
+`24f9e04b2e4f912be6e0c56ec2cca009b971c16e`. The public CPU operation, owned
+report, typed budgets, thin private adapter and independent actual-Engine consumer
+are implemented. **112/112** focused cases passed: **14 new plus all 98 retained**
+(45 Engine cases, 3 separate consumer cases, 64 app cases), no skips/unrun cases.
+Final added boundary assertions passed **2/2** focused rechecks. All **54** complete
+child blocks match U5 **byte for byte**, including arguments, stdin, stdout,
+stderr and immediate statuses (21 exit 0 / 15 exit 2 / 18 exit 3).
+No ASan/UBSan diagnostics or resource admission refusals occurred. Assigned checks
+are complete, ready for coordinator review; no next unit is started.
+
+## U6 caller and implemented boundary
+
+The self-contained public `cheryl/core/game-framework/dialogue-inspection.h` owns
+InspectionLimits, maximum_inspection_limits, InspectionError, InspectionUsage,
+InspectionReport and one CE_API operation:
+
+```cpp
+#include <cheryl/core/game-framework/dialogue-inspection.h>
+auto result = CE::Dialogue::inspect(*definition, CE::Dialogue::InspectionLimits{});
+if (result) {
+    const auto& report = *result; // independent owned IDs/counts/lists/usage
+} else {
+    const CE::Dialogue::InspectionError refusal = result.error();
+    // Handle the typed refusal; there is no partial report.
+}
+```
+
+The caller retains a successfully compiled Definition only for the call. Returned
+IDs/lists survive all draft/definition owners, with no retained input reference.
+Reports preserve authored order, actual compiled entry, explicit terminal kinds,
+all structural edges and empty terminal paths. Conditions/effects are never
+invoked. Cycles, self/parallel/conditional edges and terminal-free components remain
+valid. Static topology is advisory, not gameplay/history/termination/completion
+proof. Definition/Draft/Session and application operation semantics are unchanged.
+
+Matching decisions ST-013/014 are updated and ST-015 adds actual Engine ownership/
+consumer policy. Default budgets are 256 nodes, 2048 choices, 131072 repeated ID
+bytes, 1048576 payload bytes and 134217728 work units. Hard request ceilings are
+4096 / 65536 / 4194304 / 16777216 / 1073741824 respectively. Zero means no allowance;
+any request above a ceiling, including size_t-max, returns InvalidLimits before
+traversal/allocation. Other typed refusals distinguish node, choice, copied-ID,
+storage and work budgets. Larger inputs are supported under raised budgets; tests
+execute 257 nodes, 2049 edges and 256-byte IDs without importing private JSON caps.
+
+One contiguous actual-size scratch allocation supports iterative forward/reverse
+CSR traversal. Its index payload is `(2E + 6N + 3)*sizeof(size_t)`. With S output
+node-ID slots and B repeated copied ID bytes, peak charged payload is
+`scratch + sizeof(InspectionReport) + S*sizeof(NodeId) + B + S+2`. Counts/bytes/
+products and minimum payload are checked before scratch allocation, exact final
+payload/copy work before report allocation. Work charges actual row/edge visits,
+scratch index passes, lookup candidates/compared bytes, report appends and copied
+ID bytes/terminators. Exact formulas, unit meanings and tradeoffs are in ST-014
+and the public declaration. Storage excludes allocator metadata/
+rounding, fixed stack and input; work excludes fixed bookkeeping and allocator
+internals. These are explicit payload/work budgets, not resident-memory or latency
+guarantees. Allocation exceptions propagate; U6 does not inject allocator failure
+or deliberately exhaust memory. Prior values remain untouched on refusal/exception.
+
+Engine's existing source glob owns the new `.cpp`; no alternate archive/copy,
+export macro override, JSON/path/format/session or generic graph API was added.
+The private report header aliases InspectionReport; its adapter retains only the
+legacy ordered cap/message preflight and delegates topology to Engine. Formatter
+bytes, loader/schema/allowlist, built-in/loaded interactive modes, paired saves,
+fresh-save guarantees and dependency pins remain compatible. Engine linkage still
+has its existing dependency closure; CPU-only is not dependency-free packaging.
+
+## Actual U6 native and linkage checks
+
+The preserved clone-local GNU/Linux Debug shared-Engine profile, policy minimum
+3.5, prior OFF selections, pins and incremental outputs were reused. Every
+configure/build/native metadata/test check ran through the shared one-job wrapper.
+The adaptive monitor controls native admission/caps; no swap and 4 GiB host floor
+remain in force. No monitor/global/sanitizer build setting changed. Invocation-only
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 and UBSAN_OPTIONS=halt_on_error=1 remain
+ST-008's accommodation, with ASan/UBSan instrumentation retained. Leak coverage is
+**unverified**. No native child reacquires the lock; child consoles inherit the
+wrapped test envelope. No cancellation/relaunch, exit 75 or unchanged retry occurred.
+
+Actual primary commands from clone root (all exit **0**, full logs below):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine tests-dialogue-inspection dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.)'
+```
+
+Final review added exact maximum-allowance acceptance and a post-traversal storage
+refusal assertion. The same incremental build command ran again (exit **0**), then
+only those changed cases reran (exit **0**, 2/2, 0.21 seconds):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^tests-engine\.dialogue_inspection\.(storage|invalid_limits)$'
+```
+
+A supplemental wrapped CMake script executes nm/readelf serially and captures
+complete outputs/immediate statuses. Exact invocation:
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake \
+  -DINSPECTION_BUILD_DIR=/mnt/projects/cheryl-features/projects/storytelling/builds/storytelling-u1-debug \
+  -P builds/storytelling-u1-debug/u6-linkage-audit.cmake
+```
+
+Its native tools all exit **0**: `nm -D -C --defined-only .../libcheryl-engine.so`,
+`nm -D -C --undefined-only .../tests-dialogue-inspection`, and `readelf -d` on that
+consumer. They show `T CE::Dialogue::inspect(Definition const&, InspectionLimits const&)`,
+consumer `U` import, and NEEDED libcheryl-engine.so.4. The script itself exited
+**1** only at its final matcher: `RegularExpression::compile(): Invalid range in [].`
+The initial script/log/exit remain intact. Replacing that expression with literal
+`string(FIND)` in `u6-linkage-audit-2.cmake` and executing the same wrapped command
+with that `-P` path exits **0**; it rereads the saved successful tool outputs,
+without repeating native metadata commands or changing implementation/check flags.
+
+| Complete clone-local files under `builds/storytelling-u1-debug/` | Observed result |
+| --- | --- |
+| `u6-configure.log`, `.exit` | 0; retained profile/options/pins. |
+| `u6-build-1.log`, `.exit`; `u6-build-2.log`, `.exit` | 0; actual shared Engine compiles/owns source, public consumer and private adapter compile/link/discover. Second build adds final boundary assertions/API comment clarification only. |
+| `u6-registration.log`, `.exit`; `u6-registration-audit.log` | 0; exactly 112 cases, source names/order match, all 98 previous names/order retained, 14 new. |
+| `u6-ctest-1.log`, `.exit`; `u6-ctest-details-1.log` | 0; 112/112 passed, 14.07 seconds. Full RUN/OK/CTest and 54 complete child records retained. |
+| `u6-boundaries-ctest-2.log`, `.exit`; `u6-boundaries-details-2.log` | 0; 2/2 changed boundary cases passed, no skips or sanitizer diagnostics. |
+| `u6-engine-exports.log`, `.exit`; `u6-consumer-imports.log`, `.exit`; `u6-consumer-needed.log`, `.exit` | All 0; real shared export/import/NEEDED proof. |
+| `u6-linkage-audit.cmake`, `.log`, `.exit`; `u6-linkage-audit-2.cmake`, `.log`, `.exit` | Initial matcher 1 (invalid escaped regex), corrected read-only matcher 0; both complete attempts retained. |
+| `u6-boundary-rules.log` | Real Engine source object has CE_BUILDING_ENGINE; independent consumer lacks private/app/JSON includes and export/static macro patches. Both retain ASan/UBSan. |
+| `u6-results-audit.log` | Discovery/execution counts/names, 98 regressions, no skips/sanitizer errors, all 54 full child blocks byte-identical to U5; resolved audit failure distinguished. |
+
+The header-first separate consumer executes values, ownership and typed errors
+across the real shared boundary; its Linux dladdr assertion confirms the function
+owner equals the Engine target file. Three consumer checks are registered through
+the existing Engine test helper, linking Cheryl::Engine without a private source
+copy or JSON/app includes. Compile/link/export evidence complements actual returned
+results; an unused successful link is not counted as acceptance. All logs, audit
+scripts, disposable fixtures and immediate-status files remain ignored/clone-local.
+
+| New passed cases | Observable checks |
+| --- | --- |
+| dialogue_inspection.literal, terminal_free, parallel_self | Independent literal branch/rejoin, nonfirst entry/authored order, cycles/self/parallel/conditional/effect-key edges, unreachable terminal/closed components, zero-terminal structure, terminal empty path; no handlers/sessions exist. |
+| ownership, copied_ids | Draft mutation/destruction, definition weak owner expires, independent report copies, exact repeated ID budget/+1 refusal and old report stability; Engine accepts a 256-byte ID. |
+| nodes_choices, larger | Exact node/edge and zero-edge budgets, one-short refusals, 257 nodes/2049 edges accepted under raised limits. |
+| storage, work, invalid_limits, compared_bytes | Exact payload/work budget and one-short/zero refusals; final late storage refusal; maximum valid allowances and every field above hard ceiling/size_t-max; equal-length late byte comparisons cost more than early mismatches. No huge allocations/OOM test. |
+| dialogue_inspection_consumer.public_header, retained, typed_limits | Self-contained header first, actual shared symbol owner/export/import, executed values, retained independent IDs and typed work/invalid-limit refusals with old report unchanged. |
+
+## U6 next action and remaining limits
+
+No unresolved assigned blocker remains. Next concrete action: coordinator review
+of this local U6 checkpoint, its public budget contract, thin adapter and complete
+saved evidence. Stop here. A second application-owned condition/effect context or
+broader portability/SDK/runtime integration is only a candidate for a separately
+selected bounded assignment; no integration or publication transport is started.
+
+Confidence is high in executed Linux ownership/typed refusal/advisory compatibility,
+medium in public spelling and chosen ceilings/work-unit longevity. These are agent
+engineering choices, not personal user API preferences. Reversing private adapter/
+format details is local; changing a public report/budget needs consumer/test review.
+Allocator overhead/rounding/exceptions and input/compiler/read/format costs stay
+outside charged payload/work; no latency guarantee is claimed. U6 does not inject
+allocation failure. LSan, other platforms/C libraries, installed SDK/public ABI
+portability and wider runtime integration remain unverified. Source comments are
+reviewed against source/tests; no documentation generation, SDK export, broad suite,
+GUI/device, package download, install, pin change, subagent or external agent ran.
+
+## Retained U5 headless authored-dialogue inspection
+
+STORYTELLING-U5 started from clean accepted U4
 `509bfcb12157815f621dae8d1cd07c3622b43694`. Private report/helper, CLI selection,
 focused graph tests and actual child-process cases are implemented. Configure and
 incremental builds exited 0; discovery and execution contain exactly **98** cases,

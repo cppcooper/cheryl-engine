@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-014` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-015` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -43,6 +43,12 @@ STORYTELLING-U5 authorizes private headless authored-content inspection only, fr
 accepted U4 `509bfcb12157815f621dae8d1cd07c3622b43694`. ST-013/014 below describe
 its implemented report and cost boundary; all 15 new plus 83 retained cases passed
 (98/98), with 54 expected child statuses. [next.md](next.md) records full evidence.
+
+STORYTELLING-U6 authorizes reusable bounded Engine inspection from accepted U5
+`24f9e04b2e4f912be6e0c56ec2cca009b971c16e`. The same advisory semantics now have
+an Engine-owned CPU operation, explicit typed resource budgets, a thin private
+adapter and independent actual-Engine consumer. ST-013/014 are updated and ST-015
+records the export/consumer boundary; next.md distinguishes executed checks.
 
 **ST-001 — Small reusable boundary.** U1/U2 implement CPU dialogue definition
 validation and an explicitly advanced session; U3 adds the private console adapter
@@ -552,7 +558,9 @@ and Runtime. Native results and portability/leak limits are in next.md.
 
 ## U5 advisory authored-content inspection
 
-**ST-013 — Own structural facts without starting play.**
+**ST-013 — Own structural facts without starting play.** U6 moves the topology
+operation/report into Engine; the following private command and semantic contract
+are retained.
 `dialogue-console --inspect-definition PATH` uses the unchanged bounded loader,
 operation-key allowlist, validation order and owned diagnostic formatter. It
 compiles before analysis and returns before Encounter/Session construction, handler
@@ -594,8 +602,9 @@ No terminal route (0): []
 Advisory topology: conditions are ignored; no proof of gameplay reachability, effect history, termination or guaranteed completion.
 ```
 
-The private DefinitionReport owns definition ID, revision, entry, counts and all
-three ID lists, retaining neither the compiled definition nor input/draft buffers.
+The Engine InspectionReport (aliased privately as DefinitionReport) owns definition
+ID, revision, entry, counts and all three ID lists, retaining neither the compiled
+definition nor input/draft buffers.
 Copies remain independent. Lists follow authored node order, never queue order.
 Entry is the actual `Definition::entry()` node even when nonfirst. Terminals are
 exactly `NodeKind::Terminal`; the empty path gives every terminal a route to
@@ -612,54 +621,134 @@ A cycle with an exit has a structural terminal route but can loop forever by
 choice; a closed cycle can be intentional and remains valid. Neither positive
 nor negative topology results prove gameplay feasibility, effect history,
 termination or guaranteed completion. Report advisories never become compiler
-warnings/errors. The inspector changes no Engine API or validation semantics.
+warnings/errors. U6 adds an Engine observation operation without changing
+Definition/Session or compilation semantics.
 
-**ST-014 — Bound topology storage and work.** The loader still enforces all
-ST-012 byte/text/depth/schema caps **before** freezing/analysis. The helper also
-accepts a borrowed already-compiled definition, so it checks node count <=256,
-total choices <=2048 using remaining-budget subtraction, and every copied
-definition/node ID <=128 bytes before allocating report values. It relies on
-successful immutable compilation for entry/target membership, kinds and scope;
-it never reconstructs draft validation or scans/copies prose. Compiler-valid
-direct inputs exceeding these private graph/ID caps return an owned limit error.
-These helper checks do not claim to reserialize or enforce JSON document bytes.
+**ST-014 — Bound reusable Engine inspection.** The self-contained CPU header
+[dialogue-inspection.h](../projects/engine/include/cheryl/core/game-framework/dialogue-inspection.h)
+adds one exported operation in CE::Dialogue. A small public-only caller is:
 
-Scratch uses two flat adjacency arrays of 2048 indices, three arrays of 257
-offsets/cursors, one queue of 256 indices and two visited arrays of 256 booleans.
-On this 64-bit build their element storage is 41496 bytes (about 41 KiB), excluding
-ordinary locals/ASan stack overhead. Compile-time size/product checks protect
-arithmetic for these constants. Prefix sums and indices cannot exceed E; visited
-is set before enqueue, so each traversal enqueues each node at most once and its
-queue never exceeds N. There is no recursion or input-sized graph allocation.
-Resolving targets by bounded linear ID comparison costs O(N E L), at most 524288
-comparisons of <=128-byte names; adjacency construction/traversal then costs
-O(N+E). Report construction/formatting is proportional to copied/output bytes.
-At most 2N+2 IDs are copied (65792 ID bytes at the caps); vector/string capacities,
-allocator metadata and stream growth add bounded overhead, not a claimed exact
-process-memory limit. Display escaping expands each ID byte by at most six.
-The monitor/wrapper separately controls native process budgets. File-read latency,
-allocator failure and filesystem behavior are not bounded by topology analysis;
-allocation exceptions retain the existing unexpected-failure exit.
+```cpp
+#include <cheryl/core/game-framework/dialogue-inspection.h>
+// definition was successfully compiled and remains alive during this call.
+auto result = CE::Dialogue::inspect(*definition, CE::Dialogue::InspectionLimits{});
+if (!result) {
+    // Inspect result.error(): a typed CE::Dialogue::InspectionError, no partial report.
+    return;
+}
+const auto& report = *result; // owns every ID/list; definition can now be released
+```
 
-The real loader cannot fit 2048 complete JSON choices within 64 KiB, as ST-012
-records. A directly compiled 256-node/2048-edge graph therefore exercises the
-helper's genuine capacity, +1 edge/node rejection, parallel edges and long paths;
-an all-terminal 256-node fixture exercises full reverse seeding and nonfirst entry.
-An exact 128-byte ID and +1 checks cover copied storage. Small literal fixtures
-cover branch/rejoin, cycles with/without exits, unreachable terminal and ignored
-condition/effect keys. Complete CLI transcripts cover gate/crossroads/literal loop,
-usage/rejection and absence of command execution/source writes. Actual execution
-counts/logs remain in next.md rather than inferred from these implemented cases.
+InspectionLimits is independent of private JSON constraints. Each call explicitly
+budgets these resources; omitted limits use the defaults. Zero is a restrictive
+budget, never an unlimited sentinel. Requests above **any** hard ceiling return
+InvalidLimits before input traversal or allocation, including size_t-max requests.
+Accepted larger budgets allocate for actual input, never the configured maxima.
 
-An Engine warning pass was rejected because it would change validation/public
-scope; recursive DFS adds unnecessary stack dependence, and a graph package or
-global index service exceeds this small private responsibility. Linear lookup
-with fixed flat adjacency is sufficient under the caps. Confidence is high in
-semantics/ownership/bounds, medium in CLI/report spelling; private presentation
-and helper replacement are cheap to reverse. Raising caps needs explicit review
-of loader, fixed storage, lookup work and tests. No new user API-taste inference
-follows from these engineering choices. Portability, leaks and runtime/SDK
-integration remain outside executed acceptance.
+| Budget | Default | Absolute supported maximum | Meaning |
+| --- | --- | --- | --- |
+| nodes | 256 | 4096 | All authored nodes, including unreachable nodes. |
+| choices | 2048 | 65536 | All authored directed edges, including parallel/self/conditional edges. |
+| copied_id_bytes | 131072 | 4194304 | Exact repeated definition/entry/list ID characters in the resulting report. No per-ID 128-byte Engine restriction. |
+| storage_bytes | 1048576 | 16777216 | Accounted peak requested scratch/report payload, described below. |
+| work | 134217728 | 1073741824 | Deterministic charged units, not CPU instructions or a time limit. |
+
+InspectionError distinguishes InvalidLimits, NodeLimit, ChoiceLimit, CopiedIdLimit,
+StorageLimit and WorkLimit. No refusal yields a usable partial report or mutates
+the frozen definition/earlier reports. The operation borrows Definition/limits
+only during the synchronous call and retains neither owner. Successful reports
+add InspectionUsage with exact charged ID bytes, payload bytes and work. Default
+budgets cover the old console maximum, including its <=128-byte identities; larger
+valid Engine definitions can raise budgets within the hard ceilings. No handler,
+flag/session, path/JSON, formatting or generic graph abstraction enters Engine.
+
+The single production implementation is
+[Engine dialogue-inspection.cpp](../projects/engine/src/core/game-framework/dialogue-inspection.cpp).
+It first bounds nodes, subtraction-checks edge accumulation and sums the minimum
+output ID bytes (definition, entry, all nodes once) using remaining budget. Hard
+ceiling/product checks bound all size arithmetic, including 32-bit size_t. It
+checks minimum output plus scratch storage/work before allocation. One contiguous
+vector holds forward/reverse CSR offsets and adjacency, write cursors, a queue and
+two visited sets. For N nodes/E choices its requested scratch is exactly
+`(2*E + 6*N + 3)*sizeof(size_t)`; no recursion or input-controlled nesting exists.
+Compiled identity/reference/kind guarantees supply valid entry/target membership;
+no compiler validation is duplicated. Linear target lookup charges each candidate
+and each actually compared byte, including early mismatch/length outcomes.
+
+Forward traversal starts at the compiled entry; reverse traversal seeds every
+explicit terminal. Visited is set before enqueue, bounding each queue to N and
+traversal to O(N+E). Lookup is O(N E L), bounded additionally by the work budget,
+where L is the compared ID prefix length. Final partition counts determine exactly
+which IDs repeat in no_terminal_route; those bytes and exact output slots are
+checked **before** any report allocation/copy. A budget may therefore refuse after
+bounded scratch/traversal, still returning no partial output.
+
+For S = N + no_terminal_route.size() and B = repeated copied ID bytes, charged
+peak payload is `scratch + sizeof(InspectionReport) + S*sizeof(NodeId) + B + S+2`.
+It includes report/vector objects, requested vector slots, string bytes and one
+terminator per ID. SSO may make this conservative; allocator metadata/capacity
+rounding, fixed stack, borrowed input, compiler/loader and caller formatting are
+excluded. This is an explicit payload budget, not a promise of exact resident
+memory or allocator behavior. Hard caps keep aggregate arithmetic small; even a
+maximum requested budget does not reserve/allocate that many bytes in advance.
+
+Work charges one per row/edge visit in the preflight, adjacency, reverse-fill,
+seed, partition, flood and report passes; one per scratch-initialized/prefix/
+cursor-copy index; one per lookup candidate/actually compared byte; one per report
+list append; and each copied ID byte/terminator. Report-copy work is charged from
+exact lengths/counts before copying. Constant bookkeeping and allocator internals
+are excluded. This model measures actual selected operations, not a worst-case
+N*E reservation or wall time. Engine cases distinguish equal-length graphs with
+early versus late byte mismatches, and exact usage versus one-unit-short budgets.
+std::bad_alloc/other allocator exceptions propagate; there is no catch-all,
+rollback claim or reusable failure-injection service. All prior values remain
+untouched while local scratch/report construction unwinds.
+
+U5's accepted prototype used private fixed arrays with 41496 bytes of index/visited
+element storage on this 64-bit build, at 256/2048 and 128-byte per-ID caps. U6
+replaces that fixed allocation and inferred cost bound with explicit budgets and
+one actual-size scratch allocation; at 256/2048 the new all-size_t scratch alone
+is 45080 bytes. The legacy caps still apply at the console adapter. As before,
+2048 complete JSON choices cannot fit in its 64 KiB document; direct compiled
+Engine fixtures exercise graph limits independently. U6 tests also accept 257
+nodes, 2049 edges and 256-byte IDs under raised/appropriate Engine budgets.
+
+A generic graph index/package and an Engine JSON loader were rejected as broader
+responsibilities. Retaining only fixed 256/2048 public caps would unnecessarily
+couple reusable CPU data to a toy JSON consumer. Unbounded size_t budgets would
+make overflow/work refusal misleading. Confidence is high in ownership/bounded
+mechanics, medium in defaults/hard ceilings/work-unit longevity; caps or charging
+changes require coordinated contract/test review. No personal API-taste inference
+follows from these engineering choices. Allocation exceptions, broader platforms,
+SDK packaging, leak checks and runtime integration remain explicit limits.
+
+**ST-015 — Real Engine ownership, thin compatible consumer.** The new source is
+owned by the actual Engine `src/*.cpp` CONFIGURE_DEPENDS glob and normal CE_API
+boundary. It is not compiled into a private alternate implementation/archive.
+The existing public Definition observation APIs and compiler/session source remain
+unchanged. The console aliases InspectionReport and delegates to Engine inspect;
+only its ordered legacy node/ID/choice-cap preflight, string error translation and
+unchanged formatter remain private. There is one production graph analysis.
+The small legacy preflight preserves exact error precedence/bytes for direct
+private callers and is bounded to 256 rows without walking graph edges. All
+private JSON schemas/keys, built-in/loaded interactive mode and paired saves stay
+with their original owners.
+
+The separate `tests-dialogue-inspection` suite is registered with the existing
+Engine helper, includes the public header **first**, and links actual Cheryl::Engine.
+It has no private Engine/app/JSON include or export-macro override. It executes
+returned report values, retained ownership and typed failures. In this Linux shared
+configuration its public_header case also checks dladdr's actual function owner
+against the real Engine target file; this probe is test-only. Generated compile
+rules establish Engine-only source ownership/export flags and consumer import
+flags. Native nm/readelf records establish defined Engine inspect, undefined
+consumer import and NEEDED libcheryl-engine.so.4; next.md preserves commands,
+complete outputs and the resolved audit-matcher failure. These are actual source/
+link/execution observations, not SDK/static/Windows acceptance. Keeping normal
+Engine source ownership costs its existing dependency/link closure; this operation
+is CPU/JSON-free, not a promise of dependency-free Engine packaging. Confidence
+is high for executed Linux shared ownership; other platform/ABI/SDK work remains
+unverified and requires its own unit.
 
 ## Verification environment
 
@@ -751,11 +840,12 @@ UI would consume copied views and send scoped selections to simulation.
 | U2: explicit session | Implemented and verified: all 18 session cases plus the 16 definition regressions passed under Debug ASan/UBSan. Incarnation freshness, owning views, checked moves/lifecycle, borrowed handlers, exceptions, reentrancy, overflow and value resume are covered. A separate allocation-rejection probe passed for owned-copy failures and the post-effect path. |
 | U3: console acceptance | Accepted private headless gate, numbered selections, complete paired JSON envelope and exclusive fresh-path save/resume, with 26 new plus 34 retained cases passing. Full evidence/limits are in next.md. |
 | U4: authored startup | Private bounded definition_schema 1 input compiles before Encounter construction with fixed application keys. 17 definition cases and six new transcript cases passed with all 60 regressions (83/83); all 32 child statuses match expected normal/usage/rejection outcomes. |
-| U5: advisory inspection | Private owned report and bounded iterative analysis; 10 report and five new transcript cases passed with all 83 regressions (98/98). All 54 child outcomes match, including 22 inspection invocations. next.md records full evidence/limits. |
+| U5: advisory inspection | Accepted private prototype with owned report and bounded iterative analysis; 10 report and five new transcript cases passed with all 83 regressions (98/98). All 54 child outcomes match, including 22 inspection invocations. next.md records full evidence/limits. |
+| U6: reusable Engine inspection | Public CPU header and Engine-owned exported operation, typed per-call budgets, thin legacy CLI adapter and independent actual-Engine consumer. next.md records executed cases/link proof and limits. |
 
 U1V completed U1 verification; U2 completed CPU sessions/values; U3 completed the
-console milestone. U4 completes authored startup; U5 adds only private inspection.
-Later scope requires coordinator selection.
+console milestone. U4 completes authored startup; U5 adds private inspection; U6
+exposes its bounded CPU analysis through Engine. Later scope requires coordinator selection.
 [next.md](next.md) owns the acceptance evidence, limits and next useful unit.
 
 ## Acceptance and present verification
@@ -867,3 +957,18 @@ bounds are exercised. No ASan/UBSan diagnostic, skipped/unrun case or resource
 refusal occurred. Leak coverage and platform/SDK/runtime integration remain
 unverified. These observations complete assigned native U5 checks, ready for
 coordinator review; no later context/operation or unit is implemented automatically.
+
+U6 now has executed native boundary evidence: 11 Engine inspection cases and three
+independent public consumer cases passed alongside all 98 accepted regressions
+(**112/112**, no skips), followed by **2/2** focused rechecks after adding late
+storage-refusal and exact hard-budget assertions. All 54 complete retained child
+blocks match U5 byte for byte, not only their expected statuses. The real shared
+Engine exports inspect, the separate consumer imports it and needs
+libcheryl-engine.so.4; its live dladdr owner check passed. Native logs show no
+ASan/UBSan diagnostics. The supplementary metadata matcher initially failed on
+CMake regex escaping after all three native tools exited 0; its corrected
+read-only matcher passes, with both attempts preserved. No implementation defect
+or sanitizer flag adjustment was needed. next.md records exact commands/statuses,
+full logs and remaining allocator/platform/leak/SDK/runtime limits. This completes
+assigned U6 checks and stops for coordinator review, without integration or
+publication transport.
