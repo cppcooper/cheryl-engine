@@ -23,20 +23,16 @@ set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 add_subdirectory("${map_storage_root}/extern/googletest" "${CMAKE_CURRENT_BINARY_DIR}/googletest" EXCLUDE_FROM_ALL)
 
-# Private application prototype; the public codec/file implementation is reused unchanged.
-add_library(map_storage_patches STATIC cell-patch.cpp)
-target_link_libraries(map_storage_patches PUBLIC Cheryl::MapStorageCPU)
-set_target_properties(map_storage_patches PROPERTIES CXX_EXTENSIONS OFF)
+# Private application consumer of the single Engine-owned implementation.
 add_executable(map_storage_patch_consumer patch-consumer.cpp)
-target_link_libraries(map_storage_patch_consumer PRIVATE map_storage_patches)
+target_link_libraries(map_storage_patch_consumer PRIVATE Cheryl::MapStorageCPU)
 set_target_properties(map_storage_patch_consumer PROPERTIES CXX_EXTENSIONS OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(map_storage_patches PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(map_storage_patch_consumer PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp cell-patch-tests.cpp validation-tests.cpp)
-target_link_libraries(map_storage_tests PRIVATE map_storage_patches GTest::gtest_main)
+target_link_libraries(map_storage_tests PRIVATE Cheryl::MapStorageCPU GTest::gtest_main)
 # Only fault tests may see the private native seam; it is never a usage requirement.
 target_include_directories(map_storage_tests PRIVATE "${map_storage_root}/projects/engine/src/core/resources/map-storage")
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

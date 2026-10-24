@@ -9,6 +9,7 @@ endif()
 
 add_library(map_storage_codec STATIC
     "${map_storage_engine}/src/core/resources/map-storage/codec.cpp"
+    "${map_storage_engine}/src/core/resources/map-storage/cell-patch.cpp"
     "${map_storage_engine}/src/core/resources/map-storage/file-storage.cpp")
 add_library(Cheryl::MapStorageCPU ALIAS map_storage_codec)
 target_compile_features(map_storage_codec PUBLIC cxx_std_23)

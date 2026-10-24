@@ -1,12 +1,15 @@
+#include <cheryl/core/resources/map-storage/cell-patch.h>
 #include <cheryl/core/resources/map-storage/file-storage.h>
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 namespace {
     namespace Maps = CE::Maps;
+    namespace Patches = CE::Maps::CellPatches;
 
     Maps::Snapshot authored() {
         return {
@@ -27,6 +30,16 @@ namespace {
         result.id = "garden:predecessor";
         result.layers[0].cells[1] = "garden:sand";
         return result;
+    }
+
+    Maps::Snapshot patched() {
+        // Complete independent literal, not derived from apply() or a loaded file.
+        return {"garden:north", 2, 3,
+                {{"soil", {"garden:earth", "garden:sand", "garden:earth",
+                           "garden:water", "garden:earth", "garden:earth"}},
+                 {"markers", {std::nullopt, "garden:flag", "garden:flower",
+                              std::nullopt, "garden:tree", std::nullopt}}},
+                {{"gate", "soil", 0, 2}, {"lookout", "markers", 1, 0}}};
     }
 
     void require(bool condition, const char* detail) {
@@ -105,6 +118,85 @@ namespace {
                   << " origin=" << copied.origin << " location=" << copied.location << '\n';
     }
 
+    void patches() {
+        Maps::Snapshot result;
+        Patches::Witness retained;
+        std::optional<Patches::Error> mismatch, invalid, moved_from;
+        {
+            auto base = authored();
+            auto witness = Patches::capture(base);
+            require(witness.canonical_bytes() == Maps::encode(base), "witness is not full canonical bytes");
+            retained = witness;
+            auto moved = std::move(witness);
+            Patches::Patch patch{std::move(moved),
+                {{"soil", 1, 0, "garden:sand"}, {"markers", 0, 1, "garden:flower"}}};
+            const auto before = patch;
+            result = Patches::apply(base, patch);
+            require(result == patched() && base == authored() && patch == before,
+                    "literal patch result/inputs differ");
+            require(witness.canonical_bytes().empty() && moved.canonical_bytes().empty(),
+                    "moved-from witness retained a byte view");
+            try {
+                result = Patches::apply(base, {witness, {}});
+            } catch (const Patches::Error& error) {
+                moved_from = error;
+            }
+            for (int variant = 0; variant < 3; ++variant) {
+                auto different = authored();
+                if (variant == 0) different.layers[0].cells[4] = "garden:clay";
+                else if (variant == 1) std::swap(different.layers[0], different.layers[1]);
+                else std::swap(different.spawns[0], different.spawns[1]);
+                const auto original = different;
+                mismatch.reset();
+                try {
+                    result = Patches::apply(different, patch);
+                } catch (const Patches::Error& error) {
+                    mismatch = error;
+                }
+                require(mismatch && mismatch->code == Patches::Code::BaseMismatch &&
+                            different == original && result == patched() && patch == before,
+                        "changed canonical base was accepted or inputs/held result changed");
+            }
+            patch.edits[1].tile = "bad";
+            const auto invalid_before = patch;
+            try {
+                result = Patches::apply(base, patch);
+            } catch (const Patches::Error& error) {
+                invalid = error;
+            }
+            require(base == authored() && patch == invalid_before && result == patched(),
+                    "invalid edit changed inputs or held result");
+            base = {};
+            patch = {};
+        }
+        require(retained.canonical_bytes() == Maps::encode(authored()), "copied witness lost owned bytes");
+        require(Patches::apply(authored(), {retained, {}}) == authored(), "independent witness cannot apply empty batch");
+        require(moved_from && moved_from->code == Patches::Code::InvalidWitness &&
+                    moved_from->operation == "apply" && moved_from->location == "$.witness",
+                "moved-from refusal lost owned diagnostic");
+        require(mismatch && invalid, "expected owning patch diagnostics were absent");
+        const auto copied = *mismatch;
+        const auto nested = *invalid;
+        mismatch.reset();
+        invalid.reset();
+        require(copied.code == Patches::Code::BaseMismatch && copied.operation == "apply" &&
+                    copied.location == "$.base" && !copied.cause &&
+                    std::string_view(copied.what()).find("canonical base bytes differ") != std::string_view::npos,
+                "patch error lost owned context after inputs/original error died");
+        require(nested.code == Patches::Code::InvalidEdit && nested.operation == "apply" &&
+                    nested.location == "$.edits[1].tile" && nested.cause &&
+                    nested.cause->code == Maps::Code::InvalidValue && nested.cause->operation == "validate" &&
+                    nested.cause->origin == "<snapshot>" && nested.cause->location == "$.layers[1].cells[2]" &&
+                    std::string_view(nested.cause->what()).find("invalid logical key") != std::string_view::npos,
+                "copied nested codec cause lost owned context");
+        const auto independent = result;
+        result.layers[0].cells[1].reset();
+        result.spawns.clear();
+        require(independent == patched(), "patch results share mutable values");
+        std::cout << "patches: literal garden result; exact cell/layer/spawn-order mismatch; moved witness refused; "
+                     "owned Error BaseMismatch/apply/$.base and InvalidEdit/apply/$.edits[1].tile retained\n";
+    }
+
     void author(const std::filesystem::path& path) {
         {
             auto source = authored();
@@ -166,6 +258,8 @@ int main(int argc, char** argv) {
             std::cout << "owned codec values, independent copies and retained error verified\n";
         } else if (argc == 2 && std::string_view(argv[1]) == "validation") {
             validation();
+        } else if (argc == 2 && std::string_view(argv[1]) == "patches") {
+            patches();
         } else if (argc == 3 && argv[2][0] != '\0') {
             const std::string_view command(argv[1]);
             const std::filesystem::path path(argv[2]);
@@ -178,11 +272,16 @@ int main(int argc, char** argv) {
             else
                 throw std::runtime_error("unknown consumer command");
         } else {
-            throw std::runtime_error("consumer expects memory/validation, or author/verify/verify-predecessor/preserve <file>");
+            throw std::runtime_error("consumer expects memory/validation/patches, or author/verify/verify-predecessor/preserve <file>");
         }
         std::cout.flush();
         require(bool(std::cout), "consumer output failed");
         return 0;
+    } catch (const Patches::Error& error) {
+        std::cerr << "patch category=" << static_cast<int>(error.code) << " operation=" << error.operation
+                  << " location=" << error.location << " detail=" << error.what() << '\n';
+        if (error.cause) std::cerr << "codec cause=" << error.cause->what() << '\n';
+        return 2;
     } catch (const Maps::Error& error) {
         std::cerr << "storage category=" << static_cast<int>(error.code) << " operation=" << error.operation
                   << " origin=" << error.origin << " location=" << error.location << " detail=" << error.what()

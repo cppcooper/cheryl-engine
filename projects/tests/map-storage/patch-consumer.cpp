@@ -1,4 +1,4 @@
-#include "cell-patch.h"
+#include <cheryl/core/resources/map-storage/cell-patch.h>
 #include "patch-fixture.h"
 
 #include <cheryl/core/resources/map-storage/file-storage.h>
@@ -12,7 +12,7 @@
 
 namespace {
     namespace Maps = CE::Maps;
-    namespace Patches = CellPatches;
+    namespace Patches = CE::Maps::CellPatches;
 
     void require(bool condition, const std::string& detail) {
         if (!condition) throw std::runtime_error(detail);

@@ -10,8 +10,8 @@
 #include <string_view>
 #include <vector>
 
-// Branch-local application proof. No patch wire format or Engine API is selected.
-namespace CellPatches {
+// Bounded CPU cell edits tied to full canonical base bytes; no patch wire format.
+namespace CE::Maps::CellPatches {
     inline constexpr std::size_t max_base_cells = 65536;
     inline constexpr std::size_t max_edits = 1024;
     inline constexpr std::size_t max_witness_bytes = CE::Maps::max_document_bytes;
@@ -29,7 +29,8 @@ namespace CellPatches {
     struct Patch;
 
     // Only capture() creates a valid witness: full validated canonical bytes, not
-    // a digest. Copies own their bytes. Default and moved-from witnesses reject.
+    // a compact or stable cross-version digest. Copies own their bytes. Default
+    // and moved-from witnesses reject.
     class Witness {
         std::string bytes_;
         bool valid_ = false;
@@ -42,10 +43,12 @@ namespace CellPatches {
         Witness() = default;
         Witness(const Witness&) = default;
         Witness& operator=(const Witness&) = default;
-        Witness(Witness&& other) noexcept;
-        Witness& operator=(Witness&& other) noexcept;
+        CE_API Witness(Witness&& other) noexcept;
+        CE_API Witness& operator=(Witness&& other) noexcept;
 
-        [[nodiscard]] std::string_view canonical_bytes() const noexcept;
+        // Borrowed view, invalidated by destruction, move or assignment of this
+        // witness. Copying a witness owns bytes; copying this view does not.
+        [[nodiscard]] CE_API std::string_view canonical_bytes() const noexcept;
         [[nodiscard]] bool operator==(const Witness&) const = default;
     };
 
@@ -58,20 +61,21 @@ namespace CellPatches {
 
     enum class Code { InvalidBase, InvalidWitness, BaseMismatch, InvalidEdit, LimitExceeded };
 
-    class Error final : public std::runtime_error {
+    // All primary and optional codec context is owned and survives input lifetime.
+    class CE_TYPE_API Error final : public std::runtime_error {
     public:
         Code code;
         std::string operation;
         std::string location;
         std::optional<CE::Maps::Error> cause; // Owned original codec context when available.
 
-        Error(Code code, std::string operation, std::string location, const std::string& detail,
+        CE_API Error(Code code, std::string operation, std::string location, const std::string& detail,
               std::optional<CE::Maps::Error> cause = {});
     };
 
     // Cheap shape/product admission precedes full public encode() validation.
     // Up to 65,536 cells and 8 MiB canonical bytes; no file access or asset lookup.
-    [[nodiscard]] Witness capture(const CE::Maps::Snapshot& base);
+    [[nodiscard]] CE_API Witness capture(const CE::Maps::Snapshot& base);
 
     // After count/witness admission, re-encode and compare the ENTIRE base before
     // validating edit addresses/values. Only cell values change, addressed by
@@ -80,11 +84,11 @@ namespace CellPatches {
     // Admit the batch/address/key-size bounds before one deep candidate copy;
     // public validate(candidate) then checks semantics and complete encoded size.
     // Invalid-key errors can follow allocation and use candidate cell order.
-    // An empty batch still requires an exact match
-    // and returns an independent copy. No input/result aliasing, mutation or I/O.
+    // An empty batch still requires an exact match and returns an independent
+    // copy. No input/result aliasing, mutation or I/O.
     // Anticipated rejections throw owning Error; bad_alloc/programming exceptions
     // propagate. Failures preserve all inputs and the caller's held result. Caller
     // synchronizes concurrent input mutation. Bounds describe logical storage,
     // not an exact allocator/heap byte quota; the full witness is not compact.
-    [[nodiscard]] CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
+    [[nodiscard]] CE_API CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
 }

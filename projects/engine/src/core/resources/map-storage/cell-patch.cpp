@@ -1,10 +1,10 @@
-#include "cell-patch.h"
+#include <cheryl/core/resources/map-storage/cell-patch.h>
 
 #include <algorithm>
 #include <set>
 #include <utility>
 
-namespace CellPatches {
+namespace CE::Maps::CellPatches {
     namespace {
         namespace Maps = CE::Maps;
 

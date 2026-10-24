@@ -5,10 +5,22 @@ U2F corrects native path meaning across ancestor symlinks.
 U3 adds the private process CLI. U4 moves the same implementation into Engine-owned
 public CPU source and adds a source-tree consumer. U5 selects normal shared-Engine
 consumption of that same boundary. U6 adds a private exact-base cell-edit proof;
-U7 exposes bounded public validation without changing v1 wire behavior. Executed checks/limits are in
+U7 exposes bounded public validation; U8 promotes bounded patches into Engine.
+Neither changes v1 wire behavior. Executed checks/limits are in
 [next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
+
+## MS-013 Engine-owned exact-base cell patches
+
+Promote the verified proof to CE::Maps::CellPatches with one public header/source,
+exported capture/apply, witness operations and owning Error RTTI. Tests and private
+process consumers use that implementation; the independent consumer links the
+real shared Engine. This removes duplicate authority while preserving bounds,
+exact matching and validation. Full witnesses still cost up to 8 MiB and are not
+compact or cross-version identities. Confidence is high locally, medium in naming;
+reversal affects public source/ABI callers, with SDK/platform acceptance deferred.
+[Details](agent-notes.md#ms-013--engine-owned-exact-base-cell-patches-u8).
 
 ## MS-012 Reusable encodability validation
 
@@ -28,7 +40,8 @@ into an independent Snapshot. Cap bases at 65,536 cells, batches at 1,024 unique
 addresses and encoded values at 8 MiB. U7 validates one candidate after allocation
 instead of per-key probes. This prevents replay on changed cells, order or spawns.
 Full witnesses cost memory, without compact-save or recipe claims. Confidence is
-high in semantics, medium in caps; reversal affects private callers only.
+high in semantics, medium in caps; reversal now affects public source/ABI
+callers (MS-013).
 [Details](agent-notes.md#ms-011--private-exact-base-cell-patches-u6).
 
 ## MS-001 CPU boundary

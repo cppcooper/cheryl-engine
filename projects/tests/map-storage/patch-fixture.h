@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cell-patch.h"
+#include <cheryl/core/resources/map-storage/cell-patch.h>
 
 namespace PatchFixture {
     inline CE::Maps::Snapshot base() {
@@ -31,8 +31,8 @@ namespace PatchFixture {
                 {{"gate", "soil", 1, 2}, {"lookout", "markers", 0, 0}}};
     }
 
-    inline CellPatches::Patch patch() {
-        return {CellPatches::capture(base()),
+    inline CE::Maps::CellPatches::Patch patch() {
+        return {CE::Maps::CellPatches::capture(base()),
                 {{"soil", 1, 0, "garden:sand"}, {"markers", 0, 1, "garden:flower"}}};
     }
 }

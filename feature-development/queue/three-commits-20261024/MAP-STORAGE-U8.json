@@ -1,0 +1,21 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "MAP-STORAGE-U8",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/map-storage-u1-debug/u8-logs/tests.log",
+    "build/map-storage-u4-consumer-debug/u8-logs/build.log",
+    "build/map-storage-u4-consumer-debug/u8-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u8-logs/build.log",
+    "build/map-storage-u5-shared-debug/u8-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u8-logs/exports.log"
+  ],
+  "limitations": [
+    "Shared Engine native checks use invocation-local ASAN_OPTIONS=detect_leaks=0 for the known ptrace/LeakSanitizer runner limitation; ASan/UBSan remain enabled, leak checking is unverified.",
+    "Standalone CPU Debug is unsanitized. Full static Engine, non-Linux/other-toolchain ABI and installed SDK acceptance remain unverified.",
+    "Full canonical witnesses can cost 8 MiB and depend on current codec behavior; there is no compact/stable cross-version digest or persisted patch/recipe format.",
+    "Borrowed witness views expire on destruction/move/assignment; public C++ values/exceptions require compatible ABI. Allocation exceptions propagate by unchanged source inspection, without OOM testing.",
+    "File guarantees remain the Linux caller-controlled single-writer profile without fsync/durability, hostile-directory race, network-filesystem or multiwriter acceptance."
+  ]
+}

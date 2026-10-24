@@ -1,4 +1,4 @@
-#include "cell-patch.h"
+#include <cheryl/core/resources/map-storage/cell-patch.h>
 #include "patch-fixture.h"
 
 #include <gtest/gtest.h>
@@ -10,7 +10,7 @@
 
 namespace {
     namespace Maps = CE::Maps;
-    namespace Patches = CellPatches;
+    namespace Patches = CE::Maps::CellPatches;
 
     // Assignment must not replace a held successful result when apply rejects.
     Patches::Error refuses(const Maps::Snapshot& base, const Patches::Patch& patch,

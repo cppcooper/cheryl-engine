@@ -856,6 +856,7 @@ unverified; next.md owns exact commands, outcomes and coordinator review action.
 
 The U6 implementation/evidence below is historical. MS-012 records U7's replacement
 of one-cell probes with one public candidate validation and its changed timing.
+MS-013 records U8's public Engine ownership of the same patch implementation.
 
 Selected engineering contract, not an inferred personal preference: `CellPatches`
 under `projects/tests/map-storage` owns a full canonical `Maps::encode(base)`
@@ -1004,3 +1005,85 @@ ASan/UBSan; leak checking remains unverified. No implementation/check failure or
 prerequisite refusal occurred. next.md retains exact commands, source preservation,
 complete native logs/statuses and limits; the committed finite-queue receipt is
 an execution report, not automatic coordinator source acceptance or SDK proof.
+
+## MS-013 — Engine-owned exact-base cell patches (U8)
+
+Selected engineering placement: `CE::Maps::CellPatches`, with cell-patch.h under
+Engine's public core/resources/map-storage includes and cell-patch.cpp beside
+the codec/adapter. The original test-tree producer files and private library
+target are removed. Tests, private fixture/process consumer and the source-tree
+CPU target consume those exact production files. Normal Engine source discovery
+uses its existing glob, without a shared-backend branch or sibling dependency.
+This preserves a single authority, not a second implementation/copy or SDK export
+manifest. Namespace and header choices are reversible engineering judgments,
+not personal preference evidence.
+
+Public caller selected before promotion:
+
+```cpp
+#include <cheryl/core/resources/map-storage/cell-patch.h>
+#include <cheryl/core/resources/map-storage/file-storage.h>
+namespace Patches = CE::Maps::CellPatches;
+Patches::Patch patch{Patches::capture(base), {
+    {"soil", 1, 0, "garden:sand"}, {"markers", 0, 1, "garden:flower"}
+}};
+try {
+    auto edited = Patches::apply(base, patch);
+    CE::Maps::save(path, edited);
+} catch (const Patches::Error& error) {
+    auto owned = error; // Optional original CE::Maps::Error cause also owns its context.
+}
+```
+
+Public values remain Edit, Patch and opaque Witness. Capture/apply, public
+noninline witness move/access operations and Error construction use CE_API;
+Error has CE_TYPE_API for default-visible cross-DSO RTTI, following Maps::Error.
+Inline value copies/equality retain owned strings/vectors. The private byte
+constructor remains private, with no arbitrary byte import. `canonical_bytes()`
+returns a borrowed read-only view, invalidated by that witness's destruction,
+move or assignment; copying the view owns nothing. Default and moved-from
+witnesses reject; copying a witness owns independent full bytes. Copies/results
+do not alias mutable input data. The private constructor is not a client boundary.
+
+U6/U7 rules carry forward without algorithm changes: exact ENTIRE canonical
+encode(base) comparison (including every unrelated cell and ordered layer/spawn),
+65,536 total cells, 1,024 unique addressed edits and 8 MiB witness/candidate limits.
+Stable existing layer IDs and finite zero-origin 2D coordinates permit only cell
+set/clear; no topology/identity/shape/order/spawn mutation. Address/size admission
+precedes one candidate copy; public validate supplies semantic/full-output checks.
+Semantic errors may occur after copying in candidate order, with owned edit and
+original codec context. Empty batches require an exact base and return a deep
+copy. Failure leaves source, witness, edits and held results unchanged; allocation/
+programming exceptions propagate. Helpers perform no I/O; checked save remains a
+separate caller choice after complete successful application. The wire, codec,
+validation and file algorithms remain unchanged. Existing diagnostic text is
+retained, including legacy private-budget wording; caps are now public patch caps.
+
+Alternatives: a test-tree shim or duplicate library would retain an unnecessary
+producer authority; merging patch errors into Maps::Error would redesign tested
+diagnostics. Separate namespace/error identity keeps the proven shape narrow.
+Confidence is high in tested CPU semantics and medium in public naming/adoption;
+reversal now affects source/ABI consumers. Full witnesses can approach 8 MiB and
+depend on this codec's canonical behavior: no compact persistent save/recipe,
+stable cross-version digest, undo/history or generator framework is selected.
+Provenance is the assigned U8 extraction, the U7 checkpoint/receipt and inspected
+Engine visibility/source-discovery conventions. Actual builds, header-first,
+process and shared-symbol/error evidence are recorded in next.md after execution.
+Static Engine, non-Linux/toolchain, installed SDK, leak, durability and race limits
+remain separate. The queue controller owns the later pinned unit.
+
+Executed U8 evidence: exactly all 171 accumulated CPU names passed, including the
+unchanged fresh-process patch save/load and rejected-patch predecessor checks.
+The tests-off patch consumer passed 1/1; actual shared-Engine consumer passed 5/5
+(seven children); four static and four shared public header-first probes built.
+The new header probe rejects arbitrary string witness construction at compile
+time and establishes copy/nothrow-move availability. Actual shared capture/apply,
+moved-from refusal, full literal result, unrelated-cell/layer-order/spawn-order
+refusals and copied public Error/nested codec context passed after inputs and
+original errors were destroyed. nm/readelf/ldd confirm Engine exports, consumer
+imports, default-visible Error RTTI and this clone's resolved DSO; the private
+byte constructor stays out of dynamic exports. The moved .cpp is identical to
+U7 after namespace/include substitution, with codec/file sources unchanged.
+All native statuses are 0; shared checks retain ASan/UBSan with the invocation-
+local leak workaround. next.md retains exact commands/paths, complete logs and
+receipt/acceptance boundaries; no installed/static/non-Linux/leak claim follows.

@@ -210,10 +210,10 @@ TEST(patches, address_admission_precedes_candidate_key_checks) {
     patch.edits[1].layer = "missing";
     const auto before = patch;
     try {
-        (void)CellPatches::apply(base, patch);
+        (void)CE::Maps::CellPatches::apply(base, patch);
         FAIL() << "unexpected batch acceptance";
-    } catch (const CellPatches::Error& error) {
-        EXPECT_EQ(error.code, CellPatches::Code::InvalidEdit);
+    } catch (const CE::Maps::CellPatches::Error& error) {
+        EXPECT_EQ(error.code, CE::Maps::CellPatches::Code::InvalidEdit);
         EXPECT_EQ(error.location, "$.edits[1].layer");
         EXPECT_FALSE(error.cause);
     }

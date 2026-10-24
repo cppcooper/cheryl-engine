@@ -48,7 +48,7 @@ set_target_properties(map_storage_consumer PROPERTIES CXX_EXTENSIONS OFF)
 # No prefix/umbrella header or consumer-supplied visibility definition. Each
 # public header is first and repeated, then instantiated using its own contract.
 set(map_storage_probe_sources)
-foreach(map_storage_header IN ITEMS snapshot codec file-storage)
+foreach(map_storage_header IN ITEMS snapshot codec file-storage cell-patch)
     set(map_storage_probe "${CMAKE_CURRENT_BINARY_DIR}/${map_storage_header}-first.cpp")
     file(WRITE "${map_storage_probe}" "#include <cheryl/core/resources/map-storage/${map_storage_header}.h>\n#include <cheryl/core/resources/map-storage/${map_storage_header}.h>\n${map_storage_visibility_check}")
     if(map_storage_header STREQUAL "snapshot")
@@ -56,6 +56,8 @@ foreach(map_storage_header IN ITEMS snapshot codec file-storage)
     else()
         if(map_storage_header STREQUAL "codec")
             file(APPEND "${map_storage_probe}" "void codec_validate_first(const CE::Maps::Snapshot& value) { CE::Maps::validate(value); }\n")
+        elseif(map_storage_header STREQUAL "cell-patch")
+            file(APPEND "${map_storage_probe}" "#include <type_traits>\nstatic_assert(!std::is_constructible_v<CE::Maps::CellPatches::Witness, std::string>);\nstatic_assert(std::is_copy_constructible_v<CE::Maps::CellPatches::Witness>);\nstatic_assert(std::is_nothrow_move_constructible_v<CE::Maps::CellPatches::Witness>);\nvoid cell_patch_first(const CE::Maps::Snapshot& value) {\n    namespace P = CE::Maps::CellPatches;\n    auto witness = P::capture(value);\n    auto copied = witness;\n    auto result = P::apply(value, {copied, {}});\n    static_cast<void>(result);\n}\n")
         endif()
         file(APPEND "${map_storage_probe}" "#include <string_view>\n#define PROBE_STRING_(value) #value\n#define PROBE_STRING(value) PROBE_STRING_(value)\n")
         if(MAP_STORAGE_USE_SHARED_ENGINE)
@@ -76,7 +78,7 @@ endif()
 
 # Only this small consumer's process checks remain enabled; no test dependency.
 enable_testing()
-foreach(map_storage_check IN ITEMS memory round_trip preservation validation)
+foreach(map_storage_check IN ITEMS memory round_trip preservation validation patches)
     add_test(NAME "map_storage.consumer.${map_storage_check}"
         COMMAND "${CMAKE_COMMAND}" "-DCLI=$<TARGET_FILE:map_storage_consumer>"
             "-DMODE=${map_storage_check}" "-DWORK_ROOT=${CMAKE_CURRENT_BINARY_DIR}/consumer-checks"
