@@ -1087,3 +1087,89 @@ U7 after namespace/include substitution, with codec/file sources unchanged.
 All native statuses are 0; shared checks retain ASan/UBSan with the invocation-
 local leak workaround. next.md retains exact commands/paths, complete logs and
 receipt/acceptance boundaries; no installed/static/non-Linux/leak claim follows.
+
+## MS-014 — Bounded cell differences (U9)
+
+Selected addition: `CE_API Patch CE::Maps::CellPatches::diff(const Snapshot& base,
+const Snapshot& target)`. This produces the existing checked owning Patch, not
+a new persisted format or metadata migration API. Both snapshots must be valid
+and within the patch's 65,536-cell and 8 MiB encoded limits. Require identical
+map ID, dimensions, ordered layer count/IDs and every spawn name/layer/coordinate
+in the same order. Only optional cell values may differ. Caller selected first:
+
+```cpp
+namespace Patches = CE::Maps::CellPatches;
+auto prepared = Patches::diff(base, literal_target);
+auto reconstructed = Patches::apply(base, prepared);
+assert(reconstructed == literal_target); // Complete independent literal values.
+CE::Maps::save(path, reconstructed);      // Separate checked caller publication.
+```
+
+Precedence: admit/encode the complete base and own its canonical witness; admit
+and public-validate the target (including nonmaterializing byte count); check
+metadata; count changed cells in authored-layer then row-major order. Refuse
+the 1,025th change before allocating/copying any edit vector. Reserve the exact
+admitted count and scan again, emitting only changed target optional keys with
+stable layer IDs and zero-origin coordinates. Equal and aliased inputs yield
+an empty patch still bound to all original canonical base bytes. The existing
+apply validates/matches that entire witness again, so same-ID/shape changes to
+unrelated cells, layer order or spawn order cannot accept a prepared patch.
+The known validated target plus identical metadata and exhaustive cell comparison
+establish the result without allocating a candidate snapshot inside diff.
+
+One owned witness is at most 8 MiB; output is at most 1,024 Edit objects with
+bounded layer/key strings (128 ASCII bytes each, or explicit empty). Scratch is
+the existing bounded semantic/path bookkeeping and scalar counters, without a
+target serialization buffer, candidate/source snapshot copy, per-cell edit list
+or digest. Both scans are bounded by 65,536 cells, and coordinates are derived
+only after positive dimensions and divide-before-multiply admission. Bounds do
+not account for caller-allocated oversized inputs or allocator overhead. No I/O,
+mutation, retained reference or publication occurs in diff. Shared input mutation
+requires caller synchronization. Success returns independent witness/edit values;
+failure preserves both inputs and previous caller results. Allocation/programming
+exceptions propagate; only anticipated public codec errors translate.
+
+Owning Error uses operation `diff`, `$.base`/`$.target` field context and optional
+original public codec context. InvalidBase stays unchanged; InvalidTarget and
+UnsupportedChange are appended after the old Code values, preserving ordinals.
+Invalid target content differs from a valid forbidden metadata change. Public
+codec limits and patch/cell/change budgets retain LimitExceeded. Unsupported
+metadata reports the first field in ID/width/height/layer/spawn order; target
+validation may precede that refusal or the edit-count limit. Original base/capture/
+apply diagnostics, wire bytes and codec/file algorithms remain unchanged. Shape
+admission is shared with target-specific context, not a second semantic validator.
+Witness now has a second validated factory (diff) through a private friend;
+arbitrary byte construction stays forbidden and borrowed-view lifetime is unchanged.
+
+Alternatives: reserving/growing edits while scanning can allocate for a batch
+that will reject; count-then-fill spends a second bounded scan instead. Applying
+internally just to compare would allocate a redundant snapshot. ID/shape-only
+matching, weak digests, metadata migration and serialized recipes would alter
+the selected safety/retention contract. This is an engineering choice, not an
+inferred personal preference. Confidence is high in semantics and medium in
+new category/precedence choices; reversal affects source/ABI callers, not v1
+stored bytes. Provenance: U9 assignment, completed U8 source/receipt and the
+shared generation-storage.md alternatives. A full canonical witness remains
+edit-correctness evidence, not compact generated-base retention, stable cross-
+version identity or long-term algorithm replay. No generator/sibling is imported.
+Actual tests, consumer processes, exports, commands and limitations are retained
+in next.md. U9 is the last pinned map-storage unit of this finite
+batch; no automatic later milestone is selected.
+
+Executed U9 evidence: all 171 prior CPU names retained within 189/189 passing
+cases (16 diff and two new process cases). The tests-off public consumer passed
+3/3 new cases (five children); actual shared Engine passed all 8/8 (twelve
+children). All four CPU and four shared header-first probes built. Exact literal
+edit order, null transitions, cell/byte/change bounds, ownership, metadata/spawn
+refusals, owning diagnostics, held-result preservation and whole-base mismatches
+passed. Private and public process scenarios compare entire literal targets after
+diff/apply/save and fresh load, or exact predecessor bytes/value after rejected
+preparation. Shared errors and nested codec context survive input/original error
+destruction. nm/readelf/ldd establish real Engine diff export/consumer import,
+unchanged visible Error RTTI and single-producer/resolved-local-DSO ownership.
+Codec/file source and existing capture/apply bodies are unchanged by source
+comparison; no native failure or compiler warning occurred. Complete commands,
+exit statuses/logs, the corrected inspection-span assertion, ready receipt and
+leak/static/non-Linux/SDK/durability/race limitations are retained in next.md.
+Shared checks retain ASan/UBSan with invocation-local leak suppression; CPU Debug
+is unsanitized. No later milestone, persisted patch or generator integration runs.

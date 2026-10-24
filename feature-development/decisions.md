@@ -6,10 +6,22 @@ U3 adds the private process CLI. U4 moves the same implementation into Engine-ow
 public CPU source and adds a source-tree consumer. U5 selects normal shared-Engine
 consumption of that same boundary. U6 adds a private exact-base cell-edit proof;
 U7 exposes bounded public validation; U8 promotes bounded patches into Engine.
-Neither changes v1 wire behavior. Executed checks/limits are in
+U9 adds bounded cell differences. None changes v1 wire behavior. Executed checks
+and limits are in
 [next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
+
+## MS-014 Bounded cell differences
+
+Add CellPatches::diff for validated snapshots with identical metadata and ordered
+spawns. Count changes before reserving at most 1,024 edits, then emit deterministic
+layer-major/row-major set/clear values with a full original-base witness. Reuse
+public validation and patch limits; append InvalidTarget/UnsupportedChange without
+renumbering existing codes. This avoids metadata migration and candidate copies,
+at the cost of two scans and full witness storage. Confidence is high in semantics,
+medium in diagnostic choices; reversal affects public source/ABI callers.
+[Details](agent-notes.md#ms-014--bounded-cell-differences-u9).
 
 ## MS-013 Engine-owned exact-base cell patches
 

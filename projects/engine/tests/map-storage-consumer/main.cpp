@@ -197,6 +197,72 @@ namespace {
                      "owned Error BaseMismatch/apply/$.base and InvalidEdit/apply/$.edits[1].tile retained\n";
     }
 
+    void differences() {
+        Patches::Patch prepared;
+        std::optional<Patches::Error> metadata_error, content_error;
+        {
+            auto base = authored();
+            auto target = patched();
+            prepared = Patches::diff(base, target);
+            const auto original = prepared;
+            const std::vector<Patches::Edit> literal{
+                {"soil", 1, 0, "garden:sand"}, {"markers", 0, 1, "garden:flower"}};
+            require(prepared.edits == literal && prepared.witness.canonical_bytes() == Maps::encode(base) &&
+                        Patches::apply(base, prepared) == patched(), "diff differs from independent complete literal");
+            target.spawns[0].x = 1;
+            const auto forbidden = target;
+            try {
+                prepared = Patches::diff(base, target);
+            } catch (const Patches::Error& error) {
+                metadata_error = error;
+            }
+            require(prepared == original && target == forbidden && base == authored(),
+                    "metadata preparation failure changed inputs/held patch");
+            target = patched();
+            target.layers[1].cells[2] = "bad";
+            const auto invalid = target;
+            try {
+                prepared = Patches::diff(base, target);
+            } catch (const Patches::Error& error) {
+                content_error = error;
+            }
+            require(prepared == original && target == invalid && base == authored(),
+                    "invalid target preparation changed inputs/held patch");
+        }
+        require(metadata_error && content_error, "expected diff diagnostics absent");
+        const auto owned = *metadata_error;
+        const auto nested = *content_error;
+        metadata_error.reset();
+        content_error.reset();
+        require(owned.code == Patches::Code::UnsupportedChange && owned.operation == "diff" &&
+                    owned.location == "$.target.spawns[0].x" && !owned.cause &&
+                    std::string_view(owned.what()).find("identical metadata") != std::string_view::npos,
+                "diff metadata diagnostic lost owned context");
+        require(nested.code == Patches::Code::InvalidTarget && nested.operation == "diff" &&
+                    nested.location == "$.target" && nested.cause && nested.cause->operation == "validate" &&
+                    nested.cause->origin == "<snapshot>" && nested.cause->location == "$.layers[1].cells[2]",
+                "diff content diagnostic lost owning codec cause");
+        require(Patches::apply(authored(), prepared) == patched(), "diff result did not own source values");
+        std::cout << "diff: literal two-cell patch; owning UnsupportedChange/diff/$.target.spawns[0].x "
+                     "and InvalidTarget/diff/$.target survive inputs and original errors\n";
+    }
+
+    void diff_author(const std::filesystem::path& path) {
+        {
+            auto base = authored();
+            auto target = patched();
+            auto prepared = Patches::diff(base, target);
+            const auto result = Patches::apply(base, prepared);
+            require(result == patched(), "diff/apply full literal target mismatch");
+            Maps::save(path, result);
+            base = {};
+            target = {};
+            prepared = {};
+        }
+        require(Maps::load(path) == patched(), "post-save diff reload mismatch; save already committed");
+        std::cout << "diff/apply saved complete literal garden:north; separate process verifies target\n";
+    }
+
     void author(const std::filesystem::path& path) {
         {
             auto source = authored();
@@ -209,8 +275,8 @@ namespace {
         std::cout << "authored garden:north 2x3 [soil,markers] gate@soil(0,2) lookout@markers(1,0)\n";
     }
 
-    void verify(const std::filesystem::path& path, bool old) {
-        const auto expected = old ? predecessor() : authored();
+    void verify(const std::filesystem::path& path, bool old, bool difference = false) {
+        const auto expected = old ? predecessor() : (difference ? patched() : authored());
         auto first = Maps::load(path);
         auto second = Maps::load(path);
         require(first == expected && second == expected, "loaded snapshot differs from complete literal");
@@ -249,6 +315,29 @@ namespace {
         require(read_bytes(path) == before && Maps::load(path) == old, "failed save changed predecessor");
         std::cout << "rejected invalid B before staging; exact predecessor bytes and complete values preserved\n";
     }
+
+    void diff_preserve(const std::filesystem::path& path) {
+        const auto old = predecessor();
+        Maps::save(path, old);
+        const auto before = read_bytes(path);
+        const auto base = authored();
+        auto target = patched();
+        target.spawns[0].x = 1;
+        const auto original = target;
+        std::optional<Patches::Error> retained;
+        try {
+            Maps::save(path, Patches::apply(base, Patches::diff(base, target)));
+        } catch (const Patches::Error& error) {
+            retained = error;
+        }
+        require(retained && retained->code == Patches::Code::UnsupportedChange &&
+                    retained->operation == "diff" && retained->location == "$.target.spawns[0].x",
+                "expected metadata preparation refusal before save");
+        require(base == authored() && target == original && read_bytes(path) == before && Maps::load(path) == old,
+                "rejected preparation changed inputs or predecessor bytes/value");
+        std::cerr << "expected UnsupportedChange operation=diff location=" << retained->location << '\n';
+        std::cout << "diff preparation refused before publication; exact predecessor preserved\n";
+    }
 }
 
 int main(int argc, char** argv) {
@@ -260,6 +349,8 @@ int main(int argc, char** argv) {
             validation();
         } else if (argc == 2 && std::string_view(argv[1]) == "patches") {
             patches();
+        } else if (argc == 2 && std::string_view(argv[1]) == "diff") {
+            differences();
         } else if (argc == 3 && argv[2][0] != '\0') {
             const std::string_view command(argv[1]);
             const std::filesystem::path path(argv[2]);
@@ -269,10 +360,17 @@ int main(int argc, char** argv) {
                 verify(path, command == "verify-predecessor");
             else if (command == "preserve")
                 preserve(path);
+            else if (command == "diff-author")
+                diff_author(path);
+            else if (command == "verify-diff")
+                verify(path, false, true);
+            else if (command == "diff-preserve")
+                diff_preserve(path);
             else
                 throw std::runtime_error("unknown consumer command");
         } else {
-            throw std::runtime_error("consumer expects memory/validation/patches, or author/verify/verify-predecessor/preserve <file>");
+            throw std::runtime_error("consumer expects memory/validation/patches/diff, or author/verify/"
+                                     "verify-predecessor/preserve/diff-author/verify-diff/diff-preserve <file>");
         }
         std::cout.flush();
         require(bool(std::cout), "consumer output failed");

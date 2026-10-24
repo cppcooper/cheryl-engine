@@ -31,7 +31,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(map_storage_patch_consumer PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp cell-patch-tests.cpp validation-tests.cpp)
+add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp cell-patch-tests.cpp validation-tests.cpp diff-tests.cpp)
 target_link_libraries(map_storage_tests PRIVATE Cheryl::MapStorageCPU GTest::gtest_main)
 # Only fault tests may see the private native seam; it is never a usage requirement.
 target_include_directories(map_storage_tests PRIVATE "${map_storage_root}/projects/engine/src/core/resources/map-storage")
@@ -45,7 +45,7 @@ gtest_discover_tests(map_storage_tests TEST_PREFIX "map_storage." PROPERTIES LAB
 # Test tooling only; the CLI itself needs only the codec/adapter and C++ runtime.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    foreach(map_storage_case IN ITEMS round_trip preservation)
+    foreach(map_storage_case IN ITEMS round_trip preservation diff_round_trip diff_preservation)
         add_test(NAME "map_storage.patch_process.${map_storage_case}"
             COMMAND "${CMAKE_COMMAND}" "-DCLI=$<TARGET_FILE:map_storage_patch_consumer>"
                 "-DWORK_ROOT=${CMAKE_CURRENT_BINARY_DIR}/patch-checks" "-DMODE=${map_storage_case}"

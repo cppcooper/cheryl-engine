@@ -84,11 +84,52 @@ namespace {
                   << " location=" << retained->location << ": " << retained->what() << '\n';
         std::cout << "pre-publication refusal preserved exact garden:predecessor bytes and complete value\n";
     }
+
+    void diff_author(const std::filesystem::path& path) {
+        {
+            auto base = PatchFixture::base();
+            auto target = PatchFixture::expected();
+            auto patch = Patches::diff(base, target);
+            const auto result = Patches::apply(base, patch);
+            require(result == PatchFixture::expected(), "diff result differs from complete literal");
+            Maps::save(path, result);
+            base = {};
+            target = {};
+            patch = {};
+        }
+        require(Maps::load(path) == PatchFixture::expected(), "post-save diff reload differs");
+        std::cout << "diff/apply saved complete garden:north literal; source and preparation destroyed\n";
+    }
+
+    void diff_preserve(const std::filesystem::path& path) {
+        const auto predecessor = PatchFixture::predecessor();
+        Maps::save(path, predecessor);
+        const auto before = bytes(path);
+        const auto base = PatchFixture::base();
+        auto target = PatchFixture::expected();
+        target.spawns[0].x = 1; // Valid value, forbidden metadata change.
+        const auto original = target;
+        std::optional<Patches::Error> retained;
+        try {
+            Maps::save(path, Patches::apply(base, Patches::diff(base, target)));
+        } catch (const Patches::Error& error) {
+            retained = error;
+        }
+        require(retained && retained->code == Patches::Code::UnsupportedChange &&
+                    retained->operation == "diff" && retained->location == "$.target.spawns[0].x",
+                "expected unsupported diff preparation refusal");
+        require(target == original && base == PatchFixture::base(), "rejected preparation changed inputs");
+        require(bytes(path) == before && Maps::load(path) == predecessor,
+                "rejected preparation changed exact predecessor bytes/value");
+        std::cerr << "expected UnsupportedChange operation=diff location=" << retained->location << '\n';
+        std::cout << "diff preparation refused before publication; exact garden:predecessor survived\n";
+    }
 }
 
 int main(int argc, char** argv) {
     if (argc != 3 || std::string_view(argv[2]).empty()) {
-        std::cerr << "usage: map_storage_patch_consumer <author|verify|preserve|verify-predecessor> <path>\n";
+        std::cerr << "usage: map_storage_patch_consumer <author|verify|preserve|verify-predecessor|"
+                     "diff-author|verify-diff|diff-preserve> <path>\n";
         return 64;
     }
     try {
@@ -98,6 +139,9 @@ int main(int argc, char** argv) {
         else if (command == "verify") verify(path, false);
         else if (command == "preserve") preserve(path);
         else if (command == "verify-predecessor") verify(path, true);
+        else if (command == "diff-author") diff_author(path);
+        else if (command == "verify-diff") verify(path, false);
+        else if (command == "diff-preserve") diff_preserve(path);
         else {
             std::cerr << "unknown private consumer command\n";
             return 64;

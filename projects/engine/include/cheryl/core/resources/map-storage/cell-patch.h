@@ -28,7 +28,7 @@ namespace CE::Maps::CellPatches {
 
     struct Patch;
 
-    // Only capture() creates a valid witness: full validated canonical bytes, not
+    // capture()/diff() create valid witnesses: full validated canonical bytes, not
     // a compact or stable cross-version digest. Copies own their bytes. Default
     // and moved-from witnesses reject.
     class Witness {
@@ -38,6 +38,7 @@ namespace CE::Maps::CellPatches {
         explicit Witness(std::string bytes);
         friend Witness capture(const CE::Maps::Snapshot& base);
         friend CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
+        friend Patch diff(const CE::Maps::Snapshot& base, const CE::Maps::Snapshot& target);
 
     public:
         Witness() = default;
@@ -59,7 +60,10 @@ namespace CE::Maps::CellPatches {
         [[nodiscard]] bool operator==(const Patch&) const = default;
     };
 
-    enum class Code { InvalidBase, InvalidWitness, BaseMismatch, InvalidEdit, LimitExceeded };
+    enum class Code {
+        InvalidBase, InvalidWitness, BaseMismatch, InvalidEdit, LimitExceeded,
+        InvalidTarget, UnsupportedChange
+    };
 
     // All primary and optional codec context is owned and survives input lifetime.
     class CE_TYPE_API Error final : public std::runtime_error {
@@ -91,4 +95,20 @@ namespace CE::Maps::CellPatches {
     // synchronizes concurrent input mutation. Bounds describe logical storage,
     // not an exact allocator/heap byte quota; the full witness is not compact.
     [[nodiscard]] CE_API CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
+
+    // Prepare cell-only changes between two validated, patch-bounded snapshots.
+    // Base validation/encoding precedes target admission/validate(), then exact
+    // metadata checks: map ID, dimensions, ordered layer IDs and all spawns/order.
+    // Emit changed optional keys only, in authored-layer then row-major order.
+    // Count first; reject change 1,025 before allocating/copying an edit vector.
+    // Equal values yield an empty patch still bound to the full original base.
+    // Owns <=8 MiB witness bytes plus <=1,024 bounded edits, without a snapshot
+    // copy or target output buffer; other scratch is bounded validation/path data.
+    // No mutation, I/O or retained references. Caller synchronizes shared inputs.
+    // Owning Error uses operation "diff", $.base/$.target context and an optional
+    // original codec cause. InvalidTarget/UnsupportedChange distinguish invalid
+    // target content from valid forbidden metadata changes; budget errors retain
+    // LimitExceeded. Allocation/programming exceptions propagate unchanged, and
+    // both inputs and a previously held result survive failure.
+    [[nodiscard]] CE_API Patch diff(const CE::Maps::Snapshot& base, const CE::Maps::Snapshot& target);
 }
