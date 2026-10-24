@@ -49,9 +49,12 @@ namespace OfflineStory {
         ContinuationHandle previous;
         WatchCheckpoint completed;
     };
+    enum class ReliefBundle { OpenOffer, ExplainFirst };
     struct BargainPick {
         std::string request;
         std::size_t flavour = 0;
+        ReliefBundle bundle = ReliefBundle::OpenOffer;
+        bool include_plan_identity = false; // Seeded projections distinguish independently selected host plans.
     };
     struct BargainLimits {
         std::size_t texts = 40, actions = 7, requests = 8, actors = 2, rules = 4, names = 8, candidates = 8;

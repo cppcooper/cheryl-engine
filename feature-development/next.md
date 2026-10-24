@@ -1,3 +1,152 @@
+# U13 bounded compatible seeded bargain selection
+
+Starts clean on feat/storytelling at actual accepted U12
+`1b85301fb6015dda2121f159238648dad08cd0b1`. Source, current records, committed
+U12 receipt and complete saved evidence were inspected, including all211 passes,
+194 prior names and75 earlier unchanged child blocks. No prerequisite/resource
+blocker; no dependency retrieval or pin change was needed. U11's original
+193/194 accumulated then corrected test-only1/1 remains preserved history.
+
+U13 implementation and focused acceptance are complete. One accumulated run passed
+**227/227** with all **211 predecessor names/order**, **89 byte-identical old child
+blocks**, fourteen new selector cases and two new transcript cases. Fourteen new
+actual children have expected statuses: **5x0, 6x2, 3x3**. A subsequent source review
+reserved scratch-copy work/text, distinguished seeded plan identities, preflighted
+report copies, and enhanced existing ownership/identity/boundary assertions. The
+final-source affected recheck passed **33/33**, with all28 affected child blocks
+byte-identical. No command/test failed, skipped or emitted ASan/UBSan diagnostics.
+There was ONE accumulated invocation, not a second227 run after those improvements.
+
+## Implemented caller and literal behavior
+
+```cpp
+SelectionConstraints c;
+c.required_initial = 1u << static_cast<unsigned>(ReliefIntent::Help);
+c.max_material = 1; c.max_coins = 2; c.max_pending = 2;
+auto chosen = select_bargain(library, catalogue, context, 1, 1, c).value();
+auto scene = BargainEncounter::start(chosen->content(), {"relief-seeded-01"}).value();
+auto offered = scene.view().value(); // Use only issued selections; retain chosen itself.
+auto comparison = compare_bargain(*chosen->content());
+```
+
+Real executable: `story-offline --select-bargain SEED
+any|open|small|consult|empty|budget|nodraw immediate|promise|negotiate|refuse`.
+Examples `1 small immediate` spends one plank; `1 open immediate` spends two;
+`1 consult promise` asks for terms then records three pending planks without
+spending/delivering them; `0 any negotiate` recombines shelter prose with the
+small plan and records a one-plank negotiated promise. All start from actual
+completed ferry/watch contexts, use actual Session tokens and retain separate
+resources/knowledge/attitude. Same/fresh paired restore and foreign/stale authority
+checks retain U12's boundaries; wrong selected-plan restore preserves live state
+and its token. Source fixture effects are explicit old ferry/watch preparation,
+not effects of selection/compile/inspection or restore.
+
+ST-033/034/035/036 match both views. Recombination scans request/plan/bundle/flavour
+under typed proposition goals and host actor/plan permissions at the real location.
+Eight reachable acyclic beats have16 edges for the compatible old open offer or14
+for explain-first (ask/refuse, then five genuine alternatives). Required available
+initial intentions/minimum alternatives, cost/pending ceilings and graph bounds
+constrain actual offers/costs. There is no silent fallback/constraint weakening.
+
+Version1 uses SplitMix64 first output with documented integer wrapping/constants,
+then modulo the COMPLETELY enumerated compatible list in authored dimension order.
+Exactly one draw is charged. Modulo bias is acknowledged; meanings/flavours are
+not uniformly sampled, and seeds need not differ. Literal seeds0–3 match independently
+computed rows; eight seeds expose four actual cost/decision signatures. Metadata
+order/revision discipline and same explicit inputs/version define replay; a seed
+or unchanged nominal revision is not a content digest. Privately constructed const
+selected artifacts own exact content and descriptor IDs/revisions after producers
+die. Keep them for U14 rather than regenerating meaning from seed alone.
+
+Mechanics compare typed costs, pending quantities, observations/attitudes,
+resolutions and ordinal beat/intent/condition/effect relationships in this fixed
+family. Presentation owns wording and IDs separately. Paraphrases/cosmetic IDs
+alone do not count as mechanical diversity. Current balances/observer history,
+future fulfillment, arbitrary graph equivalence and authenticated history are
+excluded; extending rules requires comparison/replay revision review.
+
+## Quotas, uncertainty and limits
+
+Selector caps128 Cartesian rows, one draw, 128KiB charged text,1MiB requested
+storage,4Mi modeled work. Hard dimensions8x4x2x2 prevent an accepted product
+overflow; multiply/storage requests are still checked first, SIZE_MAX allowances
+refuse before allocation. Bindings/permissions cap8/2/4; IDs64 bytes; ordinary
+U12 composition caps remain. Reserve THREE full nested composition allowances for
+two validating/projection calls and the scratch-copy payload/work/text, then add
+candidate slots/metadata/descriptor/key-comparison/row/draw charges. This is a
+conservative reservation model, not actual instruction/RSS/peak-memory usage.
+Report preflight separately bounds8 beats/16 edges/49 strings/32KiB+49 copied bytes.
+
+Typed invalid constraints/library/nested compilation, complete empty set, incomplete
+candidate/work/storage/text and draw refusal remain distinct; nested errors own
+full details. Exact/one-short count/text/work/storage and64/65 ID tests pass. Normal
+allocation/programming exceptions propagate. Existing values are never replaced
+on refusal. Exclusions remain Engine/factory/compiler/frozen-index internals,
+previous shared storage, allocator capacity/rounding/control blocks, unmodeled
+transient overhead, stack/diagnostics and RSS/time.
+
+These are engineering decisions from a tested private caller, not new personal
+API-taste evidence. Confidence high in native ownership/authority/replay/boundaries,
+medium in caps, creative range and future normalization sufficiency. Reversal is
+private version/revision/policy/test maintenance; no public Engine API, old default
+output, console/save schema, dependency/pin, provider/parser, global reputation,
+magic integration or callback target semantics changed. The full old child output
+and source boundaries support compatibility, not acceptance on unexecuted platforms.
+
+Unverified: participant fun/comprehension, provider quality, visual/SDK/wider runtime,
+Release/other platforms, LSan (ST-008 command-local detect_leaks=0), production
+transactions, authenticated history and durable/external exactly-once delivery.
+Promises are still pending; no future fulfillment/reward is invented by U13.
+
+## Actual commands, complete logs and immediate exits
+
+CWD is this clone; every native operation used the shared wrapper, one job,
+retained clone-local Debug/shared Engine incremental outputs and inherited
+ASan/UBSan. Prefix **P** for every command below:
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+No sanitizer build flags/global settings changed. Existing module OFF choices,
+CHERYL_BUILD_TESTS=ON/Debug and actual shared Engine link/compile sanitizer rules
+are saved/audited in `u13-boundary-rules.log`. Child processes inherit the native
+wrapper's resource/sanitizer environment and never reacquire the lock.
+
+```sh
+# All with prefix P; immediate statuses saved in matching .exit files.
+cmake -S . -B builds/storytelling-u1-debug
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ctest --test-dir builds/storytelling-u1-debug -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+# Final-source improvements after green accumulated invocation:
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_(bargain|selection)(_transcript)?\.'
+```
+
+All immediate exits **0**. Registration227 nonempty unique entries. Accumulated
+CTest227/227 (28.52s), final affected33/33 (4.80s). Saved full diagnostics under
+`builds/storytelling-u1-debug/`: `u13-configure.log`, `u13-build-1.log`,
+`u13-registration.log`, `u13-ctest-1.log`, `u13-ctest-details-1.log`,
+`u13-build-2.log`, `u13-ctest-2.log`, `u13-ctest-details-2.log`; each native invocation
+has its immediate `.exit`. Static evidence: `u13-prerequisite-audit.log`,
+`u13-registration-audit.log`, `u13-results-audit-1.log`, `u13-results-audit-2.log`,
+`u13-demo-transcripts.log`, `u13-boundary-rules.log`, `u13-commands.log`.
+Earlier full failure/recheck histories are untouched.
+
+## Precise handoff — idle
+
+No blocker remains within U13's selected acceptance. Review the coherent committed
+source, both decision views, receipt and saved executed evidence. The finite
+controller alone may select U14 after this run drains and the clean committed
+ready/checks receipt gate passes. U14 must inspect this actual descendant and
+retain the exact selected accepted content/context/paired state before composing
+its finite promise fulfillment/breach continuation. Start no next unit, payoff,
+provider or background service in this invocation. Receipt is worker execution
+evidence, not automatic coordinator acceptance or fun/platform proof.
+
+---
+
 # U12 shared-set multi-beat relief bargain
 
 Starts clean on feat/storytelling at accepted U11

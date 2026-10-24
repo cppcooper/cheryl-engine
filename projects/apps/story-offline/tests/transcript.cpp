@@ -358,3 +358,78 @@ TEST(story_bargain_transcript, refusal) {
         EXPECT_NE(bad.error.find("Usage: story-offline --bargain"), std::string::npos);
     }
 }
+
+TEST(story_selection_transcript, selected_play) {
+    const auto small = child({"--select-bargain", "1", "small", "immediate"});
+    ASSERT_EQ(small.code, 0);
+    EXPECT_TRUE(small.error.empty());
+    EXPECT_NE(small.output.find("algorithm=1 seed=1 examined=32 compatible=8"), std::string::npos);
+    EXPECT_NE(
+        small.output.find("request=ramp-quay proposition=ramp-request actor=nera plan=ramp bundle=open flavour=1"), std::string::npos
+    );
+    EXPECT_NE(small.output.find("Mechanics: material=1 coins=2 pending=2 revised=1 edges=16"), std::string::npos);
+    EXPECT_NE(
+        small.output.find("Relief actual: coins=5 planks=2 terms=0 resolution=helped due_planks=0 requester=saw-help attitude=3"),
+        std::string::npos
+    );
+    EXPECT_TRUE(small.output.ends_with("Selected end: closing; effects: ferry=1 watch=1 relief=1\n"));
+    const auto costly = child({"--select-bargain", "1", "open", "immediate"});
+    ASSERT_EQ(costly.code, 0);
+    EXPECT_TRUE(costly.error.empty());
+    EXPECT_NE(costly.output.find("plan=shelter bundle=open flavour=1"), std::string::npos);
+    EXPECT_NE(costly.output.find("coins=5 planks=1 terms=0 resolution=helped"), std::string::npos);
+    const auto promise = child({"--select-bargain", "1", "consult", "promise"});
+    ASSERT_EQ(promise.code, 0);
+    EXPECT_TRUE(promise.error.empty());
+    EXPECT_NE(promise.output.find("plan=shelter bundle=explain-first flavour=1"), std::string::npos);
+    EXPECT_NE(promise.output.find("Restored selected information pair; old token rejected; no replay."), std::string::npos);
+    EXPECT_NE(
+        promise.output.find("coins=5 planks=3 terms=1 resolution=promised due_planks=3 requester=heard-promise attitude=0"),
+        std::string::npos
+    );
+    EXPECT_TRUE(promise.output.ends_with("Selected end: closing; effects: ferry=1 watch=1 relief=2\n"));
+    const auto negotiated = child({"--select-bargain", "0", "any", "negotiate"});
+    ASSERT_EQ(negotiated.code, 0);
+    EXPECT_TRUE(negotiated.error.empty());
+    EXPECT_NE(
+        negotiated.output.find("request=shelter-quay proposition=shelter-request actor=nera plan=ramp bundle=explain-first flavour=1"),
+        std::string::npos
+    );
+    EXPECT_NE(
+        negotiated.output.find("coins=5 planks=3 terms=1 resolution=negotiated due_planks=1 requester=heard-promise attitude=0"),
+        std::string::npos
+    );
+    const auto refused = child({"--select-bargain", "0", "any", "refuse"});
+    ASSERT_EQ(refused.code, 0);
+    EXPECT_TRUE(refused.error.empty());
+    EXPECT_NE(
+        refused.output.find("coins=5 planks=3 terms=0 resolution=refused due_planks=0 requester=heard-refusal attitude=-1"),
+        std::string::npos
+    );
+    EXPECT_TRUE(refused.output.ends_with("Selected end: closing; effects: ferry=1 watch=1 relief=1\n"));
+}
+
+TEST(story_selection_transcript, refusal_and_usage) {
+    const std::pair<const char*, const char*> refusals[] = {
+        {"empty", "empty-compatible-set"}, {"budget", "incomplete-work-budget"}, {"nodraw", "draw-budget"}
+    };
+    for (const auto& [profile, reason] : refusals) {
+        const auto r = child({"--select-bargain", "0", profile, "immediate"});
+        EXPECT_EQ(r.code, 3);
+        EXPECT_TRUE(r.error.empty());
+        EXPECT_NE(r.output.find(std::string("Selection refused before bargain play: ") + reason), std::string::npos);
+        EXPECT_EQ(r.output.find("Selected node:"), std::string::npos);
+        EXPECT_EQ(r.output.find("Relief actual:"), std::string::npos);
+    }
+    for (const auto& args :
+         {std::vector<std::string>{"--select-bargain"}, std::vector<std::string>{"--select-bargain", "-1", "any", "promise"},
+          std::vector<std::string>{"--select-bargain", "18446744073709551616", "any", "promise"},
+          std::vector<std::string>{"--select-bargain", "1x", "any", "promise"},
+          std::vector<std::string>{"--select-bargain", "1", "weaken", "promise"},
+          std::vector<std::string>{"--select-bargain", "1", "any", "fulfill"}}) {
+        const auto r = child(args);
+        EXPECT_EQ(r.code, 2);
+        EXPECT_TRUE(r.output.empty());
+        EXPECT_NE(r.error.find("Usage: story-offline --select-bargain"), std::string::npos);
+    }
+}

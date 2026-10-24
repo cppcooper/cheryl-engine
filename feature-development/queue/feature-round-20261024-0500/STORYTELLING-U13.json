@@ -1,0 +1,41 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "STORYTELLING-U13",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u13-prerequisite-audit.log",
+    "builds/storytelling-u1-debug/u13-configure.log",
+    "builds/storytelling-u1-debug/u13-build-1.log",
+    "builds/storytelling-u1-debug/u13-registration.log",
+    "builds/storytelling-u1-debug/u13-registration-audit.log",
+    "builds/storytelling-u1-debug/u13-ctest-1.log",
+    "builds/storytelling-u1-debug/u13-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u13-results-audit-1.log",
+    "builds/storytelling-u1-debug/u13-build-2.log",
+    "builds/storytelling-u1-debug/u13-ctest-2.log",
+    "builds/storytelling-u1-debug/u13-ctest-details-2.log",
+    "builds/storytelling-u1-debug/u13-results-audit-2.log",
+    "builds/storytelling-u1-debug/u13-demo-transcripts.log",
+    "builds/storytelling-u1-debug/u13-boundary-rules.log",
+    "builds/storytelling-u1-debug/u13-commands.log"
+  ],
+  "implemented_contracts": [
+    "Private finite request/host-plan/bundle/flavour recombination checks typed goals, host steward/plan permissions, real location and supported operations. Cross-request plans change actual costs/obligations; explain-first changes substantive offers. Required available intentions, minimum alternatives, cost/pending ceilings and graph bounds never silently weaken.",
+    "Version-one SplitMix64 first output modulo the complete authored-order compatible rows uses one charged draw, no global RNG/distribution/clocks/weights. Literal seed fixtures replay and expose four mechanical signatures across eight seeds, without assuming every seed differs or uniformity over meanings.",
+    "Privately constructed actual const selected artifacts retain exact deeply owned accepted content and selected IDs/revisions/descriptor independently of producers. Seeded definition identities include selected plans; different-plan restore rejects and preserves the existing pair/token. Same-revision changed libraries do not mutate old artifacts, and a seed/descriptor is not a content digest.",
+    "Owned finite-family comparison separates typed costs, pending quantities, resolutions, knowledge/attitude and beat/action/condition/effect relationships from wording/IDs. Flavours and cosmetic IDs compare mechanically equal; true cost/offer differences do not. Retained report survives full definition release.",
+    "Caps/products precede enumeration/allocation; every candidate including rejections and the draw is charged. Three nested full composition allowances cover two compositions and the scratch copy, with additional metadata/descriptor/candidate charges. Typed invalid/complete-empty/incomplete-budget/draw errors preserve prior values; nested owned diagnostics and ordinary allocation exceptions remain explicit.",
+    "Actual Session-issued choices preserve fixed targets, pure live eligibility, staged adoption and paired resume with no prior effect replay. No public Engine API, old caller/default output, console/save schema, pin, provider/parser, magic dependency or persistence format changes.",
+    "227/227 accumulated focused entries pass once, retaining all211 predecessor names/order and89 byte-identical old child blocks. Fourteen new children have expected statuses5x0/6x2/3x3. Source review then strengthened accounting/identity/report checks; final affected33/33 pass with28 unchanged affected child blocks. All immediate native exits0, no skips or ASan/UBSan diagnostics."
+  ],
+  "limitations": [
+    "Leak checking remains unverified under ST-008 command-local detect_leaks=0. Executed evidence is GNU/Linux Debug actual shared Engine, not Release/other platforms, installed SDK, visual or broader runtime integration.",
+    "Conservative quota reservations are not actual RSS/peak memory/instruction-time accounting. Prior shared storage, Engine/session/compiler/frozen-index internals, allocator capacity/rounding/control blocks, unmodeled transient overhead and stack/diagnostics remain excluded; ordinary allocation/programming exceptions propagate.",
+    "Replay requires identical explicit ordered content/catalogue/context/constraints/version and sufficient allowances. Modulo bias and repeated seed results are intentional limits; meanings are not uniformly sampled. Revisions/descriptor are not content authentication; retain exact accepted content for future scenes.",
+    "Mechanical normalization is only for the validated fixed eight-beat family. It excludes presentation/nominal IDs, current balances/observer history, external consequences and future payoff; it is not a generic graph equivalence algorithm.",
+    "Manually authored offline material is not actual model output or evidence of participant fun/comprehension/provider quality. There is no general planner/reputation framework, provider/network call, new parser or sibling integration.",
+    "In-memory completed-boundary paired state is not a new save schema, authenticated history, production transaction, external rollback or durable exactly-once delivery. Obligations remain pending; U14 must be separately selected and inspect the retained accepted artifact."
+  ],
+  "next_action": "Worker is idle after the coherent U13 checkpoint. Controller/coordinator reviews source/receipt/logs and may select U14 only after this exact run drains and its clean committed passing receipt gate succeeds; next invocation must retain this exact accepted content and paired context, not regenerate meaning from seed alone."
+}

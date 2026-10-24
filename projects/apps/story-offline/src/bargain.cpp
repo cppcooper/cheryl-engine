@@ -155,7 +155,10 @@ namespace OfflineStory {
                     sets.requests.size() <= limits.candidates && cat.actors.size() <= limits.actors && cat.rules.size() <= limits.rules,
                 Code::CountLimit, "rows"
             );
-            b.need(limits.nodes >= 8 && limits.choices >= 16, Code::CountLimit, "graph");
+            b.need(pick.bundle == ReliefBundle::OpenOffer || pick.bundle == ReliefBundle::ExplainFirst, Code::Variant, "bundle");
+            const bool explain = pick.bundle == ReliefBundle::ExplainFirst;
+            const std::size_t edges = explain ? 14 : 16;
+            b.need(limits.nodes >= 8 && limits.choices >= edges, Code::CountLimit, "graph");
             b.need(sets.origin == Origin::Manual && sets.revision != 0 && cat.revision != 0, Code::Identity, "origin/revision");
             b.need(pick.flavour < 2, Code::Variant, "flavour");
             b.bytes(sizeof(BargainArtifact) + sizeof(D::Draft) + sizeof(D::OperationKeys));
@@ -165,7 +168,7 @@ namespace OfflineStory {
             b.slots(cat.actors.size(), sizeof(ReliefActor));
             b.slots(cat.rules.size(), sizeof(ReliefRule));
             b.slots(8, sizeof(D::Node));
-            b.slots(16, sizeof(D::Choice));
+            b.slots(edges, sizeof(D::Choice));
             b.slots(6, sizeof(D::ConditionKey));
             b.slots(6, sizeof(D::EffectKey));
             b.text(sets.id, true, "sets.id");
@@ -291,7 +294,8 @@ namespace OfflineStory {
             const std::string_view location = request.location == ReliefLocation::Bank ? "On the original bank. " : "On the harbor quay. ";
             b.generated(
                 7 + sets.id.size() + 1 + cat.id.size() + 1 + digits(cat.revision) + 1 + request.id.size() + 1 +
-                context.completed.dialogue.definition.value.size() + 3
+                context.completed.dialogue.definition.value.size() + 3 + (explain ? 8 : 0) +
+                (pick.include_plan_identity ? 3 + request.rule.size() : 0)
             );
             b.generated(location.size() + proposition.size());
             b.generated(text(action(ReliefIntent::Ask).reply, ReliefTextRole::Reply).size() + 1 + info.size());
@@ -316,10 +320,20 @@ namespace OfflineStory {
                 if (!p.operation.empty())
                     b.generated(p.operation.size());
             };
-            for (const auto k :
-                 {ReliefIntent::Ask, ReliefIntent::Help, ReliefIntent::Pay, ReliefIntent::Promise, ReliefIntent::Negotiate,
-                  ReliefIntent::Refuse, ReliefIntent::Help, ReliefIntent::Negotiate, ReliefIntent::Refuse, ReliefIntent::Commit,
-                  ReliefIntent::Help, ReliefIntent::Refuse})
+            constexpr ReliefIntent open[] = {ReliefIntent::Ask,     ReliefIntent::Help,      ReliefIntent::Pay,
+                                             ReliefIntent::Promise, ReliefIntent::Negotiate, ReliefIntent::Refuse};
+            constexpr ReliefIntent explain_open[] = {ReliefIntent::Ask, ReliefIntent::Refuse};
+            constexpr ReliefIntent open_terms[] = {ReliefIntent::Help, ReliefIntent::Negotiate, ReliefIntent::Refuse};
+            constexpr ReliefIntent explain_terms[] = {
+                ReliefIntent::Help, ReliefIntent::Pay, ReliefIntent::Promise, ReliefIntent::Negotiate, ReliefIntent::Refuse
+            };
+            const auto opening_kinds = explain ? std::span<const ReliefIntent>(explain_open) : std::span<const ReliefIntent>(open);
+            const auto terms_kinds = explain ? std::span<const ReliefIntent>(explain_terms) : std::span<const ReliefIntent>(open_terms);
+            for (const auto k : opening_kinds)
+                charge_choice(k);
+            for (const auto k : terms_kinds)
+                charge_choice(k);
+            for (const auto k : {ReliefIntent::Commit, ReliefIntent::Help, ReliefIntent::Refuse})
                 charge_choice(k);
             for (int i = 0; i < 4; ++i)
                 for (const auto s : {"close", "Close this conversation", "closing"})
@@ -327,7 +341,8 @@ namespace OfflineStory {
             b.work(b.usage.text_bytes);
             D::Draft draft{
                 {"relief-" + sets.id + "-" + cat.id + "-" + std::to_string(cat.revision) + "-" + request.id + "-" +
-                 context.completed.dialogue.definition.value + "-f" + std::to_string(pick.flavour)},
+                 context.completed.dialogue.definition.value + "-f" + std::to_string(pick.flavour) + (explain ? "-explain" : "") +
+                 (pick.include_plan_identity ? "-p-" + request.rule : "")},
                 sets.revision,
                 {"request"},
                 {}
@@ -344,18 +359,15 @@ namespace OfflineStory {
                 };
             };
             D::Node opening{{"request"}, std::string(location) + proposition, D::NodeKind::Prompt, {}};
-            opening.choices.reserve(6);
-            for (const auto k :
-                 {ReliefIntent::Ask, ReliefIntent::Help, ReliefIntent::Pay, ReliefIntent::Promise, ReliefIntent::Negotiate,
-                  ReliefIntent::Refuse})
+            opening.choices.reserve(opening_kinds.size());
+            for (const auto k : opening_kinds)
                 opening.choices.push_back(choice(k));
             draft.nodes.push_back(std::move(opening));
-            draft.nodes.push_back(
-                {{"terms"},
-                 text(action(ReliefIntent::Ask).reply, ReliefTextRole::Reply) + " " + info,
-                 D::NodeKind::Prompt,
-                 {choice(ReliefIntent::Help), choice(ReliefIntent::Negotiate), choice(ReliefIntent::Refuse)}}
-            );
+            D::Node terms{{"terms"}, text(action(ReliefIntent::Ask).reply, ReliefTextRole::Reply) + " " + info, D::NodeKind::Prompt, {}};
+            terms.choices.reserve(terms_kinds.size());
+            for (const auto k : terms_kinds)
+                terms.choices.push_back(choice(k));
+            draft.nodes.push_back(std::move(terms));
             draft.nodes.push_back(
                 {{"proposal"},
                  text(action(ReliefIntent::Negotiate).reply, ReliefTextRole::Reply) + " " + proposal,

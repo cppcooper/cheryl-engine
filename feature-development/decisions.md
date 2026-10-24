@@ -345,3 +345,41 @@ exercise literal state and output. Accounting excludes compiler, allocator/trans
 overhead and previous shared storage. Confidence is high in tested boundaries,
 medium in caps; expansion needs resource review. Seeded selection, fulfillment and
 participant fun remain outside this unit.
+
+## ST-033 — Recombine approved ingredients under useful constraints
+
+Enumerate request, independently approved plan, offer bundle and flavour dimensions;
+filter typed goal/role/location compatibility and initial availability. Cost/pending
+ceilings and required initial intentions constrain actual play, while an explain-first
+bundle changes decision placement. This trades a solver for a small inspectable
+family. Confidence is high in exercised compatibility, medium in creative range;
+expansion requires private policy/identity review, not an inferred user preference.
+
+## ST-034 — Version seed replay and retain exact selected meaning
+
+Use version-one SplitMix64 first output modulo the completely enumerated compatible
+rows, in authored dimension order. Own the exact accepted artifact and selected
+IDs/revisions/descriptor; seeded definition identities also distinguish plans.
+This trades uniformity over meanings and content authentication for bounded same-input
+replay. Confidence is high in literal seeds/ownership, medium in long-term recipe
+stability; policy changes require version/revision review and retained artifacts.
+
+## ST-035 — Compare finite mechanics separately from presentation
+
+Return owned structured costs, obligations, resolutions, observation/attitude and
+ordinal beat/action/condition/effect relationships separately from displayed text
+and IDs. Cosmetic renames and paraphrases compare mechanically equal; cost and
+offer-structure changes differ. This trades general graph equivalence for the
+validated eight-beat family. Confidence is high in tested normalization, medium
+in future sufficiency; adding mechanics requires updating this private comparison
+and its independent expectations.
+
+## ST-036 — Charge bounded selection and execute the real consumer
+
+Check capped Cartesian products before storage, charge every rejected/accepted row,
+reserve nested composition/scratch allowances and charge the single draw. Distinguish
+invalid input, incomplete resource refusal and proven empty compatibility. Ordinary
+allocation exceptions propagate. This trades tight resource estimates for conservative
+quotas with explicit exclusions. Confidence is high in exact boundary/child checks,
+medium in caps; broader platforms, leaks, participant fun and durable history remain
+unverified, with U14 selected separately.

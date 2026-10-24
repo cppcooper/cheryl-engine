@@ -12,8 +12,14 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-032` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-036` IDs;
 [next](next.md) records the next coordinator review action.
+
+U13 now adds bounded versioned seeded recombination of actual U12 ingredients,
+with separate owned mechanical/presentation reports and a real private caller.
+The accumulated run passes227/227, retaining211 old names and89 child blocks;
+final affected33/33 follows source-review accounting/identity improvements.
+ST-033–036 and next.md preserve exact replay/quotas/history/limitations.
 
 U10 now proves private offline creative candidate validation/projection with two
 manual ferry sets and a real headless consumer: 176/176 focused checks pass,
@@ -1494,6 +1500,210 @@ modes remain byte-identical. Invalid usage exits 2 before play, live refusal 3,
 normal completion 0. There are no callbacks doing I/O, automatic scene loops,
 provider calls, seeded selection, extra parsers, public Engine changes or sibling
 imports. Exact execution and the finite-controller handoff are in next.md.
+
+## U13 bounded seeded recombination of the shared bargain family
+
+U13 starts from clean actual U12 `1b85301fb6015dda2121f159238648dad08cd0b1`.
+The committed ready receipt, source and complete native logs were inspected:
+211/211 passed, all 194 predecessor names and 75 older full child blocks retained.
+The original U11 193/194 followed by corrected test-only 1/1 is preserved history.
+This unit is private manually authored offline selection, not a provider call.
+Recent agent-written interfaces establish compatibility, not personal API taste;
+no new intentional v3 preference evidence is claimed. ST-033–036 match the compact
+view; the finite controller owns any U14 assignment.
+
+### ST-033 — Compatible recombination with actual agency
+
+The proposed caller was shown before accumulating APIs. Implemented caller:
+
+```cpp
+auto chosen = select_bargain(library, catalogue, context, 0, 1, constraints, limits).value();
+auto scene = BargainEncounter::start(chosen->content(), {"relief-seeded-01"}).value();
+auto offered = scene.view().value(); // choose only an actually issued Selection
+const auto retained = chosen;      // exact meaning, not just its seed
+```
+
+`BargainLibrary` owns the existing sets plus proposition goals, authored bundle
+order and flavour order. The host-owned `BargainCatalogue` owns the U12 catalogue
+and actor/plan goal permissions. Access/shelter are two typed goals; Nera/Oren are
+the already approved steward roles at their actual quay/bank locations. A request
+cannot relocate an actor, introduce an observer or register an operation. Both
+stewards support both goals at their own locations; the small interim plan is
+approved for either goal, the larger plan for shelter. The selected request's
+plan binding changes only in an owned scratch copy, then passes ordinary eager
+U12 validation/projection/Engine compilation. No mutable source is adopted.
+
+The Cartesian dimensions are authored request, host rule, authored bundle, authored
+flavour. This yields cross-combinations such as shelter request + small ramp plan,
+not only a renamed whole scenario. `OpenOffer` preserves U12's exact default graph,
+identity and output. `ExplainFirst` offers ask/refuse first, then help/pay/promise/
+negotiate/refuse after terms. Both have eight reachable finite acyclic beats and
+one terminal; they have sixteen and fourteen edges respectively. The two initial
+choices and the later alternatives have distinct information/resource/obligation
+consequences. All edges retain fixed destinations and the same pure/staged host
+handlers. No generation, random choice or file work occurs inside callbacks.
+
+Constraints require a set of initially AVAILABLE intentions, minimum simultaneous
+alternatives (2–7), maximum approved material/coin/pending quantities (0–10), and
+node/edge bounds (0–8/0–16). The initial availability formula is narrowly the U12
+healthy/open recipe; Session/host conditions recheck live eligibility before effects.
+These constraints do not authorize tokens or promise continued eligibility after
+host state changes. Invalid masks/version/ranges refuse rather than weaken rules.
+Graph/cost exclusions may prove an empty finite set. A resource refusal is incomplete,
+not proof of infeasibility. Host permission omissions deny rather than grant access.
+
+Alternative: selecting a whole U12 request would underprove recombination; a generic
+constraint solver would exceed this family. Confidence high in literal tested agency
+and host authority, medium in creative/pacing value. Reversal affects private bundle,
+comparison and identity contracts only; existing Engine APIs/formats are unchanged.
+
+### ST-034 — Reproducible selection and owned exact meaning
+
+Algorithm version **1** takes `uint64_t seed`; arithmetic wraps modulo 2^64:
+`x=seed+0x9e3779b97f4a7c15`, `x=(x^(x>>30))*0xbf58476d1ce4e5b9`,
+`x=(x^(x>>27))*0x94d049bb133111eb`, `x=x^(x>>31)`. Use `x % compatible_count`
+after the COMPLETE finite scan. Exactly one draw is charged; zero draw allowance
+refuses without sampling. There are no weights/rejection sampler/clocks/global RNG,
+`std::hash`, platform distributions or procedural-branch dependency. Modulo bins
+have small bias (one-count difference over the full 64-bit stream); combinations
+with multiple flavours occupy multiple rows. This is not uniform over mechanical
+meanings or all possible stories, nor a claim that every seed differs.
+
+Identical explicit ordered library/catalogue/context/constraints/version/seed and
+sufficient allowances reproduce selected content. Input order intentionally matters;
+permuting bundle order changes the result. Default seeds 0/1/2/3 select compatible
+row indices 7/5/10/9 of twelve, with independent literal expectations. A fixture of
+eight seeds produces four mechanical signatures, with repeated results allowed.
+Required initial help selects open offers; an edge maximum of fourteen selects
+explain-first; small cost/pending ceilings select the one-plank/two-coin/two-pending
+plan instead of the two-plank/three-coin/three-pending plan. These change real
+choices, costs and pending commitments, not just metadata.
+
+`SelectedBargain` is privately constructed as an actual const object only after
+successful projection. It retains the deep-owned accepted content plus owned
+algorithm/seed, source set/catalogue IDs/revisions, request/proposition/actor/plan,
+goal, bundle, flavour and enumeration counts. Bundle semantics use algorithm v1;
+goal metadata/flavours use the set revision, permissions/plans the catalogue revision.
+These are caller revision disciplines, not hashes. Changing same-revision source
+prose yields a different new artifact but cannot change an already accepted value;
+the same descriptor alone does NOT reconstruct changed content. Keep the artifact
+for U14/restore, not merely a seed or provider description.
+
+Seeded definition IDs append the selected plan (`-p-<plan>`) and explain bundles
+append `-explain`; existing explicit default identities remain unchanged. A different
+plan at the same request/flavour/bundle/source has a different definition identity;
+wrong-plan resume refuses and preserves the old pair/token. This finite naming
+policy is not content authentication or a general identity/canonicalization scheme.
+Source revision changes require review; no migration/new snapshot schema is added.
+
+Confidence high in ownership, fixed-seed replay and live-incarnation preservation,
+medium in long-term recipe stability. Version/revision changes are reversible private
+work; retained historical content remains necessary. Alternatives were a standard
+random distribution (unstable replay) or rejection sampling (unneeded repeated draws).
+
+### ST-035 — Mechanical diversity versus flavour
+
+`compare_bargain(*content)` owns two separate values. Mechanics include location,
+material/coin cost, ordinary/negotiated pending quantity, typed resolutions,
+requester knowledge/attitude and authored ordinal beat edges with intent and
+condition/effect presence. Within this validated finite family an intent maps to
+exactly one approved condition/effect meaning: ask learns terms, help/pay spend,
+promises record a pending quantity, negotiate requires learned terms and commits
+nothing, commit records the revised due, refusal changes only its observation/
+attitude. The fixed close edge has intent -1 and no handlers. Beat ordinals are
+request/terms/proposal/helped/paid/promised/refused/closing. Mechanics therefore
+retain causal information and obligation relationships, not prose similarity.
+
+Presentation separately owns definition/node/choice IDs and all displayed wording.
+Literal cosmetic request/plan renames and flavour variants preserve mechanics;
+different costs/pending quantities or edge/intent placement do not. A different
+proposition with identical rules/structure alone is creative presentation, not
+mechanical diversity. The report excludes seed, revisions/nominal IDs, wording,
+current balances/observer history and future unimplemented payoff. It is not an
+arbitrary graph canonicalizer or prediction that all equal reports have equal
+external gameplay histories. New policy semantics require report/version review.
+
+A preflight checks eight beats, at most sixteen edges and copied presentation
+bytes before report growth. At most 49 strings, sixteen edge records and 32 KiB+49
+string bytes are requested; reverse target scans cost at most 16x8 bounded-ID
+comparisons. This needs no graph search or user handlers. Report lifetime is tested
+after weak definition ownership expires. Confidence high for this family, medium
+for future mechanics; extending comparison is a small private reversal.
+
+### ST-036 — Explicit quotas, error boundaries and executed proof
+
+Hard/lower-only selector allowances: 128 Cartesian rows, one draw, 128 KiB charged
+text, 1 MiB charged requested storage and 4 Mi work units. Dimensions are at most
+8 requests x 4 rules x 2 bundles x 2 flavours. Goal bindings cap at eight, role
+permissions at two, plan permissions at four. IDs are nonempty ASCII engine-style
+strings of at most 64 bytes; nested U12 bounds still apply (40 texts, 7 actions,
+8 requests, 2 actors, 4 rules, 8 names/candidates, 1024-byte strings, 32 KiB text,
+256 KiB requested storage, 1 Mi work, 8 nodes/16 choices). Counts/products and
+size_t multiplication overflow are checked before enumeration/storage. Hard dimension
+caps make actual product overflow unreachable for accepted requests; SIZE_MAX
+allowances are tested as invalid before allocation, not simulated huge containers.
+
+Charge all Cartesian rows, including rejected location/goal/role/cost/graph rows:
+32 fixed work units plus charged key comparisons. The draw costs eight modeled
+work units. Reserve complete nested composition allowances for baseline validation,
+selected projection AND the source scratch copy BEFORE their allocations/copies;
+metadata/descriptor bytes, candidate slots and key comparisons add charges.
+`Usage` reports these conservative charged reservations, not actual RSS or exact
+instruction counts. Exact allowances and one-short count/text/storage/work tests
+pass; 64/65-byte metadata IDs and invalid/overflowing requests are covered. An
+empty result is reported only after complete enumeration. Ordinary nested refusals
+retain their owned Error in `SelectionError::detail`, including compiler diagnostics.
+Failures expose no partial usable selected value or mutate previous artifacts/live
+pairs. Normal allocation/programming exceptions propagate; there is no injection
+framework or OOM test.
+
+Exclusions: prior shared origin storage, Engine/session/compiler/frozen-index
+internals, allocator capacity/rounding/control blocks, unmodeled transient library
+implementation overhead, stack/diagnostics and RSS/time. Scratch source payload/
+copy work now has a full nested reservation rather than being silently omitted.
+Report accounting is separate from selection; it is intrinsically bounded by the
+accepted finite graph/text caps. No peak-memory, CPU-time or durable transaction
+claim is made.
+
+Actual private executable: `story-offline --select-bargain SEED
+any|open|small|consult|empty|budget|nodraw immediate|promise|negotiate|refuse`.
+Usage failures exit 2 before source play; validly parsed selection refusals exit 3
+before bargain play, with explicit empty/incomplete/draw diagnostics. Source fixture
+preparation executes the old ferry/watch deliberately; selection/projection/report
+and restoration themselves apply no effects. Representative scripts use real
+issued selections, display authored text/order and literal state, and pair-resume
+information without replay. No automatic scene loop is introduced.
+
+Literal example for `0 any negotiate`:
+
+```text
+Selected [manually authored; no model/provider]: algorithm=1 seed=0 examined=32 compatible=12
+Ingredients: request=shelter-quay proposition=shelter-request actor=nera plan=ramp bundle=explain-first flavour=1
+Mechanics: material=1 coins=2 pending=2 revised=1 edges=14
+...
+Relief actual: coins=5 planks=3 terms=1 resolution=negotiated due_planks=1 requester=heard-promise attitude=0
+Selected end: closing; effects: ferry=1 watch=1 relief=2
+```
+
+Executed once accumulated **227/227**, all **211 prior names/order**, all **89 old
+child blocks byte-identical**, fourteen new actual children (5 exit0, 6 usage2,
+3 refusal3), no skips/sanitizer diagnostics. Source review then strengthened scratch
+accounting, selected-plan identity and report preflight; enhanced existing tests
+add wrong-plan/token preservation and report lifetime after full definition release.
+Final affected **33/33** passes (fourteen bargain, fourteen selector, three old and
+two new transcript cases); all 28 affected child blocks are unchanged. No native
+command failed; there was no second accumulated run. Complete commands/exits/logs
+are in next.md and the committed receipt. Real shared Engine linkage and sanitizer
+compile/link rules were audited, not just inferred from a successful link.
+
+Confidence high in executed bounded behavior, medium in numerical caps and creative
+range; expansion needs budget/replay/comparison review. Leaks remain unverified under
+ST-008; coverage is GNU/Linux Debug shared Engine only, not Release/other platforms,
+SDK/runtime/visual integration. Fun/comprehension/provider quality and durable or
+external exactly-once history remain unverified. Promises remain pending; U14's
+later finite payoff requires a new controller-selected invocation and this retained
+accepted content. No provider/parser/public story framework/reputation/magic or new
+persistence format is introduced.
 
 ## Verification environment
 
