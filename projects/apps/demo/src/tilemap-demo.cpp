@@ -57,17 +57,18 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
         for (std::size_t i = 0; i < targets.size(); ++i)
             bindings_.add({static_cast<std::uint32_t>(7 + i)}, asset, targets[i]);
         std::cout << "Tilemap display ready: tileset:tileset, decoded 400x100 RGBA8, grid 1x4, pivot {0,1}, targets 0..3\n"
-                     "Two 3x2 maps, cells 64x48; west {48,240}, east {328,208}; detail alpha 0.5\n"
+                     "Default two 3x2 maps, cells 64x48; west {48,240}, east {328,208}; detail alpha 0.5\n"
                      "Submission: west ground/detail, east ground/detail; ID 7 -> target 0, ID 0 -> empty\n"
                      "Editor: 1/2 west/east, G/T ground/detail, 3..6 brown/black/grey/red\n"
                      "V literal (initial), B semantic terrain; terrain 3..6 choose opaque labels 1..4\n"
                      "Modes keep separate maps/brushes; semantic layers start empty; mask N/E/S/W -> target mask%4 -> IDs 7..10\n"
-                     "Terrain click runs publish atomically (32 requests, 6 affected cells, 256 work units); no held brush\n"
+                     "Terrain click runs publish atomically (32 requests, 160 affected cells, 1024 work units); no held brush\n"
                      "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
                      "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
-                     "F6 UNDO / F7 REDO selected mode/document (32 commands, 256 KiB canonical history bytes)\n"
+                     "F6 UNDO / F7 REDO selected mode/document (32 commands, 1 MiB canonical history bytes)\n"
                      "F8 SAVE / F9 LOAD selected mode/document; --tilemap-document-dir PATH enables existing directory\n"
                      "V files: west.json/east.json; B files: west-terrain.json/east-terrain.json (semantic keys, both layers)\n"
+                     "LOAD admits axes 1..64, exactly two layers, <=8192 layer cells; origins stay fixed (no automatic layout)\n"
                   << std::flush;
     } catch (const std::exception& error) {
         throw std::runtime_error("Required tilemap display atlas 'tileset:tileset' (" + source.string() + "): " + error.what());

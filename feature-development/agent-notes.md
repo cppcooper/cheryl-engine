@@ -1,14 +1,12 @@
 # World integration contracts and provenance
 
-WORLD-U4 starts clean on feat/tilemap at the controller-selected passing U3
-checkpoint `b6658f24df2739adce8d672cabb9407f8b28f40b`. Its committed ready/true batch
-receipt, nonempty native logs and 104/104 XML entries were inspected before use.
-WINT-011/012 add bounded independent document history to the SAME real editor.
-One accumulated Debug ASan/UBSan run passes 112/112, zero failed/skipped, 54.58s,
-retaining all 104 names. Twelve process children exit zero; actual demo link and
-same-source/single-Engine checks pass. Historical records, receipts and archives
-stay intact. Current exact commands/limits belong in next.md and the U4 receipt;
-no geography integration or graphical/leak acceptance is implied.
+WORLD-U5 starts clean on feat/tilemap at the controller-selected passing U4
+checkpoint `c8fead0de9424ea56639a846baa8be00bac617a5`. Its committed ready/true
+batch receipt, nonempty saved evidence and112/112 XML entries were inspected
+before dependent work. WINT-013/014 extend this SAME private editor/adapter to
+bounded variable domains and supersede prior fixed geometry/default budgets.
+Current executed counts/commands belong in next.md and the U5 receipt. This is
+map milestone three of three; no geography/sibling integration or further unit.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -245,8 +243,8 @@ literal numeric layout is retained byte-for-value. Seed IDs are tilemap:west/eas
 ordered layers ground/detail; ordered spawns entry(ground,0,0) and marker(detail,
 1,0 west /2,0 east). A spawn references a cell without implying walkability.
 
-LOAD uses public checked storage load, then requires exactly width 3/height 2/two
-layers BEFORE numeric conversion. Valid but incompatible shapes reject without
+LOAD uses public checked storage load, then WINT-013 admission (axes1–64,
+exactly two layers, <=8192 layer cells) BEFORE numeric conversion. Valid but incompatible shapes reject without
 truncation or resize. Named layers may differ: retain authored order and names,
 map ID and all ordered spawns separately, while rendering/picking keep the existing
 fixed ordinal layers and geometry. Complete key conversion/admitted owner creation
@@ -368,7 +366,7 @@ pointers replace only the four raw terrain owner pointers; terrain(index,layer)
 remains the selected-layer read facade. Literal document owners, terrain brushes,
 ordered event barriers, geometry/picking and pass submission policy remain.
 
-Each document retains map ID, 3x2 extent, two ordered arbitrary valid layer names
+Each document retains map ID, admitted extent (WINT-013), two ordered arbitrary valid layer names
 and every ordered spawn. from()/replacement() validate the storage snapshot and
 fixed shape, build layer 0 then layer 1 in a LOCAL owned array, copy reconstruction
 configuration, and return a complete candidate. Editor F9 swaps exactly one pointer
@@ -465,8 +463,8 @@ document; reconstruction temporarily owns old/new snapshots, two complete Maps,
 labels and several configuration/metadata copies. Semantic tables are capped 256;
 the real editor uses four target entries and 16 mask cases. Private callers of the
 underlying owner remain responsible for sizing supplied target vectors; these are
-logical operation bounds, not allocation-byte budgets. Batch input caps remain
-32 requests/6 affected cells/256 work per run. No giant/OOM probes occur.
+logical operation bounds, not allocation-byte budgets. U5 updates batch input caps to
+32 requests/160 affected cells/1024 work per run (WINT-014). No giant/OOM probes occur.
 
 Tradeoff: synchronous I/O can stall simulation, but avoids asynchronous ownership
 policy. Rename file publication is SEPARATE from authored edits/runtime adoption:
@@ -547,7 +545,8 @@ inferences. Reversal changes private app code, not Engine/schema/replay contract
 
 ## WINT-012 — Bounded retention, event ordering and file epochs
 
-HistoryLimits defaults to 32 entries and 256 KiB per map/mode. Constructor limits
+HistoryLimits now defaults to32 entries and1 MiB per map/mode (WINT-014;
+U4 initially used256 KiB). Constructor limits
 are at most 256 entries and 8 MiB; zero is permitted and rejects changing commands.
 The combined undo+redo timeline is bounded, not two independently growing stacks.
 HistoryState returns owned undo count, redo count and retained byte charge. Empty
@@ -603,7 +602,7 @@ entry/byte caps bound logical content; allocations can still fail. I/O/encoding,
 copy and full rederivation run synchronously on serialized simulation and may
 stall it. No OOM probe, async service, compact history format or persistence of
 history is introduced. A fresh process reconstructs saved content with empty
-histories. Default four-document history charge is at most 1 MiB; allowed maximum
+histories. Default four-document history charge is now at most4 MiB (WINT-014); allowed maximum
 is 32 MiB, excluding the stated overhead/transients/baseline state.
 
 Executed evidence: 112/112 in one accumulated run, zero failed/skipped, 54.58s; all 104
@@ -619,3 +618,131 @@ normal Engine imports/exports/loader and format checks pass. No CPU failure or
 rerun. Exact logs/commands/receipt and remaining graphical/input/upload/teardown/
 fun/leak/platform/durability gaps are in next.md. Confidence high for tested CPU
 policy, low as personal taste; changing caps/hotkeys is private and reversible.
+
+## WINT-013 — Bounded variable domains and active-mode geometry
+
+Small actual caller (press/paint are admitted Record constructors in the process
+consumer; they use each event’s own pointer):
+
+```cpp
+DemoTilemapEditor editor(existing_directory);
+const std::array literal{press(Key::F9)}; // west.json may now be7x5
+editor.consume(literal, {{400,200},{800,600}});
+const std::array semantic{press(Key::B), press(Key::F9)}; // independent west-terrain.json
+editor.consume(semantic, {{400,200},{800,600}});
+// For an admitted7x5 west semantic document: last-cell center under this explicit view.
+editor.set_view({0,-3072},0.125); // explicit view; no automatic layout
+const std::array actions{press(Key::T), paint(29,71), press(Key::F6),
+                         press(Key::F7), press(Key::F8)};
+editor.consume(actions, {{400,200},{800,600}});
+editor.write(frame,bindings,style);
+```
+
+The shared private admission function first runs unchanged storage value/byte
+validation and adapter patch admission, then rejects axes outside[1,64], layer
+count other than exactly2 or a checked division product exceeding8192 cells.
+No clamp, truncation, reshaping, resize, resampling or crop. General U1
+LiteralOwner/TerrainOwner conversion bounds stay65536 patch cells; only the
+private editor/TerrainDocument gate narrows them. Semantic prefix/table/rule
+policies stay WINT-009/010. Public Engine headers/sources, strict-v1 bytes,
+replay and all source/provenance archives remain unchanged.
+
+LOAD stages full parsed Snapshot, metadata, reversible key/meaning conversion and
+both nonmovable terrain owners before unique-pointer adoption and selected history
+reset. A larger valid first owner cannot publish before a failing second owner.
+Success clears only selected map/mode history; failure preserves full content,
+metadata, both stacks, sibling/modes and old owned frames/results. Existing
+ordered Press/admission/path behavior and actual update diagnostics/drop/later-tick
+policy remain. SAVE file rename is separate from runtime edits/history/adoption.
+
+Picking now uses selected terrain extent in B and selected literal extent in V,
+not the independent literal Map for both. Both terrain owners derive from the
+same admitted geometry. Preparation already resolves each actual Map’s extent;
+no new culling algorithm is needed. Local cells remain64x48, X-right/Y-down,
+computed half-open edges through existing pick_cell. Current captured logical /
+framebuffer sizes scale axes independently, full framebuffer viewport is Y-up,
+with explicit pan/positive zoom. Origins stay west{48,240},east{328,208}; draw
+order west ground/detail then east ground/detail, detail alpha0.5. Large footprints
+may overlap or extend beyond the viewport. No packing, physical scale or gameplay
+walkability promise. Different west/east and literal/terrain extents coexist.
+
+Test-owned variable-documents.h supplies independent patterned expected keys/nulls,
+metadata, literal numeric IDs, semantic meaning IDs/labels and a direct cardinal
+neighbor oracle. This is expected-data sharing between CPU callers, not a copied
+production conversion/selection. All cells of7x5,1x7,7x1,1x1,64x64 are checked;
+three ordered spawns include each document’s last cell. The fresh process
+reconstructs all20 files from literal expected patterns and the final authored
+cell, comparing every field/label/meaning/visual, without using author results as
+expected data. A separate rectangle oracle checks visible cell intersections,
+row/column/group order and pivot placement; retained frames outlive owners.
+
+Invalid axes0/65, wrong layer counts, invalid cell count/spawns/key byte bounds,
+unknown keys and a late needed second-layer mask reject before adoption. Existing
+negative cases formerly using1x6 or2x3 are updated to65x1 because their old shapes
+are now valid; their registered names and every other predecessor behavior remain.
+High confidence in the executed CPU boundary; exact policy/diagnostic spelling and
+view choice are delegated engineering, not intentional-v3 personal preference.
+Reversal is private admission/caller wiring; persisted meaning changes still need
+explicit mapping rather than a schema workaround.
+
+## WINT-014 — Checked work, retained content and output limits
+
+Defaults become32 requests/160 affected cells/1024 work per semantic run. Each
+request consumes validation, changed centers visit5 candidate positions (outside
+included), and each unique affected cell consumes resolution plus at most4
+sampler units. Therefore R<=32 and A<=5R<=160 bound work by R+5R+5A<=992.
+This is a finite event-run allowance, not unrestricted larger strokes or a CPU-time
+guarantee. Duplicates/no-ops still consume request/validation budget under Engine
+rules; unchanged/cancelled final semantics produce no history entry. Explicit
+caller limits remain enforced unchanged.32 separated interior edits on a full64x64
+semantic board establish the exact992/160 boundary and one-short refusals.
+
+Default history raises256 KiB to1 MiB per map/mode, keeping32 entries and hard
+256-entry/8 MiB maxima. A command charges BOTH complete canonical encoded
+Snapshots, including all8192 keys/nulls and ordered metadata. Single-command
+one-short refusal precedes mutation; accepted changes evict oldest entries only
+in the staged timeline. Default across four histories is4 MiB; hard maximum32 MiB.
+No promise that every permitted rich-metadata command fits default: rejection is
+explicit and preserves its complete undo contract. Full maximum patterned and
+32-edit semantic commands fit; exact/one-short full-domain charges are checked.
+
+Private geometry caps bound current content to8192 layer cells per document,
+semantic labels4096 per layer, two owners each copying a two-layer base, and a
+resolver vector to4096 packets. Four fully visible nonempty map/layer groups can
+produce at most16384 packets. Staged Snapshots, per-layer base/labels/visuals,
+previous/new owners, canonical strings and bounded timeline copies coexist.
+Selection/sampling limits bound the incremental Engine batch; private full
+candidate reconstruction remains O(admitted cells) before that call. Entry/byte
+charges are logical, not exact allocation/RSS quotas; vector/string overhead,
+current configuration and transient copies are additional. Allocation/programming
+exceptions propagate. No deliberate OOM/huge allocation probe or new service.
+Synchronous copy/rederivation/I/O can stall simulation; serialize writer/preparer
+access and respect borrowed-view invalidation. High engineering confidence in
+finite accounting, low as taste evidence; private caps can be reversed without
+Engine ABI or storage-format changes. Actual counts/logs and limits stay in next.md.
+
+Executed U5 evidence: one accumulated119/119 Debug ASan/UBSan invocation, zero
+failed/skipped,89.52s, retaining all112 names plus6 new unit cases and1 process
+scenario. All14 process child exits0. The new author and fresh process each check
+20 files/33168 layer cells, complete keys/nulls/metadata, literal numeric values,
+semantic meaning IDs/labels and direct cardinal-derived visuals. Process file
+hashes remain unchanged during read-only verification. Unit checks establish
+actual active-domain edge picking, large-domain full-value edits/undo/redo,
+32/160/992 and one-short refusals, history charge boundaries, late second-owner
+preservation, independent rectangle culling/pivot/pass order, old frame ownership
+and zero synthetic bind/draw/upload counters. Actual DemoTilemaps::update diagnoses
+axis refusal, drops remaining current tick and successfully loads/saves next tick.
+
+Shared runner/header probes and actual demo compile/link without warnings.
+The first successful build was followed by one source-review fixture correction /
+incremental unit rebuild BEFORE any test execution; there is no test failure or
+CPU rerun. Saved nm/readelf/ldd/compile/link checks establish same adapter/editor
+sources in demo/unit/world,14 actual Engine imports/exports, one normal shared
+Engine per executable and unchanged import/sanitizer settings.375 Engine/public /
+replay/archive/unchanged-suite hashes and14 earlier committed receipt files are
+unchanged. Format check passes; standalone unaffected storage/procedural suites
+are not repeated. Exact commands, immediate exits, full logs and ready receipt
+are in next.md. CPU/link proof leaves real input/display, atlas decode/upload,
+visual correctness/fun, graphical cleanup, leaks, installed/static/Release/other
+platform ABI and file durability gaps open. No unchanged X11 retry, fsync,
+power-loss/race guarantee or further assignment is implied.

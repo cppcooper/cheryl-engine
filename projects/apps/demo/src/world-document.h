@@ -17,6 +17,11 @@ namespace WorldProof {
         Refusal code;
         Error(Refusal code, const std::string& detail);
     };
+    inline constexpr std::uint32_t editor_max_axis = 64;
+    inline constexpr std::size_t editor_layer_cells = 8192;
+    // Full storage/adapter validation, then private finite-editor admission.
+    // General LiteralOwner/TerrainOwner conversions retain their older bounds.
+    void admit_editor_document(const Storage::Snapshot& snapshot);
     struct KeyId {
         std::string key;
         Tiles::TileId id;
@@ -118,7 +123,7 @@ namespace WorldProof {
     };
     struct HistoryLimits {
         std::size_t entries = 32;
-        std::size_t bytes = 256 * 1024;
+        std::size_t bytes = 1024 * 1024;
     };
     struct HistoryState {
         std::size_t undo = 0;

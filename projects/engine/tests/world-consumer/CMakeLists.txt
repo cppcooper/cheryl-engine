@@ -27,9 +27,11 @@ cheryl_add_header_probes(tests-world-header Cheryl::Engine NEUTRAL HEADERS
     cheryl/core/resources/map-storage/file-storage.h cheryl/core/resources/map-storage/cell-patch.h
     cheryl/maps/tilemap.h cheryl/maps/terrain-map.h)
 add_dependencies(tests-world-consumer tests-world-header)
-foreach(check IN ITEMS literal generated refusals editor_documents semantic_documents document_history)
+foreach(check IN ITEMS literal generated refusals editor_documents semantic_documents document_history variable_documents)
     add_test(NAME "world.${check}" COMMAND "${CMAKE_COMMAND}"
         "-DCLI=$<TARGET_FILE:tests-world-consumer>" "-DMODE=${check}"
         "-DWORK_ROOT=${CMAKE_CURRENT_BINARY_DIR}/world-checks" -P "${CMAKE_CURRENT_SOURCE_DIR}/check.cmake")
     set_tests_properties("world.${check}" PROPERTIES TIMEOUT 60 LABELS world)
 endforeach()
+
+set_tests_properties(world.variable_documents PROPERTIES TIMEOUT 150)

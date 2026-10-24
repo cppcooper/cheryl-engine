@@ -1,6 +1,7 @@
 #include "world-document.h"
 
 #include <cheryl/core/resources/map-storage/cell-patch.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <limits>
@@ -40,6 +41,16 @@ namespace WorldProof {
     Error::Error(const Refusal code, const std::string& detail)
     : std::runtime_error(detail), code(code) {}
 
+    void admit_editor_document(const Storage::Snapshot& snapshot) {
+        admit(snapshot);
+        if (!snapshot.width || !snapshot.height || snapshot.width > editor_max_axis || snapshot.height > editor_max_axis ||
+            snapshot.layers.size() != 2 || snapshot.width > editor_layer_cells / snapshot.height / snapshot.layers.size())
+            throw CE::Exceptions::bad_request(
+                CE_HERE, "Editor document requires axes 1..64, exactly two ordered layers and <=8192 layer cells; got " +
+                             std::to_string(snapshot.width) + "x" + std::to_string(snapshot.height) + ", " +
+                             std::to_string(snapshot.layers.size()) + " layers"
+            );
+    }
     KeyTable::KeyTable(const std::span<const KeyId> entries) {
         if (entries.empty() || entries.size() > 256)
             throw Error(Refusal::Table, "Private key table requires 1..256 entries");
@@ -200,11 +211,11 @@ namespace WorldProof {
         const CE::Assets::Tilesets::Rule& rule,
         const std::span<const Tiles::TileId> targets
     ) {
-        admit(snapshot);
+        admit_editor_document(snapshot);
         // Private editor kind convention, also meaningful for an all-null file.
         // This is NOT a new storage property: v1 still treats map ID as opaque.
-        if (!snapshot.id.starts_with("terrain:") || snapshot.width != 3 || snapshot.height != 2 || snapshot.layers.size() != 2)
-            throw Error(Refusal::Table, "Terrain document requires terrain: map ID, 3x2 cells and two ordered layers");
+        if (!snapshot.id.starts_with("terrain:"))
+            throw Error(Refusal::Table, "Terrain document requires a terrain: map ID");
         std::array<std::unique_ptr<TerrainOwner>, 2> layers;
         for (std::int64_t layer = 0; layer < 2; ++layer)
             layers[static_cast<std::size_t>(layer)] = TerrainOwner::from(snapshot, keys, {layer}, semantics, rule, targets);

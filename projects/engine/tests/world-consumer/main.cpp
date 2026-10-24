@@ -3,6 +3,7 @@
 #include "world-document.h"
 #include "tilemap-editor.h"
 #include "cave.h"
+#include "variable-documents.h"
 
 #include <internals/exceptions.h>
 
@@ -543,6 +544,84 @@ namespace {
         std::cout << "FRESH complete metadata +24 literal cells +24 semantic labels/meaning IDs/cardinal visuals; histories empty PASS\n";
     }
 
+    namespace Variable = VariableDocuments;
+    void check_variable(const DemoTilemapEditor& editor, const Storage::Snapshot& expected, std::size_t index, bool semantic) {
+        require(
+            (semantic ? editor.terrain_document(index).snapshot() : editor.document(index).snapshot()) == expected,
+            "Variable complete snapshot/ordered metadata differs"
+        );
+        const std::array entries{
+            KeyId{"terrain:one", {101}}, KeyId{"terrain:two", {203}}, KeyId{"terrain:three", {307}}, KeyId{"terrain:four", {409}}
+        };
+        const auto numeric = semantic ? LiteralOwner::from(expected, KeyTable(entries)) : nullptr;
+        for (std::int64_t layer = 0; layer < 2; ++layer)
+            for (std::uint32_t y = 0; y < expected.height; ++y)
+                for (std::uint32_t x = 0; x < expected.width; ++x) {
+                    const auto l = static_cast<std::size_t>(layer);
+                    const auto& key = expected.layers[l].cells[std::size_t(y) * expected.width + x];
+                    const auto& map = semantic ? numeric->map() : editor.map(index);
+                    require(
+                        map.extent() == Tiles::Extent{expected.width, expected.height} && map.layer_count() == 2,
+                        "Variable numeric shape differs"
+                    );
+                    require(map.get({layer}, {x, y}).value == Variable::numeric(key, semantic), "Variable numeric meaning differs");
+                    if (semantic) {
+                        const auto& terrain = editor.terrain(index, {layer});
+                        require(terrain.label({x, y}).value == Variable::meaning(key, true), "Variable opaque label differs");
+                        require(
+                            terrain.tiles().get({layer}, {x, y}).value == Variable::visual(expected, l, x, y),
+                            "Variable full-grid cardinal oracle differs"
+                        );
+                    }
+                }
+    }
+    void variable_documents(const std::filesystem::path& root, bool author) {
+        std::size_t checked = 0;
+        for (std::size_t shape = 0; shape < Variable::shapes.size(); ++shape) {
+            const auto directory = root / ("domain-" + std::to_string(shape));
+            if (author)
+                require(std::filesystem::create_directory(directory), "Could not create owned process fixture directory");
+            DemoTilemapEditor editor(directory);
+            editor_events(editor, {});
+            require(editor.set_view({0, -3072}, 0.125), "Variable full-footprint viewport failed");
+            for (bool semantic : {false, true})
+                for (std::size_t index = 0; index < 2; ++index) {
+                    const auto size = Variable::shapes[(shape + index) % Variable::shapes.size()];
+                    auto initial = Variable::source(size[0], size[1], semantic, index == 1);
+                    auto saved = initial;
+                    saved.layers[1].cells.back() = semantic ? "terrain:two" : "tilemap:red";
+                    const auto path =
+                        directory / (semantic ? (index ? "east-terrain.json" : "west-terrain.json") : (index ? "east.json" : "west.json"));
+                    if (author)
+                        Storage::save(path, initial);
+                    else
+                        require(Storage::load(path) == saved, "Fresh expected complete variable file differs");
+                    editor_events(editor, {press(semantic ? Key::B : Key::V), press(index ? Key::Digit2 : Key::Digit1), press(Key::F9)});
+                    check_variable(editor, author ? initial : saved, index, semantic);
+                    if (author) {
+                        const double ox = index ? 328 : 48, oy = index ? 208 : 240;
+                        const double x = (ox + (double(size[0]) - 0.5) * 64) / 16;
+                        const double y = (600 - (oy - (double(size[1]) - 0.5) * 48 + 3072) / 8) / 3;
+                        editor_events(editor, {press(Key::T), press(semantic ? Key::Digit4 : Key::Digit6), paint(x, y), press(Key::F8)});
+                        check_variable(editor, saved, index, semantic);
+                        // A guaranteed DIFFERENT meaning, followed by undo/redo, then LOAD restores saved.
+                        editor_events(editor, {press(Key::Digit3), paint(x, y), press(Key::F6)});
+                        check_variable(editor, saved, index, semantic);
+                        editor_events(editor, {press(Key::F7), press(Key::F9)});
+                        check_variable(editor, saved, index, semantic);
+                        require(
+                            editor.history(index, semantic ? DemoTilemapEditor::Mode::Terrain : DemoTilemapEditor::Mode::Literal).undo == 0,
+                            "Variable LOAD did not reset selected history"
+                        );
+                        require(Storage::load(path) == saved, "Variable save/load lost complete content");
+                    }
+                    checked += std::size_t(size[0]) * size[1] * 2;
+                }
+        }
+        std::cout << (author ? "AUTHOR" : "FRESH") << ": five asymmetric/degenerate/max domains,20 mode/map documents; " << checked
+                  << " complete cells + all keys/labels/numeric meanings/cardinal visuals/ordered metadata PASS\n";
+    }
+
     void refusals(const std::filesystem::path& path) {
         const KeyTable table(keys);
         auto live = LiteralOwner::from(literal_base(), table);
@@ -753,6 +832,10 @@ int main(const int argc, char** argv) {
             history_author(path);
         else if (mode == "history-verify")
             history_verify(path);
+        else if (mode == "variable-author")
+            variable_documents(path, true);
+        else if (mode == "variable-verify")
+            variable_documents(path, false);
         else
             throw std::runtime_error("Unknown world mode");
         return 0;

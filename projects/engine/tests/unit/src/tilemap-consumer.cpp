@@ -1,5 +1,6 @@
 #include "tilemap-editor.h"
 #include "tilemap-demo.h"
+#include "../../world-consumer/variable-documents.h"
 #include <cheryl/maps/terrain-map.h>
 
 #include <assets/submission/tilemap2d.h>
@@ -11,6 +12,7 @@
 
 #include <ext/matrix_clip_space.hpp>
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -1802,9 +1804,11 @@ TEST(tilemap_consumer, editor_document_load_failures) {
     EXPECT_THROW(edit(editor, {key(Key::F9)}), WorldProof::Error);
     preserved();
     auto wrong_shape = custom_document();
-    wrong_shape.width = 1;
-    wrong_shape.height = 6;
-    wrong_shape.spawns = {{"entry", "floor", 0, 5}};
+    wrong_shape.width = 65;
+    wrong_shape.height = 1;
+    for (auto& layer : wrong_shape.layers)
+        layer.cells.resize(65);
+    wrong_shape.spawns = {{"entry", "floor", 64, 0}};
     Documents::save(files.directory / "west.json", wrong_shape);
     EXPECT_THROW(edit(editor, {key(Key::F9)}), bad_request);
     preserved();
@@ -2036,8 +2040,10 @@ TEST(tilemap_consumer, semantic_load_refusals) {
         if (failure == 2)
             source.id = "tilemap:west"; // Including all-null wrong-kind files.
         if (failure == 3) {
-            source.width = 2;
-            source.height = 3;
+            source.width = 65;
+            source.height = 1;
+            for (auto& layer : source.layers)
+                layer.cells.resize(65);
             source.spawns.clear();
         }
         if (failure == 4) {
@@ -2719,5 +2725,382 @@ TEST(tilemap_consumer, history_frames) {
     d.clear();
     EXPECT_TRUE(image.expired());
     EXPECT_TRUE(geometry.expired());
+    calls->expect_cpu();
+}
+
+namespace {
+    namespace Variable = VariableDocuments;
+    // Independent inverse of the documented app viewport transform. Explicitly
+    // unequal logical/framebuffer scales, fixed origins/cell sizes, no live input.
+    Events::Pointer domain_pointer(const DemoTilemapEditor& editor, double x, double y) {
+        const double ox = editor.selected_map() == 0 ? 48 : 328;
+        const double oy = editor.selected_map() == 0 ? 240 : 208;
+        return {(ox + x - editor.pan().x) * editor.zoom() / 2, (600 - (oy - y - editor.pan().y) * editor.zoom()) / 3};
+    }
+    Events::Pointer domain_cell(const DemoTilemapEditor& editor, std::uint32_t x, std::uint32_t y) {
+        return domain_pointer(editor, (double(x) + 0.5) * 64, (double(y) + 0.5) * 48);
+    }
+    void domain_view(DemoTilemapEditor& editor) {
+        edit(editor, {});
+        ASSERT_TRUE(editor.set_view({0, -3072}, 0.125)); // Entire maximum footprint, exact binary zoom.
+    }
+    void expect_domain(const DemoTilemapEditor& editor, std::size_t index, const Documents::Snapshot& source, bool semantic) {
+        ASSERT_EQ(semantic ? editor.terrain_document(index).snapshot() : editor.document(index).snapshot(), source);
+        const Maps::Extent extent{source.width, source.height};
+        if (!semantic) {
+            ASSERT_EQ(editor.map(index).extent(), extent);
+            ASSERT_EQ(editor.map(index).layer_count(), 2u);
+        }
+        for (std::int64_t layer = 0; layer < 2; ++layer) {
+            const Maps::LayerIndex selected{layer};
+            if (semantic) {
+                ASSERT_EQ(editor.terrain(index, selected).tiles().extent(), extent);
+                ASSERT_EQ(editor.terrain(index, selected).tiles().layer_count(), 2u);
+            }
+            for (std::uint32_t y = 0; y < source.height; ++y)
+                for (std::uint32_t x = 0; x < source.width; ++x) {
+                    const Maps::Point point{x, y};
+                    const auto& key = source.layers[static_cast<std::size_t>(layer)].cells[std::size_t(y) * source.width + x];
+                    if (semantic) {
+                        EXPECT_EQ(editor.terrain(index, selected).label(point).value, Variable::meaning(key, true));
+                        EXPECT_EQ(
+                            editor.terrain(index, selected).tiles().get(selected, point).value,
+                            Variable::visual(source, static_cast<std::size_t>(layer), x, y)
+                        );
+                    } else {
+                        EXPECT_EQ(editor.map(index).get(selected, point).value, Variable::numeric(key, false));
+                    }
+                }
+        }
+    }
+}
+
+TEST(tilemap_consumer, variable_literal_documents) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    domain_view(editor);
+    const auto terrain = editor.terrain_document(0).snapshot();
+    const auto east = Variable::source(1, 7, false, true);
+    Documents::save(files.directory / "east.json", east);
+    edit(editor, {key(Key::Digit2), key(Key::F9), key(Key::Digit1)});
+    for (const auto shape : Variable::shapes) {
+        auto expected = Variable::source(shape[0], shape[1], false);
+        Documents::save(files.directory / "west.json", expected);
+        edit(editor, {key(Key::F9), key(Key::T), key(Key::Digit6)});
+        expect_domain(editor, 0, expected, false);
+        EXPECT_EQ(editor.history(0, Mode::Literal), HistoryState{});
+        const auto last = domain_cell(editor, shape[0] - 1, shape[1] - 1);
+        // Erase first so the following paint is a changing command for every pattern.
+        edit(editor, {click(Mouse::Right, last)});
+        auto erased = expected;
+        erased.layers[1].cells.back().reset();
+        expect_domain(editor, 0, erased, false);
+        edit(editor, {click(Mouse::Left, last)});
+        auto painted = erased;
+        painted.layers[1].cells.back() = "tilemap:red";
+        expect_domain(editor, 0, painted, false);
+        edit(editor, {key(Key::F6)});
+        expect_domain(editor, 0, erased, false);
+        edit(editor, {key(Key::F7), key(Key::F8)});
+        EXPECT_EQ(Documents::load(files.directory / "west.json"), painted);
+        const auto history = editor.history(0, Mode::Literal);
+        ASSERT_GT(history.undo, 0u);
+        edit(editor, {click(Mouse::Right, last), key(Key::F9)});
+        expect_domain(editor, 0, painted, false);
+        EXPECT_EQ(editor.history(0, Mode::Literal), HistoryState{});
+        expect_domain(editor, 1, east, false);
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), terrain);
+    }
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, variable_semantic_documents) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    domain_view(editor);
+    const auto literal = editor.document(0).snapshot();
+    auto east = Variable::source(7, 1, true, true);
+    Documents::save(files.directory / "east-terrain.json", east);
+    edit(editor, {key(Key::B), key(Key::Digit2), key(Key::F9), key(Key::Digit1)});
+    for (const auto shape : Variable::shapes) {
+        auto expected = Variable::source(shape[0], shape[1], true);
+        Documents::save(files.directory / "west-terrain.json", expected);
+        edit(editor, {key(Key::F9), key(Key::T), key(Key::Digit4)});
+        expect_domain(editor, 0, expected, true);
+        const auto last = domain_cell(editor, shape[0] - 1, shape[1] - 1);
+        edit(editor, {click(Mouse::Right, last)});
+        expected.layers[1].cells.back().reset();
+        expect_domain(editor, 0, expected, true);
+        edit(editor, {click(Mouse::Left, last)});
+        auto painted = expected;
+        painted.layers[1].cells.back() = "terrain:two";
+        expect_domain(editor, 0, painted, true);
+        edit(editor, {key(Key::F6)});
+        expect_domain(editor, 0, expected, true);
+        edit(editor, {key(Key::F7), key(Key::F8)});
+        EXPECT_EQ(Documents::load(files.directory / "west-terrain.json"), painted);
+        edit(editor, {click(Mouse::Right, last), key(Key::F9)});
+        expect_domain(editor, 0, painted, true);
+        EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+        expect_domain(editor, 1, east, true);
+        EXPECT_EQ(editor.document(0).snapshot(), literal);
+    }
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, variable_picking) {
+    const DocumentFiles files;
+    const auto literal = Variable::source(7, 5, false);
+    const auto semantic = Variable::source(1, 7, true);
+    Documents::save(files.directory / "west.json", literal);
+    Documents::save(files.directory / "west-terrain.json", semantic);
+    DemoTilemapEditor editor(files.directory);
+    domain_view(editor);
+    edit(editor, {key(Key::F9)});
+    EXPECT_EQ(editor.pick(domain_cell(editor, 6, 4)), (Maps::Point{6, 4}));
+    EXPECT_EQ(editor.pick(domain_pointer(editor, 64, 48)), (Maps::Point{1, 1}));
+    EXPECT_FALSE(editor.pick(domain_pointer(editor, 7 * 64, 5 * 48)));
+    EXPECT_FALSE(editor.pick(domain_pointer(editor, 7 * 64, 0)));
+    EXPECT_FALSE(editor.pick(domain_pointer(editor, 0, 5 * 48)));
+    edit(editor, {key(Key::B), key(Key::F9), key(Key::Digit4)});
+    EXPECT_EQ(editor.pick(domain_cell(editor, 0, 6)), (Maps::Point{0, 6})); // Outside literal height, INSIDE active terrain.
+    EXPECT_FALSE(editor.pick(domain_cell(editor, 1, 0)));                   // Inside literal width, OUTSIDE active terrain.
+    auto painted = semantic;
+    painted.layers[0].cells[6] = "terrain:two";
+    edit(editor, {click(Mouse::Left, domain_cell(editor, 0, 6))});
+    expect_domain(editor, 0, painted, true);
+    const auto state = editor.history(0, Mode::Terrain);
+    edit(editor, {click(Mouse::Left, domain_cell(editor, 1, 0)), click(Mouse::Right, domain_pointer(editor, 0, 7 * 48))});
+    EXPECT_EQ(editor.history(0, Mode::Terrain), state);
+    expect_domain(editor, 0, painted, true);
+    // Nonuniform framebuffer scales, nonzero pan and computed internal edge ownership.
+    ASSERT_TRUE(editor.set_view({16, -129}, 1));
+    const auto edge = domain_pointer(editor, 0, 48);
+    EXPECT_EQ(editor.pick(edge), (Maps::Point{0, 1}));
+    EXPECT_EQ(editor.pick({edge.x, std::nextafter(edge.y, 0.0)}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({edge.x, std::nextafter(edge.y, 200.0)}), (Maps::Point{0, 1}));
+    EXPECT_FALSE(editor.pick(domain_pointer(editor, -1, 0)));
+    edit(editor, {key(Key::V)});
+    expect_domain(editor, 0, literal, false);
+}
+
+TEST(tilemap_consumer, variable_limits_and_late_load) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    const auto base = Variable::source(7, 5, false);
+    Documents::save(files.directory / "west.json", base);
+    DemoTilemapEditor editor(files.directory);
+    domain_view(editor);
+    edit(editor, {key(Key::F9), key(Key::Digit6), click(Mouse::Left, domain_cell(editor, 0, 0))});
+    const auto before = editor.document(0).snapshot();
+    const auto history = editor.history(0, Mode::Literal);
+    const auto east = editor.document(1).snapshot();
+    for (int failure = 0; failure < 11; ++failure) {
+        auto invalid = Variable::source(7, 5, false);
+        if (failure == 0 || failure == 1)
+            invalid = Variable::source(failure == 0 ? 65 : 1, failure == 1 ? 65 : 1, false);
+        if (failure == 2) {
+            invalid.layers.pop_back();
+            invalid.spawns.clear();
+        }
+        if (failure == 3)
+            invalid.layers.push_back({"third", invalid.layers[0].cells});
+        if (failure == 4)
+            invalid.layers[1].cells.back() = "tilemap:unknown";
+        if (failure == 5)
+            invalid.spawns.back().x = invalid.width;
+        if (failure == 6)
+            invalid.width = 0;
+        if (failure == 7)
+            invalid.spawns.resize(257, invalid.spawns.front());
+        if (failure == 8)
+            invalid.layers[1].cells.pop_back();
+        // encode deliberately refuses invalid storage shapes; write raw encoded-valid
+        // fixtures for editor-only refusals, otherwise inject an independently malformed JSON.
+        if (failure <= 4)
+            Documents::save(files.directory / "west.json", invalid);
+        else {
+            auto text = Documents::encode(base);
+            const auto replace = [&](const std::string& from, const std::string& to) {
+                const auto at = text.find(from);
+                ASSERT_NE(at, std::string::npos);
+                text.replace(at, from.size(), to);
+            };
+            if (failure == 5)
+                replace("\"x\": 6", "\"x\": 7");
+            if (failure == 6)
+                replace("\"width\": 7", "\"width\": 0");
+            if (failure == 7) {
+                const auto at = text.find("\"spawns\": [");
+                ASSERT_NE(at, std::string::npos);
+                text.resize(at);
+                text += "\"spawns\": [";
+                for (int i = 0; i < 257; ++i) {
+                    if (i)
+                        text += ',';
+                    text += "{\"name\":\"spawn" + std::to_string(i) + "\",\"layer\":\"floor\",\"x\":0,\"y\":0}";
+                }
+                text += "]}";
+            }
+            if (failure == 8)
+                replace("\"height\": 5", "\"height\": 4");
+            if (failure == 9)
+                replace("\"height\": 5", "\"height\": 0");
+            if (failure == 10)
+                replace("tilemap:brown", "tilemap:" + std::string(122, 'a'));
+            raw_document(files.directory / "west.json", text);
+        }
+        EXPECT_THROW(edit(editor, {key(Key::F9)}), std::exception);
+        EXPECT_EQ(editor.document(0).snapshot(), before);
+        EXPECT_EQ(editor.history(0, Mode::Literal), history);
+        EXPECT_EQ(editor.document(1).snapshot(), east);
+    }
+    auto palette = DemoTilemapEditor::diagnostic_terrain();
+    palette.rule.cases.erase(2);
+    DemoTilemapEditor late(palette, {32, 160, 1024}, files.directory);
+    domain_view(late);
+    edit(late, {key(Key::B), click(Mouse::Left, domain_cell(late, 0, 0))}); // Isolated mask0 valid, nonempty history.
+    const auto old = late.terrain_document(0).snapshot();
+    const auto old_history = late.history(0, Mode::Terrain);
+    auto replacement = Variable::source(7, 5, true);
+    for (auto& layer : replacement.layers)
+        std::fill(layer.cells.begin(), layer.cells.end(), "terrain:one");
+    std::fill(replacement.layers[1].cells.begin(), replacement.layers[1].cells.end(), std::nullopt);
+    replacement.layers[1].cells[0] = replacement.layers[1].cells[1] = "terrain:two"; // First selected cell requires missing mask2.
+    const WorldProof::KeyTable table(semantic_keys);
+    const auto first = WorldProof::TerrainOwner::from(replacement, table, ground, semantic_labels, palette.rule, palette.target_to_id);
+    ASSERT_EQ(first->terrain().tiles().extent(), (Maps::Extent{7, 5})); // Larger FIRST owner proven valid.
+    Documents::save(files.directory / "west-terrain.json", replacement);
+    Render::Frame retained;
+    prepare_editor(retained, late, fixture);
+    const auto packets = retained.passes()[0].draws;
+    EXPECT_THROW(edit(late, {key(Key::F9)}), bad_request);
+    EXPECT_EQ(late.terrain_document(0).snapshot(), old);
+    EXPECT_EQ(late.history(0, Mode::Terrain), old_history);
+    expect_packets(retained, packets);
+    // Real update path: bad admission drops later SAVE; later tick may load the valid document.
+    DemoTilemaps demo(files.directory);
+    Documents::save(files.directory / "west.json", Variable::source(65, 1, false));
+    const auto bytes = document_bytes(files.directory / "west.json");
+    testing::internal::CaptureStderr();
+    const std::array bad_tick{key(Key::F9), key(Key::F8)};
+    demo.update(bad_tick, editor_sizes);
+    const auto diagnostic = testing::internal::GetCapturedStderr();
+    EXPECT_NE(diagnostic.find("axes 1..64"), std::string::npos);
+    EXPECT_EQ(document_bytes(files.directory / "west.json"), bytes);
+    Documents::save(files.directory / "west.json", base);
+    const std::array good_tick{key(Key::F9), key(Key::F8)};
+    demo.update(good_tick, editor_sizes);
+    EXPECT_EQ(Documents::load(files.directory / "west.json"), base);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, variable_stroke_budgets) {
+    const DocumentFiles files;
+    auto base = Variable::source(64, 64, true);
+    for (auto& layer : base.layers)
+        std::fill(layer.cells.begin(), layer.cells.end(), "terrain:one");
+    Documents::save(files.directory / "west-terrain.json", base);
+    auto expected = base;
+    for (std::uint32_t y = 0; y < 4; ++y)
+        for (std::uint32_t x = 0; x < 8; ++x)
+            expected.layers[0].cells[std::size_t(2 + 8 * y) * 64 + 2 + 8 * x] = "terrain:two";
+    // 32 interior, nonoverlapping five-cell crosses: 32 + 5*32 + 5*160 = 992 work.
+    for (const auto limits : {Maps::TerrainBatchLimits{32, 160, 1024}, {32, 160, 992}, {31, 160, 992}, {32, 159, 992}, {32, 160, 991}}) {
+        DemoTilemapEditor editor(DemoTilemapEditor::diagnostic_terrain(), limits, files.directory);
+        domain_view(editor);
+        edit(editor, {key(Key::B), key(Key::F9), key(Key::Digit4)});
+        std::vector<Events::Record> stroke;
+        for (std::uint32_t y = 0; y < 4; ++y)
+            for (std::uint32_t x = 0; x < 8; ++x)
+                stroke.push_back(click(Mouse::Left, domain_cell(editor, 2 + 8 * x, 2 + 8 * y)));
+        const bool admitted = limits.requests == 32 && limits.affected_cells == 160 && limits.work >= 992;
+        if (admitted) {
+            editor.consume(stroke, editor_sizes);
+            expect_domain(editor, 0, expected, true);
+            ASSERT_EQ(editor.history(0, Mode::Terrain).undo, 1u);
+            edit(editor, {key(Key::F6)});
+            expect_domain(editor, 0, base, true);
+            edit(editor, {key(Key::F7)});
+            expect_domain(editor, 0, expected, true);
+        } else {
+            EXPECT_THROW(editor.consume(stroke, editor_sizes), bad_request);
+            expect_domain(editor, 0, base, true);
+            EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+        }
+    }
+    const auto cost = history_cost(base, expected);
+    ASSERT_LE(cost, WorldProof::HistoryLimits{}.bytes);
+    for (const auto bytes : {cost, cost - 1}) {
+        DemoTilemapEditor editor(DemoTilemapEditor::diagnostic_terrain(), {32, 160, 1024}, files.directory, {1, bytes});
+        domain_view(editor);
+        edit(editor, {key(Key::B), key(Key::F9), key(Key::Digit4)});
+        std::vector<Events::Record> stroke;
+        for (std::uint32_t y = 0; y < 4; ++y)
+            for (std::uint32_t x = 0; x < 8; ++x)
+                stroke.push_back(click(Mouse::Left, domain_cell(editor, 2 + 8 * x, 2 + 8 * y)));
+        if (bytes == cost) {
+            editor.consume(stroke, editor_sizes);
+            EXPECT_EQ(editor.history(0, Mode::Terrain), (HistoryState{1, 0, cost}));
+            expect_domain(editor, 0, expected, true);
+        } else {
+            EXPECT_THROW(editor.consume(stroke, editor_sizes), WorldProof::Error);
+            expect_domain(editor, 0, base, true);
+            EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+        }
+    }
+}
+
+TEST(tilemap_consumer, variable_frames_and_clipping) {
+    const auto calls = std::make_shared<Calls>();
+    Render::Frame old;
+    std::vector<Render::DrawPacket2D> packets;
+    std::weak_ptr<Image> image;
+    const DocumentFiles files;
+    {
+        const Fixture fixture(calls);
+        image = fixture.image;
+        DemoTilemapEditor editor(files.directory);
+        auto west = Variable::source(7, 5, false);
+        auto east = Variable::source(1, 7, false, true);
+        Documents::save(files.directory / "west.json", west);
+        Documents::save(files.directory / "east.json", east);
+        edit(editor, {key(Key::F9), key(Key::Digit2), key(Key::F9), key(Key::Digit1)});
+        // World viewport [112,912] x [-48,552]; independent rectangle oracle for each cell.
+        ASSERT_TRUE(editor.set_view({112, -48}, 1));
+        prepare_editor(old, editor, fixture);
+        std::vector<ExpectedDraw> expected;
+        for (std::size_t instance = 0; instance < 2; ++instance) {
+            const auto& source = instance == 0 ? west : east;
+            const double ox = instance == 0 ? 48 : 328, oy = instance == 0 ? 240 : 208;
+            for (const auto& layer : source.layers)
+                for (std::uint32_t y = 0; y < source.height; ++y)
+                    for (std::uint32_t x = 0; x < source.width; ++x) {
+                        const auto id = Variable::numeric(layer.cells[std::size_t(y) * source.width + x], false);
+                        const auto left = ox + x * 64, top = oy - y * 48;
+                        if (id && left < 912 && left + 64 > 112 && top > -48 && top - 48 < 552)
+                            expected.push_back({(id - 7) * 4, static_cast<float>(left + 16), static_cast<float>(top - 36)});
+                    }
+        }
+        expect_draws(old, expected);
+        packets = old.passes()[0].draws;
+        const auto held = editor.document(0).snapshot();
+        auto large = Variable::source(64, 64, false);
+        Documents::save(files.directory / "west.json", large);
+        edit(editor, {key(Key::F9)});
+        domain_view(editor);
+        edit(editor, {key(Key::Digit6), click(Mouse::Left, domain_cell(editor, 63, 63)), key(Key::F6), key(Key::F7)});
+        expect_domain(editor, 1, east, false);
+        EXPECT_EQ(held, west);
+        expect_packets(old, packets);
+        calls->expect_cpu();
+    }
+    expect_packets(old, packets);
+    EXPECT_FALSE(image.expired());
+    old.recycle();
+    packets.clear();
+    EXPECT_TRUE(image.expired());
     calls->expect_cpu();
 }

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "WORLD-U5",
+  "status": "ready",
+  "checks_passed": true,
+  "current_parent_sha": "c8fead0de9424ea56639a846baa8be00bac617a5",
+  "source_checkpoint": "c8fead0de9424ea56639a846baa8be00bac617a5",
+  "evidence": [
+    "build/world-u5-logs/shared-build.log",
+    "build/world-u5-logs/shared-build-final.log",
+    "build/world-u5-logs/demo-build.log",
+    "build/world-u5-logs/discovery.log",
+    "build/world-u5-logs/tests.log",
+    "build/world-u5-logs/variable_documents-variable-author.log",
+    "build/world-u5-logs/variable_documents-fresh-variable-verify.log",
+    "build/world-u5-logs/ownership.log",
+    "build/world-u5-logs/format-check.log"
+  ],
+  "implemented_contracts": [
+    "SAME private world-document/editor sources in actual demo, unit and world callers; one normal shared Engine. Public headers/sources, strict-v1 bytes/replay, pins,375 production/archive hashes and14 older receipts unchanged.",
+    "Whole-document LOAD admits axes1..64, exactly two ordered layers and<=8192 layer cells after stricter storage/adapter validation; no truncation/resize/crop. Retain all keys/nulls/mapID/ordered names/spawns. Four mode/map domains may differ; original3x2 seeds compatible.",
+    "Active-mode extent drives computed-edge picking; actual Maps drive culling/resolution. Cell size64x48, origins and caller pass order unchanged, no automatic layout. Both semantic owners/mappings/metadata prepared before adoption; larger valid first owner then needed second-layer failure preserves old full document/history/frames.",
+    "Default run32 requests/160 affected/1024 work;32 disjoint interior edits require160 affected/992 work, one-short caps reject. Default history32 entries/1 MiB canonical bytes per document; hard256/8 MiB and complete-command rejection/oldest eviction unchanged. Scratch/output bounded by8192-cell domains and strict budgets, not exact allocator quotas.",
+    "One accumulated119/119 Debug shared ASan/UBSan invocation,0 failed/skipped,89.52s; all112 accepted names +6 new unit cases/1 process scenario. All14 child exits0. Two formerly unsupported1x6/2x3 negative fixtures changed to65x1 because old shapes now valid.",
+    "Author and fresh verifier each compare20 files/33168 complete layer cells over7x5,1x7,7x1,1x1,64x64: all keys/nulls/ordered metadata, literal numeric values, semantic meaning IDs/labels/direct cardinal visuals. Fresh verifier preserves all20 published file hashes.",
+    "Actual app events/actions check active-domain last/internal/outer/nextafter/exterior picks, distinct sizes/spawns, edit/undo/redo/save/load, exact/one-short run/history caps, limit and late-owner refusals, actual update diagnostic/drop/recovery, rectangle culling/pivot/order and old frame ownership. Synthetic native bind/draw/upload counters zero.",
+    "Actual demo compiles/links without warnings. Header/import/export/loader/same-source proof and format pass.14 real Engine export/import contracts, one local normal shared Engine per binary; no alternate implementation archive. One pre-test fixture correction required incremental unit rebuild; no native failure or CPU rerun. Unchanged standalone storage/procedural suites not repeated."
+  ],
+  "limitations": [
+    "Real display/input, atlas decode/upload/capture, graphical teardown, visual correctness/fun and leaks unverified; prior X11 :1 failure unchanged/not retried. Compile/synthetic CPU proof is not graphical acceptance.",
+    "Debug ASan/UBSan/halt_on_error retained; command-local detect_leaks=0 for tracing limitation. GNU/Linux source-tree shared imports checked; installed/static/Release/other-platform/toolchain ABI unverified.",
+    "Canonical history charges exclude allocator overhead/current/configuration/transient owner/timeline/encoding copies. Full private reconstruction is O(admitted cells) outside incremental work caps. Allocation/programming exceptions propagate; synchronous work may stall updates. Rich metadata may exceed default history and explicitly refuse.",
+    "Serialized update/preparation and cleanup after simulation joins; borrowed content views expire on changing adoption. Large fixed-origin maps may overlap/extend offscreen with no layout or physical coordinate promise.",
+    "Controlled existing single-writer directory/stable cwd/native checked rename only; no fsync/power-loss/hostile-race/multiwriter/distributed transaction. Runtime edits/history/adoption, file publication and whole ticks separate.",
+    "No runtime resize/chunking/streaming, schema/recipe change, history persistence, terrain-rule migration, sibling integration or fourth unit."
+  ],
+  "next_action": "Coordinator reviews exact drained third/final checkpoint, receipt and saved logs; publisher alone backs up assigned feat/tilemap. Worker2 stays idle; no fourth unit, automatic integration or recurring work."
+}

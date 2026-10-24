@@ -1,12 +1,14 @@
 # World integration decisions
 
-Current unit: WORLD-U4 independent bounded document history, starting clean at
-`b6658f24df2739adce8d672cabb9407f8b28f40b`. The committed U3 receipt/nonempty logs
-and 104 passing entries were inspected before dependent work. One accumulated
-Debug ASan/UBSan run passes 112/112, zero failed/skipped, retaining all 104 names;
-twelve process children exit zero. Actual demo link and same-source/single-Engine
-checks pass. WINT-011/012 extend the detailed view. Graphics/input/leaks stay open;
-no geography merge or unchanged display retry occurs.
+Current unit: WORLD-U5 bounded variable-size documents, starting clean at
+`c8fead0de9424ea56639a846baa8be00bac617a5`. Committed U4 ready/true receipt,
+nonempty saved evidence and112 passing XML entries were inspected first.
+WINT-013/014 extend the matching detailed view and supersede fixed-shape/default
+budget limits below. One accumulated Debug ASan/UBSan run passes119/119, zero failed/skipped;
+all14 process children exit0. Actual demo/same-source/shared-Engine checks pass.
+Exact results and receipt are in next.md. This is the
+third/final map milestone of feature-round-20261024-0500; no geography import,
+subsequent unit or unchanged graphical retry is authorized.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -87,8 +89,8 @@ graphics, fun, leaks and broad platform acceptance remain open.
 
 Replace only two literal Map owners with independent LiteralOwner pointers from
 the relocated private adapter. Keep map() compatibility, copied metadata and
-explicit keys mapping to IDs 7–10. Reject LOAD shapes other than 3x2/two layers
-before conversion and adopt only complete candidates. This adds validation/copy
+explicit keys mapping to IDs 7–10. WINT-013 now admits bounded variable axes
+and exactly two layers before conversion; adopt only complete candidates. This adds validation/copy
 cost while preserving original geometry and terrain isolation. Confidence is high
 in CPU contracts, low in naming taste; reversal is private, with future persisted
 key changes requiring a mapping decision.
@@ -136,9 +138,30 @@ Engine/storage contracts unchanged.
 ## WINT-012 — Bound retention and expose ordered history actions
 
 Use F6 undo/F7 redo with owned availability counts. Bound both stacks together to
-32 commands/256 KiB canonical bytes by default; evict oldest accepted commands.
+32 commands/1 MiB canonical bytes by default (WINT-014 raises U4’s256 KiB);
+evict oldest accepted commands.
 Reject an unretainable new command before mutation. No-ops preserve redo; accepted
 changes clear it. LOAD resets only its document, SAVE preserves history. Full
 snapshots trade compactness for auditable bounds. Confidence is high in tested
 CPU policy; hotkeys/budgets are reversible engineering choices, with native
 allocation/latency and graphical limits retained.
+
+## WINT-013 — Admit whole variable-size documents and pick the active domain
+
+Admit axes1–64, exactly two ordered layers and at most8192 layer cells after
+unchanged storage/adapter validation. Replace whole documents, retaining every
+metadata field; build both semantic owners before adoption. Pick using the active
+mode’s extent; render/cull actual dimensions at existing fixed origins. This permits
+useful asymmetric maps without resize or layout policy. Confidence is high for
+bounded CPU behavior, low as personal taste; reversal changes private admission,
+not Engine/schema contracts.
+
+## WINT-014 — Scale finite editor budgets without removing caps
+
+Keep32 requests, allow160 affected cells and1024 Engine work units per semantic
+run;32 disjoint interior edits require exactly992 work. Raise default history to
+32 entries/1 MiB per document, preserving hard256/8 MiB maxima, exact canonical
+charges and oldest eviction. This supports maximum admitted documents at copying
+cost. Logical bounds exclude allocator overhead/transients. Confidence is high
+from boundary tests; budgets are reversible engineering choices, with synchronous
+latency and native allocation failure still possible.

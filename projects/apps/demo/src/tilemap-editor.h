@@ -68,7 +68,7 @@ public:
     explicit DemoTilemapEditor(std::filesystem::path document_dir = {}, WorldProof::HistoryLimits history_limits = {});
     explicit DemoTilemapEditor(
         TerrainPalette palette,
-        CE::Tilemaps::TerrainBatchLimits limits = {32, 6, 256},
+        CE::Tilemaps::TerrainBatchLimits limits = {32, 160, 1024},
         std::filesystem::path document_dir = {},
         WorldProof::HistoryLimits history_limits = {}
     );

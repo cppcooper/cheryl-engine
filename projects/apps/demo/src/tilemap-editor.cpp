@@ -47,7 +47,7 @@ DemoTilemapEditor::TerrainPalette DemoTilemapEditor::diagnostic_terrain() {
 }
 
 DemoTilemapEditor::DemoTilemapEditor(std::filesystem::path document_dir, const WorldProof::HistoryLimits history_limits)
-: DemoTilemapEditor(diagnostic_terrain(), {32, 6, 256}, std::move(document_dir), history_limits) {}
+: DemoTilemapEditor(diagnostic_terrain(), {32, 160, 1024}, std::move(document_dir), history_limits) {}
 
 DemoTilemapEditor::DemoTilemapEditor(
     TerrainPalette palette,
@@ -122,8 +122,7 @@ void DemoTilemapEditor::document_action(const bool save) {
         CE::Maps::save(path, semantic ? terrain_[selected_map_]->snapshot() : documents_[selected_map_]->snapshot());
     } else {
         const auto source = CE::Maps::load(path);
-        if (source.width != 3 || source.height != 2 || source.layers.size() != 2)
-            throw CE::Exceptions::bad_request(CE_HERE, "Document LOAD requires exactly 3x2 cells and two ordered layers");
+        WorldProof::admit_editor_document(source);
         WorldProof::DocumentHistory reset(history_limits_);
         if (semantic) {
             auto candidate = terrain_[selected_map_]->replacement(source);
@@ -235,7 +234,8 @@ std::optional<Maps::Point> DemoTilemapEditor::pick(const Events::Pointer pointer
     const Maps::LocalPoint local{pan_.x + x / zoom_ - origin.x, origin.y - (pan_.y + y / zoom_)};
     if (!std::isfinite(local.x) || !std::isfinite(local.y))
         return {};
-    return Maps::pick_cell(map(selected_map_).extent(), cells, local);
+    const auto extent = mode_ == Mode::Terrain ? terrain_[selected_map_]->terrain({0}).tiles().extent() : map(selected_map_).extent();
+    return Maps::pick_cell(extent, cells, local);
 }
 
 void DemoTilemapEditor::consume(const std::span<const Events::Record> records, const Sizes sizes) {

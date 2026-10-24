@@ -1,214 +1,167 @@
-# WORLD-U4 independent bounded document history
+# WORLD-U5 bounded variable-size documents
 
-Status: implemented and verified, ready for coordinator source review. Exact clean
-starting parent on feat/tilemap is `b6658f24df2739adce8d672cabb9407f8b28f40b`.
-Its committed U3 ready/true receipt, nonempty saved native logs and 104 passing XML
-entries were inspected before dependent work. No geography import or protected /
-sibling edit occurs. This is the second map milestone of feature-round-20261024-0500;
-the controller alone selects a later exact assignment after this run drains.
-The [receipt](queue/feature-round-20261024-0500/WORLD-U4.json) reports executed
-behavior, not automatic coordinator/graphical/platform acceptance.
+Implemented and verified; ready for coordinator source review. Exact clean parent
+on feat/tilemap: `c8fead0de9424ea56639a846baa8be00bac617a5`. Before dependent work,
+the committed U4 ready/true receipt, nonempty saved logs and112 passing XML entries
+were inspected. No branch import or sibling/protected write. This is the THIRD /
+FINAL map milestone of feature-round-20261024-0500. The
+[receipt](queue/feature-round-20261024-0500/WORLD-U5.json) records worker execution,
+not automatic source acceptance or a graphical/platform result.
 
-WINT-011/012 match in [compact](decisions.md) and [detailed](agent-notes.md) views.
-Prior archives, provenance and receipts are unchanged. Source checks preserve 375
-public Engine/production/replay/archive/unchanged-suite paths; the old unit consumer
-source remains an exact prefix, preserving every prior body. All 104 registered
-predecessor names remain selected. Standalone unchanged storage/procedural suites
-are unaffected and not repeated.
+Matching WINT-013/014 in [compact](decisions.md) and [detailed](agent-notes.md)
+views supersede earlier fixed geometry/default caps. Historical source archives,
+provenance and14 prior receipt files are unchanged.375 production/public Engine /
+replay/archive/unchanged-suite hashes match previous evidence. No dependency pin,
+schema/strict-v1 bytes, replay or public API changes. All112 accepted registered
+names remain; two old refusal fixtures now use65x1 instead of newly valid1x6/2x3.
 
-## Small real caller
+## Small actual caller and controls
 
 ```cpp
-#include "tilemap-editor.h"
-DemoTilemapEditor editor(existing_directory); // default history: 32 commands / 256 KiB per map/mode
-// press()/paint() construct actual admitted records in world-consumer/main.cpp.
-const std::array literal{press(Key::Digit6), paint(72,144), press(Key::F6),
-                         press(Key::F7), press(Key::F8), press(Key::F9)};
-editor.consume(literal, {{400,200},{800,600}});
-const std::array semantic{press(Key::B), press(Key::G), paint(40,128),
-                          press(Key::T), paint(72,144), press(Key::F6),
-                          press(Key::F7), press(Key::F8), press(Key::F9)};
+DemoTilemapEditor editor(existing_directory);
+const std::array load{press(Key::F9)}; // west.json: independently authored7x5/two layers
+editor.consume(load, {{400,200},{800,600}});
+const std::array semantic{press(Key::B), press(Key::F9)}; // different west-terrain.json
 editor.consume(semantic, {{400,200},{800,600}});
-const auto available = editor.history(0, DemoTilemapEditor::Mode::Terrain);
+// For a7x5 west semantic document, the last cell under this explicit view:
+editor.set_view({0,-3072},0.125);
+const std::array action{press(Key::T), paint(29,71), press(Key::F6),
+                        press(Key::F7), press(Key::F8)};
+editor.consume(action, {{400,200},{800,600}});
 editor.write(frame, bindings, style);
 ```
 
-| Action | Exact private behavior |
-| --- | --- |
-| F6 / F7 | Undo / redo selected map+mode document; empty history throws owned Refusal::History |
-| history(index,mode) | Owned undo/redo counts and retained canonical byte charge |
-| Literal paint/erase | One changed cell is one command; same-ID/empty erase is no-op |
-| Semantic input batch | One completed changing run is one command, using Engine last-write-wins final semantics |
-| New accepted change | Discard redo, then oldest-first eviction to fit; no current-command undo loss |
-| No-op / refused change | Preserve both stacks, byte count and current owner; semantic requests still validate fully |
-| F8 / failed SAVE | Preserve history and authored runtime edits; checked file publication is separate |
-| Successful F9 | Adopt complete owner and clear history ONLY for the selected map/mode, even if content is identical |
-| Failed F9 | Preserve current content and both stacks at the file-action boundary |
+press/paint are actual admitted Record constructors in world-consumer/main.cpp,
+not a new Engine input API. The process scenario computes pointers explicitly for
+each domain/map. F8/F9 SAVE/LOAD selected map+mode, not just selected layer; F6/F7
+undo/redo;1/2 west/east;G/T layer;V/B literal/terrain;3..6 brush;left paint/right
+erase/middle sample;WASD pan/wheel zoom/R reset unchanged. Each event owns its
+captured pointer. Only admitted Press acts; Release/Repeat/unadmitted and invalid
+sizes remain ignored. Earlier completed commands survive a later rejection.
+Default empty directory disables I/O; explicit existing caller-controlled directory
+required. No startup/automatic I/O or creation. Distinct filenames west/east.json
+and west/east-terrain.json remain independent. Terrain labels are never recovered
+from visual IDs; label aliases remain distinct persisted keys.
 
-All hotkeys act only on admitted keyboard Press. Release/Repeat/unadmitted and
-invalid/minimized sizes remain ignored. The existing keyboard barrier flushes an
-earlier semantic run before undo/redo/file actions. Each pointer uses its own
-captured event position; framebuffer scales, Y conversion, computed edges and
-pan/zoom stay unchanged. Capture still uses the established Events lease and
-TickContext sizes. Camera/selection/brush/mode are NOT part of document history.
-The same helpers compile into actual demo, unit cases and world process caller.
+## Implemented boundaries
 
-## Ownership, budgets and atomic boundaries
+- Full unchanged storage/adapter validation THEN private axes[1,64], EXACTLY two
+  ordered layers and <=8192 layer cells. Checked division precedes product; reject
+  unsupported geometry without clamp/truncate/reshape. General U1 converters keep
+  their prior65536 patch-cell bound; the private editor/TerrainDocument gate narrows
+  it. Current storage still caps8 MiB encoded/input,262144 cells/16 layers,256
+  spawns and128-byte keys; reversible tables at most256 entries. Stricter limits
+  remain operative. Null alone is empty; all ordered spawns retain validated cells.
+- Load/replacement only: no in-place resize, crop, resample, streaming or chunking.
+  Four mode/map documents may differ. Retain map ID, ordered names/spawns and all
+  cells. Complete mappings/metadata and BOTH nonmovable semantic owners precede
+  adoption. Successful LOAD resets only selected history; failure preserves full
+  content/stacks, other maps/modes, selection/view and old owned frames/results.
+- Active-mode selected extent drives pick_cell. Local64x48 cells are X-right /
+  Y-down, computed-edge half-open ownership. Current captured logical/framebuffer
+  sizes scale independently; full framebuffer viewport is Y-up, with explicit pan /
+  positive zoom. Render/cull each actual Map extent. Fixed origins west{48,240},
+  east{328,208}, explicit west ground/detail then east ground/detail; no automatic
+  layout or nonoverlap/physical-size claim. Large documents may extend offscreen.
+- Default semantic run caps32 requests/160 affected/1024 work. At most5R unique
+  cells; work R+5R+5A<=992. Exact32 disjoint interior edits on64x64 require160
+  affected/992 work; request31/affected159/work991 reject the whole candidate.
+  Duplicate/no-op requests still charge Engine admission work. Full private owner
+  reconstruction is separately O(admitted cells), not covered by incremental work.
+- Default history32 entries/1 MiB canonical bytes PER document (raised from256 KiB
+  to make maximum finite domains useful), hard256 entries/8 MiB unchanged. Exact
+  full before+after encodings charge all keys/metadata; current-command one-short
+  refuses before content/redo mutation. Oldest candidate eviction unchanged. Four
+  default histories total at most4 MiB logical charges, hard max32 MiB. Allocator
+  overhead/current owners/configuration/transient snapshots and old/new timeline
+  copies are additional. Both terrain layers/semantic keys are restored, not colors.
+  A permitted rich-metadata command can still exceed default and explicitly refuse.
+- Each current document <=8192 layer cells, semantic label vector<=4096 per layer;
+  each resolver vector<=4096 packets, four groups<=16384. Owned stage/copy scratch
+  scales with these finite contents and bounded history. These are logical bounds,
+  not exact RSS quotas or allocation-success promises. Allocation/programming
+  exceptions propagate; copy/rederivation/I/O are synchronous and may stall update.
+- Runtime edit/history/adoption, file rename and complete input ticks are separate
+  boundaries. Actual update catches anticipated admission/storage/conversion/history
+  errors, logs/drop remaining tick, permits later updates; no whole-tick rollback.
+  Serialize update/preparation and platform cleanup after simulation joins. Borrowed
+  views expire on changing edit/undo/redo/LOAD; copied values/packets retain owners.
 
-Private DocumentHistory in world-document.* owns full before/after Snapshots, not
-asset IDs, selected visuals, pointers into maps or event spans. A cursor represents
-both stacks in one bounded timeline. There are four independent timelines for
-west/east x literal/terrain; both named layers belong to their document timeline.
-ID, extent, ordered layer names/spawns and every cell participate in restoration.
-Semantic keys distinguish labels that render identically. Existing explicit tables
-remain labels 1..4, meaning IDs 101/203/307/409, visual IDs 7..10, atlas targets 0..3;
-null alone is empty. No reverse color lookup reconstructs meaning.
+These are coordinator-delegated engineering choices, high confidence for exercised
+CPU behavior, low as personal API/game taste. Reversal changes private gates/caps /
+callers, not Engine ABI/schema. No new preference investigation was repeated.
 
-The current document epoch owns immutable copied tables/rule/targets. Every
-replacement copies them forward; history snapshots need no borrowed reconstruction
-inputs. LOAD resets that epoch's timeline. No configuration mutation/replay across
-epochs is exposed. Undo/redo reconstructs and validates BOTH nonmovable TerrainMap
-owners before publishing a replacement. Literal edits also stage a whole owner.
-A candidate timeline and full before/after data exist before content/history swap;
-unique pointer and timeline swaps are nonallocating/noexcept. Serialized update /
-preparation excludes concurrent observation/recycling. This is a strong refusal
-boundary under that ownership model, not a hardware atomic or whole-tick promise.
+## Actual commands, exits and results
 
-HistoryLimits default to32 commands/256 KiB combined undo+redo CANONICAL bytes per
-map/mode, with constructor maxima256 commands/8 MiB. Zero caps admit no changing
-command but allow valid no-ops. Charge per entry is exactly the unchanged encoder's
-encode(before).size()+encode(after).size(); full cell/key/metadata/escaping/spawn
-representation is counted, with checked size_t addition/accumulation. Adjacent
-entries intentionally repeat their shared snapshot. A single unrepresentable or
-over-budget command refuses BEFORE mutation or redo invalidation/eviction. Otherwise
-only the prepared candidate discards redo and evicts oldest undo entries until it
-fits. Newest accepted command always keeps its complete undo contract. Undo/redo
-moves only the candidate cursor, so retained entry/byte totals stay constant.
+All native work used `/mnt/projects/cheryl-features/scripts/build --` from this
+clone, one job, existing adaptive admission/no-swap/shared-lock policy. No refusal,
+new build directory, changed configuration, denied prerequisite retry or X11 probe.
+Every invocation used command-local `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1`
+and `UBSAN_OPTIONS=halt_on_error=1`; existing Debug/shared ASan/UBSan/WARN selections
+remain. Leak checking is UNVERIFIED under recorded tracing limitation.
 
-Logical content is bounded, not exact allocator/RSS usage. Object/vector capacity
-overhead, current owners/configuration, transient canonical strings and old/new
-owner/timeline copies coexist. Fixed geometry is 3x2/two layers; public storage
-still caps encoding/input at 8 MiB, cells 262144, layers 16, spawns 256 and keys 128 bytes;
-bridge admission remains 65536 cells. Actual editor uses four targets/16 cases and
-Engine run caps 32 requests/6 affected/256 work. Maximum configured retained charge
-is 32 MiB across four histories, default 1 MiB; baseline/overhead is additional.
-No huge allocation/OOM probe. Allocation/programming exceptions propagate, while
-all preparation precedes live transitions. Synchronous copies/encoding/derivation
-and file I/O may stall simulation; no async service or compact history is claimed.
-
-Current content must match the exact history witness before undo/redo or another
-changing command. A negative-only const-facade injection proves mismatch/reverse-ID
-refusal without changing content or stacks; such alias writes remain outside the
-ordinary read-only/serialized caller contract. Changing edits, undo/redo and LOAD
-invalidate borrowed owner/map/terrain references. No-ops preserve those references;
-owned snapshots and prepared frames/resources remain independent.
-
-Actual DemoTilemaps::update logs history errors distinctly and drops remaining
-current-tick records; a later update continues. Earlier completed commands stay
-applied, including the keyboard-boundary terrain batch. Runtime transitions and
-checked rename file publication remain separate. Controlled existing directory,
-single writer/stable cwd, no-fsync/power-loss/hostile-race/multiwriter limitations
-are unchanged. Mode-specific filenames/kind checks and semantic table policies
-remain as in U3. No history data/schema is saved: fresh processes start empty.
-
-## Executed evidence
-
-One accumulated Debug/shared ASan/UBSan invocation passes **112/112**, zero failed
-or skipped, 54.58s, retaining ALL 104 prior names and adding seven unit cases plus
-world.document_history. No check failed or reran; both builds are warning-free.
-
-- history_literal: complete custom metadata/cells after paint/erase/undo/redo,
-  no-op redo preservation, layers, map/mode isolation and accepted branch invalidation.
-- history_terrain: repeated-address multi-request commands, cancelling/no-op runs,
-  multiple layers, aliased labels and independent full cardinal recomputation after
-  each transition; literal content stays independent.
-- history_limits: exact/one-short entry and canonical-byte caps for both modes,
-  single-command refusal preserving redo, oldest-first entry/byte eviction, zero
-  cap/no-op behavior and oversized limits rejected without allocation probes.
-- history_files: successful SAVE preserves history; failed LOAD preserves content /
-  stacks; successful LOAD clears only selected map/mode; failed SAVE retains the
-  predecessor bytes, current edit and undo. Sibling snapshots/histories survive.
-- history_refusals: late Engine batch failure before publication preserves redo /
-  full semantic/visual content; undo/redo witness and reverse-conversion failures
-  preserve both stacks. Actual demo update rejects empty redo after earlier valid
-  paint, drops following records and permits a later save of that authored edit.
-- history_filters: admitted Press-only undo/redo, minimized suspension, unchanged
-  selection/view/brush, no-op history, and destroyed temporary event records.
-- history_frames: complete semantic undo/redo rederives visuals; copied metadata,
-  old/new packets/matrices/ranges/resources remain independent through owner
-  destruction and release only with the final frame/vector. Synthetic native
-  bind/draw/upload counters stay zero.
-- world.document_history: actual caller edits/undoes/redoes/saves/reloads both
-  literal and semantic documents; west semantic persists UNDONE content, east
-  persists REDONE content. Fresh verifier independently compares all full metadata,
-  24 literal numeric cells, 24 labels, 24 meaning IDs and 24 cardinal-derived visuals.
-  All four file byte sequences remain unchanged during verification, with no
-  history inherited by the fresh process.
-
-All six world scenarios execute 12 child invocations, all exit 0. Exact argv,
-stdout/stderr/exits and owned work paths are indexed/copied under
-build/world-u4-logs/world-processes.json. The two new history children are separately
-saved as document_history-history-author.log and document_history-fresh-history-verify.log.
-U3's accepted source/receipt/logs remain preserved, including its separate 104-pass run.
-
-## Commands, logs and ownership
-
-Every configure/build/native/format/symbol command uses scripts/build, one job,
-existing clone-local incremental Debug outputs and adaptive/no-swap/admission
-limits. No resource refusal, unchanged retry, new configuration/dependency/pin,
-install/download, protected/sibling/cache work or display execution occurred.
-Commands/environment/immediate exits are in build/world-u4-logs/commands.jsonl.
+Exact commands/environment/timing/immediate exits: `build/world-u5-logs/commands.jsonl`.
+Full stdout/stderr and `.exit` sidecars are retained under that ignored directory.
 
 ```sh
-ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug \
-  --target tests-engine tests-terrain-consumer map_storage_consumer map_storage_header_probes tests-world-consumer --parallel 1
-ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
-  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
-# Saves exact ctest --show-only=json-v1 output and checks all 104 prior names.
-/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u4-logs/discover.py
-ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug \
+  --target tests-engine tests-terrain-consumer map_storage_consumer \
+  map_storage_header_probes tests-world-consumer --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u5-logs/discover.py
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
   --output-on-failure --no-tests=error --verbose --parallel 1 \
-  --output-junit /mnt/projects/cheryl-features/projects/tilemap/build/world-u4-logs/results.xml \
+  --output-junit /mnt/projects/cheryl-features/projects/tilemap/build/world-u5-logs/results.xml \
   -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.|map_storage\.consumer\.|world\.)'
-/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u4-logs/check-ownership.py
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug \
+  --target demo --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u5-logs/check-ownership.py
 ```
 
-| Operation | Immediate exit / observed result |
+| Check | Executed evidence |
 | --- | --- |
-| Shared build |0; actual runner/Engine consumers/header probes compile/link, no warning |
-| Demo build |0; actual private history/editor/update wiring compiles and links, no warning |
-| Discovery |0; 112 unique entries, all 104 predecessor names plus eight new |
-| Accumulated execution ONCE |0; 112 passed, 0 failed/skipped, 54.58s |
-| Ownership |0; same private adapter/editor in three callers, actual one shared Engine |
-| Format and dry-run |0 each; touched C++ conforms, no post-test code change |
+| Shared CPU build, headers | Exit0,47.88s; fixture review correction and incremental unit rebuild BEFORE tests exit0,13.78s; no warnings |
+| Registration | Exit0;119 unique selected entries, all112 predecessor names +6 unit +1 process; correspondence saved |
+| Accumulated CPU | ONE run, exit0;119/119,0 failed/0 skipped,89.52s; no failure/retry or CPU rerun |
+| New process scenario | variable-author/fresh-variable-verify both exit0;20 files/33168 layer cells each, every key/null/metadata/numeric meaning/label/cardinal visual; read-only verifier preserves all20 file hashes |
+| All world processes |14 child invocations exit0; complete argv/stdout/stderr/immediate exits saved |
+| Actual demo | Compile/link exit0,21.36s; no warnings; no display/run |
+| Ownership | Exit0; SAME world-document/editor sources compiled twice in CPU unit/world and once in demo;14 real Engine exports/imports; nm/readelf/ldd/link confirm one normal shared Engine per executable, no alternate implementation archive |
+| Format | Wrapped clang-format --dry-run --Werror exit0 for8 changed/new C++ files |
+| Preserved source |375 public/production/replay/archive/unchanged-suite hashes and14 prior receipt hashes match; no standalone storage/procedural repeat needed |
 
-Saved compile/source/symbol/loader checks establish the SAME world-document.cpp
-and tilemap-editor.cpp in demo/unit/world, including DocumentHistory operation
-symbols. All 14 previous Engine export/import operations remain, one actual storage
-producer per source and one clone-local Engine DSO per binary. World link retains
-only actual generator-specific cave objects in its private archive, no alternate
-Engine implementation archive or macro workaround. Existing Engine public header
-probes remain normal usage. Full logs/XML/LastTest, registration correspondence,
-source hashes/commands/exits and child diagnostics live under ignored
-build/world-u4-logs/. Scratch files and prior outputs are preserved locally.
+Six new unit cases compare every cell/metadata for7x5,1x7,7x1,1x1,64x64;
+full-domain semantic visuals use independent cardinal rectangle-neighbor logic.
+They exercise active-mode last/internal/outer/nextafter/exterior picks, distinct
+west/east sizes and spawns, full-value edits/undo/redo/save/load, exact/one-short
+run/history budgets, zero/65 axes/wrong layers/key/spawn/cell refusals, larger first
+owner followed by second-layer failure, independent positive-area culling/pivot /
+pass ordering and retained frames after replacement/owner destruction. Synthetic
+bind/draw/upload counters remain zero. Actual DemoTilemaps update diagnostics/drop
+and next-tick recovery execute synthetically. Test-owned expected-data sharing is
+independent of production bridge/selector; fresh expected patterns never derive
+from the author's result or adapter summary.
 
-ASan/UBSan/halt_on_error remain enabled with no diagnostics. Only command-local
-detect_leaks=0 accommodates the recorded tracing issue; no global sanitizer/build
-selection changes. Standalone unchanged storage/procedural suites are not rerun.
+Primary logs: `shared-build.log`, `shared-build-final.log`, `demo-build.log`,
+`discovery.log`/`discovery.json`/`registration-correspondence.json`, `tests.log` /
+`results.xml`/`results.json`/`LastTest.log`,
+`variable_documents-variable-author.log`,
+`variable_documents-fresh-variable-verify.log`, `world-processes.json`,
+`ownership.log`/`ownership.json` (plus full symbol/link/loader logs),
+`format-check.log`, `source-preservation.json`.
 
-## Limits and next action
+## Remaining limits and exact next action
 
-No unresolved U4 CPU/build prerequisite remains. Real display/input, atlas decode /
-upload, capture, graphical teardown, visual correctness/fun and leaks remain
-unverified. No unchanged X11 :1 retry. Native durability/race/multiwriter,
-synchronous allocation/latency and GNU/Linux Debug/shared source-tree vs installed
-SDK/static/Release/other-platform/toolchain ABI limits remain. No history disk
-format, command bus, undo service, variable geometry or sibling import is included.
+Real display/input, atlas decode/upload, capture, graphical teardown, visual
+correctness/fun and leaks stay open. Prior X11 :1 failure is unchanged and not
+retried. Compile/synthetic CPU/link checks prove no graphical key delivery or
+rendered image. GNU/Linux source-tree shared imports tested; installed SDK,
+static/Release, other platforms/toolchains/ABI unverified. Existing controlled
+single-writer directory/stable cwd/native checked-rename profile only; no fsync,
+power-loss, hostile-race/multiwriter/distributed transaction or compact retention
+promise. Current tables/rule/targets are owned immutable reconstruction config;
+no migration/hot replacement/schema/recipe/history persistence added.
 
-Next action: coordinator reviews this exact checkpoint, passing U4 receipt and
-saved evidence after the run drains; the finite controller alone may select the
-next exact task through its gates. Worker2 remains idle. Publisher owns assigned
-branch transport; no later unit, background scheduling or automatic integration
-starts here.
+Next action: coordinator reviews this exact drained checkpoint, required receipt
+and saved logs; publisher alone backs up assigned feat/tilemap. Worker2 remains
+IDLE after this third/final milestone. No fourth unit, automatic integration,
+sibling import or recurring scheduling is authorized.
