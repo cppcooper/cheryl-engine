@@ -1,0 +1,35 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "PROCGEN-U9",
+  "starting_head": "cd446ab3c1ffed71e4e6d68d1a8452d050283a7a",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u9/build-1.log",
+    "builds/procedural-generation/logs/u9/ctest-1.log"
+  ],
+  "executed": {
+    "ctest_entries_passed": 90,
+    "cases_passed": 83,
+    "assertions": 34503,
+    "consumers_passed": 7,
+    "drainage_demonstrations_passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "configuration": "GNU16.2.1/Linux Ninja Debug/C++23/UBSan; shared wrapper, one job, preserved cache"
+  },
+  "contracts": {
+    "domain": "Finite checked positive2D, x=axis0 fastest, index=x+width*y; original signed32 height ticks/datum; borrowed input only during synchronous call.",
+    "routing": "steepest_cardinal v1; explicit outlets stop; other cells choose strictly lower greatest drop, ties smallest neighbor index; outside absent; equal flats/local minima are sinks; duplicate outlets reject.",
+    "owned_result": "Receiver links, terminal-cell catchment IDs, own-inclusive contributing counts and terminal kinds; exact owned source heights/outlet membership witness plus Domain/options/budgets.",
+    "resources": "Hard65536 cells/4MiB/2M work; requested payload12288+48*C, not RSS; actual work1024+13*C-2*O+2*links including unsuccessful neighbor probes; finite FIFO topological/reverse passes; no partial result on refusal; allocation/programming exceptions propagate.",
+    "preservation": "All80 prior names and case assertion counts pass; archived provenance, shared WORLD producers, U8 elevation source/replay/receipt unchanged."
+  },
+  "limitations": [
+    "Executed GNU/Linux Debug/UBSan only; other compilers/OSes, ASan, performance and public Engine/SDK geography remain unverified.",
+    "Strict original-height descent leaves flats/local minima as sinks; no depression fill, spill/plateau routing, sea/ocean inference, river extraction or physical rainfall/discharge.",
+    "Exact in-memory input witness is not a saved recipe, compact identity, persistence/migration or indefinite replay policy.",
+    "Existing WORLD visual/input/assets/leaks/fun, ABI/packaging and file-durability acceptance gaps remain."
+  ],
+  "next_action": "Stop idle for coordinator review and publisher transport. Finite controller alone may select the next exact task after clean successful drain and this committed passing receipt; dependent work must inspect real source/evidence first."
+}

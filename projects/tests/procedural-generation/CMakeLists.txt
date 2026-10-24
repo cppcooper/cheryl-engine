@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -40,9 +40,14 @@ target_link_libraries(procgen-elevation-tests PRIVATE procgen-private procgen-ch
 add_executable(procgen-elevation-consumer elevation-consumer.cpp)
 target_link_libraries(procgen-elevation-consumer PRIVATE procgen-private procgen-checks)
 
+add_executable(procgen-drainage-tests drainage-tests.cpp)
+target_link_libraries(procgen-drainage-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-drainage-consumer drainage-consumer.cpp)
+target_link_libraries(procgen-drainage-consumer PRIVATE procgen-private procgen-checks)
+
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
                         procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer
-                        procgen-elevation-tests procgen-elevation-consumer)
+                        procgen-elevation-tests procgen-elevation-consumer procgen-drainage-tests procgen-drainage-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -113,3 +118,11 @@ foreach(case IN ITEMS elevation_literal elevation_fields elevation_sea elevation
 endforeach()
 add_test(NAME procgen.elevation_consumer COMMAND procgen-elevation-consumer)
 set_tests_properties(procgen.elevation_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS drainage_literal drainage_terminals drainage_ties drainage_extremes drainage_exhaustive drainage_generated
+                      drainage_invalid drainage_limits drainage_ownership)
+    add_test(NAME procgen.${case} COMMAND procgen-drainage-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.drainage_consumer COMMAND procgen-drainage-consumer)
+set_tests_properties(procgen.drainage_consumer PROPERTIES TIMEOUT 30)

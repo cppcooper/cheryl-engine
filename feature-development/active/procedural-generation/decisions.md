@@ -44,3 +44,41 @@ including water20->77 after sea0->40 on unchanged heights. Nine archive and five
 shared-producer hashes match. Only private targets change; no unchanged WORLD/
 map suite is rerun. Receipt reports execution, not broader source/platform acceptance;
 visual/leak/fun/durability gaps remain with their owning records.
+
+## PROCGEN-035 — Strict descent with explicit outlets
+
+**User requirement and engineering tie choice; high confidence.** Analyze supplied
+signed32 heights on finite cardinal2D cells. Explicit outlets stop even when lower
+neighbors exist; other cells select greatest strictly positive original-height
+drop, ties by smallest row-major neighbor index. Outside is absent. Empty outlets
+are valid, duplicates reject. Flats/local minima remain sinks. Acyclic links do
+not prove outlet drainage; sea level and U8 replay stay independent.
+
+## PROCGEN-036 — Owned catchments and contributing cells
+
+**User requirement plus private engineering choice; high confidence.** Terminal
+cell index identifies its catchment; outlet/sink kinds remain distinct. Every
+cell contributes one unit along its selected chain. Return owned receivers,
+terminal labels and counts, with exact copied source heights/outlet membership
+as provenance. FIFO topological accumulation and reverse label propagation avoid
+quadratic production walks. Counts are combinatorial, without rainfall/discharge
+or depression filling. Retained source costs4 bytes/cell and supports later checks.
+
+## PROCGEN-037 — Bounded analysis and refusal
+
+**Engineering choice; high locally, broader execution unverified.** steepest_cardinal
+v1 retains Domain/options/caller budgets. Reuse private budget/Domain/Work types;
+family-local errors leave shared WORLD producers untouched. Peak12288+48*C bytes,
+actual work1024+13*C-2*O+2*links; hard65536 cells/4MiB/2M work. Validate outlets
+before cell buffers, charge failed neighbor probes and runtime exhaustion. Refusal
+publishes nothing; allocation/programming exceptions propagate. Payload is not RSS.
+
+## PROCGEN-038 — Executed proof and finite handoff
+
+**User requirement; executed GNU/Linux Debug/UBSan.** All90 entries pass once:
+83 cases/34503 assertions plus seven consumers. Prior80 names/counts remain;
+nine cases add6822 assertions, new consumer2/2. Exhaustive2187 tiny analyses and
+eight generated fields agree with independent chain tracing. Seventeen preservation
+hashes match. Ready queue receipt reports worker execution; coordinator acceptance
+and later-task selection remain separate. No physical/platform/public integration
+claim or unchanged Engine/map rerun follows.

@@ -82,3 +82,5 @@ Ongoing U8+ records use a separate namespace after the reviewed WORLD-U1 promoti
 [current handoff](active/procedural-generation/next.md),
 [U8 execution receipt](active/procedural-generation/PROCGEN-U8.json).
 Historical feature archives and WINT-001–006 records above remain preserved.
+Current queued execution evidence:
+[U9 receipt](queue/feature-round-20261024-0500/PROCGEN-U9.json).

@@ -245,3 +245,232 @@ visual/input/assets/teardown/leaks/fun, ABI/installed/static/Release and persist
 power-loss/multiwriter/durability gaps remain unchanged in their archived records.
 A later bounded drainage utility needs explicit slopes/ties/outlets/closed-basin
 policy and exact input identity; current sea threshold does not implement it.
+
+## PROCGEN-U9 — Proposed caller before dependent APIs
+
+Exact clean prerequisite cd446ab3c1ffed71e4e6d68d1a8452d050283a7a is inspected:
+U8 ready receipt, source, next.md, build-1.log/ctest-1.log/exits.tsv establish80
+passes/27681 assertions. New unit belongs only to feature-round-20261024-0500.
+The immutable earlier queue and all provenance archives stay unchanged.
+
+```cpp
+auto domain = Domain::checked(std::array<Index,2>{3,2}).value();
+const std::array<Height,6> heights{9,6,3,8,5,0};
+const std::array<Index,1> outlets{5};
+auto literal = analyze_drainage({domain,heights,outlets},budget).value();
+auto field = generate_elevation(extent,key,{3,-80,120},budget).value();
+const std::array<Index,2> chosen{0,field.descriptor().domain.cells()-1};
+auto generated = analyze_drainage(
+    {field.descriptor().domain,field.heights(),chosen},budget).value();
+```
+
+Proposed engineering choices: terminal cell index is the catchment identity;
+equal greatest drops choose smallest row-major neighbor index. Explicit outlets
+terminate even if downhill neighbors exist; duplicates reject, no implicit outside
+or sea outlet. Retain exact owned source heights plus outlet membership as input
+provenance. Kahn ordering computes upstream unit contributions, reverse ordering
+propagates terminal labels in linear bounded work. No per-cell repeated path walk
+in production. Implementation/checks pending; spelling is not user taste evidence.
+
+## PROCGEN-035 — Implemented routing and terminal contract
+
+Owner: projects/tests/procedural-generation/drainage.h/.cpp; private standalone
+CPU C++23 only. DrainageInput copies checked Domain metadata and borrows heights
+and explicit flat outlet indexes for the synchronous call. Callers supply a real
+positive2D checked Domain and exactly C signed32 heights, stable during the call.
+Domain::checked owns empty/zero/extent/product validation; analysis refuses non2D,
+shape mismatch, unsupported algorithm/version and invalid outlets. No retained
+span/input borrow, mutation, callback, RNG, sea threshold or hidden outside cell.
+Axis0=x fastest, index=x+width*y, positive y advances rows; heights retain original
+abstract ticks and datum. This has no physical distance/aspect-ratio convention.
+
+Explicit outlet indexes may be interior or perimeter, unordered, including every
+cell; empty set is valid. Duplicates and out-of-range indexes reject before cell
+buffers. Membership is set semantics, so accepted input order cannot alter output.
+An outlet has no receiver even if a lower neighbor exists. Every other cell inspects
+x-,x+,y-,y+ cardinal neighbors, excluding outside. Choose greatest positive
+original-height drop, tie by smallest flat neighbor index regardless of inspection
+order. int64 subtraction covers [-4294967295,+4294967295] for full int32 extremes.
+No equal-height link, diagonal, wrap, forced boundary escape, implicit sea/ocean
+outlet, path fabrication or depression fill. No-lower-neighbor cells are sinks.
+
+Strict descent in a finite domain proves no cycle, hence every chain reaches an
+explicit outlet or sink. It does not prove all cells reach declared outlets:
+plateaus can have one sink per nonoutlet cell. Outlet and sink counts, and their
+contributing totals, remain separate. TerminalKind::none means this cell flows;
+outlet/sink means this cell terminates. no_receiver is UINT64_MAX, impossible as
+an admitted cell index. terminal is the actual terminal CELL index, also the
+catchment identity; it is not a dense label. Terminal cells label themselves.
+
+## PROCGEN-036 — Accumulation, identity and ownership
+
+Each cell's contributing starts at1 for its own unit. Count incoming receiver
+edges; enqueue zero-indegree cells in ascending flat order. FIFO pop transfers
+the complete contributing count once to its receiver and decrements indegree;
+enqueue that receiver only when it becomes zero. Each cell pushes/pops once,
+each edge updates once; no stale entries, sort, recursion or repeated chain walk.
+Stored queue order is reused backward to copy the already-complete destination
+terminal label. Checked sums cannot exceed C; invariant failure throws logic_error,
+not a generic expected refusal. Terminal totals must conserve C. Measurement fields
+are cells/links/outlets/sinks, outlet_contributing/sink_contributing, largest_catchment
+and maximum_contributing. A catchment size is its terminal's contributing count;
+the latter maximum also includes nonterminals. Counts are cells, not water flow.
+
+Drainage owns C DrainageCell records and an exact C-element source height copy.
+Descriptor owns Domain, requested budgets and algorithm/options. Original outlet
+membership is retained exactly as cells.kind==outlet; source order/duplicates are
+not an input identity because duplicates are invalid and order is immaterial.
+Together these form a complete bounded witness: no digest collision or dangling
+generated Elevation borrow. Caller may retain U8 recipe separately, but a seed
+is not this analysis's input identity. No persisted witness/recipe/save format or
+long-term migration policy is selected. A later changed height/outlet set requires
+fresh analysis; current results are exact only for their retained witness.
+
+Copies deep-copy both buffers. Const views expire on owner destruction/move/
+assignment; moved-from values support destruction/assignment. A checked cell()
+returns an owned record or invalid index. Temporary input arrays or generated
+Elevation can die after return. Later calls/refusals cannot change prior outputs.
+Only private Stop transport for defined invalid/unsupported/budget failures is
+caught; bad_alloc and programming exceptions propagate with no partial publication.
+
+## PROCGEN-037 — Checked admission and actual operation accounting
+
+Algorithm steepest_cardinal v1 is deterministic integer analysis, no random seed.
+Same exact Domain/heights/outlet set/options yields same logical cells/metrics;
+sufficient budgets affect admission only. Unknown algorithm/version reject.
+Existing64-bit Index/size_t and8-bit-byte contracts apply; logical integer ordering
+is specified, broad compiler/platform execution is not inferred. Existing private
+CaveBudgets is reused only for cells/payload/work, with no cave/generation policy.
+Family-local DrainageFailure/DrainageReason avoids any shared maze/cave/Engine edit.
+
+Hard caps65536 cells,4MiB accounted payload,2M work. Planning checks non2D,
+outlet_count<=C, vector capacities and all byte/work products/sums before allocation;
+large checked Domain metadata never triggers giant buffers. Admission clamps caller
+budgets to hard caps, checks cells/storage/minimum work, then exact height count.
+Within admitted C, an8192-byte fixed bitset validates all outlet bounds/duplicates
+before allocating cell buffers. Thus malformed lists do not allocate large output.
+If multiple errors exist, algorithm/version/planning/budget failures can precede
+span-content validation; callers must supply valid spans, not fake huge spans.
+
+Peak requested payload12288+48*C:32*C owned records (three u64s and kind/padding),
+4*C owned original heights,4*C indegree scratch,8*C bounded queue reused as order;
+8192 fixed outlet-validation bitset plus4096 metadata/return allowance. Static
+assertions check element/metadata sizes. Maximum-domain payload3158016 bytes fits
+the4MiB cap. Existing input/results, allocator/runtime/exception overhead and stack
+runtime are excluded; this is not exact RSS. No pressure/OOM experiment is needed.
+
+Operation units, not instructions/time: bitset initialization1024; outlet checks
+O and marking O; four buffer initialization/copy passes4*C; receiver setup C;
+four neighbor attempts per NONoutlet4*(C-O), including outside/uphill/flat probes;
+accepted incoming-edge record E; source scan C; queue writes C; pops C; edge
+accumulation E; reverse terminal/measurement pass C. Total1024+13*C-2*O+2*E.
+Preflight lower bound1024+13*C-2*O, finite upper adds2*(C-O). Actual charges occur
+before each operation/phase; an admitted lower bound can still exhaust at runtime.
+No partial field/measurements are returned. C65k bounds contributing values and
+all indexes; checked sums guard both overflow and internal conservation invariants.
+Complexity O(C+O) work/storage plus fixed bitset; no unbounded queue duplicates.
+
+Engineering alternatives: sorting by height would need bounded comparison accounting
+and extra ordering rules; topological order is simpler and still exact on strict
+descent. A hash-only input ID is smaller but cannot prove exact identity. The4*C
+witness is useful to later depression/channel consumers and remains small here.
+Choice confidence high for the tested contracts, medium for private type spelling,
+fixed bitset/payload tradeoff and future reuse. No new personal taste inference:
+archived PROCGEN-002 retains exact HyperMaze/v3 symbol/revision evidence and legacy
+counterevidence. Agent-authored U8 types supply compatibility, not user preference.
+
+## PROCGEN-038 — Executed checks, source preservation and handoff
+
+Source starts at required clean cd446ab3c1ffed71e4e6d68d1a8452d050283a7a. Inspected
+U8 ready receipt/source/records and complete saved native logs before editing.
+No prerequisite blocker. Workspace/autonomy/finite-queue/round plan/feature brief/
+workstream/generation-storage and clone guides are read. This is only assigned U9;
+older completed queue/receipts and source-provenance archives remain unchanged.
+Ongoing records stay active here; the required new queue receipt uses its exact
+batch path. No sibling fetch/merge/publication, protected mutation, process/cache
+change, install/dependency change, model substitution, agent or recurring work.
+
+All native commands use /mnt/projects/cheryl-features/scripts/build --, one job,
+preserved builds/procedural-generation GNU16.2.1/Linux Ninja Debug C++23/UBSan ON,
+strict warnings-as-errors/no UBSan recovery. Original build16204/test80472 sessions
+were retained to completion; normal shared-lock waiting is not a blocker. No
+resource75/allowance/auth refusal, failure, correction or unchanged retry occurred.
+Complete command stdout/stderr, commands.txt and immediate exits.tsv are in
+builds/procedural-generation/logs/u9/:
+
+| Executed check | Log | Exit/result |
+| --- | --- | --- |
+| Wrapped clang-format -i, six new owned C++ files | format-1.log |0 |
+| Wrapped cmake --build builds/procedural-generation --parallel 1 | build-1.log |0, standalone cache auto-regenerated, compile/link pass |
+| Wrapped ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1 | ctest-1.log |0,90 passed/0 failed/0 skipped |
+| Lightweight source/count/hash verification (not native acceptance) | source-evidence.log/source-exits.tsv |0;17 preserved witnesses, all prior80 names/74 case counts match |
+
+Accumulated suite ran ONCE:90 entries,83 cases/34503 assertions plus seven
+consumers (21 demonstrations). All prior80 entries/27681 assertions and19 old
+demonstrations pass unchanged. Nine new cases add6822 assertions: literal36,
+terminals26,ties15,extremes16,exhaustive6562,generated40,invalid47,limits64,
+ownership16. Independent per-cell oracle checks execute additionally; not inflated
+into harness counts. New semantic consumer passes2/2. No compiler warnings or
+UBSan diagnostics. No unchanged Engine/map suite or broader platform claim.
+
+Literal3x2 heights[9,6,3;8,5,0], outlet5: receivers[1,2,5,4,5,none], all terminals5,
+contributing[1,2,3,1,2,6], five links, one outlet/no sink, work1110. Literal fork
+has contributing[1,1,1,2,6,2,1,9,1] to outlet7. Bowl has four sink terminals
+plus outlet0, center accumulation5, outlet units1/sink units8. Plateau2x2 with
+one outlet has three sinks, no links; it is acyclic without being outlet-drained.
+Tests also cover forced outlets on a descending slope, empty/all-outlet sets,
+singleton, unit axes, no diagonal/row wrap, equal-drop index1 over index3, full
+signed extrema/drop4294967295 and deterministic accepted outlet order/budgets.
+
+Independent checker enumerates all cells as geometric cardinal candidates using
+coordinate differences, choosing lowest neighbor height/index; no Domain::neighbor
+or production selection/queue/accumulation helper reused. It then traces each
+source chain, bounds steps, adds unit counts and checks EVERY output cell,
+terminal type, exact witness, measurements and terminal conservation. Exhaustive
+3x2 grids over heights{-1,0,1} cover729 fields times three outlet policies=2187
+analyses. Eight U8 fields (seeds0,1,42,991; pitch3/6;17x11) match independent
+tracing without changing original Elevation/replay. Larger65536-cell flat domain
+is a modest bounded hard-limit check, not quadratic oracle or memory pressure.
+
+Admission fixture C6/O1:12576 bytes, lower1100/upper1110 work, actual1110.
+Exact cells/payload/work passes. One-short cells/storage and lower-work1099 refuse
+before allocation (scoped test-only allocation denial); budgets1100..1109 each
+admit then exhaust without publishing partial results. All-outlets has equal
+lower/upper work. Hard cap+1, metadata-only capacity/byte overflow, non2D, missing/
+extra heights, bad/duplicate outlets, unsupported version/algorithm and invalid
+cell indexes reject. Domain checks empty/zero/product overflow. No huge rejected
+buffer is allocated. Owned input/copy/lifetime/replay and prior result preservation
+pass; allocation denial confirms bad_alloc propagates through successful admission.
+
+Actual generated consumer uses U8 lattice_bilinear v1 key{42,0x67656f6772617068,7},
+pitch3/requested-80..120/domain17x11 and EXPLICIT outlets{0,186}. It reports187
+cells/175 links, two outlets, ten sinks, outlet contributing14/sink contributing173,
+largest catchment43, actual work3801. Outlet0 receives13 units; outlet186 receives1;
+sample cell3 reaches sink6; cell185 reaches sink168. Complete oracle checks all187
+cells while text displays six samples. No sea-level classification affects routes.
+
+Seventeen before/after SHA256 witnesses match: nine immutable archived records,
+five shared WORLD producer/header files, U8 elevation.h/.cpp and ready receipt.
+Only standalone CMake/new private sources and active/queue records change. WORLD's
+explicit maze/random/cave source list remains unchanged; no new integration or
+source archive rewrite. Full logs retain exact commands/exits for coordinator review.
+
+Complete staged review covers12 task files: six new private C++ files, standalone
+CMake, three active records, root index links and required queue receipt. Whitespace
+checks pass; full staged diff is saved as staged-review.diff. No unfinished or
+unrelated work is included. Code/test bytes are unchanged since successful native
+acceptance; subsequent edits only complete records and receipt, requiring no rerun.
+
+Ready receipt reports only actual worker execution. Stop idle after one coherent
+reviewed local checkpoint; publisher handles assigned-branch transport. Controller
+alone may select the next exact task after clean successful drain and committed
+passing receipt. Later depression/spill work must inspect this source/receipt/logs
+first; U9 strict descent cannot route filled flats. River extraction must use the
+actual selected graph and its contributing counts. No next unit starts here.
+
+High confidence in tested descent/identity/ownership/resource semantics; medium
+in private API future reuse. No unresolved blocker. Other compilers/OSes, ASan,
+performance/public Engine geography, physical rainfall/discharge, depression
+filling/spill/plateau routing, erosion, rendering and persistence formats remain
+unverified/unimplemented. Existing WORLD visual/input/assets/leaks/fun, ABI/
+packaging and file-durability gaps remain with their archived owners.
