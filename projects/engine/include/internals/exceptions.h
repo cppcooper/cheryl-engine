@@ -97,6 +97,9 @@ namespace CE::Exceptions {
         CE_API invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept;
         invalid_args(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : invalid_args(location_, line_, info_.c_str()) {}
+        invalid_args(const invalid_args&) noexcept = default;
+        invalid_args(invalid_args&&) noexcept = default;
+        CE_API ~invalid_args() override; ///< Engine owns destruction and diagnostic RTTI; copies/moves retain existing semantics.
     };
 
     /** Base category for an Engine operation that fails during execution, including the more specific bad_alloc, bad_request and failed_operation categories.
@@ -129,6 +132,9 @@ namespace CE::Exceptions {
         CE_API bad_request(const char* location_, uint32_t line_, const char* info_) noexcept;
         bad_request(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : bad_request(location_, line_, info_.c_str()) {}
+        bad_request(const bad_request&) noexcept = default;
+        bad_request(bad_request&&) noexcept = default;
+        CE_API ~bad_request() override; ///< Engine owns destruction and diagnostic RTTI; copies/moves retain existing semantics.
     };
 
     /** An operation could not complete. The reporting operation defines whether earlier effects remain; this category alone promises no rollback.

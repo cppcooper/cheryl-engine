@@ -1,5 +1,5 @@
 #include "tilemap-editor.h"
-#include "tilemap-terrain.h"
+#include <cheryl/maps/terrain-map.h>
 
 #include <assets/submission/tilemap2d.h>
 #include <core/rendering/render-frame.h>
@@ -1034,8 +1034,8 @@ TEST(tilemap_consumer, editor_frames) {
 }
 
 namespace {
-    using TilemapTerrain::TerrainLabel;
-    using TilemapTerrain::TerrainMap;
+    using CE::Tilemaps::TerrainLabel;
+    using CE::Tilemaps::TerrainMap;
 
     Tiles::BitmaskRule terrain_rule() {
         Tiles::BitmaskRule rule;

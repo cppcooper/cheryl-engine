@@ -1,0 +1,20 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "TILEMAP-U8",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/tilemap-u1-debug/u8-build-correction.log",
+    "build/tilemap-u1-debug/u8-build-shared-guard.log",
+    "build/tilemap-u1-debug/u8-registration.log",
+    "build/tilemap-u1-debug/u8-ownership.log",
+    "build/tilemap-u1-debug/u8-consumer-relocations.log",
+    "build/tilemap-u1-debug/u8-ctest.log"
+  ],
+  "limitations": [
+    "Only source-tree GNU/Linux Debug shared Engine is verified; installed SDK, Windows/other toolchains, static and Release remain unverified.",
+    "ASan/UBSan pass with command-local detect_leaks=0 for the recorded LSan tracing limitation; leaks remain unverified.",
+    "Actual display/input, asset decode/upload, capture and graphical teardown remain unverified; unchanged X11 :1 failure is not retried.",
+    "Public concrete STL layout requires compatible compiler/STL and Engine/consumer rebuild/relink; ELF diagnostic COPY relocations are recorded."
+  ]
+}

@@ -1,4 +1,4 @@
-#include "tilemap-terrain.h"
+#include <cheryl/maps/terrain-map.h>
 
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
@@ -13,9 +13,10 @@
 namespace {
     namespace Maps = CE::Tilemaps;
     namespace Tiles = CE::Assets::Tilesets;
-    using namespace TilemapTerrain;
     using CE::Exceptions::bad_request;
     using CE::Exceptions::invalid_args;
+    using CE::Tilemaps::TerrainLabel;
+    using CE::Tilemaps::TerrainMap;
     constexpr Maps::LayerIndex ground{0}, detail{1};
 
     Tiles::BitmaskRule cardinal() {

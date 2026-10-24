@@ -1,30 +1,26 @@
 # Tilemap milestone decisions
 
-U1–U6 provide finite CPU maps, computed-edge picking/visibility, retained
-bindings/packets, pass consumers and a private tested editor with compiled demo
-wiring. U7 adds a private CPU terrain consumer with separate semantic labels,
-explicit target-to-logical mapping and transactional local updates. These choices
-are engineering decisions under delegated authority, not user-confirmed tastes.
-Stable IDs match [agent-notes.md](agent-notes.md); [next.md](next.md) records the
-caller, exact commands, executed results and remaining acceptance.
+U1–U6 provide CPU maps, computed-edge picking/visibility, retained submission and
+a private editor with compiled demo wiring. U7 proved cardinal terrain ownership;
+U8 promotes that same implementation to Engine, with a public-header consumer and
+shared-library diagnostic ownership. Stable IDs match [agent-notes.md](agent-notes.md).
+These are engineering choices under delegated authority, not user API preferences.
+[next.md](next.md) records the caller, executed checks and remaining acceptance.
 
-U7 starts clean at accepted fb0feef (51/51 Debug ASan/UBSan cases). The preserved
-CPU runner builds and registers 61 nonempty names: all 51 accepted plus eight
-terrain cases and two retained-frame consumers. Initial execution passes 60/61
-(all 51 regressions), zero skips, in 36.52 seconds; the negative consumer fixture
-expected 11 setup packets but correctly produced 15. That assertion is corrected;
-the focused case passes 1/1 (0.42s, exit 0). All 61 unique names have passing
-evidence across these runs; no whole-suite exit-0 rerun is claimed. No helper
-behavior changed for the fixture error.
+U8 starts clean at accepted e97f6e8. U7 evidence remains 61 unique passing names
+across an initial 60/61 run and an assertion-only correction followed by 1/1;
+no all-green U7 61-case invocation is claimed. U8 builds/links Engine and the
+external consumer/header probe. Its one accumulated selection passes 64/64,
+zero failed/skipped, 37.21s (all 61 retained plus three new modes). Export/import
+inspection confirms sole Engine production and diagnostic RTTI ownership; normal
+GNU PIE COPY relocations are recorded in next.md. Initial consumer setup spelling
+and local symbol-parser errors were corrected before the passing checks;
+full diagnostics and immediate exits remain saved. No sanitizer diagnostic occurs.
 
-Only private unit consumer files/records change. Public Engine/editor/input/
-camera/renderer APIs, build selections and pins stay unchanged; demo compiled
-inputs do not change and require no rebuild. Synthetic CPU evidence does not
-establish graphical input/display, app asset upload, native teardown, leaks,
-installed SDK/Windows or cross-toolchain ABI acceptance. ASan/UBSan/halt_on_error
-remain selected, with only command-local detect_leaks=0 for the diagnosed tracing
-limitation. U4's `Error: unable to open display :1` remains unchanged and is not
-retried. Publisher owns transport; stop after the coherent U7 checkpoint.
+The source-tree shared GNU/Linux ABI check does not establish installed SDK,
+Windows/cross-toolchain compatibility, Release, leaks, actual input/display,
+app upload or graphical teardown. X11 :1's recorded failure is not retried.
+The publisher owns transport; the finite queue controller selects later units.
 
 ## TM-001
 
@@ -89,14 +85,14 @@ is high; naming/controls remain reversible local choices, with low taste confide
 
 ## TM-007
 
-Own semantic labels separately from copied visual tiles; map selection targets
-through a caller-owned table copied at construction. Reuse four-neighbor select
-with authored cardinal bit order and empty outside samples. Empty labels clear;
-unchanged labels do nothing. Resolve center plus unique bounded cardinal neighbors
-before publication; failures preserve both. This avoids visual-ID
-terrain inference but copies dense state and lacks Wang/diagonals or live rule
-replacement. Engineering confidence is high; private spelling has low taste
-confidence and local reversal cost.
+Expose the proven TerrainMap/TerrainLabel through shared Engine, retaining copied
+semantic labels, cardinal rule/mapping and transactional center/N/E/S/W edits.
+Export operations and anchor existing diagnostic RTTI with Engine destructors;
+tests import that implementation. This enables normal consumers without a World
+or asset policy, but exposes STL layout and requires compatible rebuild/relink.
+Confidence is high in preserved behavior and ownership; spelling has low user-taste
+confidence and public source/relink reversal cost. SDK/other-platform proof remains
+open.
 
 ## TM-008
 

@@ -20,6 +20,11 @@ endif()
 set(CHERYL_TEST_AGGREGATE ${TARGET_TEST_ALL_ENGINE})
 add_subdirectory(all-tests)
 add_subdirectory(unit)
+# Narrow public terrain boundary check; independent of the optional broad
+# CHERYL_BUILD_CONSUMER_TESTS family and unit-private include requirements.
+if(CHERYL_BUILD_SHARED_LIBS)
+    add_subdirectory(terrain-consumer)
+endif()
 add_subdirectory(acceptance)
 if(TARGET Cheryl::Workers)
     add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/modules/runtime/workers/tests" worker-topology)

@@ -1,10 +1,11 @@
-# Tilemap milestone: private terrain/editor consumers and retained submission
+# Tilemap milestone: Engine terrain owner and retained submission
 
 This branch implements U1's CPU values/ranges, U2's retained binding/packet
 adapter, U3's synthetic pass consumer, U4's private fixed demo display, and U5's
 checked CPU point picking/pick-paint-erase consumer. U6 adds shared private editor
-state and compiled demo event wiring. U7 adds a private cardinal terrain consumer;
-graphical input/display acceptance stays open.
+state and compiled demo event wiring. U7 proves a private cardinal terrain consumer;
+U8 promotes that same implementation into Engine. Graphical input/display
+acceptance stays open.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
@@ -27,7 +28,10 @@ the private app source/include to the existing engine unit case target. Public
 Map/picking/resolver/input/camera/frame/pass/backend/startup/persistence APIs and
 dependency pins remain unchanged. U6 is accepted at
 `fb0feefb62307138db88fa01a5488eb6d8885753`; U7 starts there clean, changing only
-private unit consumers and internal records. The publisher owns transport.
+private unit consumers and internal records. U7 is accepted at
+`e97f6e84bf6a160261a89e22ccecb61eeaa4a5b9`; U8 starts there clean and promotes
+only that proven owner plus a normal Engine consumer and focused ownership
+verification. The publisher owns transport.
 
 ## Small U6 event caller and owner boundary
 
@@ -660,17 +664,22 @@ whole-tick/frame rollback. See TM-007 for private ownership and failure boundari
 ## TM-007
 
 **Keep semantic terrain separate and derive visual IDs through explicit mapping.**
-U7 selects a private prototype in `projects/engine/tests/unit/src/tilemap-terrain`
-header/source, not a public Engine terrain model or demo control mode. The
-existing unit source glob compiles it and its concrete caller cases. This keeps
-an uncertain boundary local, avoids shipping a framework before use, and changes
-no demo compiled input, public API, CMake selection or pin. Promotion or actual
-editor integration requires a later assignment. Engineering confidence is high;
-class/file spelling has low preference confidence and local migration cost.
+U7 established the private prototype; U8 promotes that same algorithm into
+`CE::Tilemaps::TerrainMap` in `cheryl/maps/terrain-map.h` and Engine's
+`src/maps/terrain-map.cpp`. The test-owned producer/header are removed; all eight
+pure cases and both retained-frame callers import Engine instead. The public
+constructor, destructor, label/tiles queries and edit operation are out of line
+and exported through the normal shared library. No alternate archive or direct
+implementation source is linked into consumers. This makes the proven boundary
+reusable, at the cost of a public STL-bearing ABI and source/relink migration for
+later spelling changes. Engineering confidence is high; spelling is a delegated
+choice with low user-taste confidence, not a v3 preference inference. No demo
+compiled input, terrain controls, World, batch-edit operation or pin changes.
 
 ```cpp
-#include "tilemap-terrain.h" // private CPU consumer, not an SDK header
-using namespace TilemapTerrain;
+#include <cheryl/maps/terrain-map.h> // first include; link Cheryl::Engine
+using CE::Tilemaps::TerrainLabel;
+using CE::Tilemaps::TerrainMap;
 
 CE::Tilemaps::Map base({3, 2}, 2);
 const std::vector<TerrainLabel> labels{{1}, {1}, {0}, {1}, {2}, {0}};
@@ -691,7 +700,7 @@ columns increase right and rows down. The owner copies the entire base Map,
 selected layer index, exact labels, rule metadata and target table. It derives
 only that layer; other layers retain their copied authored values. No mutable
 Map reference, temporary sampler, mapping span, event span or external rule alias
-is retained. Copy/move of the prototype is disabled, avoiding implicit compound
+is retained. Copy/move of the owner is disabled, avoiding implicit compound
 assignment invariants; the underlying Map value/copy/move contracts do not change.
 `label(Point)` returns a checked owned value; `tiles()` borrows a const live Map.
 Serialize construction inputs, edit/read and preparation, without concurrent
@@ -766,6 +775,24 @@ terrain controls remain deferred. Existing packet resolution animates original
 bound targets once, separately; this helper neither advances clocks nor passes
 an already-final animation selection. Existing selector source supplies
 compatibility, not v3 preference evidence. See S4/S19 and next.md for actual checks.
+
+U8 also anchors the existing invalid_args and bad_request diagnostic RTTI in
+Engine using exported out-of-line virtual destructors. Their explicitly defaulted
+copy/move constructors preserve the former implicit behavior and noexcept
+contract; categories, field layout and refusal boundaries are unchanged. The
+public owner does not invent a new diagnostic family. Consumers must rebuild
+and relink with this Engine; this is a source-tree shared GNU/Linux check, not an
+installed SDK, Windows, cross-STL or stable binary-compatibility promise.
+
+The separate tests/terrain-consumer executable includes the public header first,
+constructs from short-lived inputs, observes literal masks, edits/clears one
+label, preserves a second owner and other layers, catches/retains cross-library
+errors, and checks a late refusal. It links only Cheryl::Engine and inherits its
+C++/include/link usage requirements; it has no unit-private source, app/JSON
+policy or macro patches. A separate neutral header probe uses the existing
+consumer helper. This narrow check is registered with CHERYL_BUILD_TESTS and
+leaves the broad CHERYL_BUILD_CONSUMER_TESTS family OFF. Actual runtime results,
+export/import ownership and registration correspondence belong in next.md.
 
 ## TM-008
 
@@ -935,7 +962,7 @@ S19 the U7 cardinal terrain prototype. Links resolve here.
 | S16 | U4's private [display helper](../projects/apps/demo/src/tilemap-demo.cpp), [mode option](../projects/apps/demo/src/demo-options.cpp), [main caller](../projects/apps/demo/src/main.cpp) and [platform/preparation/cleanup owner](../projects/apps/demo/src/demo-game.cpp). Reader -> decode -> image upload -> tileset manager -> stable bindings -> four layer vectors -> existing pass; runtime results and ignored local artifacts are in next.md. |
 | S17 | U5's [CPU query/header](../projects/engine/include/cheryl/maps/tilemap.h), [shared geometry/search implementation](../projects/engine/src/maps/tilemap.cpp), [five point cases](../projects/engine/tests/unit/src/tilemap.cpp) and [three transformed consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Owned optional coordinates, computed-edge ownership, independent rectangle oracle, bounded maximum extents and local pick/paint/erase plus camera-derived pass preparation. |
 | S18 | U6 [private helper](../projects/apps/demo/src/tilemap-editor.cpp), [mode wiring](../projects/apps/demo/src/demo-game.cpp), [consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp) and [private build requirements](../projects/engine/tests/unit/CMakeLists.txt). Existing input-record.h/tick-context.h provide captured pointers and copied sizes; game-runtime.cpp::select_window and both update paths publish sizes, native-glfw input-system.cpp::on_mouse_button/on_scroll captures logical pointers. No public producer change. |
-| S19 | U7 private [owner/header](../projects/engine/tests/unit/src/tilemap-terrain.h), [derivation/edit source](../projects/engine/tests/unit/src/tilemap-terrain.cpp), [literal/oracle cases](../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp) and [retained packet consumers](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Reuses [Selection::select implementation](../projects/engine/src/assets/selection/tile-selection.cpp) and [BitmaskRule definitions](../projects/engine/include/cheryl/assets/definitions/tileset.h); selected targets are size_t ordinals, not semantic labels or logical tile IDs. |
+| S19 | U7-proven owner promoted by U8: [public header](../projects/engine/include/cheryl/maps/terrain-map.h), [Engine derivation/edit source](../projects/engine/src/maps/terrain-map.cpp), [literal/oracle cases](../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp) and [retained packet consumers](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Reuses [Selection::select implementation](../projects/engine/src/assets/selection/tile-selection.cpp) and [BitmaskRule definitions](../projects/engine/include/cheryl/assets/definitions/tileset.h); selected targets are size_t ordinals, not semantic labels or logical tile IDs. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -976,8 +1003,8 @@ preference remains low and is never presented as a user decision.
 ## Implementation units and observable acceptance
 
 U1/U2/U3, U4's limited source/build checkpoint and U5 are coordinator-accepted.
-U6 is accepted; TILEMAP-U7 activates private four-neighbor terrain derivation
-and transactional local edits, independently of editor controls.
+U6/U7 are accepted. TILEMAP-U8 promotes the proven cardinal terrain owner into
+Engine, independently of editor controls; only this milestone is active.
 Actual commands/limits are in next.md; real input/display remains unobserved.
 X11 access is not retried.
 
@@ -990,6 +1017,7 @@ X11 access is not retried.
 | U5 — implemented CPU picking/editing | LocalPoint and pick_cell share computed-edge geometry with visibility; five point cases and three synthetic transformed edit cases. All 36 accepted regressions plus eight additions execute together; no demo/input/backend change or display retry. |
 | U6 — private editor source | Shared private CPU state for ordered events, independent logical/framebuffer scale conversion, selection/edit/pan/zoom and frame preparation; demo capture/update/cleanup wiring plus seven consumer cases. Execution is recorded below; real input/display remains unverified. |
 | U7 — private terrain source | Owned semantic labels and explicit target mapping, cardinal bitmask selection, complete initial derivation and transactional center/cardinal updates; eight pure cases and two retained-frame consumers. Public APIs/demo inputs/pins unchanged. |
+| U8 — public Engine owner | Same cardinal algorithm and single-edit result order; exported lifetime/operations and diagnostic RTTI, normal Engine consumer/header probe, no unit-owned producer or demo input changes. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
@@ -1021,7 +1049,7 @@ Presence in that runner is not a test run. U6 commands, sanitizer
 status and public-header/ABI limits are in [next.md](next.md); prior U1–U5
 configurations/results remain in committed record history and preserved local logs.
 
-## U7 execution and next action
+## U7 execution and next action (historical)
 
 U7 starts clean at accepted fb0feef and keeps all 51 accepted names. The preserved
 CPU Debug/shared Engine/tests/WARN/policy-3.5/OFF build compiles the private owner
@@ -1071,10 +1099,77 @@ prototype is not a shipped Engine API. Low-confidence spellings/placement are
 reversible in the consumer files; semantic-label separation and selected scope
 come from the coordinator assignment, not inferred v3 taste.
 
-Next bounded action requires coordinator selection: review the private semantic/
-target-mapping and per-edit publication boundary, then decide whether a later unit
-integrates it with the private editor or promotes a reusable minimal owner. No
-such work starts now. Graphics observation still requires changed access and a
-bounded owned-window check. No Wang/diagonal model, persistence, assets/pins,
-sibling integration or recurring loop is activated. Publisher owns transport;
-stop after the coherent local U7 checkpoint.
+The U7 handoff proposed later private editor integration or reusable promotion;
+the coordinator now selects promotion in U8. U7's evidence above remains historical,
+including its two-invocation correction. Graphics observation still requires
+changed access and a bounded owned-window check. No Wang/diagonal model,
+persistence, assets/pins, sibling integration or recurring loop is activated.
+Publisher owns transport; the finite queue controller selects subsequent units.
+
+## U8 execution and next action
+
+U8 starts clean at accepted e97f6e8 and promotes the proven implementation into
+normal shared Engine. Constructor/destructor/label/tiles/edit are exported out
+of line; the private producer is gone. The public header is first in the pure
+terrain cases and separate consumer. Existing case bodies/names are unchanged;
+only include/using declarations migrate. Diagnostic key destructors anchor
+invalid_args/bad_request RTTI in Engine without changing categories/data fields;
+defaulted copy/move constructors preserve the old noexcept behavior.
+
+Preserved Debug/shared/WARN/policy-3.5/optional-OFF build targets only tests-engine
+and tests-terrain-consumer plus necessary dependencies. No demo inputs or pins
+change and no demo rebuild/run is needed. The narrow consumer is enabled only
+with shared Engine/tests; broad consumer tests stay OFF. It inherits public
+C++23/includes/sanitizers from Cheryl::Engine and compiles the neutral header
+probe, with no direct implementation copy, private app/JSON policy or macro
+patches. It executes copied values/short-lived inputs, edits/erase/no-op,
+independent owners/other layers, retained typed diagnostics and late refusal.
+
+Initial build exits 1 because the new consumer setup called nonexistent
+Map::erase. Correction uses set(..., TileId{0}); incremental build exits 0 and
+links both runners; the header probe compiles. Shared-only registration regeneration
+also exits 0. Initial ownership helper exits 1 because its local nm parser split
+C++ demangled names at spaces, while every native nm/readelf subcommand succeeds.
+Correcting that parser yields exit 0; no production ownership fix is concealed.
+Complete diagnostics, exact commands and immediate exits are preserved locally.
+The rebuild reports seven dangling-else warnings only in unchanged unit/shared
+test sources; final builds report none in U8 inputs.
+
+One accumulated invocation passes 64/64, zero failed/skipped, 37.21s, exit 0:
+18 tilemap_consumer + 15 tilemap_submission + eight tilemap_terrain + 20 tilemap
+(61 accepted names) plus three new external consumer modes. Discovery-to-U7 and
+execution-to-discovery sets match exactly. This is U8's single green invocation;
+U7's two-run result remains distinct above. Existing independent oracle sequences,
+refusal/ownership contracts and zero synthetic native bind/draw/upload assertions
+all pass. ASan/UBSan/halt_on_error stay enabled without diagnostics. Only invocation-
+local detect_leaks=0 applies for the known LSan tracing failure; leaks are unverified.
+
+Actual nm confirms Engine exports all five public operations, imported by both
+consumer object and unit executable; compile database/link map show one Engine
+terrain producer and no old unit copy. Diagnostic destructors/RTTI are exported
+by Engine, with RTTI imports in the consumer object. The normal GNU PIE executable
+uses ELF COPY relocations for Engine-provided RTTI/vtables, so final executable
+nm V entries do not imply a test source producer. Typed catches/typeid/casts and
+retained exception_ptr/message checks execute across this shared boundary.
+readelf records libcheryl-engine.so.4; the actual Ninja link line contains only
+Engine plus compiler/runtime requirements. Full nm/readelf dumps, ownership
+checker, registration correspondence, LastTest copy and u8-results.json accompany
+u8-commands.sh under ignored build/tilemap-u1-debug. next.md lists actual argv,
+logs, immediate exits and the exact selected cases.
+
+All native work uses the shared wrapper/normal queue, one job, adaptive monitor,
+no swap and 4 GiB host admission floor. Waiting sessions are preserved; no
+resource refusal, device run, unchanged display retry or limit bypass occurs.
+U4's X11 failure remains `Error: unable to open display :1` (exit 255). Actual
+app decode/upload, input/display, capture, graphical teardown and leaks remain
+unverified. Public concrete STL layout requires compatible compiler/STL and
+rebuild/relink; no installed SDK, Windows/other-toolchain, static or Release
+acceptance follows. Comments are source-reviewed; full API rendering is untested.
+
+The committed U8 queue receipt names actual nonempty native logs and is ready
+only after this implementation/check evidence. It is a worker execution report,
+not automatic coordinator review or graphical acceptance. U8 has no unresolved
+CPU prerequisite. Next action is coordinator review, then controller selection
+of pinned U9 atomic terrain batches after this run drains. No batch API, demo
+terrain controls, sibling integration, new assets/pins, transport or recurring
+unit is started by this worker. Publisher owns transport; stop at this checkpoint.

@@ -1,4 +1,4 @@
-#include "tilemap-terrain.h"
+#include <maps/terrain-map.h>
 
 #include <internals/exceptions.h>
 
@@ -7,7 +7,7 @@
 #include <format>
 #include <limits>
 
-namespace TilemapTerrain {
+namespace CE::Tilemaps {
     namespace {
         namespace Maps = CE::Tilemaps;
         namespace Tiles = CE::Assets::Tilesets;
@@ -85,6 +85,12 @@ namespace TilemapTerrain {
 
     TerrainLabel TerrainMap::label(const Maps::Point point) const {
         return labels_[index(point)];
+    }
+
+    TerrainMap::~TerrainMap() = default;
+
+    const Maps::Map& TerrainMap::tiles() const {
+        return tiles_;
     }
 
     Maps::TileId TerrainMap::resolve(const Maps::Point point, const std::optional<Change> change) const {
