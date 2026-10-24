@@ -244,7 +244,7 @@ namespace CE::Maps {
                 context.fail(Code::InvalidValue, path, "expected an array");
         }
 
-        void validate(const Snapshot& snapshot, const Context& context) {
+        void validate_values(const Snapshot& snapshot, const Context& context) {
             const auto area = dimensions(snapshot.width, snapshot.height, snapshot.layers.size(), context);
             key(snapshot.id, true, "$.id", context);
             std::set<std::string> layers;
@@ -328,29 +328,69 @@ namespace CE::Maps {
                     .y = integer(required(source, "y", path, context), path + ".y", context)
                 });
             }
-            validate(result, context);
+            validate_values(result, context);
             return result;
         }
 
         class Output {
             const Context& context_;
-            std::string bytes_;
+            std::string* bytes_;
+            std::size_t size_ = 0;
 
         public:
-            explicit Output(const Context& context) : context_(context) {}
+            // Null storage counts the exact same formatter fragments without an
+            // output buffer. No separate guessed JSON-size formula.
+            explicit Output(const Context& context, std::string* bytes = nullptr) : context_(context), bytes_(bytes) {}
             void append(std::string_view text, const std::string& path) {
-                if (text.size() > max_document_bytes - bytes_.size())
+                if (text.size() > max_document_bytes - size_)
                     context_.fail(Code::LimitExceeded, path, "encoded document exceeds 8 MiB");
-                bytes_.append(text);
+                if (bytes_)
+                    bytes_->append(text);
+                size_ += text.size();
             }
             void quoted(const std::string& key, const std::string& path) {
-                // validate() permits only ASCII identifier characters, none needing JSON escaping.
+                // validate_values() permits only ASCII identifier characters, none needing JSON escaping.
                 append("\"", path);
                 append(key, path);
                 append("\"", path);
             }
-            std::string take() { return std::move(bytes_); }
         };
+
+        void format(const Snapshot& snapshot, Output& output) {
+            output.append("{\n  \"format\": \"cheryl.map-fixture\",\n  \"version\": 1,\n  \"id\": ", "$");
+            output.quoted(snapshot.id, "$.id");
+            output.append(",\n  \"width\": " + std::to_string(snapshot.width) + ",\n  \"height\": " + std::to_string(snapshot.height) +
+                          ",\n  \"layers\": [\n", "$");
+            for (std::size_t i = 0; i < snapshot.layers.size(); ++i) {
+                const auto path = element("$.layers", i);
+                const auto& layer = snapshot.layers[i];
+                output.append("    {\n      \"id\": ", path);
+                output.quoted(layer.id, path + ".id");
+                output.append(",\n      \"cells\": [", path);
+                for (std::size_t cell = 0; cell < layer.cells.size(); ++cell) {
+                    const auto location = element(path + ".cells", cell);
+                    if (cell)
+                        output.append(", ", location);
+                    if (layer.cells[cell])
+                        output.quoted(*layer.cells[cell], location);
+                    else
+                        output.append("null", location);
+                }
+                output.append("]\n    }", path);
+                output.append(i + 1 == snapshot.layers.size() ? "\n" : ",\n", path);
+            }
+            output.append("  ],\n  \"spawns\": [", "$.spawns");
+            for (std::size_t i = 0; i < snapshot.spawns.size(); ++i) {
+                const auto path = element("$.spawns", i);
+                const auto& spawn = snapshot.spawns[i];
+                output.append(i ? ",\n    {\"name\": " : "\n    {\"name\": ", path);
+                output.quoted(spawn.name, path + ".name");
+                output.append(", \"layer\": ", path);
+                output.quoted(spawn.layer, path + ".layer");
+                output.append(", \"x\": " + std::to_string(spawn.x) + ", \"y\": " + std::to_string(spawn.y) + '}', path);
+            }
+            output.append(snapshot.spawns.empty() ? "]\n}\n" : "\n  ]\n}\n", "$");
+        }
     }
 
     Snapshot parse(std::istream& input, const std::filesystem::path& origin) {
@@ -364,41 +404,17 @@ namespace CE::Maps {
 
     std::string encode(const Snapshot& snapshot) {
         const Context context{"encode", "<snapshot>"};
-        validate(snapshot, context);
+        validate_values(snapshot, context);
+        std::string bytes;
+        Output output(context, &bytes);
+        format(snapshot, output);
+        return bytes;
+    }
+
+    void validate(const Snapshot& snapshot) {
+        const Context context{"validate", "<snapshot>"};
+        validate_values(snapshot, context);
         Output output(context);
-        output.append("{\n  \"format\": \"cheryl.map-fixture\",\n  \"version\": 1,\n  \"id\": ", "$");
-        output.quoted(snapshot.id, "$.id");
-        output.append(",\n  \"width\": " + std::to_string(snapshot.width) + ",\n  \"height\": " + std::to_string(snapshot.height) +
-                      ",\n  \"layers\": [\n", "$");
-        for (std::size_t i = 0; i < snapshot.layers.size(); ++i) {
-            const auto path = element("$.layers", i);
-            const auto& layer = snapshot.layers[i];
-            output.append("    {\n      \"id\": ", path);
-            output.quoted(layer.id, path + ".id");
-            output.append(",\n      \"cells\": [", path);
-            for (std::size_t cell = 0; cell < layer.cells.size(); ++cell) {
-                const auto location = element(path + ".cells", cell);
-                if (cell)
-                    output.append(", ", location);
-                if (layer.cells[cell])
-                    output.quoted(*layer.cells[cell], location);
-                else
-                    output.append("null", location);
-            }
-            output.append("]\n    }", path);
-            output.append(i + 1 == snapshot.layers.size() ? "\n" : ",\n", path);
-        }
-        output.append("  ],\n  \"spawns\": [", "$.spawns");
-        for (std::size_t i = 0; i < snapshot.spawns.size(); ++i) {
-            const auto path = element("$.spawns", i);
-            const auto& spawn = snapshot.spawns[i];
-            output.append(i ? ",\n    {\"name\": " : "\n    {\"name\": ", path);
-            output.quoted(spawn.name, path + ".name");
-            output.append(", \"layer\": ", path);
-            output.quoted(spawn.layer, path + ".layer");
-            output.append(", \"x\": " + std::to_string(spawn.x) + ", \"y\": " + std::to_string(spawn.y) + '}', path);
-        }
-        output.append(snapshot.spawns.empty() ? "]\n}\n" : "\n  ]\n}\n", "$");
-        return output.take();
+        format(snapshot, output);
     }
 }

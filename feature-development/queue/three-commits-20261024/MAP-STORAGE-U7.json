@@ -1,0 +1,20 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "MAP-STORAGE-U7",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/map-storage-u1-debug/u7-logs/tests.log",
+    "build/map-storage-u4-consumer-debug/u7-logs/build.log",
+    "build/map-storage-u4-consumer-debug/u7-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u7-logs/build.log",
+    "build/map-storage-u5-shared-debug/u7-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u7-logs/exports.log"
+  ],
+  "limitations": [
+    "Actual shared Engine checks use invocation-local ASAN_OPTIONS=detect_leaks=0 for the known ptrace runner limitation; ASan/UBSan remain enabled, leak checking is unverified.",
+    "Standalone CPU Debug tests are unsanitized; full static Engine, non-Linux, other-toolchain ABI and installed SDK acceptance remain unverified.",
+    "Counting validation avoids output materialization but still traverses bounded values and may allocate semantic/path bookkeeping; no allocation-exhaustion test was attempted.",
+    "Private patches retain up to 8 MiB full canonical base bytes; no compact persistent patch/recipe format or new durability/race/multiwriter guarantee is selected."
+  ]
+}

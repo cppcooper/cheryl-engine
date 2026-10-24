@@ -54,6 +54,9 @@ foreach(map_storage_header IN ITEMS snapshot codec file-storage)
     if(map_storage_header STREQUAL "snapshot")
         file(APPEND "${map_storage_probe}" "static_assert(CE::Maps::Snapshot{} == CE::Maps::Snapshot{});\n")
     else()
+        if(map_storage_header STREQUAL "codec")
+            file(APPEND "${map_storage_probe}" "void codec_validate_first(const CE::Maps::Snapshot& value) { CE::Maps::validate(value); }\n")
+        endif()
         file(APPEND "${map_storage_probe}" "#include <string_view>\n#define PROBE_STRING_(value) #value\n#define PROBE_STRING(value) PROBE_STRING_(value)\n")
         if(MAP_STORAGE_USE_SHARED_ENGINE)
             file(APPEND "${map_storage_probe}" "#if defined(_WIN32) || defined(__GNUC__) || defined(__clang__)\nstatic_assert(!std::string_view(PROBE_STRING(CE_API)).empty());\n#endif\n")
@@ -73,7 +76,7 @@ endif()
 
 # Only this small consumer's process checks remain enabled; no test dependency.
 enable_testing()
-foreach(map_storage_check IN ITEMS memory round_trip preservation)
+foreach(map_storage_check IN ITEMS memory round_trip preservation validation)
     add_test(NAME "map_storage.consumer.${map_storage_check}"
         COMMAND "${CMAKE_COMMAND}" "-DCLI=$<TARGET_FILE:map_storage_consumer>"
             "-DMODE=${map_storage_check}" "-DWORK_ROOT=${CMAKE_CURRENT_BINARY_DIR}/consumer-checks"

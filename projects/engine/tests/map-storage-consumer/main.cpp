@@ -77,6 +77,34 @@ namespace {
                   << " location=" << retained->location << " byte_offset=" << *retained->byte_offset << '\n';
     }
 
+    void validation() {
+        const auto expected = authored();
+        Maps::validate(expected);
+        require(expected == authored(), "validation mutated the complete snapshot");
+        std::optional<Maps::Error> retained;
+        {
+            auto invalid = authored();
+            invalid.layers[1].cells[2] = "not-qualified";
+            const auto before = invalid;
+            try {
+                Maps::validate(invalid);
+            } catch (const Maps::Error& error) {
+                retained = error; // Owning copy across the actual producer boundary.
+            }
+            require(invalid == before, "failed validation mutated the input");
+        }
+        require(retained.has_value(), "invalid snapshot unexpectedly validated");
+        const auto copied = *retained;
+        retained.reset();
+        require(copied.code == Maps::Code::InvalidValue && copied.operation == "validate" &&
+                    copied.origin == "<snapshot>" && copied.location == "$.layers[1].cells[2]" &&
+                    !copied.byte_offset && !copied.io_error && !copied.cleanup_error && copied.staging_leftover.empty() &&
+                    std::string_view(copied.what()).find("validate '<snapshot>'") != std::string_view::npos,
+                "owned validation error lost context after source/error destruction");
+        std::cout << "validate: complete garden unchanged; owned InvalidValue operation=" << copied.operation
+                  << " origin=" << copied.origin << " location=" << copied.location << '\n';
+    }
+
     void author(const std::filesystem::path& path) {
         {
             auto source = authored();
@@ -136,6 +164,8 @@ int main(int argc, char** argv) {
         if (argc == 2 && std::string_view(argv[1]) == "memory") {
             memory();
             std::cout << "owned codec values, independent copies and retained error verified\n";
+        } else if (argc == 2 && std::string_view(argv[1]) == "validation") {
+            validation();
         } else if (argc == 3 && argv[2][0] != '\0') {
             const std::string_view command(argv[1]);
             const std::filesystem::path path(argv[2]);
@@ -148,7 +178,7 @@ int main(int argc, char** argv) {
             else
                 throw std::runtime_error("unknown consumer command");
         } else {
-            throw std::runtime_error("consumer expects memory, or author/verify/verify-predecessor/preserve <file>");
+            throw std::runtime_error("consumer expects memory/validation, or author/verify/verify-predecessor/preserve <file>");
         }
         std::cout.flush();
         require(bool(std::cout), "consumer output failed");

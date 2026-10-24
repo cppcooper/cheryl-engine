@@ -854,6 +854,9 @@ unverified; next.md owns exact commands, outcomes and coordinator review action.
 
 ## MS-011 — Private exact-base cell patches (U6)
 
+The U6 implementation/evidence below is historical. MS-012 records U7's replacement
+of one-cell probes with one public candidate validation and its changed timing.
+
 Selected engineering contract, not an inferred personal preference: `CellPatches`
 under `projects/tests/map-storage` owns a full canonical `Maps::encode(base)`
 witness and at most 1,024 ordered cell edits. `capture` validates through the
@@ -927,3 +930,77 @@ unrelated-cell/spawn/order mismatch refusal, exact predecessor preservation and
 fresh-process comparison passed. Only private helper/tests/consumer/CMake and
 internal records changed; U5's shared consumer and all public algorithms remain
 identical. No broad shared-Engine rerun or new integration claim follows.
+
+## MS-012 — Reusable encodability validation (U7)
+
+Selected public CPU addition: `CE_API void CE::Maps::validate(const Snapshot&)`,
+declared in codec.h. Normal return establishes both complete semantic validity
+and current cheryl.map-fixture v1 encodability within 8 MiB. It borrows only during
+the synchronous call, mutates nothing, retains no input and performs no I/O,
+asset/registry access or runtime initialization. It is not noexcept or allocation
+free: bounded semantic sets and temporary path/numeric fragments remain. The
+output bytes themselves are never materialized. Caller synchronization governs
+concurrent input mutation.
+
+Small caller selected before implementation:
+
+```cpp
+try {
+    CE::Maps::validate(snapshot);
+    // Choose whether to retain this complete value; validation itself saves nothing.
+} catch (const CE::Maps::Error& error) {
+    auto owned = error;
+}
+```
+
+The private semantic function is shared with parse and encode, preserving its
+check order. One existing formatter now targets an Output that either appends
+to encode's string or only counts fragments. Both charge the same subtraction-
+checked byte limit before each append, including punctuation, numeric text and
+final LF, at the same field location. There is no second size formula, JSON DOM,
+generic validation framework or new wire field/version. Current v1 keys admit
+ASCII identifiers only: non-ASCII, controls and characters requiring escaping
+reject semantically; escaped ASCII JSON input decodes to the same valid value.
+Parse retains its historical input-byte and reconstruction behavior; it does not
+newly enforce the size of re-encoding a compact parsed document.
+
+Anticipated validate errors own the existing Error fields with operation
+`validate`, origin `<snapshot>`, and the same category/location/detail/precedence
+as encode, without byte offset, I/O or cleanup data. Existing encode and parse
+operation/origin/error order remain unchanged. Allocation/programming failures
+propagate distinctly. No validity cache or retained references are introduced.
+
+MS-011 refinement: capture/base matching still use complete encoded bytes; all
+exact-base and private work caps remain. Apply retains cheap batch/address/key-
+length admission, then makes one candidate copy and calls public validate once.
+The one-cell key probes and final output-buffer serialization are removed.
+Semantic key errors may therefore occur after allocation, in candidate cell order
+rather than edit order; later address admission can precede an earlier invalid
+key. Exact candidate cell locations map back to `$.edits[i].tile`, retaining the
+original owning public cause (now validate and the actual candidate location).
+Output-limit failures remain `$.candidate` with their original cause. No key
+grammar is duplicated. Empty batches already re-encode/validate the exact base,
+so retain their independent-copy behavior without a second validation pass.
+
+Alternatives: encode-and-discard would retain output-buffer allocation; logical-
+only validation could not claim complete encodability; a second byte estimator
+would drift on punctuation/schema changes. Shared counting costs a complete
+bounded traversal but uses one policy authority. Confidence is high in this
+mechanism, medium in future public API adoption; reversal now affects a new
+exported symbol and branch-local callers, not persisted bytes. This is an
+engineering choice, not inferred personal taste. Provenance is the U7 assignment,
+accepted U6 and inspected codec checks/formatter, plus generation-storage.md's
+unchanged distinction between snapshot retention and future recipes/edits.
+The finite queue preassigns later units but this invocation implements U7 only.
+Actual CPU, header/source-only and shared-symbol results belong in next.md.
+
+Executed U7 evidence: 171/171 CPU cases passed with all 162 names retained; the
+new tests-off validation consumer passed 1/1; all three CPU and three shared
+header probes built; actual shared-Engine consumer passed 4/4 (six children).
+nm/readelf/ldd and compile/link checks establish the real producer's new exported
+validate symbol, the consumer's import and this clone's resolved DSO. Shared
+tests use the accepted invocation-local detect_leaks=0 workaround, retaining
+ASan/UBSan; leak checking remains unverified. No implementation/check failure or
+prerequisite refusal occurred. next.md retains exact commands, source preservation,
+complete native logs/statuses and limits; the committed finite-queue receipt is
+an execution report, not automatic coordinator source acceptance or SDK proof.

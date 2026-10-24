@@ -5,19 +5,30 @@ U2F corrects native path meaning across ancestor symlinks.
 U3 adds the private process CLI. U4 moves the same implementation into Engine-owned
 public CPU source and adds a source-tree consumer. U5 selects normal shared-Engine
 consumption of that same boundary. U6 adds a private exact-base cell-edit proof;
-it changes no public storage contract or wire format. Executed checks/limits are in
+U7 exposes bounded public validation without changing v1 wire behavior. Executed checks/limits are in
 [next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
 
+## MS-012 Reusable encodability validation
+
+Expose CE::Maps::validate as a synchronous semantic and v1 encodability check,
+counting the same formatter fragments as encode without storing output bytes.
+This shares policy and exact byte limits while avoiding serialization buffers.
+Owned errors identify `validate`/`<snapshot>`; existing parse/encode context stays
+unchanged. Patch candidates now validate once after copying; semantic errors use
+candidate order. Confidence is high in the shared mechanism; reversal affects the
+new public symbol and branch-local callers, with other-platform ABI still unverified.
+[Details](agent-notes.md#ms-012--reusable-encodability-validation-u7).
+
 ## MS-011 Private exact-base cell patches
 
-Capture the complete canonical base bytes and re-encode/compare before applying
-cell-only edits into an independent Snapshot. Cap bases at 65,536 cells, batches
-at 1,024 unique addresses and encoded values at 8 MiB; reuse public validation.
-This prevents silent replay on changed cells, order or spawns. Full witnesses
-cost memory and are not compact saves or persisted recipes. Confidence is high
-in semantics, medium in workload caps; reversal affects private callers only.
+Capture full canonical base bytes and compare before applying cell-only edits
+into an independent Snapshot. Cap bases at 65,536 cells, batches at 1,024 unique
+addresses and encoded values at 8 MiB. U7 validates one candidate after allocation
+instead of per-key probes. This prevents replay on changed cells, order or spawns.
+Full witnesses cost memory, without compact-save or recipe claims. Confidence is
+high in semantics, medium in caps; reversal affects private callers only.
 [Details](agent-notes.md#ms-011--private-exact-base-cell-patches-u6).
 
 ## MS-001 CPU boundary

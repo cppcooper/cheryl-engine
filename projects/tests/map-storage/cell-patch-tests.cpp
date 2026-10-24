@@ -148,13 +148,13 @@ TEST(patches, invalid_keys_reuse_public_validation) {
         const auto error = refuses(PatchFixture::base(), patch, Patches::Code::InvalidEdit, "$.edits[0].tile");
         ASSERT_TRUE(error.cause);
         EXPECT_EQ(error.cause->code, Maps::Code::InvalidValue);
-        EXPECT_EQ(error.cause->operation, "encode");
-        EXPECT_EQ(error.cause->location, "$.layers[0].cells[0]");
+        EXPECT_EQ(error.cause->operation, "validate");
+        EXPECT_EQ(error.cause->location, "$.layers[0].cells[1]");
         EXPECT_EQ(error.cause->origin, "<snapshot>");
     }
     patch.edits[0].tile = std::string(Maps::max_key_bytes + 1, 'a');
     const auto error = refuses(PatchFixture::base(), patch, Patches::Code::InvalidEdit, "$.edits[0].tile");
-    EXPECT_FALSE(error.cause); // Size rejected before a bounded probe copy.
+    EXPECT_FALSE(error.cause); // Size admission rejects before a candidate copy.
 }
 
 TEST(patches, unrelated_cell_change_refused) {
@@ -281,7 +281,7 @@ TEST(patches, candidate_encoding_limit_preserves_inputs_and_held_result) {
     const auto error = refuses(base, patch, Patches::Code::LimitExceeded, "$.candidate");
     ASSERT_TRUE(error.cause);
     EXPECT_EQ(error.cause->code, Maps::Code::LimitExceeded);
-    EXPECT_EQ(error.cause->operation, "encode");
+    EXPECT_EQ(error.cause->operation, "validate");
     EXPECT_FALSE(error.cause->location.empty());
 }
 
@@ -331,7 +331,8 @@ TEST(patches, diagnostics_survive_all_inputs) {
     EXPECT_NE(std::string(copy.what()).find("invalid logical tile key"), std::string::npos);
     ASSERT_TRUE(copy.cause);
     EXPECT_EQ(copy.cause->origin, "<snapshot>");
-    EXPECT_EQ(copy.cause->location, "$.layers[0].cells[0]");
+    EXPECT_EQ(copy.cause->operation, "validate");
+    EXPECT_EQ(copy.cause->location, "$.layers[1].cells[2]");
     EXPECT_FALSE(copy.cause->byte_offset);
     EXPECT_FALSE(copy.cause->io_error);
 }

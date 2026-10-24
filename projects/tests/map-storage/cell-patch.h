@@ -77,8 +77,10 @@ namespace CellPatches {
     // validating edit addresses/values. Only cell values change, addressed by
     // stable layer identity and zero-origin finite 2D coordinates.
     // At most 1,024 unique addresses; duplicate addresses reject even for no-ops.
-    // Validate the whole batch before one deep candidate copy, then validate its
-    // complete encoding (8 MiB cap). An empty batch still requires an exact match
+    // Admit the batch/address/key-size bounds before one deep candidate copy;
+    // public validate(candidate) then checks semantics and complete encoded size.
+    // Invalid-key errors can follow allocation and use candidate cell order.
+    // An empty batch still requires an exact match
     // and returns an independent copy. No input/result aliasing, mutation or I/O.
     // Anticipated rejections throw owning Error; bad_alloc/programming exceptions
     // propagate. Failures preserve all inputs and the caller's held result. Caller

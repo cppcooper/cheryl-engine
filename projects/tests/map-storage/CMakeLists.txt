@@ -35,7 +35,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(map_storage_patch_consumer PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp cell-patch-tests.cpp)
+add_executable(map_storage_tests codec-tests.cpp file-storage-tests.cpp cli-diagnostics-tests.cpp cell-patch-tests.cpp validation-tests.cpp)
 target_link_libraries(map_storage_tests PRIVATE map_storage_patches GTest::gtest_main)
 # Only fault tests may see the private native seam; it is never a usage requirement.
 target_include_directories(map_storage_tests PRIVATE "${map_storage_root}/projects/engine/src/core/resources/map-storage")

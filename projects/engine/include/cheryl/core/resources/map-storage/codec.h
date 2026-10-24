@@ -64,4 +64,15 @@ namespace CE::Maps {
     // Borrows only during this synchronous call; concurrent input mutation requires
     // caller synchronization. Anticipated validation errors throw the owning Error.
     [[nodiscard]] CE_API std::string encode(const Snapshot& snapshot);
+
+    // Checks complete semantics and current v1 encodability, including the 8 MiB
+    // output cap, without materializing encoded bytes. Uses the same checks and
+    // formatter as encode(); returns normally only for an encodable snapshot.
+    // Synchronous, no mutation, I/O, asset lookup or retained references. Caller
+    // synchronizes concurrent input mutation. Anticipated failures throw owning
+    // Error with operation "validate", origin "<snapshot>" and the same category,
+    // field and precedence as encode(); byte/I/O/cleanup context is absent.
+    // Allocation/programming exceptions propagate unchanged; this is not noexcept
+    // or an allocation-free operation (bounded semantic/path bookkeeping remains).
+    CE_API void validate(const Snapshot& snapshot);
 }

@@ -21,6 +21,8 @@ endfunction()
 
 if(MODE STREQUAL "memory")
     invoke(memory memory)
+elseif(MODE STREQUAL "validation")
+    invoke(validation validation)
 elseif(MODE STREQUAL "round_trip")
     invoke(author author "${work}/garden.map.json")
     file(READ "${work}/garden.map.json" before HEX)

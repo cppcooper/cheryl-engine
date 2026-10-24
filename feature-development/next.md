@@ -1,76 +1,67 @@
-# Map-storage U6 checkpoint and next action
+# Map-storage U7 checkpoint and next action
 
-U6 starts clean at accepted U5 `48ad543a18ebacdb759bb5bf7bc1f5ed64202917`.
-The branch now implements a **private exact-base cell-patch application proof**.
-All **162/162** selected cases passed: every accepted 136 regression name plus
-24 new patch cases and two actual-process checks. No test was skipped; configure,
-build, discovery and execution exited 0. No production header, codec/file
-algorithm, format, dependency, pin, existing CLI or shared consumer changed.
-Coordinator acceptance remains separate from these local results.
+U7 starts clean at accepted U6 `fa267333a8bf30fe737d67544a46da8f3d4d2a14`.
+Implementation and the accumulated CPU selection are complete: **171/171 cases
+passed**, retaining all 162 accepted names and adding nine cases. The tests-off
+source-only consumer passed 1/1 validation case and all three
+static header probes built. The actual shared-Engine consumer passed 4/4 cases
+and all three shared header probes built; export/import/DSO ownership checks
+passed. The ready receipt reports these executed checks, not automatic coordinator
+source acceptance.
 
-## Small caller and private contract
+## Caller and current contract
 
 ```cpp
-// cell-patch.h is private to projects/tests/map-storage.
-CellPatches::Patch patch{CellPatches::capture(base), {
-    {"soil", 1, 0, "garden:sand"},
-    {"markers", 0, 1, "garden:flower"}
-}};
-auto edited = CellPatches::apply(base, patch);
-CE::Maps::save(path, edited);
-// Another process: Maps::load(path) == PatchFixture::expected(), a complete literal.
+try {
+    CE::Maps::validate(snapshot);
+    // Now choose whether to retain/publish this complete value.
+} catch (const CE::Maps::Error& error) {
+    auto owned = error;
+}
 ```
 
-`capture` validates and owns the complete deterministic public `encode(base)`
-bytes. `apply` revalidates/re-encodes the proposed base and compares those bytes
-exactly, including unrelated cells, layer/spawn order and identity. Map ID and
-shape alone are insufficient. No hash/digest or collision claim is involved.
-Only existing cell values can be set/cleared by stable layer ID and finite 2D
-coordinates. No topology, identity, shape, ordering or spawn change is applied.
-The helper performs no file access or input mutation.
+Public `CE_API void validate(const Snapshot&)` in codec.h checks full semantics
+AND current v1 encodability through 8 MiB, including the final LF. It counts
+exact fragments from the same formatter used by encode, without materializing
+output bytes. There is one semantic policy and no guessed size formula, JSON
+DOM, validity cache, I/O, mutation, registry, asset lookup or retained reference.
+This is not allocation-free/noexcept: bounded semantic/path/numeric bookkeeping
+can allocate. Allocation/programming failures propagate distinctly.
 
-Chosen private bounds: 65,536 total base cells, 1,024 edits, public key/dimension/
-layer/spawn limits, and 8 MiB for both witness and candidate canonical encoding.
-Shape and products use divide-before-multiply admission. Batch size and witness
-validity precede base encoding/matching; each layer, coordinate, duplicate and key
-is checked before one deep candidate allocation. A constant one-cell public
-codec probe supplies key grammar validation. Complete output validation may
-reject an otherwise valid batch at the encoded-byte cap. The transient base
-encoding is released before copying the candidate; no candidate is copied per
-edit. Bookkeeping contains at most 1,024 addresses. These cap admitted logical
-storage/work, not allocator overhead or memory already allocated by a caller to
-an oversized aggregate input. A full witness may approach 8 MiB: this is safe
-edit semantics, **not compact storage, persisted patches or recipe replay**.
+Anticipated errors own the existing Error fields, with operation `validate`,
+origin `<snapshot>`, encode-matching category/field/detail/precedence, and no
+input byte offset, native I/O or cleanup context. Existing parse/encode context,
+validation order, wire bytes and strict cheryl.map-fixture v1 limits remain.
+Parse retains its original input/reconstruction budget behavior; a compact parsed
+value can still need validation before assuming its canonical encoding fits.
+Current keys are ASCII identifiers; non-ASCII/control/escaping characters reject
+semantically, while escaped ASCII JSON input decodes to identical canonical keys.
 
-Empty batches require the same exact base match and return an independent copy.
-No-op sets/clears are valid, but repeated addresses reject even for no-ops;
-coordinates on different layers are independent. Opaque witnesses can only be
-captured from valid bases; default/moved-from witnesses reject, copies own bytes,
-and move invalidates its source explicitly. There is no arbitrary witness-byte
-import. Source, witness, edits and prior successful results survive all rejection
-paths. `CellPatches::Error` owns category, operation, field location and optional
-copied public codec context. Anticipated codec rejections translate; allocation
-and programming exceptions propagate unchanged. Shared input mutation requires
-caller synchronization. A rejected application never reaches caller save().
+Private patches retain exact canonical witness bytes, 65,536-cell/1,024-edit/
+8 MiB bounds and deep ownership. Address/size admission precedes one candidate
+copy, then public validate(candidate) supplies all semantic and output-size
+checks. The repeated one-cell serialization probes and final output-buffer
+serialization are gone. Semantic key errors can follow allocation and use
+candidate cell order, not edit order. Useful `$.edits[i].tile` diagnostics retain
+the original public cause at the actual candidate cell and operation validate;
+encoded-limit failures retain `$.candidate`. A later address refusal may precede
+an earlier invalid key. Early key-length guards are admission bounds, with no
+private key grammar. Base/witness/edits/previous results survive failure. Empty
+batches still require exact base encoding and return an independent copy.
 
-These are engineering choices, not inferred user API taste. MS-011 in both
-[decisions.md](decisions.md) and [agent-notes.md](agent-notes.md) records provenance,
-alternatives, costs and the same contract. Confidence is high in exact-match/
-ownership semantics, medium in workload caps; changes affect private callers,
-tests and records only. The witness relies on current canonical wire behavior;
-it is not a stable cross-version retention identity.
+MS-011 and MS-012 in both decision views record this change, confidence, tradeoffs
+and reversible costs. These are engineering choices, not user taste. Confidence
+is high in this Linux/GNU same-formatter mechanism and medium in
+future public API adoption. Public symbol adoption has a source/ABI compatibility
+cost; persisted bytes do not change. No recipe/digest/persisted-patch format or
+sibling integration is selected.
 
-## Actual verification and saved artifacts
+## Actual completed CPU checks
 
-Reused `build/map-storage-u1-debug`, GNU C++23 Debug/Ninja, with one build/test
-job through `/mnt/projects/cheryl-features/scripts/build --`. All native children
-stayed inside that wrapper's shared resource envelope. No resource refusal,
-download, dependency preparation, device/UI run or Engine campaign occurred.
-Complete logs and immediate exit files are under
-`build/map-storage-u1-debug/u6-logs/` (ignored clone-local output). Prior U5 next.md
-is also saved there as `accepted-u5-next.md`; its committed record is unchanged.
-
-Actual commands, all from this clone:
+Every configure/build/native command runs from this clone through
+`/mnt/projects/cheryl-features/scripts/build --`, one job, using the unchanged
+shared adaptive memory/no-swap/admission policy. Output/logs are clone-local;
+existing incremental outputs and accepted prior logs remain intact.
 
 ```sh
 /mnt/projects/cheryl-features/scripts/build -- cmake \
@@ -82,88 +73,123 @@ Actual commands, all from this clone:
   --show-only=json-v1 -R '^map_storage\.'
 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug \
   -R '^map_storage\.' --no-tests=error --output-on-failure --verbose --parallel 1 \
-  --output-junit u6-logs/results.xml
+  --output-junit u7-logs/results.xml
 ```
 
-- `configure.log/.exit`: 0, reused Debug configuration; no pin/source acquisition.
-- `build.log/.exit`: 0, new prototype/test/consumer compiled without warnings.
-- `discovery.json`, `discovery.stderr/.exit`: 0; exactly 162 names. Static JSON
-  comparison with accepted `u4-logs/discovery.json` confirms all 136 names retained,
-  none removed and exactly 26 added (`discovery-comparison.json`).
-- `tests.log/.exit`, `LastTest.log`, `results.xml`: 0, 162 tests, zero failures,
-  skips or disabled cases, 9.89 seconds total. XML case names exactly equal the
-  discovered names. This single run includes both new cases and all regressions;
-  no redundant broad rerun was needed.
-- `compile-link-inputs.txt`: actual Ninja compile/link blocks show patch/consumer
-  compiling against only the declared public Engine include root, inheriting
-  `CE_ENGINE_STATIC` from Cheryl::MapStorageCPU, with no private JSON/FileOps
-  includes. The process consumer links only `libmap_storage_patches.a` and the
-  existing Engine-owned-source `libmap_storage_codec.a`, no gtest/Engine DSO or
-  native/graphics startup. Existing tests retain pinned gtest as before. The
-  prototype targets live after the tests-on guard; the tests-off CPU path is
-  unchanged and was not reconfigured/rerun.
-- `unchanged-public-and-accepted-consumers.diff/.exit`: empty / 0 against accepted
-  U5 for all Engine source (including shared consumer) and existing codec/file/
-  CLI checks. Source inspection plus prior accepted U5 evidence establish this
-  unchanged boundary; no new shared-Engine claim is inferred from the CPU run.
-- `commands.txt`: exact top-level native argv. Process-level `.command`, stdout,
-  stderr and `.exit` files are retained in the two unique child directories below.
+`build/map-storage-u1-debug/u7-logs/` retains configure/build/discovery/tests logs
+and immediate `.exit` files, all 0. Build had no compiler warnings. Discovery
+comparison with accepted U6 confirms all 162 names retained and exactly nine
+added. XML confirms all 171 names executed with zero failures, skips or disabled
+cases, 11.77 seconds total. `LastTest.log` and verbose `tests.log` retain complete
+diagnostics; deliberate rejection fixtures are passing assertions, not failed
+checks. `cpu-summary.json`, `compile-link-inputs.txt`, `discovery-comparison.json`
+and `source-preservation.json` retain static source/selection/input evidence.
+The semantic function is text-identical except its private rename; formatter
+fragments/order are identical after indentation normalization against U6.
 
-New gtest coverage includes full literal two-cell reconstruction and unchanged
-metadata/order/spawns/empties; canonical witness bytes; source/witness/edit/result
-lifetime isolation; empty batches; clear/no-op behavior; duplicate and distinct-
-layer coordinates; missing/overlong layer, coordinate maxima, invalid/overlong/
-maximum keys; default/moved witness; invalid base/shape/count/product admission;
-exact 65,536-cell and 1,024-edit success; 1,025-edit refusal; overencoded base and
-candidate; owning diagnostic copies surviving all inputs. Exact-base mismatch
-cases include same-ID/same-shape unrelated cell changes, spawn-only coordinate/
-name changes and layer reordering, plus identity and reshaped values. Refusal
-checks compare every input and previously held successful result after failure.
-The near-limit case fills 63,200 cells with 128-byte keys, then attempts 1,024
-additional sets; it specifically reaches final encoded-output rejection.
+New direct checks cover a valid complete garden, semantic/product/key failures
+and precedence, exact encoded sizes 8 MiB minus one/exactly/plus one, maximum keys,
+escaped ASCII input and rejected UTF-8/quote/backslash/control/NUL keys, owning
+error copies, input and previously held result preservation. The ninth case
+checks patch address admission preceding candidate key checks. All accepted
+codec/file/CLI and private patch/process regressions passed once; no redundant
+broad rerun is planned.
 
-Actual independent process evidence (four invocations, each exit 0):
+## Actual public consumer and shared boundary checks
 
-- `patch-checks/round_trip-fc80f94a0bf39d2a/`: author applied the two garden edits,
-  compared the full independent literal, checked-saved, destroyed/mutated source
-  and patch, and reloaded. Separate `fresh-verify` loaded and compared that literal
-  (all twelve cells/empties, both layers/order and both spawns) and checked two
-  independent loaded instances. Harness verified unchanged bytes during verify.
-- `patch-checks/preservation-fcc1f7e7fbdcad98/`: preserve seeded distinct valid
-  `garden:predecessor`, captured exact bytes, and attempted save(apply(...)) using
-  a same-ID/same-shape base with unrelated soil cell 4 changed. The expected
-  `BaseMismatch operation=apply location=$.base` was caught before save; exact
-  predecessor bytes and full reload were unchanged. Separate `fresh-predecessor`
-  verified the literal and the harness checked verify did not change bytes.
-  Expected refusal stderr is deliberate coverage, not a failed test/checkpoint.
+Reused the existing tests-off CPU and U5 shared-Engine outputs. Actual commands:
 
-The unchanged harness is
-`projects/engine/tests/map-storage-consumer/check.cmake`; it launches the new
-private executable, not a function pretending to be main. Existing CLI process
-regressions were retained in the 162-case run. No new fault knob or public patch
-API was introduced.
+```sh
+/mnt/projects/cheryl-features/scripts/build -- cmake \
+  -S projects/engine/tests/map-storage-consumer -B build/map-storage-u4-consumer-debug \
+  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -DMAP_STORAGE_BUILD_TESTS=OFF -DMAP_STORAGE_USE_SHARED_ENGINE=OFF \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u4-consumer-debug \
+  --target map_storage_consumer map_storage_header_probes --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u4-consumer-debug \
+  -R '^map_storage.consumer.validation$' --no-tests=error --output-on-failure \
+  --verbose --parallel 1 --output-junit u7-logs/results.xml
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u5-shared-debug \
+  --target map_storage_consumer map_storage_header_probes --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u5-shared-debug \
+  --show-only=json-v1 -R '^map_storage.consumer\.'
+ASAN_OPTIONS=detect_leaks=0 /mnt/projects/cheryl-features/scripts/build -- ctest \
+  --test-dir build/map-storage-u5-shared-debug -R '^map_storage.consumer\.' \
+  --no-tests=error --output-on-failure --verbose --parallel 1 \
+  --output-junit u7-logs/results.xml
+/mnt/projects/cheryl-features/scripts/build -- python3 \
+  build/map-storage-u5-shared-debug/u7-logs/check-exports.py
+```
 
-## Boundaries and next concrete action
+- `build/map-storage-u4-consumer-debug/u7-logs/`: configure/build/tests and immediate
+  exits all 0. The tests-off source-only target builds the real codec/file sources
+  with C++23, public includes and inherited CE_ENGINE_STATIC, pinned JSON private;
+  no gtest/Python/normal Engine dependency. Three header-first probes compiled,
+  including codec.h first/repeated with a call to validate. The standalone public
+  consumer's validation case passed (1/1, 0.02 s). `compile-inputs.json` and
+  `link-inputs.txt` retain actual static usage requirements and CPU-only link edges.
+- `build/map-storage-u5-shared-debug/u7-logs/`: build/discovery/tests/exports and
+  immediate exits all 0. Build automatically regenerated the modified consumer
+  CMake; no separate shared configure was issued. The existing scoped bootstrap
+  retained the normal shared Engine producer and disabled unrelated campaigns,
+  docs/SDK/startup/workers/native/graphics/UI/audio/apps. The two production map
+  objects, actual DSO and same consumer/header probes rebuilt without warnings.
+  All three shared probes compiled with import visibility, without consumer
+  CE_ENGINE_STATIC/CE_BUILDING_ENGINE patches. Discovered and executed selection
+  is exactly memory, round_trip, preservation and validation: 4/4, no skips,
+  0.42 s total. Existing wire/value/file behavior and the new operation execute
+  through the actual shared producer, not the alternate CPU archive.
+- Shared tests alone used invocation-local `ASAN_OPTIONS=detect_leaks=0` for the
+  accepted runner ptrace/LeakSanitizer limitation. Normal Debug Engine ASan/UBSan
+  instrumentation/runtimes remain. No global environment/flags changed, and no
+  unchanged known leak failure was repeated. This establishes no leak acceptance.
+- Both validation invocations returned 0 and reported owning InvalidValue /
+  operation `validate` / origin `<snapshot>` / `$.layers[1].cells[2]` after both original
+  invalid snapshot and caught error disappeared. Literal complete garden values
+  remained unchanged. Logs for actual native children are in tests-off
+  `consumer-checks/validation-81a8f86a9c0df831/` and shared
+  `consumer-checks/validation-91813bb1037eeeeb/`, with argv, stdout/stderr and exits.
+  The shared four cases launch six native children in all; the old three behaviors
+  retain their full literal fresh-process and predecessor checks.
+- The wrapped export script sequentially runs nm/readelf/ldd, retaining exact argv,
+  complete outputs and immediate per-tool exits. It confirms one normal Engine
+  source compile entry per codec/adapter, CE_BUILDING_ENGINE on the producer,
+  no private JSON/test includes or visibility patches on the consumer, and no
+  alternate CPU archive/gtest in its link. The actual Engine dynamically exports
+  `CE::Maps::validate(CE::Maps::Snapshot const&)` as FUNC GLOBAL DEFAULT; nm reports
+  T and the consumer U. Dynamic/ldd evidence resolves libcheryl-engine.so.4 to
+  this exact clone-build engine directory. `validate-exports.txt`, compile/link
+  inputs and exports.log preserve the checks; all five symbol/loader tools exit 0.
 
-No blockers remain for local U6 verification. Stop after the coherent local commit
-for coordinator source/evidence review of MS-011, the private helper and these
-162 outcomes. Publisher transport stays with the coordinator. Do not begin a
-new format, persisted recipe/patch, SDK export or sibling integration automatically.
+All full diagnostics, XML results and LastTest snapshots remain in those
+clone-local logs. Initial native queue waits were retained to completion, not
+cancelled/relaunched. No exit 75, failed prerequisite, failed native check,
+dependency retrieval, pin change, system install, subagent, protected write,
+publication or sibling integration occurred. The only post-CPU-build test-source
+change was an obsolete comment correction; executable code remained identical.
 
-Future generated-base/recipe retention needs its own assigned semantic domain,
-algorithm/version/input provenance, exact identity/revision and old-version replay
-or migration/baking policy. This prototype retains full canonical bytes and saves
-only a complete ordinary snapshot; it proves none of that compact persistence.
-No procedural/cave code, N-D flattening, tilemap or lifecycle dependency exists.
+## Receipt, limits and next concrete action
 
-U5 evidence remains accepted: three actual shared-Engine consumer cases, three
-shared and three CPU self-contained header probes, exported public functions/
-Error RTTI and exact local DSO ownership. Its initial three LeakSanitizer ptrace
-failures and invocation-local `ASAN_OPTIONS=detect_leaks=0` rerun remain recorded
-in accepted U5 logs/commit. U6 uses the standalone CPU Debug target without Engine
-ASan/UBSan flags; it sets no global or invocation leak environment workaround and
-does not establish leak/sanitizer acceptance. Static Engine, non-Linux, other
-ABI/toolchains and installed SDK remain unverified. Linux caller-controlled,
-serialized directory/native-path/leaf-symlink/exclusive-stage/checked-I/O/one-rename
-contracts stay intact. No durability/fsync, hostile-directory race, network-FS or
-multiwriter guarantee is added; failures after a successful save are not rollback.
+`feature-development/queue/three-commits-20261024/MAP-STORAGE-U7.json` reports ready
+and checks_passed=true only after the above checks. Its nonempty evidence paths
+point to actual saved native logs; this is execution reporting, not coordinator
+source acceptance, SDK acceptance or proof of another platform. No U7 blocker
+remains. Next concrete action: verify this coherent checkpoint's committed
+receipt and saved evidence. The finite queue controller alone selects the next
+pinned U8 Engine patch unit after this run drains and its receipt/checkpoint gate
+passes. Stop here; do not start it, another agent, or sibling integration during
+U7. Publisher owns transport.
+
+Prior U5 actual shared-Engine results/RTTI/header evidence and initial LeakSanitizer
+ptrace failures remain preserved. U6's full 162-case record is archived as
+u7-logs/accepted-u6-next.md and in its accepted commit. U7 CPU Debug checks are
+unsanitized. Full static Engine, non-Linux, installed SDK/other toolchains and
+leak checking remain unverified. Allocation/programming exceptions propagate by
+source inspection; no OOM/allocation-exhaustion test was attempted. Counting
+validation still traverses all bounded values and allocates small bookkeeping;
+it promises neither allocation-free nor constant-time validation. Linux file
+atomicity remains the accepted caller-controlled serialized-directory profile,
+without durability/fsync, hostile races, network-FS or multiwriter guarantees.
+The full patch witness may cost 8 MiB and is not compact persistence. No new
+format, public patch/recipe framework, shared backend or protected change follows.

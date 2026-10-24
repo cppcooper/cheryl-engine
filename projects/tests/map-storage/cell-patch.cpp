@@ -93,8 +93,6 @@ namespace CellPatches {
         std::set<Address> addresses;
         std::vector<Address> resolved;
         resolved.reserve(patch.edits.size());
-        // Reuse public key validation without copying a large snapshot per edit.
-        Maps::Snapshot probe{"patch:tile-check", 1, 1, {{"cell", {std::nullopt}}}, {}};
         for (std::size_t i = 0; i < patch.edits.size(); ++i) {
             const auto& edit = patch.edits[i];
             const auto location = edit_location(i);
@@ -115,22 +113,26 @@ namespace CellPatches {
                 reject(Code::InvalidEdit, "apply", location, "duplicate edit address");
             if (edit.tile && edit.tile->size() > Maps::max_key_bytes)
                 reject(Code::InvalidEdit, "apply", location + ".tile", "tile key exceeds key budget");
-            probe.layers[0].cells[0] = edit.tile;
-            try {
-                (void)Maps::encode(probe);
-            } catch (const Maps::Error& error) {
-                throw Error(Code::InvalidEdit, "apply", location + ".tile", "invalid logical tile key", error);
-            }
             resolved.push_back(address);
         }
 
-        auto candidate = base; // One independent snapshot, only after full batch validation.
+        // Admission/address checks precede this copy; semantic key checks follow it.
+        auto candidate = base;
         for (std::size_t i = 0; i < resolved.size(); ++i)
             candidate.layers[resolved[i].first].cells[resolved[i].second] = patch.edits[i].tile;
         if (!patch.edits.empty()) {
             try {
-                (void)Maps::encode(candidate);
+                Maps::validate(candidate);
             } catch (const Maps::Error& error) {
+                if (error.code == Maps::Code::InvalidValue) {
+                    for (std::size_t i = 0; i < resolved.size(); ++i) {
+                        const auto location = "$.layers[" + std::to_string(resolved[i].first) +
+                                              "].cells[" + std::to_string(resolved[i].second) + "]";
+                        if (error.location == location)
+                            throw Error(Code::InvalidEdit, "apply", edit_location(i) + ".tile",
+                                        "invalid logical tile key", error);
+                    }
+                }
                 throw Error(error.code == Maps::Code::LimitExceeded ? Code::LimitExceeded : Code::InvalidEdit,
                             "apply", "$.candidate", "complete candidate failed public codec validation", error);
             }
