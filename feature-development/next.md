@@ -1,8 +1,8 @@
 # Magic current handoff
 
-MAGIC-M8 is active on reviewed9826abc. Checkpoint1 implements typed animation and
-exact Disguise/Attack-restriction dispelling;32 focused cases pass (core-03.log).
-No ready receipt yet. Next: ordinary connected book/animate/restrict/dispel/command
-caller, combined retained item/perception/pending continuation and tighter boundary
-checks, then one accumulated M1–M8 campaign and final truthful receipt. Optional
-pending interruption stays unselected. All earlier acceptance gaps persist.
+MAGIC-M8 cores are checked:48 lifecycle cases and real connected caller pass in
+magic/logs/M8/connected-01.log. Owned servant, exact restriction/disguise dispels,
+old item/event/perception and paid annular continuation survive owner destruction.
+Next: the recorded optional exact pending interruption, then one accumulated
+M1–M8 campaign, final hashes/receipt and idle handoff. No new task/controller.
+All prior graphical/fun/Engine/leak/platform/allocator/durability gaps persist.

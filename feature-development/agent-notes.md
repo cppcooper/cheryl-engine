@@ -1486,3 +1486,32 @@ raised quota. Existing scalar/annular/perceptual behavior awaits the planned sin
 accumulated campaign. Connected caller and combined checkpoint/history evidence
 are next; no GUI/fun/AI/physics/Engine integration, leak/platform/allocator failure
 or disk/process/crash safety acceptance follows from these focused checks.
+
+
+M8 checkpoint2: connected-01 executes48/48 lifecycle cases and the ordinary
+lifecycle caller (2/2 CTest), following successful build-06/07. The caller uses
+actual M4 accepted revision1 (2000ms), revision2 (3000ms) and a failed draft;
+casts revision1 under separate authority. Original source/book/learner/catalog
+and host are destroyed after checkpoint. Restore retains active servant, spent
+remains, Attack restriction, frozen selective disguise, A-only witness, armed rune/
+admitted event and paid annular Fire+Slow due100. Old command/influence/ticket/event
+capabilities refuse. Fresh dispels enable3dp attack50->47 and change B wall->arch
+without physical/knowledge leakage. Rune47->59 once; B60->56/slow750 until300;
+servant3:1 expires200, replacement3:2 survives; caster mana100->30->10.
+
+M8-037 refinement: the new owned LifeSnapshot projection now charges8 result-copy
+units (base292+8=300), refuses at299, and remains non-restorable. Command validates
+owner/servant and resolves attack with one shared meter: minimal four-servant
+fixture exact326/one-short325. Long64-byte dispel key with13-operation catalog
+uses1148/1147; ordinary animation uses442/441. Exact four remains/servants and
+sixteen actors, zero/downward/horizon caps, compiler input/work/storage budgets,
+late failed advance preserving servant/slow/paid queue and departed-owner
+checkpoint are executed. Existing fixed ceilings remain unchanged. No accumulated
+campaign yet; its historical names/248 prior cases will run once at final source.
+
+Optional M8-INTERRUPT is now selected in the owned plan after both cores pass,
+with a caller recorded before dependent APIs. It reuses the existing pending
+records and introduces only a typed immediate standalone spell and opaque bound
+pending input. No new queue, callback registry, refund or arbitrary cancellation
+surface is selected. About18 minutes elapsed at selection; the remaining runner
+ceiling remains controlling. No earlier completed plan is extended.

@@ -116,3 +116,10 @@ M8 checkpoint1 executes32 focused lifecycle cases (1/1 CTest entry). The connect
 ordinary caller, extended continuation checks and accumulated regression campaign
 remain in progress; no ready receipt is asserted here. Initial native build/test
 failures are preserved under magic/logs/M8.
+
+
+M8 connected continuation now passes48 cases plus one ordinary caller (2/2 focused
+entries). M8-037 additionally meters the owned life projection at300/299 work and
+shares one meter for command+attack (326/325 minimal fixture). Both cores are
+checked. The optional exact pending-interruption slice is selected next in the
+owned M8 plan; accumulated regressions/final receipt remain pending.

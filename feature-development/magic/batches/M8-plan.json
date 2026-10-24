@@ -22,8 +22,11 @@
   "stretch": [
     {
       "id": "M8-INTERRUPT",
-      "selected": false,
-      "reason": "Optional only after two cores checked; no dependency scaffolding selected."
+      "selected": true,
+      "reason": "Both cores and ordinary connected continuation checked in connected-01.log (48 cases+caller); about18 minutes elapsed, sufficient bounded time remains.",
+      "proposed_caller": "Queue a paid fire burst due100, bind opaque exact pending action, checkpoint/destroy/restore, reject old ref, freshly bind and cast Interrupt paying10; at100 no injury occurs and prior paid release observation remains unchanged.",
+      "bounds": "Immediate standalone spoken; exact incarnation/action/caster-generation role; reuses8 pending slots, no new mutable registry; no refund.",
+      "rough_effort_minutes": 10
     }
   ],
   "allocation": "New mutable records and staging use inline fixed arrays; immutable plan handles reuse existing owners. Existing cold strings/control blocks remain standalone standard allocation; no Engine migration claim.",

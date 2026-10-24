@@ -17,6 +17,15 @@ namespace Magic::Reference {
             ++world.revision;
         }
     }
+    std::expected<LifeSnapshot, Failure> ReferenceHost::life() const {
+        try {
+            Meter meter(limits_);
+            meter.spend(8);
+            return state_.life;
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
     std::expected<RemainsId, Failure> ReferenceHost::add_remains(Point position) {
         try {
             Meter meter(limits_);

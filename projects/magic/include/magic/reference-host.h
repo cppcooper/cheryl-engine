@@ -512,7 +512,7 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<void, Failure> dismiss_created(ActorId owner, ObjectId object);
         [[nodiscard]] std::expected<RemainsId, Failure> add_remains(Point position);
         [[nodiscard]] std::expected<void, Failure> remove_remains(RemainsId remains);
-        [[nodiscard]] LifeSnapshot life() const noexcept { return state_.life; }
+        [[nodiscard]] std::expected<LifeSnapshot, Failure> life() const;
         [[nodiscard]] std::expected<ServantCommand, Failure> command_authority(ActorId owner, ActorId servant) const;
         [[nodiscard]] std::expected<AttackObserved, Failure> command_attack(const ServantCommand& command, ActorId target);
         [[nodiscard]] std::expected<void, Failure> dismiss_servant(const ServantCommand& command);

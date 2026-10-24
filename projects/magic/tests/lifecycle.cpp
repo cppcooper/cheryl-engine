@@ -89,18 +89,18 @@ namespace {
         R::Request animation() const { return {caster, {}, {}, {}, remains}; }
         R::ActorId spawn() {
             cast(plan(animate()), animation());
-            return host->life().servants[0].actor;
+            return take(host->life()).servants[0].actor;
         }
         R::Observed cast(PlanHandle p, R::Request request) { return take(host->release(take(host->prepare(p, request)))); }
         template <class F> void unchanged(F run) {
             auto w = host->snapshot();
-            auto l = host->life();
+            auto l = take(host->life());
             auto m = take(host->inspect_mechanics());
             auto p = take(host->inspect_perception());
             auto i = host->items();
             run();
             check(
-                w == host->snapshot() && l == host->life() && m == take(host->inspect_mechanics()) &&
+                w == host->snapshot() && l == take(host->life()) && m == take(host->inspect_mechanics()) &&
                 p == take(host->inspect_perception()) && i == host->items()
             );
         }
@@ -179,10 +179,10 @@ int main() {
         auto preview = take(f.host->preview(plan(animate()), f.animation()));
         check(
             preview.mana_cost == 10 && preview.due_tick == 0 && preview.usage.selected_targets == 1 && preview.usage.selector_work == 20 &&
-            f.host->snapshot() == before && !f.host->life().remains[0].spent
+            f.host->snapshot() == before && !take(f.host->life()).remains[0].spent
         );
         auto report = f.cast(plan(animate()), f.animation());
-        auto s = f.host->life();
+        auto s = take(f.host->life());
         auto id = s.servants[0].actor;
         check(
             id == R::ActorId{2, 1} && s.remains[0].spent && s.servants[0].instance == 1 && s.servants[0].action == 1 &&
@@ -195,7 +195,7 @@ int main() {
         take(f.host->advance_to(199));
         check(f.host->snapshot().actors[2].present);
         take(f.host->advance_to(200));
-        check(!f.host->snapshot().actors[2].present && f.host->life().remains[0].spent && report->after.actors[2].present);
+        check(!f.host->snapshot().actors[2].present && take(f.host->life()).remains[0].spent && report->after.actors[2].present);
     });
     test("exact resources and one-short preserves claim then valid action", [] {
         Fixture exact({}, 10);
@@ -303,7 +303,7 @@ int main() {
         f.unchanged([&] { refuses(f.host->prepare(plan(animate()), req), R::Error::ServantLimit); });
         ok(f.host->dismiss_servant(take(f.host->command_authority(f.caster, s))));
         f.cast(plan(animate()), req);
-        check(f.host->life().instances_issued == 2 && f.host->life().remains[0].spent);
+        check(take(f.host->life()).instances_issued == 2 && take(f.host->life()).remains[0].spent);
     });
     test("instance zero and exhausted one preserve spent and new claims", [] {
         R::HostLimits l;
@@ -388,14 +388,14 @@ int main() {
         servant.health = 0;
         ok(f.host->update_actor(s, servant));
         refuses(f.host->command_attack(command, f.target), R::Error::Permission);
-        check(f.host->life().remains[0].spent && !f.host->life().remains[1].present);
+        check(take(f.host->life()).remains[0].spent && !take(f.host->life()).remains[1].present);
     });
     test("dismiss remove reuse and old absolute cleanup protect replacements", [] {
         Fixture f;
         auto s = f.spawn();
         auto command = take(f.host->command_authority(f.caster, s));
         ok(f.host->dismiss_servant(command));
-        check(f.host->life().remains[0].spent && !f.host->life().servants[0].instance);
+        check(take(f.host->life()).remains[0].spent && !take(f.host->life()).servants[0].instance);
         auto replacement = take(f.host->add_actor({{10, 0}, 70}));
         check(replacement == R::ActorId{2, 2});
         take(f.host->advance_to(200));
@@ -513,7 +513,7 @@ int main() {
         auto host = take(R::ReferenceHost::create(game()));
         ok(host->restore(cp));
         check(
-            host->life().remains[0].spent && host->snapshot().actors[0].data.mana == 70 &&
+            take(host->life()).remains[0].spent && host->snapshot().actors[0].data.mana == 70 &&
             host->snapshot().actors[target.slot].data.health == 46
         );
         refuses(host->release(ticket), R::Error::ForeignTicket);
@@ -525,7 +525,7 @@ int main() {
         take(host->command_attack(command, target));
         check(host->snapshot().actors[target.slot].data.health == 43 && old->after.actors[target.slot].data.health == 46);
         take(host->advance_to(200));
-        check(!host->snapshot().actors[servant.slot].present && host->life().remains[0].spent);
+        check(!host->snapshot().actors[servant.slot].present && take(host->life()).remains[0].spent);
     });
     test("checkpoint schema refusal preserves destination and usable old output", [] {
         Fixture f;
@@ -560,7 +560,7 @@ int main() {
         Fixture f;
         refuses(f.host->release({}), R::Error::InvalidTicket);
         f.cast(accepted->plan(), f.animation());
-        check(f.host->life().servants[0].until_tick == 200);
+        check(take(f.host->life()).servants[0].until_tick == 200);
     });
     test("exact selector and selected-target boundaries", [] {
         R::HostLimits l;
@@ -589,9 +589,318 @@ int main() {
         l.work = work - 1;
         Fixture shorted(l);
         const auto before = shorted.host->snapshot();
-        const auto life = shorted.host->life();
+        const auto life = take(shorted.host->life());
         refuses(shorted.host->prepare(p, shorted.animation()), R::Error::WorkLimit);
-        check(shorted.host->snapshot() == before && shorted.host->life() == life);
+        check(shorted.host->snapshot() == before && take(shorted.host->life()) == life);
+    });
+    test("four exact remains and servants retain distinct claims and generations", [] {
+        Fixture f;
+        std::array<R::RemainsId, 4> remains{
+            f.remains, take(f.host->add_remains({-10, 0})), take(f.host->add_remains({0, 10})), take(f.host->add_remains({0, -10}))
+        };
+        for (std::size_t i = 0; i < 4; ++i) {
+            auto req = f.animation();
+            req.remains = remains[i];
+            f.cast(plan(animate()), req);
+            const auto state = take(f.host->life());
+            check(
+                state.servants[i].instance == i + 1 && state.servants[i].actor == R::ActorId{static_cast<std::uint32_t>(i + 2), 1} &&
+                state.remains[i].spent
+            );
+        }
+        check(take(f.host->life()).instances_issued == 4 && f.host->snapshot().actors[0].data.mana == 60);
+        f.unchanged([&] { refuses(f.host->add_remains({-20, 0}), R::Error::RemainsLimit); });
+        auto saved = take(f.host->life());
+        take(f.host->advance_to(200));
+        for (std::size_t i = 0; i < 4; ++i)
+            check(
+                !f.host->snapshot().actors[i + 2].present && take(f.host->life()).remains[i].spent && saved.servants[i].instance == i + 1
+            );
+    });
+    test("sixteen actor exact capacity then one-short claim is preserved", [] {
+        Fixture f;
+        std::array<R::ActorId, 13> extras;
+        for (std::size_t i = 0; i < 13; ++i)
+            extras[i] = take(f.host->add_actor({{static_cast<std::int32_t>(1000 + i * 100), 0}}));
+        auto last = f.spawn();
+        check(last == R::ActorId{15, 1});
+        auto second = take(f.host->add_remains({-10, 0}));
+        auto req = f.animation();
+        req.remains = second;
+        f.unchanged([&] { refuses(f.host->prepare(plan(animate()), req), R::Error::ActorLimit); });
+        ok(f.host->remove_actor(extras[0]));
+        f.cast(plan(animate()), req);
+        check(take(f.host->life()).servants[1].actor == R::ActorId{2, 2});
+    });
+    test("owned life projection exact300 work and one-short299", [] {
+        R::HostLimits l;
+        l.work = 300;
+        Fixture exact(l);
+        check(take(exact.host->life()).remains[0].id == R::RemainsId{0, 1});
+        l.work = 299;
+        Fixture shorted(l);
+        auto before = shorted.host->snapshot();
+        refuses(shorted.host->life(), R::Error::WorkLimit);
+        check(shorted.host->snapshot() == before);
+    });
+    test("complete command exact326 work and one-short325 with actual wardless injury", [] {
+        auto scenario = [](std::size_t work) {
+            Catalog c;
+            c.operations = {{Primitive::Animate, "a"}};
+            R::HostLimits l;
+            l.work = work;
+            auto host = take(R::ReferenceHost::create(c, l));
+            auto owner = take(host->add_actor({{0, 0}, 100, 100, 100, 1000, false, true, true}));
+            auto target = take(host->add_actor({{20, 0}, 50}));
+            auto source = replace(animate(), "mark", "r");
+            source = replace(source, "on mark", "on r");
+            auto p = take(compile(source, c));
+            for (auto position : {R::Point{10, 0}, R::Point{-10, 0}, R::Point{0, 10}, R::Point{0, -10}}) {
+                auto remains = take(host->add_remains(position));
+                take(host->release(take(host->prepare(p, {owner, {}, {}, {}, remains}))));
+            }
+            auto servant = take(host->life()).servants[3].actor;
+            auto command = take(host->command_authority(owner, servant));
+            auto before = host->snapshot();
+            auto result = host->command_attack(command, target);
+            if (work == 326)
+                check(
+                    result && (*result)->damage == R::DamageResolution{3, 0, 3} && host->snapshot().actors[target.slot].data.health == 47
+                );
+            else {
+                refuses(result, R::Error::WorkLimit);
+                check(host->snapshot() == before);
+                ok(host->dismiss_servant(command));
+            }
+        };
+        scenario(326);
+        scenario(325);
+    });
+    test("dispel exact1148 work and one-short1147 preserves instance payment", [] {
+        for (auto work : {1148u, 1147u}) {
+            R::HostLimits l;
+            l.work = work;
+            Fixture f(l);
+            auto ref = f.restrict_actor(f.target);
+            auto c = game();
+            c.operations.back().key = std::string(64, 'd');
+            ok(f.host->replace_catalog(c));
+            auto p = take(compile(dispel(), c));
+            R::Request request{f.caster, {}, {}, {}, {}, ref};
+            if (work == 1148) {
+                auto result = f.cast(p, request);
+                check(result->usage.work == 1148 && f.host->snapshot().actors[0].data.mana == 80);
+            } else
+                f.unchanged([&] { refuses(f.host->prepare(p, request), R::Error::WorkLimit); });
+        }
+    });
+    test("new host ceilings reject upward knobs and support downward zero", [] {
+        R::HostLimits l;
+        l.remains = 5;
+        refuses(R::ReferenceHost::create(game(), l), R::Error::InvalidLimits);
+        l = {};
+        l.servants = 5;
+        refuses(R::ReferenceHost::create(game(), l), R::Error::InvalidLimits);
+        l = {};
+        l.max_servant_instance = 1'000'001;
+        refuses(R::ReferenceHost::create(game(), l), R::Error::InvalidLimits);
+        l = {};
+        l.remains = 0;
+        l.servants = 0;
+        l.max_servant_instance = 0;
+        auto host = take(R::ReferenceHost::create(game(), l));
+        auto cp = take(host->checkpoint());
+        ok(host->restore(cp));
+        check(take(host->life()).instances_issued == 0);
+    });
+    test("action ticket revision exhaustion preserves claims and unrelated valid actions", [] {
+        for (unsigned mode = 0; mode < 3; ++mode) {
+            R::HostLimits l;
+            if (mode == 0)
+                l.max_action = 0;
+            if (mode == 1)
+                l.max_ticket = 0;
+            if (mode == 2)
+                l.max_revision = 3;
+            Fixture f(l);
+            auto before = f.host->snapshot();
+            auto life = take(f.host->life());
+            if (mode == 1)
+                refuses(f.host->prepare(plan(animate()), f.animation()), R::Error::TicketLimit);
+            else {
+                auto t = take(f.host->prepare(plan(animate()), f.animation()));
+                refuses(f.host->release(t), mode == 0 ? R::Error::ActionLimit : R::Error::RevisionLimit);
+                ok(f.host->discard(t));
+            }
+            check(f.host->snapshot() == before && take(f.host->life()) == life);
+            if (mode != 2)
+                check(take(f.host->try_attack(f.caster, f.target))->damage.health_lost == 3);
+        }
+    });
+    test("new compiler source token storage work exact and one-short", [] {
+        for (auto source : {animate(), dispel()}) {
+            auto p = plan(source);
+            Options exact;
+            exact.limits.source_bytes = source.size();
+            exact.limits.tokens = p->metrics().tokens;
+            exact.limits.work = p->metrics().work;
+            exact.limits.retained_bytes = p->metrics().retained_bytes;
+            check(bool(compile(source, game(), exact)));
+            auto less = exact;
+            --less.limits.source_bytes;
+            refuses(compile(source, game(), less), Code::SourceLimit);
+            less = exact;
+            --less.limits.tokens;
+            refuses(compile(source, game(), less), Code::TokenLimit);
+            less = exact;
+            --less.limits.work;
+            refuses(compile(source, game(), less), Code::WorkLimit);
+            less = exact;
+            --less.limits.retained_bytes;
+            refuses(compile(source, game(), less), Code::StorageLimit);
+        }
+    });
+    test("retained plan runtime bytes exact and one-short refusal", [] {
+        auto p = plan(animate());
+        R::HostLimits l;
+        l.plan_bytes = p->metrics().retained_bytes;
+        Fixture f(l);
+        f.spawn();
+        take(f.host->checkpoint());
+        --l.plan_bytes;
+        Fixture shorted(l);
+        shorted.unchanged([&] { refuses(shorted.host->prepare(p, shorted.animation()), R::Error::PlanLimit); });
+    });
+    test("extraneous actor aim object remains and influence roles refuse", [] {
+        Fixture f;
+        auto req = f.animation();
+        req.contact = f.target;
+        refuses(f.host->prepare(plan(animate()), req), R::Error::UnsupportedBinding);
+        req = f.animation();
+        req.aim = R::Point{0, 0};
+        refuses(f.host->prepare(plan(animate()), req), R::Error::UnsupportedBinding);
+        auto ref = f.restrict_actor(f.target);
+        req = f.animation();
+        req.influence = ref;
+        refuses(f.host->prepare(plan(animate()), req), R::Error::UnsupportedBinding);
+        req = {f.caster, f.target, {}, {}, f.remains};
+        refuses(f.host->prepare(plan(contact("heal 12 hp instant")), req), R::Error::UnsupportedBinding);
+    });
+    test("dispel live primitive mismatch permission and subject capability refuse", [] {
+        Fixture f;
+        auto ref = f.restrict_actor(f.target);
+        auto p = plan(dispel());
+        R::Request req{f.caster, {}, {}, {}, {}, ref};
+        auto c = game();
+        c.operations.back().primitive = Primitive::Heal;
+        c.operations.erase(c.operations.begin());
+        ok(f.host->replace_catalog(c));
+        f.unchanged([&] { refuses(f.host->prepare(p, req), R::Error::SchemaMismatch); });
+        c = game();
+        c.subject = false;
+        ok(f.host->replace_catalog(c));
+        refuses(f.host->prepare(p, req), R::Error::SchemaMismatch);
+        check(!compile(dispel(), c));
+        ok(f.host->replace_catalog(game()));
+        auto caster = f.host->snapshot().actors[0].data;
+        caster.can_cast = false;
+        ok(f.host->update_actor(f.caster, caster));
+        refuses(f.host->prepare(p, req), R::Error::Permission);
+        caster.can_cast = true;
+        ok(f.host->update_actor(f.caster, caster));
+        f.cast(p, req);
+    });
+    test("new unsupported combinations retain precise old capability boundaries", [] {
+        for (auto source : {animate(), dispel()}) {
+            check(!compile(replace(source, "after 0 ms", "after 10 ms"), game()));
+            check(!compile(replace(source, "spoken release", "engraved item-touch charges 1 release"), game()));
+            auto mixed = replace(source, "} ; } }", "} ; on mark bridge Common@1 { heal 12 hp instant } ; } }");
+            check(!compile(mixed, game()));
+        }
+        Fixture f;
+        refuses(f.host->install(plan(animate()), f.caster), R::Error::UnsupportedEntry);
+        refuses(f.host->install(plan(dispel()), f.caster), R::Error::UnsupportedEntry);
+    });
+    test("disguise exact ref cannot target reused object or later instance", [] {
+        Fixture f;
+        auto object = take(f.host->add_object({}));
+        auto show = plan(
+            area("show subject captured at release rechecked at activation as stone-wall for 2000 ms to this audience frozen at activation")
+        );
+        f.cast(show, {f.caster, {}, R::Point{0, 0}, object});
+        auto old = take(f.host->bind_disguise(1, object));
+        ok(f.host->remove_object(object));
+        auto replacement = take(f.host->add_object({}));
+        check(replacement == R::ObjectId{0, 2});
+        f.cast(show, {f.caster, {}, R::Point{0, 0}, replacement});
+        auto current = take(f.host->bind_disguise(2, replacement));
+        f.unchanged([&] {
+            refuses(f.host->prepare(plan(dispel("disguise")), {f.caster, {}, {}, {}, {}, old}), R::Error::MissingInfluence);
+        });
+        f.cast(plan(dispel("disguise")), {f.caster, {}, {}, {}, {}, current});
+        check(take(f.host->perceive(f.target, replacement)).form == Appearance::OpenArch);
+    });
+    test("disguise removal visibly changes unrevealed observer and retains dated knowledge", [] {
+        Fixture f;
+        auto b = take(f.host->add_actor({{30, 0}, 60}));
+        auto object = take(f.host->add_object({}));
+        f.cast(
+            plan(area(
+                "show subject captured at release rechecked at activation as stone-wall for 2000 ms to this audience frozen at activation"
+            )),
+            {f.caster, {}, R::Point{0, 0}, object}
+        );
+        auto old = take(f.host->perceive(b, object));
+        auto discern = plan(replace(
+            area("discern subject captured at release rechecked at activation for this audience instant"), "disk 250 mm", "disk 1 mm"
+        ));
+        f.cast(discern, {f.caster, {}, R::Point{20, 0}, object});
+        check(
+            take(f.host->knowledge(f.target)).count == 1 && take(f.host->knowledge(b)).count == 0 &&
+            take(f.host->perceive(b, object)).form == Appearance::StoneWall
+        );
+        auto ref = take(f.host->bind_disguise(1, object));
+        f.cast(plan(dispel("disguise")), {f.caster, {}, {}, {}, {}, ref});
+        check(
+            take(f.host->perceive(b, object)).form == Appearance::OpenArch &&
+            take(f.host->knowledge(f.target)).witnesses[0].instance == 1 && take(f.host->inspect_perception()).objects[0].data.passable &&
+            old.form == Appearance::StoneWall
+        );
+    });
+    test("late failed advance rolls back servant cleanup slow expiry and paid queue", [] {
+        Fixture f;
+        auto servant = f.spawn();
+        f.cast(plan(contact("multiply speed by 750 permille for 2000 ms")), {f.caster, f.target, {}});
+        auto source = replace(area("fire damage 4 dp instant"), "after 0 ms", "after 2000 ms");
+        f.cast(plan(source), {f.caster, {}, R::Point{1000, 0}});
+        const auto life = take(f.host->life());
+        const auto world = f.host->snapshot();
+        f.unchanged([&] { refuses(f.host->advance_to(200), R::Error::EmptySelection); });
+        check(
+            f.host->snapshot() == world && take(f.host->life()) == life && f.host->snapshot().actors[servant.slot].present &&
+            f.host->snapshot().actors[f.target.slot].slow == R::Slow{750, 200} && f.host->snapshot().actors[0].data.mana == 70
+        );
+        take(f.host->cancel(3));
+        take(f.host->advance_to(200));
+        check(
+            !f.host->snapshot().actors[servant.slot].present && f.host->snapshot().actors[f.target.slot].slow == R::Slow{} &&
+            take(f.host->life()).remains[0].spent && f.host->snapshot().actors[0].data.mana == 70
+        );
+    });
+    test("checkpoint with departed owner restores inert servant and absolute expiry", [] {
+        Fixture f;
+        auto servant = f.spawn();
+        ok(f.host->remove_actor(f.caster));
+        auto cp = take(f.host->checkpoint());
+        auto original = take(f.host->life());
+        f.host.reset();
+        auto host = take(R::ReferenceHost::create(game()));
+        ok(host->restore(cp));
+        refuses(host->command_authority(f.caster, servant), R::Error::MissingActor);
+        take(host->advance_to(200));
+        check(
+            !host->snapshot().actors[servant.slot].present && take(host->life()).remains[0].spent && original.servants[0].actor == servant
+        );
     });
     std::cout << passed << " lifecycle cases passed; " << failed << " failed\n";
     return failed ? 1 : 0;

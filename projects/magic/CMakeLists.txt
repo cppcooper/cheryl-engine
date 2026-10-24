@@ -115,3 +115,8 @@ target_link_libraries(magic_lifecycle_checks PRIVATE magic_learning magic_refere
 target_compile_options(magic_lifecycle_checks PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME magic_lifecycle_contracts COMMAND magic_lifecycle_checks)
 set_tests_properties(magic_lifecycle_contracts PROPERTIES TIMEOUT 30)
+add_executable(magic_lifecycle_demo src/lifecycle-demo.cpp)
+target_link_libraries(magic_lifecycle_demo PRIVATE magic_learning magic_reference_host)
+target_compile_options(magic_lifecycle_demo PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME magic_lifecycle_caller COMMAND magic_lifecycle_demo)
+set_tests_properties(magic_lifecycle_caller PROPERTIES TIMEOUT 30)
