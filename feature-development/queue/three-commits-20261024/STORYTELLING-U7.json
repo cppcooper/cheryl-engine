@@ -1,0 +1,18 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "STORYTELLING-U7",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u7-build-1.log",
+    "builds/storytelling-u1-debug/u7-build-2.log",
+    "builds/storytelling-u1-debug/u7-registration.log",
+    "builds/storytelling-u1-debug/u7-ctest-1.log",
+    "builds/storytelling-u1-debug/u7-ctest-details-1.log"
+  ],
+  "limitations": [
+    "LeakSanitizer remains unavailable under the established tracing accommodation; leak coverage is unverified.",
+    "Native verification covers GNU/Linux Debug shared Engine; other platforms/allocators, installed SDK/mixed-version ABI and wider runtime integration remain unverified.",
+    "No timing benchmark is claimed; lexicographic comparison byte work depends on ID prefixes."
+  ]
+}

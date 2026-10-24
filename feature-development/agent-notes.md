@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-015` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-016` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -200,10 +200,11 @@ nonempty diagnostics, with allocation/copy exceptions propagated. No generic
 result facility is introduced.
 
 `nodes()` returns an authored-order `span<const Node>`; ID and entry accessors
-also borrow frozen storage. Exact `find_node` and node-scoped `find_choice` use
-linear scans, return null on misses and never allocate or normalize names. Retain
-a handle through borrowed access. This is sufficient for the tiny graph and avoids
-an unneeded retained index; the private entry index preserves authored order.
+also borrow frozen storage. Exact `find_node` and node-scoped `find_choice` now use
+immutable sorted ordinal indices (ST-016), return null on misses and never allocate
+or normalize names. U7 replaces the original tiny-graph linear scans, preserving
+all borrowed pointer identities and authored order. Retain a handle through
+borrowed access; the private entry ordinal remains independent of lookup sorting.
 Stable definition reads can be concurrent; input mutation/destruction must be
 serialized with compilation. Owned diagnostic copies outlive their source inputs.
 U1V's native ownership and lookup cases passed after draft mutation/destruction
@@ -750,6 +751,94 @@ is CPU/JSON-free, not a promise of dependency-free Engine packaging. Confidence
 is high for executed Linux shared ownership; other platform/ABI/SDK work remains
 unverified and requires its own unit.
 
+## U7 immutable lookup indices
+
+**ST-016 — Sort ordinals after validation and owned copying.** The unchanged
+caller remains:
+
+```cpp
+#include <cheryl/core/game-framework/dialogue.h>
+const auto* choice = definition->find_choice({"gate"}, {"pass"});
+if (choice) {
+    // Borrowed authored Choice; retain definition while using it.
+}
+```
+
+The definition's private constructor deep-copies Draft first, then builds a sorted
+node-ordinal vector and one sorted choice-ordinal vector per authored node. Every
+comparison reads the private copied strings. No caller string_view, pointer into a
+draft or mutable lookup cache survives construction. The authored vectors/strings
+are not sorted, moved or reallocated by index construction or lookup; indices hold
+only size_t ordinals. Published Definition remains actually const and immovable.
+The public find_node/find_choice signatures, noexcept, null-on-miss, exact identity
+and pointer lifetime contracts are unchanged. Choice indices are indexed by the
+**authored node ordinal**, so repeated choice names in different nodes remain
+independent. Missing nodes, missing choices and terminal empty-choice indices all
+return null. Entry still uses its validated authored entry_index_, not the first
+sorted name. All index storage is ready before first lookup; there is no lazy path.
+
+compile's validation/reporting body stays byte-identical to accepted U6: definition
+id/revision, supported conditions/effects, entry, then authored node/choice rows.
+Only after complete successful validation does new const Definition deep-copy and
+build indices. Allocation/copy/index-construction/control-block exceptions propagate
+normally; C++ constructor/RAII cleanup prevents a partial usable Definition from
+being published. No new authoring errors or changed diagnostic order are introduced.
+Lookup performs lower_bound over ordinal vectors using std::string lexical order,
+then checks exact equality. It creates no key/string/vector copies and calls no
+allocator, handler or Session operation. Core IDs remain opaque nonempty strings:
+long common prefixes, embedded NUL and high bytes are neither truncated nor
+normalized. Query-key construction belongs to the caller, before entering lookup.
+
+For N nodes and Ci choices in node i, retained index payload is
+`(N + sum(Ci))*sizeof(size_t)` plus N vector control objects and allocator/capacity
+overhead. Per-node vectors avoid new aggregate edge-count arithmetic and keep
+scope/order mapping direct; terminals need no choice-element allocation. Sorting
+costs O(N log N + sum(Ci log Ci)) string comparisons after linear ordinal filling.
+Node lookup uses O(log(N+1)) comparisons plus final equality; choice lookup adds
+O(log(Ci+1)). Each comparison may inspect a common prefix, so byte work is
+O(Ln log(N+1) + Lc log(Ci+1)) for the two relevant ID-prefix lengths. These are comparison
+bounds, not constant-time or measured speed claims. No timing campaign was run.
+Construction/index storage lies outside inspect's existing per-call payload/work
+budgets. Inspection's explicitly charged manual target comparisons remain unchanged;
+no attempt is made to substitute uncharged core lookup into that contract in U7.
+
+Session::choose still prepares choice/target lookups before the effect and commits
+only its nonthrowing cursor/step afterward. No live-incarnation/authority, effect,
+flags, JSON/file, snapshot or application policy changes. Private Definition layout
+grows, with matching-header Engine/consumer rebuilds; exported public declarations
+and new public facilities are not redesigned. Mixed old binaries/installed SDK
+compatibility is not claimed by this local build.
+
+Alternatives: sorting authored vectors would break pointer/order semantics;
+retained string-key maps would add key/hash/collision policy and potentially copied
+identity storage; a lazy cache would introduce mutation/synchronization and a first
+lookup allocation path. One flat choice array could reduce allocator/control
+objects, but needs offset bookkeeping and gives no new observable guarantee here.
+The selected per-node vector arrangement follows existing authored ownership with
+no generic indexing service. Confidence is high in semantics/ownership, medium in
+that internal memory tradeoff. A later private storage change is local, but requires
+Engine/consumer rebuild and lookup/ownership/diagnostic/allocation checks. This is
+an engineering choice, not additional evidence of user API taste.
+
+Focused source cases cover 17 shuffled nodes and 31 permuted choices per prompt,
+all hits with exact authored addresses, misses/boundary names, independent scoped
+choice IDs and illegal duplicates within a node, 4096-byte common prefixes with
+NUL/high bytes, original draft destruction, retained-owner/pointer stability and
+an eleven-diagnostic literal sequence after source destruction. A separate public
+header-first actual-Engine consumer exercises the unchanged caller and retained
+long/binary IDs through exported lookups. The isolated Linux allocation probe
+prepares keys/expected storage before denial, verifies scalar/array/aligned controls,
+then makes **first-use** and repeated hit/miss/terminal lookups with C++ allocation
+rejected. A separate failed Engine compile confirms that shared-library allocations reach
+the hook too, before any lookup warms up. It is never linked into GoogleTest,
+does not exhaust memory and does not claim arbitrary C/custom allocator instrumentation. Actual results belong to next.md.
+
+This is only STORYTELLING-U7 in finite batch three-commits-20261024. The pinned
+plan/queue policy were read without changing coordinator records. A committed
+ready receipt is written only after focused acceptance; the controller, not this
+worker, selects U8 after the current run drains. The receipt reports execution,
+not automatic coordinator source/platform acceptance.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -972,3 +1061,17 @@ or sanitizer flag adjustment was needed. next.md records exact commands/statuses
 full logs and remaining allocator/platform/leak/SDK/runtime limits. This completes
 assigned U6 checks and stops for coordinator review, without integration or
 publication transport.
+
+
+U7 has executed acceptance for this finite milestone: all **121/121** focused
+checks passed (the 112 retained names, six new Engine lookup cases, two public
+consumer cases and one isolated allocation probe), no skips/unrun cases or
+ASan/UBSan diagnostics. All 54 complete console transcripts match U6 byte for byte.
+The probe verifies ordinary/array/aligned and shared-Engine rejection controls,
+then performs 2300 first-use/repeated lookups without an additional allocation
+attempt. Exact scoped identity, binary/long names, authored pointers/order,
+retained owners and the eleven-diagnostic literal are exercised. Normal source
+comparison also confirms the validation/reporting body is unchanged. next.md owns
+complete logs/commands/counts and portability/leak/SDK/runtime limits. The committed
+U7 ready/true receipt is execution evidence; queue selection/source review remain
+separate, and this worker stops without starting U8.

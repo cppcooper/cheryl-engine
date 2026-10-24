@@ -1,6 +1,143 @@
-# U6 reusable bounded Engine inspection
+# U7 immutable dialogue lookup indices
 
-STORYTELLING-U6 starts from clean accepted U5
+STORYTELLING-U7 starts from clean, coordinator-accepted U6
+`4bb94118413233cc476fac3938f1af75573765f7`. Only this milestone in finite batch
+three-commits-20261024 is active. Implementation and focused acceptance are
+complete: **121/121 checks passed**, including **all 112 retained names in order**,
+six new Engine cases, two public-consumer cases and one isolated allocation probe.
+There were no skipped/unrun checks or ASan/UBSan diagnostics. All **54 complete
+child transcripts match U6 byte for byte** (21 exit 0 / 15 exit 2 / 18 exit 3).
+A ready/true receipt accompanies this one coherent U7 checkpoint; it is worker
+execution evidence, not automatic coordinator source/platform acceptance.
+
+## Implemented caller and contract
+
+```cpp
+#include <cheryl/core/game-framework/dialogue.h>
+const auto* choice = definition->find_choice({"gate"}, {"pass"});
+// The exact authored Choice is borrowed; retain definition while using it.
+```
+
+The caller/public signatures and noexcept are unchanged. Validation runs in its
+original order, then Definition deep-copies the draft and privately sorts node
+ordinals and node-scoped choice ordinals. Authored vectors/strings/order, entry
+ordinal, pointer identity/lifetime and independent same-named choices across nodes
+are preserved. Lookup uses exact std::string lower_bound/equality without key
+copies, allocation, normalization or lazy mutation. Long/binary IDs supported by
+core remain valid. Construction/index allocation may throw before a usable const
+Definition is published, with ordinary RAII cleanup. ST-003/016 in both decision
+views record the ownership, memory/comparison tradeoffs and confidence.
+
+For N nodes/Ci choices, retained index element payload is
+`(N + sum(Ci))*sizeof(size_t)` plus per-node vector objects/capacity/allocator
+metadata. Sorting uses O(N log N + sum(Ci log Ci)) string comparisons; lookup uses
+O(log(N+1) + log(Ci+1)) comparisons, each with length-dependent byte work. There is no
+constant-time claim or timing campaign. Existing Session/inspection implementations
+and inspection's charged manual target comparisons are unchanged; constructor/index
+storage remains outside its per-call payload/work budgets. Public declaration
+signatures are stable, while private Definition layout requires matching-header
+Engine/consumer rebuilds. Mixed old binaries or installed SDK ABI are unverified.
+No JSON/file/flag/handler/live-authority policy or operation semantics changed.
+
+## Actual native checks
+
+The finite policy, immutable batch plan, current worker task, workspace/clone
+instructions and accepted U6 records/checkpoint were read before edits. No
+pre-existing changes or unresolved U6 prerequisites existed. The preserved
+GNU/Linux Debug shared-Engine build, CMake policy minimum 3.5, previous OFF options,
+pins and incremental outputs were reused. Every configure/build/native check used
+the shared one-job wrapper. The original queued build session was retained through
+normal admission and completion; no cancellation/relaunch or resource exit 75
+occurred. Adaptive monitor controls, no-swap and 4 GiB admission floor were unchanged.
+
+ASan/UBSan instrumentation and halt-on-error remain enabled. Invocation-only
+ASAN_OPTIONS=detect_leaks=0 is ST-008's established tracing accommodation; leak
+coverage remains **unverified**. The Linux-gated standalone probe never links its
+replacement operators into GoogleTest. Scalar/array/aligned rejection controls and
+one allocation-bearing Engine compile fail deterministically before **any lookup**;
+this verifies shared-library interposition too. Then 2300 hits/misses/terminal
+queries run under denial with no new rejected allocation. Owning query values and
+expected authored addresses are prepared before denial. No OOM, RAM pressure,
+arbitrary C/custom allocator instrumentation or timing test is claimed.
+
+Actual commands from clone root (all exit **0**, complete logs/immediate statuses):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target dialogue-lookup-allocation --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-lookup\.allocation$)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-lookup\.allocation$)'
+```
+
+The second build adds the shared-Engine rejection control after review, before
+any native test execution. No implementation defect or sanitizer/config change
+was needed. All tests ran once with the completed probe.
+
+| Saved clone-local files under `builds/storytelling-u1-debug/` | Observed result |
+| --- | --- |
+| `u7-configure.log`, `.exit` | 0; retained Debug/OFF selections and pins. |
+| `u7-build-1.log`, `.exit`; `u7-build-2.log`, `.exit` | 0; matching-header real Engine, focused consumers/probe and console runners compiled/linked. Second build strengthened only the probe control. |
+| `u7-registration.log`, `.exit`; `u7-registration-audit.log` | 0; 121 nonempty names match source/registration order; all 112 U6 names retained in order, 9 new. |
+| `u7-ctest-1.log`, `.exit` | 0; 121/121 passed, 16.19 seconds, no skips/unrun checks. |
+| `u7-ctest-details-1.log` | Complete preserved LastTest.log: 120 GoogleTest RUN/OK pairs plus standalone probe success, 121 CTest passes, all 54 full child arguments/stdin/stdout/stderr/immediate exits. |
+| `u7-results-audit.log` | Counts/names/pass records agree, all 54 child blocks byte-identical to U6, no ASan/UBSan diagnostics, allocation-probe success/control evidence. |
+| `u7-source-audit.log` | compile validation/reporting body byte-identical to U6, SHA256 `267fe629e9c758f5902cd9804d31668d6040e226cfbf7cddd1b37200bf20327e`. |
+| `u7-boundary-rules.log` | Actual Engine owns changed lookup implementation/export flags; public consumer/probe have no private/app/JSON includes or export patches; ASan/UBSan retained. |
+| `u7-checkpoint-audit.log` | Final static audit corrected assumptions about CTest summary wording and number padding; both AssertionErrors are saved. Corrected matchers verify receipt, exits, counts and staged scope. No native check failed or reran. |
+
+Logs/status files remain ignored and clone-local, with no source writes/sidecars or
+protected/sibling cache use. GTest registration reuses the Engine unit source glob
+and existing actual-Engine consumer suite; the allocation probe has its own Linux
+executable/CTest entry and inherits the wrapped native envelope. All five changed
+C++ files pass repository clang-format dry-run/Werror and whitespace checks.
+
+| New passing checks | Observable boundary |
+| --- | --- |
+| dialogue_lookup.shuffled, misses | 17 permuted authored nodes/31 permuted choices per prompt; all exact hits/addresses/order, nonfirst entry, before/after/prefix/case/empty/missing-node/terminal misses and a single terminal graph. |
+| binary_ids | 4096-byte common prefixes, exact prefix IDs, embedded NUL/high bytes and near misses; full bytes remain distinct. |
+| ownership, scope | Draft mutation/destruction, retained handles/weak owner expiry, stable original node/choice pointers, independent repeated choice names across nodes and exact scoped-duplicate rejection. |
+| diagnostic_order | Eleven literal owned diagnostics preserve complete authored traversal after source destruction, including supported-name, entry, scope, shape and unreachable errors. |
+| dialogue_lookup_consumer.caller, retained | Unchanged header-first find_choice caller through real Cheryl::Engine, original authored pointer/order, scoped choices/misses and retained long/binary names. |
+| tests-dialogue-lookup.allocation | First-use and repeated valid/missing/terminal queries under verified scalar/array/aligned/shared-Engine allocation denial, with no extra attempts and stable authored pointers. |
+
+## Receipt, limitations and next action
+
+The committed receipt path is
+`feature-development/queue/three-commits-20261024/STORYTELLING-U7.json` with exact
+batch/milestone bindings, status ready, checks_passed true and nonempty relative
+paths to the actual saved native logs. Only this U7 implementation/records/receipt
+form the new checkpoint; prior history is not counted toward the three-milestone
+batch. No unresolved assigned blocker remains.
+
+Next concrete action: the finite queue controller checks the clean descendant
+checkpoint/receipt and selects preassigned STORYTELLING-U8 after this run drains.
+This worker stops after U7; it does not start U8, a sibling unit, background agent
+or publication transport. The next dependent worker must inspect this checkpoint
+and its executed evidence; the receipt is not automatic coordinator source review.
+
+Confidence is high in executed ownership/exactness/no-allocation behavior, medium
+in per-node-vector memory layout. This is an engineering choice, not new user taste
+evidence. A private layout alternative is locally reversible with matching Engine/
+consumer rebuilds and these checks. Leak detection, broader platforms/allocators,
+installed SDK/mixed-version ABI and wider runtime integration remain unverified.
+Lookup byte work is length-dependent; no performance benchmark is claimed.
+No broad campaign, device/GUI, documentation/SDK build, package install/download,
+pin/global/resource configuration change, subagent or external agent ran.
+
+## Retained U6 reusable bounded Engine inspection
+
+STORYTELLING-U6 started from clean accepted U5
 `24f9e04b2e4f912be6e0c56ec2cca009b971c16e`. The public CPU operation, owned
 report, typed budgets, thin private adapter and independent actual-Engine consumer
 are implemented. **112/112** focused cases passed: **14 new plus all 98 retained**

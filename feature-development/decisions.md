@@ -17,7 +17,9 @@ U5 adds private advisory inspection under ST-013/014; all 15 new and 83 retained
 cases passed (98/98), with 54 expected child statuses. Full evidence is in next.md.
 These remain engineering choices, not personal taste evidence.
 U6 exposes Engine inspection under ST-013/014/015; next.md distinguishes its
-executed boundary checks and retained regressions.
+executed boundary checks and retained regressions. U7 preserves the caller with
+ST-016 indices; all 121 checks (112 retained plus nine new) passed, with 54 unchanged
+child transcripts and a verified allocation-denial probe.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -41,8 +43,8 @@ global revision/identity discipline remains application-owned.
 
 ## ST-003 — Freeze definitions and retain their owners
 
-Compilation validates and deep-copies private frozen storage; const shared
-ownership alone is insufficient. Sessions retain definitions, while views/snapshots
+Compilation validates/deep-copies, then builds private ordinal indices (ST-016);
+const shared ownership alone is insufficient. Sessions retain definitions, while views/snapshots
 own strings and tokens retain only a small marker. Handlers are borrowed
 synchronously. Idle moves are nonthrowing for paired adoption; active
 moves/replacement/destruction terminate to prevent callback invalidation. This
@@ -169,3 +171,14 @@ Cheryl::Engine, checks returned values/refusals/lifetimes and verifies shared sy
 ownership. This trades a bounded compatibility preflight for unchanged CLI bytes
 without duplicate production algorithms. Confidence is high on verified Linux;
 SDK/platform ABI coverage remains deferred.
+
+
+## ST-016 — Compile immutable ordinal lookup indices
+
+Build sorted node ordinals and node-scoped choice ordinals after validation and
+private deep copy. Binary search returns original authored pointers without
+allocation or mutation, comparing exact strings including binary IDs. This trades
+retained index memory and compile-time sorting for logarithmic comparison counts;
+long prefixes still cost byte comparisons. Confidence is high in ownership and
+semantics, medium in the per-node-vector layout; changing that private layout is
+local, with matching Engine/consumer rebuilds.

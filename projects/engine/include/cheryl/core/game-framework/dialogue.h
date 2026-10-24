@@ -115,6 +115,8 @@ namespace CE::Dialogue {
     class Definition final {
         Draft data_;
         std::size_t entry_index_;
+        std::vector<std::size_t> node_lookup_;
+        std::vector<std::vector<std::size_t>> choice_lookup_;
 
         Definition(const Draft& draft, std::size_t entry_index);
         friend CompileResult compile(const Draft& draft, const OperationKeys& operations);
@@ -130,7 +132,9 @@ namespace CE::Dialogue {
         [[nodiscard]] std::uint64_t revision() const noexcept { return data_.revision; }
         [[nodiscard]] const Node& entry() const noexcept { return data_.nodes[entry_index_]; }
         [[nodiscard]] std::span<const Node> nodes() const noexcept { return data_.nodes; }
+        /** Exact binary search of immutable ordinals; no allocation. Returns borrowed authored storage or null. */
         [[nodiscard]] CE_API const Node* find_node(const NodeId& id) const noexcept;
+        /** Exact node-scoped binary search; no allocation. Returned pointers share this definition's lifetime. */
         [[nodiscard]] CE_API const Choice* find_choice(const NodeId& node, const ChoiceId& id) const noexcept;
     };
 

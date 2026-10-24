@@ -1,5 +1,7 @@
 #include <core/game-framework/dialogue.h>
 
+#include <algorithm>
+#include <numeric>
 #include <string_view>
 #include <unordered_set>
 #include <utility>
@@ -91,23 +93,43 @@ namespace CE::Dialogue {
     }
 
     Definition::Definition(const Draft& draft, const std::size_t entry_index)
-    : data_(draft), entry_index_(entry_index) {}
+    : data_(draft), entry_index_(entry_index), node_lookup_(data_.nodes.size()), choice_lookup_(data_.nodes.size()) {
+        // Index only our validated deep copy. Sorting ordinals leaves all authored
+        // storage/order intact; no string views, caller aliases or lazy cache survive.
+        std::iota(node_lookup_.begin(), node_lookup_.end(), std::size_t{0});
+        std::sort(node_lookup_.begin(), node_lookup_.end(), [&](auto left, auto right) {
+            return data_.nodes[left].id.value < data_.nodes[right].id.value;
+        });
+        for (std::size_t node = 0; node < data_.nodes.size(); ++node) {
+            const auto& choices = data_.nodes[node].choices;
+            auto& lookup = choice_lookup_[node];
+            lookup.resize(choices.size());
+            std::iota(lookup.begin(), lookup.end(), std::size_t{0});
+            std::sort(lookup.begin(), lookup.end(), [&](auto left, auto right) {
+                return choices[left].id.value < choices[right].id.value;
+            });
+        }
+    }
 
     const Node* Definition::find_node(const NodeId& id) const noexcept {
-        for (const auto& node : data_.nodes) {
-            if (node.id == id)
-                return &node;
-        }
-        return nullptr;
+        const auto found = std::lower_bound(node_lookup_.begin(), node_lookup_.end(), id.value, [&](auto ordinal, const auto& value) {
+            return data_.nodes[ordinal].id.value < value;
+        });
+        if (found == node_lookup_.end() || data_.nodes[*found].id != id)
+            return nullptr;
+        return &data_.nodes[*found];
     }
 
     const Choice* Definition::find_choice(const NodeId& node, const ChoiceId& id) const noexcept {
-        if (const auto found = find_node(node)) {
-            for (const auto& choice : found->choices) {
-                if (choice.id == id)
-                    return &choice;
-            }
-        }
-        return nullptr;
+        const auto found = find_node(node);
+        if (!found)
+            return nullptr;
+        const auto& lookup = choice_lookup_[static_cast<std::size_t>(found - data_.nodes.data())];
+        const auto choice = std::lower_bound(lookup.begin(), lookup.end(), id.value, [&](auto ordinal, const auto& value) {
+            return found->choices[ordinal].id.value < value;
+        });
+        if (choice == lookup.end() || found->choices[*choice].id != id)
+            return nullptr;
+        return &found->choices[*choice];
     }
 }
