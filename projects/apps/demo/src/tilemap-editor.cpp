@@ -68,15 +68,8 @@ DemoTilemapEditor::DemoTilemapEditor(
             throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
     // Numeric meaning IDs are deliberately unrelated to labels, drawable IDs
     // 7..10 and atlas targets 0..3. Tables/rules are owned after construction.
-    const std::array meaning_ids{
-        WorldProof::KeyId{"terrain:one", {101}}, WorldProof::KeyId{"terrain:two", {203}}, WorldProof::KeyId{"terrain:three", {307}},
-        WorldProof::KeyId{"terrain:four", {409}}
-    };
-    const WorldProof::KeyTable meaning_keys(meaning_ids);
-    const std::array meanings{
-        WorldProof::SemanticKey{"terrain:one", {1}}, WorldProof::SemanticKey{"terrain:two", {2}},
-        WorldProof::SemanticKey{"terrain:three", {3}}, WorldProof::SemanticKey{"terrain:four", {4}}
-    };
+    const auto meaning_keys = WorldProof::editor_meaning_ids();
+    const auto meanings = WorldProof::editor_semantics();
     for (std::size_t instance = 0; instance < terrain_.size(); ++instance) {
         const CE::Maps::Snapshot source{
             instance == 0 ? "terrain:west" : "terrain:east",
@@ -127,6 +120,7 @@ void DemoTilemapEditor::document_action(const bool save) {
         if (semantic) {
             auto candidate = terrain_[selected_map_]->replacement(source);
             terrain_[selected_map_].swap(candidate); // BOTH layers, metadata and rules precede adoption.
+            generated_[selected_map_].reset();       // Ordinary files contain no recipe/provenance.
         } else {
             if (source.id.starts_with("terrain:"))
                 throw WorldProof::Error(WorldProof::Refusal::Table, "Terrain document cannot be loaded in literal mode");
@@ -158,11 +152,19 @@ void DemoTilemapEditor::terrain_edit(const std::span<const Maps::TerrainEdit> ed
     auto candidate = terrain_[selected_map_]->replacement(before);
     static_cast<void>(candidate->edit_batch(selected_layer_, edits, terrain_limits_));
     auto after = candidate->snapshot();
+    std::unique_ptr<WorldProof::GeneratedDocument> attachment;
+    if (generated_[selected_map_]) {
+        const auto& held = *generated_[selected_map_];
+        if (CE::Maps::CellPatches::apply(held.base, held.overlay) != before)
+            throw WorldProof::Error(WorldProof::Refusal::Generation, "Generated overlay/current document disagreement");
+        attachment = std::make_unique<WorldProof::GeneratedDocument>(WorldProof::stage_generated_edits(held, after));
+    }
     if (before == after)
         return; // Validated complete Engine batch, but no final semantic change.
     auto history = selected_history().recorded(std::move(before), std::move(after));
     terrain_[selected_map_].swap(candidate);
     selected_history().swap(history);
+    generated_[selected_map_].swap(attachment);
 }
 
 void DemoTilemapEditor::history_action(const bool undo) {
@@ -172,12 +174,72 @@ void DemoTilemapEditor::history_action(const bool undo) {
     auto history = current.stepped(undo, before);
     if (mode_ == Mode::Terrain) {
         auto candidate = terrain_[selected_map_]->replacement(target); // BOTH owners rederived before publication.
+        std::unique_ptr<WorldProof::GeneratedDocument> attachment;
+        if (generated_[selected_map_]) {
+            const auto& held = *generated_[selected_map_];
+            if (CE::Maps::CellPatches::apply(held.base, held.overlay) != before)
+                throw WorldProof::Error(WorldProof::Refusal::Generation, "Generated overlay/current document disagreement");
+            attachment = std::make_unique<WorldProof::GeneratedDocument>(WorldProof::stage_generated_edits(held, target));
+        }
         terrain_[selected_map_].swap(candidate);
+        generated_[selected_map_].swap(attachment);
     } else {
         auto candidate = WorldProof::LiteralOwner::from(target, document_keys_);
         documents_[selected_map_].swap(candidate);
     }
     current.swap(history); // Unique pointer and timeline swaps cannot allocate.
+}
+
+void DemoTilemapEditor::install_generated(
+    const WorldProof::CaveRecipe& recipe,
+    WorldProof::GeneratedReplace policy,
+    WorldProof::GeneratedLimits limits
+) {
+    using namespace WorldProof;
+    if (mode_ != Mode::Terrain)
+        throw Error(Refusal::Generation, "Generation requires explicit semantic B mode");
+    if (policy == GeneratedReplace::PreserveEdits) {
+        if (!generated_[selected_map_])
+            throw Error(Refusal::Generation, "No generated attachment; select explicit discard to install");
+        const auto& held = *generated_[selected_map_];
+        if (limits != held.limits)
+            throw Error(Refusal::Generation, "Preserve uses the attached limits; discard establishes new limits");
+        const auto before = terrain_[selected_map_]->snapshot();
+        if (CE::Maps::CellPatches::apply(held.base, held.overlay) != before)
+            throw Error(Refusal::Generation, "Generated overlay/current document disagreement");
+        const auto final = replay_generated(held, recipe);
+        auto validated = terrain_[selected_map_]->replacement(final); // Validate BOTH even for a no-op replay.
+        static_cast<void>(validated);
+        if (final != before)
+            throw Error(Refusal::Generation, "Replay does not match the current complete semantic document");
+        if (recipe == held.recipe)
+            return; // Keep owners/history and borrowed views for validated no-op.
+        auto attachment = std::make_unique<GeneratedDocument>(held);
+        attachment->recipe = recipe; // Only admitted budget fields can differ; payload sizes/content unchanged.
+        generated_[selected_map_].swap(attachment);
+        return;
+    }
+    if (policy != GeneratedReplace::DiscardCurrent)
+        throw Error(Refusal::Generation, "Unknown replacement policy");
+    auto attachment = std::make_unique<GeneratedDocument>(generate_document(recipe, limits));
+    auto candidate = terrain_[selected_map_]->replacement(attachment->base);
+    DocumentHistory reset(history_limits_);
+    terrain_[selected_map_].swap(candidate);
+    generated_[selected_map_].swap(attachment);
+    selected_history().swap(reset);
+}
+void DemoTilemapEditor::regenerate_selected() {
+    if (!generated_[selected_map_])
+        throw WorldProof::Error(WorldProof::Refusal::Generation, "No generated attachment to replay");
+    const auto& held = *generated_[selected_map_];
+    install_generated(held.recipe, WorldProof::GeneratedReplace::PreserveEdits, held.limits);
+}
+std::optional<WorldProof::GeneratedDocument> DemoTilemapEditor::generated_state(const std::size_t index) const {
+    if (!generated_.at(index))
+        return {};
+    auto result = *generated_[index]; // Deep owned recipe/base/patch observation, not a borrowed sampler.
+    result.bytes.history = histories_[index][1].state().bytes;
+    return result;
 }
 
 std::optional<DemoTilemapEditor::Geometry> DemoTilemapEditor::geometry(const Sizes sizes, const Maps::LocalPoint pan, const double zoom) {

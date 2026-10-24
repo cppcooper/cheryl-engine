@@ -1,12 +1,11 @@
 # World integration contracts and provenance
 
-WORLD-U5 starts clean on feat/tilemap at the controller-selected passing U4
-checkpoint `c8fead0de9424ea56639a846baa8be00bac617a5`. Its committed ready/true
-batch receipt, nonempty saved evidence and112/112 XML entries were inspected
-before dependent work. WINT-013/014 extend this SAME private editor/adapter to
-bounded variable domains and supersede prior fixed geometry/default budgets.
-Current executed counts/commands belong in next.md and the U5 receipt. This is
-map milestone three of three; no geography/sibling integration or further unit.
+WORLD-U6 is a standalone continuation on exact clean reviewed feat/tilemap
+`9cfa376a6366012fff2e1399af2c5d87acfa471c`. Before implementation, require the
+committed U5 old-batch receipt ready/true, nine nonempty logs and119 passing XML
+entries. WINT-015/016/017 extend the current world namespace. Completed plans /
+receipts and all feature archives remain immutable; no sibling/climate input or
+queue job is selected. Commands/results and standalone receipt belong in next.md.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -746,3 +745,206 @@ are in next.md. CPU/link proof leaves real input/display, atlas decode/upload,
 visual correctness/fun, graphical cleanup, leaks, installed/static/Release/other
 platform ABI and file durability gaps open. No unchanged X11 retry, fsync,
 power-loss/race guarantee or further assignment is implied.
+
+## WINT-015 — In-memory cave recipe, semantic base and witness
+
+Small actual application caller (press/paint construct admitted Records in the
+existing world process caller; no new keyboard binding is implied):
+
+```cpp
+DemoTilemapEditor editor(existing_directory);
+const std::array mode{press(Key::B)};
+editor.consume(mode, {{400,200},{800,600}});
+editor.install_generated(recipe, WorldProof::GeneratedReplace::DiscardCurrent);
+editor.set_view({0,-3072},0.125);
+const std::array brush{press(Key::Digit6),paint(13,67),paint(13,67)};
+editor.consume(brush, {{400,200},{800,600}}); //31x19 west ground cell(2,2), coalesced
+const auto retained = editor.generated_state(0); // owned deep observation
+editor.regenerate_selected();
+const std::array file{press(Key::F8)};
+editor.consume(file, {{400,200},{800,600}});
+```
+
+Private generated-document.* owns CaveRecipe: family cave, actual CaveReplay
+Domain/algorithm/version1, x-fast coordinates, seed/stage/stream, integer fill,
+steps, birth/survival masks, connectivity and requested budgets. Effective options
+are copied from the actual Cave. Requested options equal effective in v1.
+Budgets above actual hard ceilings are refused rather than silently normalized;
+successful budget changes within those ceilings change admission/provenance, not
+content. Recipe inputs other than budgets must remain exactly equal under
+PreserveEdits, even if a new seed/config coincidentally produces identical output.
+No automatic rebase/migration is selected. Unsupported algorithm/version/family /
+adapter version/axes refuse with owning diagnostics. This proves current compiled
+integer-v1 replay, not indefinite generator/platform/version support.
+
+Version1 CaveAdapter owns X-right/Y-down convention, map ID, two ordered names,
+all ordered cell spawns and explicit occupancy0 floor/1 solid -> key/label pairs.
+Default pairs terrain:one/label1 and terrain:two/label2 remain unrelated to numeric
+meaning IDs101/203, derived IDs7..10 and atlas targets0..3. Shared private meaning
+tables in world-document.* remove the former constructor-local duplicate policy;
+all four keys/labels remain exactly compatible. No asset/game meaning enters
+Engine. Optional initial_detail owns exactly C semantic keys/nulls, or absent
+means all null. It belongs to the versioned BASE adapter input, not player edits.
+This narrow addition supports authored base markers and a real late second-owner
+refusal; every key is validated, no callbacks/spans are retained. Changed adapter
+inputs require explicit discard, with no color/visual reverse inference.
+
+GeneratedDocument owns the complete accepted recipe/effective config/limits,
+full semantic base Snapshot and public CellPatches::Patch. Its witness is the
+actual full canonical base bytes from diff/capture; no hash, forged witness,
+opaque ID or seed substitutes for equality. On each completed semantic run,
+export the complete final Snapshot, then actual diff counts unique changed
+addresses in authored-layer/row order. Repeated input samples coalesce through
+Engine last-write-wins and this final diff, not duplicate-address patch records.
+Actual apply reconstructs/checks the complete final target. Metadata (ID, extent,
+ordered layer names and all spawns/order) stays exact; non-cell change refuses.
+Both label and key domains are checked before adoption. Default128 changed
+addresses may be lower than storage’s hard1024; never truncate a stroke.
+
+Replay validates the retained base against capture and applies its saved patch
+as a full valid semantic snapshot, runs the actual retained supported CaveReplay,
+builds the explicit semantic base and compares BOTH complete base values and full
+canonical witnesses BEFORE applying saved edits. A same-sized altered cell with
+an old witness refuses; even a newly captured legitimate witness for a modified
+base cannot match regenerated original content. Owned observations/copies cannot
+mutate live attachments. Input descriptor/table/detail destruction is safe.
+Allocation/programming exceptions propagate normally; only anticipated generator,
+conversion/storage/patch refusals are diagnosed. No persisted recipe/patch format,
+v1 property, digest/crypto, migration or universal World framework is introduced.
+
+Alternatives rejected: seed-only identity misses options/adapter/metadata; raw
+brush patches contain duplicate addresses; deriving labels from colors loses
+aliases; a replay result without a full witness cannot establish exact retention.
+High engineering confidence in native tested CPU behavior, low as personal API
+preference. The generation entry and cap spellings are reversible private policy;
+persisting recipes later needs selected disposable integration and a versioning
+policy under coordination/generation-storage.md.
+
+## WINT-016 — Three-part publication and independent file fallback
+
+DemoTilemapEditor retains an optional independent generated attachment for each
+semantic west/east document. Generation requires explicit B mode; it never changes
+mode/selection/view. DiscardCurrent prepares complete generated state and BOTH
+nonmovable terrain owners, then a new empty selected history before swapping.
+It deliberately replaces authored content only at the caller’s explicit request.
+PreserveEdits requires an attached epoch and its unchanged limits; all caller
+inputs except admission budgets remain exact. Changing limits requires discard.
+regenerate_selected uses the owned recipe/limits, not a live sampler.
+
+Every attached semantic edit and undo/redo prepares a complete candidate document,
+checks the current full content against the attachment, and prepares a complete
+updated diff/accounting BEFORE any content/history/attachment swap. History
+admission follows overlay admission. A later history failure therefore cannot
+silently publish a valid overlay while losing its undo contract. All final swaps
+are nonallocating/noexcept. No-ops validate full requests/overlay but publish
+nothing, preserving both stacks/current owner. Rejected commands preserve every
+cell/metadata field, recipe/base/witness/patch, history and sibling/mode values.
+New accepted changes alone clear redo. Successful replay reconstructs/validates
+both owners; when final semantics equal current content, it discards the candidate
+and preserves existing owners/history/borrowed views. Only explicit admitted
+budget-only provenance changes may replace the attachment alone.
+
+This is serialized application update/preparation, excluding concurrent writes,
+frame recycling and reads through invalidated borrowed views. Changing edit /
+undo/redo/discard/LOAD invalidates borrowed document views; no-op replay does not.
+Prepared packets independently own matrices/selections/resources and survive
+later adoption/owner destruction. Selection/camera/brush are not document history.
+Per-event pointers, admission/Press filtering, pan/zoom/HiDPI, dimensions/culling
+and caller-authored pass order remain U5 contracts. No new input UI is required.
+The private DemoTilemaps forwarding entry enables deliberate setup in the same
+real helper; normal demo modes and startup paths remain compatible.
+
+SAVE still encodes only complete strict-v1 Snapshot meaning, preserving attachment
+and history. It is not a recipe publication. Failed SAVE retains predecessor under
+the existing profile and does not undo earlier runtime edits. Successful ordinary
+semantic LOAD has no recipe information and explicitly detaches only its selected
+map/mode attachment, resetting that history. Failed LOAD preserves all generated
+state/history. Literal LOAD never detaches semantic state. Fresh-process LOAD
+reconstructs all saved meanings/visuals with no attachment/history and regeneration
+refuses until explicit installation. Actual DemoTilemaps::update now diagnoses
+expected generation/patch refusals, drops remaining tick records and permits a
+later valid tick, while earlier completed actions remain. No full-tick transaction
+or implicit migration/fallback to another mode.
+
+High engineering confidence for tested serial ownership. Costs are repeated full
+bounded copies and synchronous replay/I/O; no async service, editor command bus or
+public camera/input/tilemap/Engine API change. File rename publication, runtime
+adoption/history and full input ticks remain separate boundaries.
+
+## WINT-017 — Finite accounting and the actual producer boundary
+
+Existing editor axes1..64, exactly two layers, <=8192 layer cells, storage8 MiB
+encoding/input/256 spawns/128-byte keys, patch65536 base cells/1024 addresses /
+8 MiB witness and history32 entries/1 MiB (hard256/8 MiB) remain unchanged.
+The private recipe accepts at most64 KiB fixed-plus-owned-field payload; adapter
+text/spawns/detail sizes validate before copying. Default GeneratedLimits admits
+128 final changes,1 MiB witness,4 MiB recipe/base/witness/edit payload and1 Mi
+adapter work. Hard private ceilings1024 changes/8 MiB witness/32 MiB retained /
+4 Mi work refuse oversized settings rather than clamp. Zero budgets admit only
+operations actually fitting them; a zero edit cap allows validated no-ops.
+
+Adapter work is a conservative reservation, not instruction/time measurement:
+64 full-layer-cell scan passes plus32 full-layer-cell copy passes,8 units per
+admitted overlay-address allowance and one per adapter spawn. Work =96*L +8*cap.edits
++spawns where L=2*C. Store/report the reservation; one-short refuses before replay /
+copy staging. It covers the private cell-pass/candidate-copy allowance, separately
+from real CaveBudgets and Engine’s per-input-run32/160/1024 incremental selection
+work. Lower-level codec/table/selection operations retain their own fixed bounds;
+no exact machine-work/latency claim. Cave peak payload uses the actual requirements
+(18*C +4096 bytes), with actual generator work reported from usage. No unbounded
+iteration or expensive stress/OOM probe.
+
+GeneratedBytes.recipe counts sizeof(CaveRecipe), sizeof limits/effective config,
+string contents, spawn object/contents and optional-detail object/contents at size,
+not vector capacity. Base and witness are separately charged canonical bytes.
+Edits count layer bytes +two u32 coordinates+presence byte+optional key bytes.
+Retained is recipe+base+witness+edits only; full current encoded Snapshot and history
+canonical charge are reported separately. This MIXED logical accounting is neither
+RSS nor a wire format. C++ container/control/capacity overhead beyond the stated
+recipe charge, TerrainOwner metadata/config copies, current maps/labels and
+transient encodings are additional. Reconstruction can simultaneously hold live
+and candidate attachments, full before/after/base Snapshots, two replacement terrain
+owners and old/new timelines. A conservative declared32 full canonical snapshot
+copy allowance is32*max(base,full_snapshot) bytes, plus two recipe copies and two
+witness strings/edits; history copying adds its charge, and Cave requirements are
+separate. Current two-owner numeric payload alone is24*C bytes (two two-layer
+TileId maps plus two TerrainLabel grids). These are explicit logical reservations,
+not measured allocator peaks. The retained result may exceed a full snapshot.
+
+The original maze.cpp/random.cpp/cave.cpp compile through one private application
+world-cave-private target per configuration, shared by unit/world/demo wiring.
+Only that private archive contains generator sources; storage/tilemap definitions
+remain solely in normal shared Cheryl::Engine. generated-document.cpp and the
+same world-document/editor sources compile in all three callers. No standalone
+PG add_subdirectory, copied algorithm, source archive substitute or sibling source
+is used. Frozen31x19 TEST occupancy rows come from an independent Python integer
+reference retained with ignored logs, never linked or used in production. All
+keys/metadata/labels/visuals compare against literal rows and direct cardinal
+oracles; seed42 vs43 with identical remaining inputs must differ. A third stage /
+configuration is declared separately. Broad standalone PG/storage suites remain
+unchanged and are not repeated. High confidence for exercised source/link bounds;
+exact executed counts/logs, measured charges and material limits are in next.md.
+
+Executed U6 evidence: initial accumulated127/127 (all119 predecessor names plus
+7 new unit cases/1 world scenario),0 failed/skipped,110.94s. Review adds1/1 LOAD
+isolation recheck,1.06s, then corrects the conservative reservation and reruns ALL8
+new names,8/8,8.84s. There is no second full127 invocation. All18 world child exits0
+(initial16 +final2), including final fresh full-snapshot verification of1178 cells /
+all metadata with no restored recipe. A first build failed on two consumer compile
+errors; the complete diagnostic/exit1 is preserved and corrected builds retain
+Werror. Seven unchanged unrelated dangling-else warnings remain, no cleanup.
+
+Final source/header/link proof passes with17 actual normal Engine imports/exports,
+one original private cave archive per configuration and SAME private app sources
+in all three consumers. Actual demo compiles/links after final correction, no run.
+Format check passes;375 preserved source/archive hashes and15 earlier receipt
+hashes match, all119 old names remain. Final source hashes and XML/registration /
+child correspondence are saved. New fixture recipe/base/witness/edits/history
+charges964/12802/12802/94/51202 bytes, attachment26662 versus full Snapshot12812;
+current numeric terrain payload14136 and32-snapshot reconstruction allowance409984
+are separate. Final reserved adapter work114115; actual Cave payload14698/work14643.
+These mixed logical categories are not heap/RSS or compactness claims. Exact
+commands/exits/rechecks/limits and standalone receipt are in next.md. CPU evidence
+leaves real graphics/input/assets/teardown/fun, leaks, packaging/platform/ABI,
+indefinite generator replay and stronger filesystem durability unverified. No
+unchanged display retry, persisted recipe or subsequent job is selected.

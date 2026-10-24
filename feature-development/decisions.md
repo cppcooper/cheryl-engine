@@ -1,14 +1,13 @@
 # World integration decisions
 
-Current unit: WORLD-U5 bounded variable-size documents, starting clean at
-`c8fead0de9424ea56639a846baa8be00bac617a5`. Committed U4 ready/true receipt,
-nonempty saved evidence and112 passing XML entries were inspected first.
-WINT-013/014 extend the matching detailed view and supersede fixed-shape/default
-budget limits below. One accumulated Debug ASan/UBSan run passes119/119, zero failed/skipped;
-all14 process children exit0. Actual demo/same-source/shared-Engine checks pass.
-Exact results and receipt are in next.md. This is the
-third/final map milestone of feature-round-20261024-0500; no geography import,
-subsequent unit or unchanged graphical retry is authorized.
+Current unit: standalone WORLD-U6, starting at exact clean reviewed
+`9cfa376a6366012fff2e1399af2c5d87acfa471c`. The committed U5 receipt (old batch /
+unit ready/true), nonempty saved logs and119 passing XML entries were inspected.
+WINT-015/016/017 add in-memory cave base/edit ownership to the same private editor.
+Execution passes127/127 once, then1/1 isolation and8/8 final affected rechecks;
+all18 world child exits0. Actual demo and17 shared-Engine ownership probes pass.
+This does not extend the completed finite round. Exact execution/results and the
+standalone receipt are in next.md; historical queues/receipts/provenance stay intact.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -165,3 +164,33 @@ charges and oldest eviction. This supports maximum admitted documents at copying
 cost. Logical bounds exclude allocator overhead/transients. Confidence is high
 from boundary tests; budgets are reversible engineering choices, with synchronous
 latency and native allocation failure still possible.
+
+## WINT-015 — Own a replayable semantic base and exact final-edit overlay
+
+Keep the accepted CaveReplay, versioned application adapter, complete semantic
+base and actual canonical Patch witness in memory. Diff final semantic content,
+not raw brush samples; retain distinct keys/labels/meaning IDs/visual IDs. Verify
+all base bytes before replay application and refuse input identity changes except
+admitted budget-only changes. Explicit discard starts a new epoch. This favors
+auditable equality over compactness. Engineering confidence is high for exercised
+integer-v1 replay; naming taste and indefinite future compatibility are unproven.
+
+## WINT-016 — Publish content, history and generated attachment together
+
+Stage both terrain owners, complete history and a bounded updated overlay before
+nonallocating swaps on edits/undo/redo. Validate no-ops without invalidating views
+or redo. Same-base regeneration validates both owners but retains the existing
+content/history. SAVE preserves the attachment; ordinary semantic LOAD detaches
+only the selected document. This avoids silent edit loss at extra copy/replay
+cost. Confidence is high for serial CPU operation; controls remain unchanged and
+private entry spelling is reversible engineering policy.
+
+## WINT-017 — Bound replay and report full retention honestly
+
+Use real CaveBudgets plus private recipe/edit/witness/retained-byte and scan/copy
+reservations; preserve existing editor/history/Engine limits. Default128 changes,
+1 MiB witness,4 MiB attachment and1 Mi work remain finite under hard ceilings.
+Report recipe/base/witness/edits/history/full-snapshot charges separately, including
+candidate-copy reservations; none is a saving or RSS guarantee. Share the original
+private cave producer across real callers. Confidence is high from boundary/link
+checks; synchronous latency, allocation, graphical/leak/platform/durability gaps remain.

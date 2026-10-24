@@ -7,8 +7,10 @@ set(tilemap_demo_private "${CMAKE_CURRENT_SOURCE_DIR}/../../../apps/demo/src")
 list(APPEND engine_test_sources "${tilemap_demo_private}/tilemap-editor.cpp")
 list(APPEND engine_test_sources "${tilemap_demo_private}/world-document.cpp")
 list(APPEND engine_test_sources "${tilemap_demo_private}/tilemap-demo.cpp")
+include("${CHERYL_REPOSITORY_ROOT}/projects/apps/demo/private-cave.cmake")
+list(APPEND engine_test_sources "${tilemap_demo_private}/generated-document.cpp")
 cheryl_add_test_suite(${TARGET_TEST_ENGINE}
     OUTPUT_NAME "${OUTPUT_TEST_ENGINE}"
     SOURCES ${engine_test_sources}
-    LIBRARIES ${LINKAGE_PUBLIC_TEST_ENGINE}
+    LIBRARIES ${LINKAGE_PUBLIC_TEST_ENGINE} world-cave-private
     PRIVATE_INCLUDES "${CHERYL_ENGINE_PRIVATE_SOURCE_DIR}" "${tilemap_demo_private}")

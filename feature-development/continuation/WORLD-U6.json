@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U6",
+  "starting_head": "9cfa376a6366012fff2e1399af2c5d87acfa471c",
+  "status": "ready",
+  "checks_passed": true,
+  "predecessor_receipt": "feature-development/queue/feature-round-20261024-0500/WORLD-U5.json",
+  "predecessor_receipt_sha256": "59b1703a9468aa16815a4ce7efc34a4256d8965072eda06fa6700e82b0d29c3f",
+  "evidence": [
+    "build/world-u6-logs/shared-build.log",
+    "build/world-u6-logs/shared-build-fixed.log",
+    "build/world-u6-logs/discovery.log",
+    "build/world-u6-logs/tests.log",
+    "build/world-u6-logs/tests-isolation.log",
+    "build/world-u6-logs/shared-build-final.log",
+    "build/world-u6-logs/tests-final.log",
+    "build/world-u6-logs/demo-build-final.log",
+    "build/world-u6-logs/final-layered_documents-layered-author.log",
+    "build/world-u6-logs/final-layered_documents-fresh-layered-verify.log",
+    "build/world-u6-logs/ownership.log",
+    "build/world-u6-logs/format-check.log"
+  ],
+  "implemented_contracts": [
+    "Standalone continuation only; old queues/receipts/provenance untouched. Actual private generated-document/editor/bridge sources compile in demo/unit/world, with only original maze/random/cave in one private producer per configuration; storage/tilemap remain solely in normal shared Engine.",
+    "Owned CaveReplay family/algorithm/version1, x-fast X-right/Y-down domain/seed/stage/stream/requested options/budgets/effective options; versioned owned semantic adapter map/layer/spawn metadata and occupancy key/label policy plus bounded optional initial-detail base keys. Original U5 domains/history/coordinates/meaning mappings remain compatible.",
+    "Complete semantic base Snapshot and actual full canonical witness retained. Actual capture/diff/apply from Engine; final semantic snapshot diff coalesces raw input samples into unique layer/row-major player edits. No hash-as-witness, color-derived labels, wire recipe/patch/schema or compactness claim.",
+    "Explicit semantic-mode DiscardCurrent starts selected epoch/clears history; PreserveEdits requires exact recipe/adapter inputs except admitted budget-only changes. Replay compares complete semantic base and canonical witness before applying edits and validating both nonmovable owners. Same final content preserves owner/history/borrowed views.",
+    "Attached edits/undo/redo prepare complete target/overlay/history before nonallocating swaps; no-op preserves redo/owner, overlay/history refusals preserve complete old state. SAVE preserves attachment; ordinary semantic LOAD detaches only selected attachment/history, literal LOAD leaves it intact. Failed file actions preserve generated state under existing file profile.",
+    "Default128 final edits/1 MiB witness/4 MiB attachment/1 Mi adapter work, hard1024/8 MiB/32 MiB/4 Mi work and64 KiB recipe. Final reservation96*layer_cells+8*edit_allowance+spawn_count (64 scan +32 copy passes); real CaveBudgets/Engine incremental work separate. Exact/one-short addresses/witness/retained/work/cave cells-storage-work and zero/no-op/history refusal tested without stress/OOM.",
+    "Independent frozen31x19 literal bases match every cell/key/label/cardinal-derived visual for seed42 vs43 and third stage/config choice; actual floor counts258/290/233 derive from full comparisons. Actual editor both-layer repeated paint/erase/undo/redo/regenerate/SAVE and fresh full-snapshot LOAD compare1178 cells/all metadata/numeric meanings; fresh process restores no recipe and regeneration refuses.",
+    "Initial accumulated127/127 passes retain all119 predecessor names; review-time1/1 isolation recheck plus final8/8 affected recheck after work correction,0 test failures/skips.136 test executions over127 unique names;18 successful world child exits (16 initial +2 final). Actual app diagnostics/drop/recovery, late second-owner refusal, aliases/copies/old frames and zero synthetic bind/draw/upload counters verified.",
+    "Final Debug ASan/UBSan instrumentation/halt_on_error retained; command-local detect_leaks=0 only. Actual demo final compile/link and17 normal Engine import/export/header/symbol/loader/same-source checks pass; final source hashes saved.375 source/archive paths and15 older receipts unchanged. Initial compile failure on initializer/Modifiers namespace corrected without warning suppression; seven unrelated unchanged dangling-else warnings remain. Unchanged standalone storage/procedural campaigns not repeated."
+  ],
+  "measured_retention": {
+    "recipe": 964,
+    "base": 12802,
+    "witness": 12802,
+    "edits": 94,
+    "history": 51202,
+    "total": 26662,
+    "full_snapshot": 12812,
+    "reserved_work": 114115,
+    "cave_storage": 14698,
+    "cave_work": 14643,
+    "numeric_terrain_payload": 14136,
+    "snapshot_copy_reservation": 409984,
+    "reconstruction_reservation": 437610,
+    "attachment_plus_history": 77864
+  },
+  "limitations": [
+    "Real display/input, atlas decode/upload/capture, graphical teardown, visual correctness/fun and leaks remain unverified; unchanged X11 :1 failure not retried. CPU replay/link proof is not graphical acceptance.",
+    "Logical recipe/base/witness/edit/history and reconstruction reservations are mixed payload charges, not RSS or a wire format. Current maps/configuration, container capacity/control overhead and live/candidate copies coexist. Allocation/programming exceptions propagate; synchronous generation/copy/I/O can stall updates. Retention is larger than a full snapshot.",
+    "Only current compiled integer cellular_2d version1 replay under declared inputs; unsupported versions refuse. No indefinite generator/platform support, recipe persistence/migration, rebase, compact storage, chunking or broad World framework.",
+    "Serialized update/preparation and cleanup after simulation join; borrowed views expire on changing adoption. Fixed origins may overlap large maps; no automatic layout/physical scale/walkability guarantee. File publication/runtime adoption/full ticks remain separate boundaries.",
+    "Controlled existing directory/stable cwd/single-writer checked native rename profile only, no fsync/power-loss/hostile-race/multiwriter/distributed guarantee. Source-tree GNU/Linux Debug/shared tested; packaging/installed SDK/static/Release/other-platform/toolchain ABI unverified.",
+    "No sibling/climate source/queue/import or automatic further assignment; publisher alone handles assigned branch backup. Older finite plans stay immutable."
+  ],
+  "next_action": "Coordinator reviews exact drained standalone checkpoint, receipt and saved evidence. Worker2 remains idle; root alone selects subsequent materialization/admission/integration, publisher alone backs up feat/tilemap."
+}

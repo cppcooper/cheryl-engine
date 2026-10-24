@@ -12,7 +12,7 @@
 namespace WorldProof {
     namespace Storage = CE::Maps;
     namespace Tiles = CE::Tilemaps;
-    enum class Refusal { Table, UnknownKey, UnknownId, UnknownLabel, Limit, History };
+    enum class Refusal { Table, UnknownKey, UnknownId, UnknownLabel, Limit, History, Generation };
     struct Error final : std::runtime_error {
         Refusal code;
         Error(Refusal code, const std::string& detail);
@@ -34,6 +34,7 @@ namespace WorldProof {
         [[nodiscard]] Tiles::TileId id(const std::optional<std::string>& key) const;
         [[nodiscard]] std::optional<std::string> key(Tiles::TileId id) const;
     };
+    [[nodiscard]] KeyTable editor_meaning_ids();
     struct Metadata {
         std::string id;
         Tiles::Extent extent;
@@ -58,6 +59,7 @@ namespace WorldProof {
         std::string key;
         Tiles::TerrainLabel label;
     };
+    [[nodiscard]] std::span<const SemanticKey> editor_semantics();
     class TerrainOwner {
         Metadata metadata_;
         KeyTable keys_;

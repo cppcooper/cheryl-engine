@@ -1,6 +1,6 @@
 #pragma once
 
-#include "world-document.h"
+#include "generated-document.h"
 
 #include <assets/submission/tilemap2d.h>
 #include <core/controls/input-record.h>
@@ -44,6 +44,7 @@ private:
     std::array<std::unique_ptr<WorldProof::LiteralOwner>, 2> documents_;
     std::filesystem::path document_dir_;
     std::array<std::unique_ptr<WorldProof::TerrainDocument>, 2> terrain_;
+    std::array<std::unique_ptr<WorldProof::GeneratedDocument>, 2> generated_;
     CE::Tilemaps::TerrainBatchLimits terrain_limits_;
     WorldProof::HistoryLimits history_limits_;
     std::array<std::array<WorldProof::DocumentHistory, 2>, 2> histories_;
@@ -76,6 +77,11 @@ public:
     DemoTilemapEditor& operator=(const DemoTilemapEditor&) = delete;
     DemoTilemapEditor(DemoTilemapEditor&&) = delete;
     DemoTilemapEditor& operator=(DemoTilemapEditor&&) = delete;
+    // Explicit semantic-mode epoch/preserve policy; no implicit mode/map selection.
+    void
+    install_generated(const WorldProof::CaveRecipe& recipe, WorldProof::GeneratedReplace policy, WorldProof::GeneratedLimits limits = {});
+    void regenerate_selected();
+    [[nodiscard]] std::optional<WorldProof::GeneratedDocument> generated_state(std::size_t index) const;
     [[nodiscard]] static TerrainPalette diagnostic_terrain();
     // Records are already in publication order. Use this tick's copied sizes;
     // they are not per-event historical resize samples. Invalid sizes suspend

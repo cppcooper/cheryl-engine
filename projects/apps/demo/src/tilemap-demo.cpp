@@ -84,9 +84,12 @@ void DemoTilemaps::update(const std::span<const CE::Input::Events::Record> recor
         std::cerr << "Tilemap input/action rejected (remaining tick records dropped): " << error.what() << '\n';
     } catch (const CE::Maps::Error& error) {
         std::cerr << "Tilemap document storage rejected (remaining tick records dropped): " << error.what() << '\n';
+    } catch (const CE::Maps::CellPatches::Error& error) {
+        std::cerr << "Tilemap generated overlay rejected (remaining tick records dropped): " << error.what() << '\n';
     } catch (const WorldProof::Error& error) {
-        std::cerr << (error.code == WorldProof::Refusal::History ? "Tilemap document history rejected"
-                                                                 : "Tilemap document conversion rejected")
+        std::cerr << (error.code == WorldProof::Refusal::History      ? "Tilemap document history rejected"
+                      : error.code == WorldProof::Refusal::Generation ? "Tilemap generated document rejected"
+                                                                      : "Tilemap document conversion rejected")
                   << " (remaining tick records dropped): " << error.what() << '\n';
     }
 }

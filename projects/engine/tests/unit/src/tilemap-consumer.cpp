@@ -1,6 +1,7 @@
 #include "tilemap-editor.h"
 #include "tilemap-demo.h"
 #include "../../world-consumer/variable-documents.h"
+#include "../../world-consumer/generated-expectations.h"
 #include <cheryl/maps/terrain-map.h>
 
 #include <assets/submission/tilemap2d.h>
@@ -3103,4 +3104,448 @@ TEST(tilemap_consumer, variable_frames_and_clipping) {
     packets.clear();
     EXPECT_TRUE(image.expired());
     calls->expect_cpu();
+}
+
+namespace {
+    namespace Generated = GeneratedExpectations;
+    namespace Patches = CE::Maps::CellPatches;
+    using Replace = WorldProof::GeneratedReplace;
+    void expect_attachment(const WorldProof::GeneratedDocument& actual, const WorldProof::GeneratedDocument& expected) {
+        EXPECT_EQ(actual.recipe, expected.recipe);
+        EXPECT_EQ(actual.effective, expected.effective);
+        EXPECT_EQ(actual.limits, expected.limits);
+        EXPECT_EQ(actual.base, expected.base);
+        EXPECT_EQ(actual.overlay, expected.overlay);
+        EXPECT_EQ(actual.bytes, expected.bytes);
+    }
+    WorldProof::CaveRecipe small_recipe() {
+        auto result = Generated::recipe();
+        const std::array<ProcGen::Index, 2> size{5, 4};
+        result.cave.domain = *ProcGen::Domain::checked(size);
+        result.cave.requested.solid_fill = 10000;
+        result.cave.requested.steps = 0;
+        result.adapter.spawns = {{"first", "floor", 0, 0}, {"last", "overlay", 4, 3}};
+        return result;
+    }
+    Documents::Snapshot generated_final() {
+        auto final = Generated::base();
+        final.layers[0].cells[2 + 2 * 31] = "terrain:four";
+        final.layers[0].cells[3 + 2 * 31].reset();
+        final.layers[1].cells[1 + 31] = final.layers[1].cells[2 + 31] = "terrain:one";
+        return final;
+    }
+    void paint_generated(DemoTilemapEditor& editor) {
+        edit(
+            editor, {key(Key::G), key(Key::Digit6), click(Mouse::Left, domain_cell(editor, 2, 2)),
+                     click(Mouse::Left, domain_cell(editor, 2, 2)), click(Mouse::Right, domain_cell(editor, 3, 2))}
+        );
+        edit(
+            editor,
+            {key(Key::T), key(Key::Digit3), click(Mouse::Left, domain_cell(editor, 1, 1)), click(Mouse::Left, domain_cell(editor, 2, 1))}
+        );
+    }
+}
+
+TEST(tilemap_consumer, generated_replay) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    domain_view(editor);
+    EXPECT_THROW(editor.install_generated(Generated::recipe(), Replace::DiscardCurrent), WorldProof::Error);
+    edit(editor, {key(Key::B)});
+    EXPECT_THROW(editor.install_generated(Generated::recipe(), Replace::PreserveEdits), WorldProof::Error);
+    const auto literal = editor.document(0).snapshot();
+    for (std::size_t choice = 0; choice < 3; ++choice) {
+        auto recipe = Generated::recipe(choice);
+        editor.install_generated(recipe, Replace::DiscardCurrent);
+        const auto expected = Generated::base(choice);
+        expect_domain(editor, 0, expected, true);
+        const auto state = *editor.generated_state(0);
+        EXPECT_EQ(state.base, expected);
+        EXPECT_EQ(state.effective, recipe.cave.requested);
+        EXPECT_EQ(state.overlay.witness, Patches::capture(expected));
+        EXPECT_TRUE(state.overlay.edits.empty());
+        EXPECT_EQ(Patches::apply(expected, state.overlay), expected);
+        const auto* owner = &editor.terrain_document(0);
+        editor.regenerate_selected();
+        EXPECT_EQ(&editor.terrain_document(0), owner);
+        expect_attachment(*editor.generated_state(0), state);
+        auto larger_budget = recipe;
+        larger_budget.cave.budgets.work += 1;
+        editor.install_generated(larger_budget, Replace::PreserveEdits);
+        EXPECT_EQ(&editor.terrain_document(0), owner);
+        EXPECT_EQ(editor.generated_state(0)->recipe, larger_budget);
+        expect_domain(editor, 0, expected, true);
+        EXPECT_EQ(editor.document(0).snapshot(), literal);
+        EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+        // The live attachment owns every recipe/base/witness byte.
+        recipe.adapter.id = "terrain:destroyed-input";
+        recipe.adapter.spawns.clear();
+        auto copy = *editor.generated_state(0);
+        copy.base.layers.clear();
+        copy.recipe.adapter.spawns.clear();
+        copy.overlay.edits.push_back({});
+        expect_domain(editor, 0, expected, true);
+    }
+    EXPECT_NE(Generated::base(0), Generated::base(1)); // Seed-only change, same stage/options.
+    EXPECT_NE(Generated::base(0), Generated::base(2)); // Declared different stage/configuration.
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, generated_edits) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    domain_view(editor);
+    edit(editor, {key(Key::B)});
+    editor.install_generated(Generated::recipe(), Replace::DiscardCurrent);
+    const auto literal = editor.document(0).snapshot();
+    edit(editor, {key(Key::Digit2)});
+    auto east_recipe = Generated::recipe(1);
+    east_recipe.adapter.id = "terrain:generated-east";
+    editor.install_generated(east_recipe, Replace::DiscardCurrent);
+    const auto east = *editor.generated_state(1);
+    const auto east_content = editor.terrain_document(1).snapshot();
+    edit(editor, {key(Key::Digit1)});
+    paint_generated(editor);
+    const auto final = generated_final();
+    expect_domain(editor, 0, final, true);
+    auto state = *editor.generated_state(0);
+    EXPECT_EQ(state.overlay, Patches::diff(Generated::base(), final));
+    ASSERT_EQ(state.overlay.edits.size(), 4u);
+    EXPECT_EQ(state.overlay.edits[0], (Patches::Edit{"floor", 2, 2, "terrain:four"}));
+    EXPECT_EQ(state.overlay.edits[1], (Patches::Edit{"floor", 3, 2, std::nullopt}));
+    EXPECT_EQ(state.overlay.edits[2], (Patches::Edit{"overlay", 1, 1, "terrain:one"}));
+    EXPECT_EQ(state.overlay.edits[3], (Patches::Edit{"overlay", 2, 1, "terrain:one"}));
+    ASSERT_EQ(editor.history(0, Mode::Terrain).undo, 2u);
+    Render::Frame old;
+    prepare_editor(old, editor, fixture);
+    const auto packets = old.passes()[0].draws;
+    edit(editor, {key(Key::F6)});
+    auto ground = final;
+    ground.layers[1].cells = Generated::base().layers[1].cells;
+    expect_domain(editor, 0, ground, true);
+    EXPECT_EQ(editor.generated_state(0)->overlay, Patches::diff(Generated::base(), ground));
+    const auto* held = &editor.terrain_document(0);
+    const auto undone = *editor.generated_state(0);
+    editor.regenerate_selected();
+    EXPECT_EQ(&editor.terrain_document(0), held);
+    expect_attachment(*editor.generated_state(0), undone);
+    edit(editor, {key(Key::F7)});
+    expect_domain(editor, 0, final, true);
+    expect_attachment(*editor.generated_state(0), state);
+    editor.regenerate_selected();
+    expect_packets(old, packets);
+    expect_attachment(*editor.generated_state(1), east);
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east_content);
+    EXPECT_EQ(editor.document(0).snapshot(), literal);
+    edit(editor, {key(Key::F6), key(Key::Digit4), click(Mouse::Left, domain_cell(editor, 1, 1))});
+    EXPECT_EQ(editor.history(0, Mode::Terrain).redo, 0u);
+    auto alias = ground;
+    alias.layers[1].cells[32] = "terrain:two";
+    expect_domain(editor, 0, alias, true);
+    EXPECT_EQ(editor.terrain(0, detail).tiles().get(detail, {1, 1}), (Maps::TileId{7})); // Same isolated color as label1, distinct key2.
+    EXPECT_EQ(editor.generated_state(0)->overlay, Patches::diff(Generated::base(), alias));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, generated_limits) {
+    const auto recipe = small_recipe();
+    auto limits = WorldProof::GeneratedLimits{};
+    limits.edits = 2;
+    const auto initial = WorldProof::generate_document(recipe, limits);
+    auto final = initial.base;
+    final.layers[0].cells[0] = final.layers[0].cells[1] = "terrain:one";
+    const auto changed = WorldProof::stage_generated_edits(initial, final);
+    for (const auto boundary : {0, 1, 2}) {
+        for (const bool one_short : {false, true}) {
+            auto cap = limits;
+            if (boundary == 0)
+                cap.witness_bytes = initial.bytes.witness - (one_short ? 1u : 0u);
+            if (boundary == 1)
+                cap.retained_bytes = initial.bytes.retained - (one_short ? 1u : 0u);
+            if (boundary == 2)
+                cap.work = initial.bytes.reserved_work - (one_short ? 1u : 0u);
+            if (one_short)
+                EXPECT_THROW(static_cast<void>(WorldProof::generate_document(recipe, cap)), WorldProof::Error);
+            else
+                EXPECT_EQ(WorldProof::generate_document(recipe, cap).base, initial.base);
+        }
+    }
+    const auto req = *ProcGen::cave_requirements(recipe.cave.domain, recipe.cave.requested);
+    for (const auto boundary : {0, 1, 2}) {
+        auto exact = recipe;
+        exact.cave.budgets = {req.cells, req.storage_bytes, req.work_reservation};
+        EXPECT_EQ(WorldProof::generate_document(exact, limits).base, initial.base);
+        if (boundary == 0)
+            --exact.cave.budgets.cells;
+        if (boundary == 1)
+            --exact.cave.budgets.storage_bytes;
+        if (boundary == 2)
+            --exact.cave.budgets.work;
+        EXPECT_THROW(static_cast<void>(WorldProof::generate_document(exact, limits)), WorldProof::Error);
+    }
+    for (const bool one_short : {false, true}) {
+        auto cap = limits;
+        cap.retained_bytes = changed.bytes.retained - (one_short ? 1u : 0u);
+        DemoTilemapEditor editor;
+        domain_view(editor);
+        edit(editor, {key(Key::B)});
+        editor.install_generated(recipe, Replace::DiscardCurrent, cap);
+        const auto before = *editor.generated_state(0);
+        const auto events =
+            std::array{key(Key::Digit3), click(Mouse::Left, domain_cell(editor, 0, 0)), click(Mouse::Left, domain_cell(editor, 1, 0))};
+        if (one_short) {
+            EXPECT_THROW(editor.consume(events, editor_sizes), WorldProof::Error);
+            expect_attachment(*editor.generated_state(0), before);
+            expect_domain(editor, 0, initial.base, true);
+        } else {
+            editor.consume(events, editor_sizes);
+            expect_domain(editor, 0, final, true);
+            ASSERT_EQ(editor.generated_state(0)->overlay.edits.size(), 2u);
+            const auto accepted = *editor.generated_state(0);
+            const auto history = editor.history(0, Mode::Terrain);
+            EXPECT_THROW(edit(editor, {click(Mouse::Left, domain_cell(editor, 2, 0))}), WorldProof::Error);
+            expect_attachment(*editor.generated_state(0), accepted);
+            EXPECT_EQ(editor.history(0, Mode::Terrain), history);
+            edit(editor, {key(Key::F6)});
+            EXPECT_TRUE(editor.generated_state(0)->overlay.edits.empty());
+            edit(editor, {key(Key::F7)});
+            expect_domain(editor, 0, final, true);
+        }
+    }
+    // Same two-address command at the one-short EDIT cap, with a retained redo.
+    {
+        DemoTilemapEditor editor;
+        domain_view(editor);
+        edit(editor, {key(Key::B)});
+        auto cap = limits;
+        cap.edits = 1;
+        editor.install_generated(recipe, Replace::DiscardCurrent, cap);
+        const auto before = *editor.generated_state(0);
+        EXPECT_THROW(
+            edit(editor, {key(Key::Digit3), click(Mouse::Left, domain_cell(editor, 0, 0)), click(Mouse::Left, domain_cell(editor, 1, 0))}),
+            WorldProof::Error
+        );
+        expect_attachment(*editor.generated_state(0), before);
+        edit(editor, {click(Mouse::Left, domain_cell(editor, 0, 0)), key(Key::F6)});
+        const auto redo = *editor.generated_state(0);
+        EXPECT_THROW(
+            edit(editor, {click(Mouse::Left, domain_cell(editor, 0, 0)), click(Mouse::Left, domain_cell(editor, 1, 0))}), WorldProof::Error
+        );
+        expect_attachment(*editor.generated_state(0), redo);
+        edit(editor, {key(Key::F7)});
+        auto one = initial.base;
+        one.layers[0].cells[0] = "terrain:one";
+        expect_domain(editor, 0, one, true);
+    }
+    // Even a fully prepared overlay cannot publish when its undo command cannot be retained.
+    {
+        DemoTilemapEditor editor(std::filesystem::path{}, {0, 1024 * 1024});
+        domain_view(editor);
+        edit(editor, {key(Key::B)});
+        editor.install_generated(recipe, Replace::DiscardCurrent);
+        const auto before = *editor.generated_state(0);
+        EXPECT_THROW(edit(editor, {key(Key::Digit3), click(Mouse::Left, domain_cell(editor, 0, 0))}), WorldProof::Error);
+        expect_attachment(*editor.generated_state(0), before);
+        expect_domain(editor, 0, initial.base, true);
+    }
+    auto zero = limits;
+    zero.edits = 0;
+    auto empty = WorldProof::generate_document(recipe, zero);
+    EXPECT_EQ(WorldProof::stage_generated_edits(empty, empty.base).overlay, empty.overlay);
+    EXPECT_THROW(static_cast<void>(WorldProof::stage_generated_edits(empty, final)), WorldProof::Error);
+    {
+        DemoTilemapEditor editor;
+        domain_view(editor);
+        edit(editor, {key(Key::B)});
+        editor.install_generated(recipe, Replace::DiscardCurrent, zero);
+        const auto before = *editor.generated_state(0);
+        edit(editor, {key(Key::Digit4), click(Mouse::Left, domain_cell(editor, 0, 0))}); // Existing label2, validated no-op.
+        expect_attachment(*editor.generated_state(0), before);
+    }
+    for (auto invalid : {WorldProof::GeneratedLimits{1025}, WorldProof::GeneratedLimits{2, std::numeric_limits<std::size_t>::max()}})
+        EXPECT_THROW(static_cast<void>(WorldProof::generate_document(recipe, invalid)), WorldProof::Error);
+}
+
+TEST(tilemap_consumer, generated_refusals) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    domain_view(editor);
+    edit(editor, {key(Key::B)});
+    editor.install_generated(Generated::recipe(), Replace::DiscardCurrent);
+    paint_generated(editor);
+    const auto accepted = *editor.generated_state(0);
+    const auto content = editor.terrain_document(0).snapshot();
+    const auto* owner = &editor.terrain_document(0);
+    for (int failure = 0; failure < 11; ++failure) {
+        auto recipe = Generated::recipe();
+        if (failure == 0)
+            ++recipe.cave.random.seed;
+        if (failure == 1)
+            ++recipe.cave.random.stage;
+        if (failure == 2)
+            ++recipe.cave.requested.steps;
+        if (failure == 3)
+            recipe.cave.version = 2;
+        if (failure == 4)
+            recipe.cave.algorithm = static_cast<ProcGen::CaveAlgorithm>(99);
+        if (failure == 5)
+            recipe.adapter.version = 2;
+        if (failure == 6)
+            recipe.family = "dungeon";
+        if (failure == 7)
+            recipe.adapter.occupancy[0].key = "terrain:unknown";
+        if (failure == 8)
+            recipe.adapter.occupancy[0].label = {99};
+        if (failure == 9)
+            recipe.adapter.layers = {"other", "overlay"};
+        if (failure == 10)
+            recipe.adapter.spawns[0].x = 31;
+        EXPECT_THROW(editor.install_generated(recipe, Replace::PreserveEdits), std::exception);
+        EXPECT_EQ(&editor.terrain_document(0), owner);
+        expect_domain(editor, 0, content, true);
+        expect_attachment(*editor.generated_state(0), accepted);
+    }
+    editor.regenerate_selected();
+    expect_attachment(*editor.generated_state(0), accepted);
+    edit(editor, {key(Key::F6), key(Key::F7)});
+    expect_domain(editor, 0, content, true);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, generated_witness) {
+    const auto accepted = WorldProof::generate_document(Generated::recipe(), {});
+    const auto original = accepted;
+    auto wrong = accepted;
+    wrong.base.layers[0].cells[0] = "terrain:one"; // Same extent/metadata but a different canonical base.
+    EXPECT_THROW(static_cast<void>(WorldProof::replay_generated(wrong, wrong.recipe)), WorldProof::Error);
+    wrong.overlay = Patches::diff(wrong.base, wrong.base); // A real new witness STILL cannot match the original replay.
+    EXPECT_THROW(static_cast<void>(WorldProof::replay_generated(wrong, wrong.recipe)), WorldProof::Error);
+    auto target = accepted.base;
+    target.id = "terrain:different";
+    EXPECT_THROW(static_cast<void>(WorldProof::stage_generated_edits(accepted, target)), Patches::Error);
+    target = accepted.base;
+    std::swap(target.layers[0], target.layers[1]);
+    EXPECT_THROW(static_cast<void>(WorldProof::stage_generated_edits(accepted, target)), Patches::Error);
+    target = accepted.base;
+    target.spawns.pop_back();
+    EXPECT_THROW(static_cast<void>(WorldProof::stage_generated_edits(accepted, target)), Patches::Error);
+    target = accepted.base;
+    target.layers[1].cells.back() = "terrain:unknown";
+    EXPECT_THROW(static_cast<void>(WorldProof::stage_generated_edits(accepted, target)), WorldProof::Error);
+    auto changed = accepted;
+    changed.limits.edits = 0;
+    target = accepted.base;
+    target.layers[1].cells.back() = "terrain:four";
+    changed.overlay = Patches::diff(changed.base, target);
+    EXPECT_THROW(static_cast<void>(WorldProof::replay_generated(changed, changed.recipe)), WorldProof::Error);
+    expect_attachment(accepted, original);
+    EXPECT_EQ(WorldProof::replay_generated(accepted, accepted.recipe), accepted.base);
+}
+
+TEST(tilemap_consumer, generated_late_adoption) {
+    const Fixture fixture;
+    auto palette = DemoTilemapEditor::diagnostic_terrain();
+    palette.rule.cases.erase(2);
+    DemoTilemapEditor editor(palette);
+    domain_view(editor);
+    edit(editor, {key(Key::B)});
+    const auto recipe = small_recipe();
+    editor.install_generated(recipe, Replace::DiscardCurrent);
+    edit(editor, {key(Key::T), key(Key::Digit3), click(Mouse::Left, domain_cell(editor, 3, 2))});
+    const auto held = *editor.generated_state(0);
+    const auto before = editor.terrain_document(0).snapshot();
+    Render::Frame frame;
+    prepare_editor(frame, editor, fixture);
+    const auto packets = frame.passes()[0].draws;
+    auto proposal = recipe;
+    proposal.adapter.initial_detail.resize(20);
+    proposal.adapter.initial_detail[0] = proposal.adapter.initial_detail[1] = "terrain:one";
+    const auto generated = WorldProof::generate_document(proposal, {});
+    const auto first = WorldProof::TerrainOwner::from(
+        generated.base, WorldProof::editor_meaning_ids(), ground, WorldProof::editor_semantics(), palette.rule, palette.target_to_id
+    );
+    ASSERT_EQ(first->terrain().tiles().extent(), (Maps::Extent{5, 4}));
+    EXPECT_THROW(editor.install_generated(proposal, Replace::DiscardCurrent), bad_request);
+    expect_attachment(*editor.generated_state(0), held);
+    expect_domain(editor, 0, before, true);
+    expect_packets(frame, packets);
+    editor.regenerate_selected();
+    edit(editor, {click(Mouse::Right, domain_cell(editor, 3, 2)), key(Key::F6)});
+    expect_domain(editor, 0, before, true);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, generated_files) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    Render::Frame old;
+    std::vector<Render::DrawPacket2D> packets;
+    {
+        DemoTilemapEditor editor(files.directory);
+        domain_view(editor);
+        edit(editor, {key(Key::B)});
+        editor.install_generated(Generated::recipe(), Replace::DiscardCurrent);
+        paint_generated(editor);
+        auto held = *editor.generated_state(0);
+        // Literal LOAD and another generated map must not detach this epoch.
+        Documents::save(files.directory / "west.json", custom_document());
+        edit(editor, {key(Key::V), key(Key::F9), key(Key::B), key(Key::Digit2)});
+        expect_attachment(*editor.generated_state(0), held);
+        editor.install_generated(Generated::recipe(1), Replace::DiscardCurrent);
+        const auto east = *editor.generated_state(1);
+        const auto east_content = editor.terrain_document(1).snapshot();
+        edit(editor, {key(Key::Digit1)});
+        expect_attachment(*editor.generated_state(0), held);
+
+        prepare_editor(old, editor, fixture);
+        packets = old.passes()[0].draws;
+        edit(editor, {key(Key::F8)});
+        EXPECT_EQ(Documents::load(files.directory / "west-terrain.json"), generated_final());
+        expect_attachment(*editor.generated_state(0), held);
+        // Owned recipe/base/witness/history counts vs FULL snapshot: no compactness claim.
+        std::cout << "GENERATED RETAINED recipe=" << held.bytes.recipe << " base=" << held.bytes.base << " witness=" << held.bytes.witness
+                  << " edits=" << held.bytes.edits << " history=" << held.bytes.history << " total=" << held.bytes.retained
+                  << " full_snapshot=" << held.bytes.full_snapshot << " reserved_work=" << held.bytes.reserved_work
+                  << " cave_storage=" << held.bytes.cave_storage << " cave_work=" << held.bytes.cave_work << '\n';
+        raw_document(files.directory / "west-terrain.json", "{");
+        EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+        expect_attachment(*editor.generated_state(0), held);
+        Documents::save(files.directory / "predecessor.json", generated_final());
+        std::filesystem::remove(files.directory / "west-terrain.json"); // Only this fixture's owned entry.
+        std::filesystem::create_symlink(files.directory / "predecessor.json", files.directory / "west-terrain.json");
+        const auto bytes = document_bytes(files.directory / "predecessor.json");
+        EXPECT_THROW(edit(editor, {key(Key::F8)}), Documents::Error);
+        EXPECT_EQ(document_bytes(files.directory / "predecessor.json"), bytes);
+        expect_attachment(*editor.generated_state(0), held);
+        std::filesystem::remove(files.directory / "west-terrain.json");
+        Documents::save(files.directory / "west-terrain.json", generated_final());
+        edit(editor, {key(Key::F9)});
+        EXPECT_FALSE(editor.generated_state(0));
+        expect_attachment(*editor.generated_state(1), east);
+        EXPECT_EQ(editor.terrain_document(1).snapshot(), east_content);
+        EXPECT_EQ(editor.document(0).snapshot(), custom_document());
+
+        EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+        expect_domain(editor, 0, generated_final(), true);
+        EXPECT_THROW(editor.regenerate_selected(), WorldProof::Error);
+    }
+    expect_packets(old, packets);
+    const DocumentFiles diagnostics;
+    DemoTilemaps demo(diagnostics.directory);
+    const std::array mode{key(Key::B)};
+    demo.update(mode, editor_sizes);
+    auto cap = WorldProof::GeneratedLimits{};
+    cap.edits = 0;
+    demo.install_generated(small_recipe(), Replace::DiscardCurrent, cap);
+    const std::array tick{key(Key::Digit6), click(Mouse::Left, {40, 128}), key(Key::F8)};
+    testing::internal::CaptureStderr();
+    demo.update(tick, editor_sizes);
+    const auto error = testing::internal::GetCapturedStderr();
+    EXPECT_NE(error.find("generated document rejected"), std::string::npos);
+    EXPECT_NE(error.find("changed-address cap"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(diagnostics.directory / "west-terrain.json"));
+    const std::array save{key(Key::F8)};
+    demo.update(save, editor_sizes);
+    EXPECT_EQ(Documents::load(diagnostics.directory / "west-terrain.json"), WorldProof::generate_document(small_recipe(), cap).base);
+    fixture.calls->expect_cpu();
 }

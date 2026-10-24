@@ -82,6 +82,19 @@ namespace WorldProof {
                 return entry.key;
         throw Error(Refusal::UnknownId, "Unmapped numeric TileId: " + std::to_string(id.value));
     }
+    KeyTable editor_meaning_ids() {
+        const std::array entries{
+            KeyId{"terrain:one", {101}}, KeyId{"terrain:two", {203}}, KeyId{"terrain:three", {307}}, KeyId{"terrain:four", {409}}
+        };
+        return KeyTable(entries);
+    }
+    std::span<const SemanticKey> editor_semantics() {
+        static const std::array entries{
+            SemanticKey{"terrain:one", {1}}, SemanticKey{"terrain:two", {2}}, SemanticKey{"terrain:three", {3}},
+            SemanticKey{"terrain:four", {4}}
+        };
+        return entries;
+    }
     LiteralOwner::LiteralOwner(Metadata meta, KeyTable keys, Tiles::Map map)
     : metadata_(std::move(meta)), keys_(std::move(keys)), map_(std::move(map)) {}
 

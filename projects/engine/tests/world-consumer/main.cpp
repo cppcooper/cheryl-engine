@@ -4,6 +4,7 @@
 #include "tilemap-editor.h"
 #include "cave.h"
 #include "variable-documents.h"
+#include "generated-expectations.h"
 
 #include <internals/exceptions.h>
 
@@ -622,6 +623,78 @@ namespace {
                   << " complete cells + all keys/labels/numeric meanings/cardinal visuals/ordered metadata PASS\n";
     }
 
+    void layered_documents(const std::filesystem::path& directory, bool author) {
+        namespace Expected = GeneratedExpectations;
+        auto final = Expected::base();
+        final.layers[0].cells[64] = "terrain:four";
+        final.layers[0].cells[65].reset();
+        final.layers[1].cells[32] = final.layers[1].cells[33] = "terrain:one";
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::B)});
+        require(editor.set_view({0, -3072}, 0.125), "Layering viewport failed");
+        const auto path = directory / "west-terrain.json";
+        if (author) {
+            editor.install_generated(Expected::recipe(), GeneratedReplace::DiscardCurrent);
+            check_variable(editor, Expected::base(), 0, true);
+            editor.regenerate_selected();
+            require(editor.generated_state(0)->overlay.edits.empty(), "Default replay invented player edits");
+            auto erase = paint(17, 67);
+            erase.data = Events::Button{
+                CE::Input::control_id(CE::Input::MouseButton::Right),
+                Events::ButtonPhase::Press,
+                CE::Input::Modifiers::None,
+                -1,
+                -1,
+                Key::Unknown,
+                CE::Input::MouseButton::Right,
+                Events::Pointer{17, 67}
+            };
+            editor_events(editor, {press(Key::Digit6), paint(13, 67), paint(13, 67), erase});
+            auto ground = final;
+            ground.layers[1].cells = Expected::base().layers[1].cells;
+            check_variable(editor, ground, 0, true);
+            editor_events(editor, {press(Key::T), press(Key::Digit3), paint(9, 65), paint(13, 65)});
+            check_variable(editor, final, 0, true);
+            const auto held = *editor.generated_state(0);
+            const std::vector<Patch::Edit> literal_edits{
+                {"floor", 2, 2, "terrain:four"},
+                {"floor", 3, 2, std::nullopt},
+                {"overlay", 1, 1, "terrain:one"},
+                {"overlay", 2, 1, "terrain:one"}
+            };
+            require(held.overlay.edits == literal_edits, "Final sparse changes differ from four literal addresses");
+            require(held.overlay == Patch::diff(Expected::base(), final), "Final complete expected diff differs");
+            editor_events(editor, {press(Key::F6)});
+            check_variable(editor, ground, 0, true);
+            const auto* before = &editor.terrain_document(0);
+            editor.regenerate_selected();
+            require(&editor.terrain_document(0) == before, "Validated replay invalidated borrowed owner");
+            editor_events(editor, {press(Key::F7)});
+            editor.regenerate_selected();
+            check_variable(editor, final, 0, true);
+            editor_events(editor, {press(Key::F8)});
+            require(editor.generated_state(0)->overlay == held.overlay, "SAVE changed in-memory layering");
+            require(Storage::load(path) == final, "Full saved layered semantics differ");
+            std::cout << "RETAINED recipe=" << held.bytes.recipe << " base=" << held.bytes.base << " witness=" << held.bytes.witness
+                      << " edits=" << held.bytes.edits << " history=" << held.bytes.history << " total=" << held.bytes.retained
+                      << " full_snapshot=" << held.bytes.full_snapshot << " reserved_work=" << held.bytes.reserved_work
+                      << " cave_storage=" << held.bytes.cave_storage << " cave_work=" << held.bytes.cave_work << '\n';
+        } else {
+            require(Storage::load(path) == final, "Fresh full layered Snapshot differs from independent literal expectations");
+            editor_events(editor, {press(Key::F9)});
+            check_variable(editor, final, 0, true);
+            require(!editor.generated_state(0), "Fresh full Snapshot LOAD restored nonexistent recipe/provenance");
+            require(editor.history(0, DemoTilemapEditor::Mode::Terrain).undo == 0, "Fresh load restored history");
+            refuses<Error>(
+                [&] { editor.regenerate_selected(); },
+                [](const auto& error) { require(error.code == Refusal::Generation, "Wrong detached replay diagnostic"); }
+            );
+        }
+        std::cout
+            << (author ? "AUTHOR" : "FRESH")
+            << ":31x19 real cave layering,1178 complete semantic keys/labels/meaning IDs/visuals/metadata PASS; full-snapshot fallback only\n";
+    }
+
     void refusals(const std::filesystem::path& path) {
         const KeyTable table(keys);
         auto live = LiteralOwner::from(literal_base(), table);
@@ -836,6 +909,10 @@ int main(const int argc, char** argv) {
             variable_documents(path, true);
         else if (mode == "variable-verify")
             variable_documents(path, false);
+        else if (mode == "layered-author")
+            layered_documents(path, true);
+        else if (mode == "layered-verify")
+            layered_documents(path, false);
         else
             throw std::runtime_error("Unknown world mode");
         return 0;
