@@ -1,0 +1,6 @@
+[ 25%] Built target magic_compiler
+[ 50%] Built target magic_inspect
+[ 62%] Building CXX object CMakeFiles/magic_checks.dir/tests/compiler.cpp.o
+[ 75%] Linking CXX executable magic_checks
+[ 75%] Built target magic_checks
+[100%] Built target magic_caller_checks

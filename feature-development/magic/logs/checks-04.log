@@ -1,0 +1,313 @@
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: magic_contracts
+
+1: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_checks
+1: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+1: Test timeout computed to be: 30
+1: S1 baseline: 35 tokens, depth 3, work 1839, retained 2024
+1: PASS S1 literal compile/inspect/roundtrip
+1: S2 baseline: 64 tokens, depth 3, work 2590, retained 2693
+1: PASS S2 literal compile/inspect/roundtrip
+1: S3 baseline: 50 tokens, depth 3, work 2211, retained 2289
+1: PASS S3 literal compile/inspect/roundtrip
+1: S4 baseline: 61 tokens, depth 3, work 2545, retained 2670
+1: PASS S4 literal compile/inspect/roundtrip
+1: S5 baseline: 38 tokens, depth 3, work 2004, retained 2147
+1: PASS S5 literal compile/inspect/roundtrip
+1: PASS invented school grammar contrast
+1: PASS new healing disk and mixed delayed healing slow
+1: PASS quantity edit only
+1: PASS duration edit only
+1: PASS delay edit only
+1: PASS radius edit only
+1: PASS rate edit only
+1: PASS delivery edit only
+1: PASS shared versus distinct binding witness
+1: PASS effect order witness
+1: PASS exact qualified framebuffer pixels
+1: PASS pixel context refusals
+1: PASS source catalog compiler lifetime ownership
+1: PASS owned span diagnostics
+1: PASS host owns symbolic operation authority
+1: PASS host capability refusals
+1: PASS invalid host catalog boundaries
+1: PASS malformed ambiguous unknown grammar
+1: PASS binding type and scope refusals
+1: PASS unsupported conflict is not approximated
+1: PASS units dimensions and exact quantization
+1: PASS numeric range edges
+1: PASS exact source byte budget
+1: PASS exact token and nesting budgets
+1: PASS exact binding budget
+1: PASS exact clause and effect budgets
+1: Exact S2 boundaries: work=2610 retained=2700
+1: PASS exact work and retained storage budgets
+1: PASS zero budgets explain rejection
+1: PASS fixed ceilings cannot be expanded
+1: PASS identifier name boundary
+1: 35 contract cases passed; 0 failed.
+1/9 Test #1: magic_contracts ..................   Passed    0.03 sec
+test 2
+    Start 2: magic_callers
+
+2: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_caller_checks
+2: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+2: Test timeout computed to be: 30
+2: PASS caller edit/adopt/refuse/retain
+2: PASS caller lesson/new-composition
+2: PASS caller engraved-inspect-only
+2: PASS caller contextual-units/Common-roundtrip
+2: 4 ordinary caller scenarios passed.
+2/9 Test #2: magic_callers ....................   Passed    0.01 sec
+test 3
+    Start 3: magic_inspect_S1
+
+3: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S1.verse"
+3: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+3: Test timeout computed to be: 10
+3: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+3: Each binding names one selection shared by all its bridges; distinct names select separately.
+3: Separate bindings may overlap; the host must check live conflicts after selection.
+3: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+3: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+3: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+3: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+3: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+3: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+3: Effect 0: game.heal -> binding 0 (hand) duration 0 ticks (10 ms each); grammar Mend@1 span 114+45.
+3: Exact Common:
+3: spoken release via contact after 0 ms {
+3:   bind hand = willing touched actor at release ;
+3:   together ordered {
+3:     on hand bridge Common@1 { heal 12 hp instant } ;
+3:   }
+3: }
+3: Budget: 35 tokens, depth 3, 1839 work units, 2024 retained logical bytes.
+3/9 Test #3: magic_inspect_S1 .................   Passed    0.01 sec
+test 4
+    Start 4: magic_inspect_S2
+
+4: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S2.verse"
+4: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+4: Test timeout computed to be: 10
+4: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+4: Each binding names one selection shared by all its bridges; distinct names select separately.
+4: Separate bindings may overlap; the host must check live conflicts after selection.
+4: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+4: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+4: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+4: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+4: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+4: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+4: Effect 0: game.fire -> binding 0 (near) duration 0 ticks (10 ms each); grammar Common@1 span 175+54.
+4: Effect 1: game.slow -> binding 0 (near) duration 200 ticks (10 ms each); grammar Common@1 span 234+68.
+4: Exact Common:
+4: spoken release via burst after 1000 ms {
+4:   bind near = eligible actors in G0 disk 250 mm around aim captured at release queried at activation inclusive ;
+4:   together ordered {
+4:     on near bridge Common@1 { fire damage 8 dp instant } ;
+4:     on near bridge Common@1 { multiply speed by 750 permille for 2000 ms } ;
+4:   }
+4: }
+4: Budget: 64 tokens, depth 3, 2590 work units, 2693 retained logical bytes.
+4/9 Test #4: magic_inspect_S2 .................   Passed    0.01 sec
+test 5
+    Start 5: magic_inspect_S3
+
+5: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S3.verse"
+5: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+5: Test timeout computed to be: 10
+5: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+5: Each binding names one selection shared by all its bridges; distinct names select separately.
+5: Separate bindings may overlap; the host must check live conflicts after selection.
+5: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+5: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+5: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+5: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+5: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+5: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+5: Effect 0: game.slow -> binding 0 (near) duration 200 ticks (10 ms each); grammar Common@1 span 176+68.
+5: Exact Common:
+5: spoken release via burst after 0 ms {
+5:   bind near = eligible actors in G0 disk 250 mm around aim captured at release queried at activation inclusive ;
+5:   together ordered {
+5:     on near bridge Common@1 { multiply speed by 750 permille for 2000 ms } ;
+5:   }
+5: }
+5: Budget: 50 tokens, depth 3, 2211 work units, 2289 retained logical bytes.
+5/9 Test #5: magic_inspect_S3 .................   Passed    0.01 sec
+test 6
+    Start 6: magic_inspect_S4
+
+6: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S4.verse"
+6: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+6: Test timeout computed to be: 10
+6: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+6: Each binding names one selection shared by all its bridges; distinct names select separately.
+6: Separate bindings may overlap; the host must check live conflicts after selection.
+6: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+6: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+6: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+6: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+6: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+6: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+6: Effect 0: game.fire -> binding 0 (near) duration 0 ticks (10 ms each); grammar Cinder@1 span 175+39.
+6: Effect 1: game.slow -> binding 0 (near) duration 200 ticks (10 ms each); grammar Mend@1 span 219+64.
+6: Exact Common:
+6: spoken release via burst after 1000 ms {
+6:   bind near = eligible actors in G0 disk 250 mm around aim captured at release queried at activation inclusive ;
+6:   together ordered {
+6:     on near bridge Common@1 { fire damage 8 dp instant } ;
+6:     on near bridge Common@1 { multiply speed by 750 permille for 2000 ms } ;
+6:   }
+6: }
+6: Budget: 61 tokens, depth 3, 2545 work units, 2670 retained logical bytes.
+6/9 Test #6: magic_inspect_S4 .................   Passed    0.01 sec
+test 7
+    Start 7: magic_inspect_S5
+
+7: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S5.verse"
+7: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+7: Test timeout computed to be: 10
+7: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+7: Each binding names one selection shared by all its bridges; distinct names select separately.
+7: Separate bindings may overlap; the host must check live conflicts after selection.
+7: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+7: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+7: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+7: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+7: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+7: Entry: engraved; mode release; trigger item-touch; one charge required, metadata only. No item, charge consumption or persistence is installed.
+7: Effect 0: game.heal -> binding 0 (toucher) duration 0 ticks (10 ms each); grammar Mend@1 span 146+48.
+7: Exact Common:
+7: engraved item-touch charges 1 release via item-event after 0 ms {
+7:   bind toucher = willing event toucher at activation ;
+7:   together ordered {
+7:     on toucher bridge Common@1 { heal 12 hp instant } ;
+7:   }
+7: }
+7: Budget: 38 tokens, depth 3, 2004 work units, 2147 retained logical bytes.
+7/9 Test #7: magic_inspect_S5 .................   Passed    0.01 sec
+test 8
+    Start 8: magic_inspect_mixed-schools
+
+8: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/mixed-schools.verse"
+8: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+8: Test timeout computed to be: 10
+8: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+8: Each binding names one selection shared by all its bridges; distinct names select separately.
+8: Separate bindings may overlap; the host must check live conflicts after selection.
+8: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+8: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+8: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+8: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+8: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+8: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+8: Effect 0: game.heal -> binding 0 (near) duration 0 ticks (10 ms each); grammar Mend@1 span 175+45.
+8: Effect 1: game.slow -> binding 0 (near) duration 200 ticks (10 ms each); grammar Cinder@1 span 225+51.
+8: Exact Common:
+8: spoken release via burst after 1000 ms {
+8:   bind near = eligible actors in G0 disk 250 mm around aim captured at release queried at activation inclusive ;
+8:   together ordered {
+8:     on near bridge Common@1 { heal 12 hp instant } ;
+8:     on near bridge Common@1 { multiply speed by 750 permille for 2000 ms } ;
+8:   }
+8: }
+8: Budget: 60 tokens, depth 3, 2518 work units, 2651 retained logical bytes.
+8/9 Test #8: magic_inspect_mixed-schools ......   Passed    0.01 sec
+test 9
+    Start 9: magic_cli
+
+9: Test command: /usr/bin/python3.14 "/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/cli.py" "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect" "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures"
+9: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+9: Test timeout computed to be: 30
+9: CASE stdin composes new quantity: exit 0
+9: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+9: Each binding names one selection shared by all its bridges; distinct names select separately.
+9: Separate bindings may overlap; the host must check live conflicts after selection.
+9: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+9: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+9: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+9: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+9: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+9: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+9: Effect 0: game.heal -> binding 0 (hand) duration 0 ticks (10 ms each); grammar Mend@1 span 114+45.
+9: Exact Common:
+9: spoken release via contact after 0 ms {
+9:   bind hand = willing touched actor at release ;
+9:   together ordered {
+9:     on hand bridge Common@1 { heal 31 hp instant } ;
+9:   }
+9: }
+9: Budget: 35 tokens, depth 3, 1839 work units, 2024 retained logical bytes.
+9: CASE stdin composes delivery: exit 0
+9: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+9: Each binding names one selection shared by all its bridges; distinct names select separately.
+9: Separate bindings may overlap; the host must check live conflicts after selection.
+9: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+9: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+9: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+9: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+9: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+9: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+9: Effect 0: game.heal -> binding 0 (hand) duration 0 ticks (10 ms each); grammar Mend@1 span 110+45.
+9: Exact Common:
+9: spoken release via ray after 0 ms {
+9:   bind hand = willing touched actor at release ;
+9:   together ordered {
+9:     on hand bridge Common@1 { heal 12 hp instant } ;
+9:   }
+9: }
+9: Budget: 35 tokens, depth 3, 1823 work units, 2012 retained logical bytes.
+9: CASE stdin exact byte ceiling: exit 0
+9: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+9: Each binding names one selection shared by all its bridges; distinct names select separately.
+9: Separate bindings may overlap; the host must check live conflicts after selection.
+9: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+9: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+9: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+9: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+9: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+9: Entry: spoken; mode release; trigger none; onset is a separate activation delay. No scheduler or live aim acquisition is installed.
+9: Effect 0: game.heal -> binding 0 (hand) duration 0 ticks (10 ms each); grammar Mend@1 span 114+45.
+9: Exact Common:
+9: spoken release via contact after 0 ms {
+9:   bind hand = willing touched actor at release ;
+9:   together ordered {
+9:     on hand bridge Common@1 { heal 12 hp instant } ;
+9:   }
+9: }
+9: Budget: 35 tokens, depth 3, 17891 work units, 10050 retained logical bytes.
+9: CASE stdin above byte ceiling: exit 1
+9: SourceLimit at byte 8192: verse exceeds 8192 bytes.
+9: CASE unknown authored phrase: exit 1
+9: UnknownPhrase at byte 138+7 [mystery]: Invented Mend@1 uses sela (heal) or luma (slow), then quantity and recipient marker tava-a.
+9: CASE ambiguous duration: exit 1
+9: AmbiguousScope at byte 167+3 [for]: Duration outside an effect is ambiguous; put it inside its explicit bridge clause.
+9: CASE help labels invented language: exit 0
+9: Usage: magic_inspect [VERSE_FILE]
+9: Without a file, reads an editable verse from stdin (at most 8192 bytes).
+9: Common@1 is controlled syntax. Mend/Cinder words are invented, not Elvish.
+9: Prints exact Common and owned plan inspection; executes no game effects.
+9: CASE missing file is I/O failure: exit 2
+9: Cannot open verse file.
+9: CASE extra arguments refuse: exit 2
+9: Usage: magic_inspect [VERSE_FILE]
+9: Without a file, reads an editable verse from stdin (at most 8192 bytes).
+9: Common@1 is controlled syntax. Mend/Cinder words are invented, not Elvish.
+9: Prints exact Common and owned plan inspection; executes no game effects.
+9: 9 CLI process scenarios passed.
+9/9 Test #9: magic_cli ........................   Passed    0.12 sec
+
+100% tests passed out of 9
+
+Total Test time (real) =   0.24 sec

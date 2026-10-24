@@ -1,0 +1,69 @@
+{
+  "milestone_id": "MAGIC-M1",
+  "status": "ready",
+  "checks_passed": true,
+  "base_commit": "3542f883391d4225329dab8d5d61a5987e69c8f0",
+  "evidence": [
+    "feature-development/magic/logs/configure.log",
+    "feature-development/magic/logs/configure-02.log",
+    "feature-development/magic/logs/build-01.log",
+    "feature-development/magic/logs/build-02.log",
+    "feature-development/magic/logs/build-03.log",
+    "feature-development/magic/logs/build-04.log",
+    "feature-development/magic/logs/build-05.log",
+    "feature-development/magic/logs/checks-01.log",
+    "feature-development/magic/logs/checks-02.log",
+    "feature-development/magic/logs/checks-03.log",
+    "feature-development/magic/logs/checks-04.log",
+    "feature-development/magic/logs/static-review.log",
+    "feature-development/magic/logs/staged-review.log"
+  ],
+  "check_counts": {
+    "ctest_entries_passed": 9,
+    "contract_cases": 35,
+    "ordinary_caller_scenarios": 4,
+    "file_inspection_fixtures": 6,
+    "cli_process_scenarios": 9
+  },
+  "verification": {
+    "platform": "GNU/Linux",
+    "compiler": "GNU 16.2.1",
+    "configuration": "Debug C++23 ASan+UBSan; warnings treated as errors",
+    "final_native_log": "feature-development/magic/logs/checks-04.log",
+    "sanitizer_environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "configure_count": 2,
+    "build_count": 5,
+    "ctest_invocation_count": 4,
+    "failed_attempts": [
+      "checks-01: LSan refuses tracing (8 failures)",
+      "checks-03: S5 expected literal misses new explicit ItemTouch field (1 failure); corrected and all checks pass in checks-04"
+    ]
+  },
+  "implemented_contracts": [
+    "Deterministic bounded checked syntax -> typed host-schema validation -> owned immutable plans; no network/provider/random/effect callbacks",
+    "Editable controlled Common@1 and structurally different invented Mend@1/Cinder@1 microgrammars with explicit lexical target bridges",
+    "All five normalized independent literal meanings and exact Common readings compile, inspect and round-trip under the same catalog",
+    "Separate entry medium, release casting mode, delivery, target query/binding times, onset, effect duration, together order and engraving item-touch/one-charge metadata",
+    "Host-owned supported symbolic keys and capability/quantity schemas; unsupported operations/combinations remain diagnostics",
+    "Independent quantity, rate, duration, delay, radius, delivery and target-binding edits; observable order and shared/separate binding differences",
+    "Exact mm and 10 ms tick normalization; contextual rational framebuffer-pixel conversion requires named uniform orthographic context or refuses",
+    "Owned source, keys, collections, provenance, readbacks and span diagnostics survive input/catalog/compiler destruction; failed edits preserve earlier accepted plans",
+    "Ceilings and exact boundary refusals for source, tokens, nesting, bindings, clauses/effects, work, numeric ranges and retained logical storage",
+    "Standalone C++23 library, file/stdin inspect caller, independent ordinary caller checks and complete clone-local incremental native logs"
+  ],
+  "limitations": [
+    "Compilation/inspection only: no target acquisition, host permission/mana/balance, scheduling or real spell effects",
+    "Engraving is typed metadata: no installed item, live charges, authenticated/durable events, replay safety or persisted charge consumption",
+    "Only release mode, one together activation and three primitives; then, repeated/conflicting fields on one binding and unsupported role/delivery combinations reject",
+    "Separate bindings may overlap; live overlap/conflict rules and coherent host application remain M2 work",
+    "32 KiB retained limit counts logical object/element/text payload, excluding unused capacity, shared control block and allocator bookkeeping; ABI-dependent sizes and no exact heap/RSS guarantee",
+    "Leak checking is unverified due LSan tracing restriction; final checks retain address/undefined sanitizers with leak detection disabled command-locally",
+    "GNU/Linux Debug GNU16 only; other platforms/ABIs/compilers, full Engine and installed SDK are unverified",
+    "No graphical spellbook, learner progression, actual fantasy-language pack or fun/comprehension playtests; words are invented",
+    "Private grammar/API is reversible; allocation exceptions propagate without mutating earlier results"
+  ],
+  "next_action": "Leave worker idle after local feat/magic checkpoint; coordinator reviews M1 and assigns bounded M2 reference-host work for live rechecks, simulation advancement and interaction policy. Coordinator publisher handles backup."
+}

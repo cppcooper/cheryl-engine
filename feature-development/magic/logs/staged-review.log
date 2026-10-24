@@ -1,0 +1,46 @@
+$ git branch --show-current
+feat/magic
+Exit 0
+$ git rev-parse HEAD
+3542f883391d4225329dab8d5d61a5987e69c8f0
+Exit 0
+$ git diff --cached --stat
+ feature-development/agent-notes.md              | 315 +++++++++
+ feature-development/decisions.md                |  18 +
+ feature-development/magic/MAGIC-M1.json         |  69 ++
+ feature-development/magic/logs/build-01.log     |  12 +
+ feature-development/magic/logs/build-02.log     |  12 +
+ feature-development/magic/logs/build-03.log     |   6 +
+ feature-development/magic/logs/build-04.log     |  12 +
+ feature-development/magic/logs/build-05.log     |   8 +
+ feature-development/magic/logs/checks-01.log    | 106 +++
+ feature-development/magic/logs/checks-02.log    | 212 ++++++
+ feature-development/magic/logs/checks-03.log    | 318 +++++++++
+ feature-development/magic/logs/checks-04.log    | 313 +++++++++
+ feature-development/magic/logs/configure-02.log |   4 +
+ feature-development/magic/logs/configure.log    |   9 +
+ feature-development/next.md                     |  20 +
+ projects/magic/.gitignore                       |   1 +
+ projects/magic/CMakeLists.txt                   |  36 ++
+ projects/magic/fixtures/S1.verse                |   6 +
+ projects/magic/fixtures/S2.verse                |   7 +
+ projects/magic/fixtures/S3.verse                |   6 +
+ projects/magic/fixtures/S4.verse                |   7 +
+ projects/magic/fixtures/S5.verse                |   6 +
+ projects/magic/fixtures/mixed-schools.verse     |   7 +
+ projects/magic/include/magic/compiler.h         | 194 ++++++
+ projects/magic/src/compiler.cpp                 | 816 ++++++++++++++++++++++++
+ projects/magic/src/main.cpp                     |  63 ++
+ projects/magic/tests/caller.cpp                 | 101 +++
+ projects/magic/tests/cli.py                     |  36 ++
+ projects/magic/tests/compiler.cpp               | 507 +++++++++++++++
+ projects/magic/tests/literals.h                 |  32 +
+ 30 files changed, 3259 insertions(+)
+Exit 0
+$ git diff --cached --check
+Exit 0
+Reviewed staged implementation, API, literal fixtures, contract/caller/CLI checks and records.
+Reviewed source/typed/host authority boundaries, immutable ownership, checked arithmetic and fixed budgets.
+Confirmed exact Common speed multiplier, independent S1-S5 literals, bilingual scope, binding/order witnesses and metadata-only engraving.
+Complete native logs include LSan failure and corrected S5 expected-trigger failure; final checks-04 passes all 9 entries.
+Scope is projects/magic and feature-development only; no build artifacts, dependency/ref/sibling changes or direct pushes.

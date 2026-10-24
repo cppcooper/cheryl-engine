@@ -1,0 +1,19 @@
+$ /mnt/projects/cheryl-features/scripts/build -- clang-format --dry-run --Werror projects/magic/src/compiler.cpp projects/magic/src/main.cpp projects/magic/tests/caller.cpp projects/magic/tests/compiler.cpp projects/magic/include/magic/compiler.h projects/magic/tests/literals.h
+Exit 0
+PASS receipt schema, all 13 nonempty relative saved logs, final counts and all five literal fixtures.
+PASS staged scope and worktree/index agreement for source and records.
+2e85f598da6d80138a9c4bd1caad4c6806f0aaf10ea5d4692367a0d5fabb1284  projects/magic/CMakeLists.txt
+25ea83612a6b9659b5ae7841563ada97a5d29d9ae36b8d7b2f146e35414ecbd5  projects/magic/fixtures/S1.verse
+eb2dac8592471082081f876ee8d43b3d237cd1039eebea56071ae97197759da4  projects/magic/fixtures/S2.verse
+028dfe4580eb34ade5e448f0964c5fdb0e2d85c6162c0791b751a6dbadba84ec  projects/magic/fixtures/S3.verse
+d15fcab7f5e38d203707cd60f4c94f4d89cb524ab413d077ca1a085adc513fed  projects/magic/fixtures/S4.verse
+593aa5ef21031d5d46280c972d4d0b8be6d0b44e53d8d20a62c036c45ecef176  projects/magic/fixtures/S5.verse
+e15c6f666a60a0e4ccf50b50e2f135559bccd0169c7b6a6acba8cb10ee6a62c8  projects/magic/fixtures/mixed-schools.verse
+2aa9c0f48e8549352ec8b2513d120c26335c3c38320e1c6dcc048af5d03db113  projects/magic/include/magic/compiler.h
+8f609df2ac37c470fa528ac29a20d56dd5359deaab2c236f2ef2e3f9bb48cb56  projects/magic/src/compiler.cpp
+c7951ef7a7d0094781ab5369011bb453aaf7406f46c0b6965b047f11def059dc  projects/magic/src/main.cpp
+d9c9724b42d1e30fc2fd9d0a11598ef652e61ec279946ef442c2dd789f592ee2  projects/magic/tests/caller.cpp
+df6c0aa533e5cb5a280c04002d28a812a3c8edae15c69ad97ee9e4228a94f679  projects/magic/tests/cli.py
+fc9dac70b1a186eb731df6e70584fd983d648f53fbd07495bcf9e6eed13ba2a7  projects/magic/tests/compiler.cpp
+ec4d0aca83dd3fe433799745b169129a427548e4218111930f6f1f0b473c60a4  projects/magic/tests/literals.h
+Static source hashes identify the verified final compiler/caller/check inputs; output binaries remain clone-local and ignored.
