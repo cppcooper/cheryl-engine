@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -35,8 +35,14 @@ target_link_libraries(procgen-dungeon-tests PRIVATE procgen-private procgen-chec
 add_executable(procgen-dungeon-consumer dungeon-consumer.cpp)
 target_link_libraries(procgen-dungeon-consumer PRIVATE procgen-private procgen-checks)
 
+add_executable(procgen-elevation-tests elevation-tests.cpp)
+target_link_libraries(procgen-elevation-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-elevation-consumer elevation-consumer.cpp)
+target_link_libraries(procgen-elevation-consumer PRIVATE procgen-private procgen-checks)
+
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
-                        procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer)
+                        procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer
+                        procgen-elevation-tests procgen-elevation-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -100,3 +106,10 @@ foreach(case IN ITEMS dungeon_literal dungeon_layout dungeon_partial dungeon_con
 endforeach()
 add_test(NAME procgen.dungeon_consumer COMMAND procgen-dungeon-consumer)
 set_tests_properties(procgen.dungeon_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS elevation_literal elevation_fields elevation_sea elevation_flat elevation_replay elevation_invalid elevation_limits elevation_ownership)
+    add_test(NAME procgen.${case} COMMAND procgen-elevation-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.elevation_consumer COMMAND procgen-elevation-consumer)
+set_tests_properties(procgen.elevation_consumer PROPERTIES TIMEOUT 30)

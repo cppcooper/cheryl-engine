@@ -73,3 +73,12 @@ resource wrapper. Save full logs, immediate exits and process evidence; record
 resolved initial compile errors. This costs separate configurations but preserves
 existing fault/replay coverage. Confidence is high in executed CPU results;
 graphics, fun, leaks and broad platform acceptance remain open.
+
+## Active procedural-generation continuation
+
+Ongoing U8+ records use a separate namespace after the reviewed WORLD-U1 promotion:
+[decisions](active/procedural-generation/decisions.md),
+[contracts and evidence](active/procedural-generation/agent-notes.md),
+[current handoff](active/procedural-generation/next.md),
+[U8 execution receipt](active/procedural-generation/PROCGEN-U8.json).
+Historical feature archives and WINT-001–006 records above remain preserved.

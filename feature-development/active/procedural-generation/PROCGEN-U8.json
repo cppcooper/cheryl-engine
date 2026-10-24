@@ -1,0 +1,25 @@
+{
+  "milestone_id": "PROCGEN-U8",
+  "starting_head": "e9289fcb992feddf85deb942a560562a54971f78",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u8/build-1.log",
+    "builds/procedural-generation/logs/u8/ctest-1.log"
+  ],
+  "contracts": {
+    "domain": "Finite positive 2D; axis0=x fastest, index=x+width*y; independently owned signed32 height ticks above arbitrary zero datum.",
+    "generation": "lattice_bilinear v1; spacing1..4096, inclusive signed32 low/high; origin-aligned nonperiodic bracketing lattice; one final bilinear floor toward negative infinity, no normalization.",
+    "replay": "Exact Domain/config/seed-stage-stream/version/budgets; fixed numeric child stage; unrelated stream isolation; sufficient budgets affect admission only.",
+    "sea": "Independent bounded allocation-free summary and scalar land/water query; water iff height<=sea; counts are measured, no ocean/land-share guarantee.",
+    "resources": "Peak requested4096+4*C+4*L, not RSS; work7*C+2*L+raw draws, including rejections; hard65536 cells/2MiB/10M work; no partial result on refusal; allocation/programming exceptions propagate.",
+    "preservation": "All71 old procedural entries and nine source archives unchanged; WORLD shared producer bytes/linkage unchanged; no Engine/map suite rerun."
+  },
+  "limitations": [
+    "Executed GNU/Linux Debug/UBSan only; other compilers/OSes, ASan, large-domain performance and public Engine/SDK geography remain unverified.",
+    "Stylized integer field, no physical units/aspect ratio/geological realism, river routing, lake filling, connected ocean or fixed land percentage.",
+    "No cross-domain seam/cropping guarantee or persisted recipe/base-identity/migration/save format.",
+    "Existing WORLD visual/input/assets/teardown/leaks/fun, ABI/packaging and file durability acceptance gaps are preserved."
+  ],
+  "next_action": "Stop idle for coordinator source/log review and publisher transport; any bounded drainage utility requires a separate assignment."
+}
