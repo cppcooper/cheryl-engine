@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U1",
+  "status": "ready",
+  "checks_passed": true,
+  "source_shas": {
+    "tilemap": "edf710a79ef4fc59c7949f7bc78d9bf7d617e29a",
+    "map-storage": "def28ccfc63eb057995f6e1fb95ee48cfeb8fd75",
+    "procedural-generation": "946c2db7d9a14311a398664444fc4d1fe0417a90"
+  },
+  "candidate_sha": "aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d",
+  "current_parent_sha": "aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d",
+  "evidence": [
+    "build/world-u1-logs/shared-build-final.log",
+    "build/world-u1-logs/storage-build.log",
+    "build/world-u1-logs/procgen-build.log",
+    "build/world-u1-logs/ownership.log",
+    "build/world-u1-logs/shared-tests.log",
+    "build/world-u1-logs/storage-tests.log",
+    "build/world-u1-logs/procgen-tests.log",
+    "build/world-u1-logs/literal-author.log",
+    "build/world-u1-logs/literal-fresh-verify.log",
+    "build/world-u1-logs/generated-author.log",
+    "build/world-u1-logs/generated-fresh-verify.log",
+    "build/world-u1-logs/refusals-refusals.log",
+    "build/world-u1-logs/refusals-fresh-predecessor.log",
+    "build/world-u1-logs/preflight-build.log",
+    "build/world-u1-logs/preflight-tests.log",
+    "build/world-u1-logs/preflight-ownership.log",
+    "build/world-u1-logs/preflight-refusals-refusals.log"
+  ],
+  "invariants": [
+    "Exact clean tilemap input, assigned branch, candidate SHA and all three source ancestors passed before ordinary ff-only adoption; all archived records/provenance and public CPU/replay sources preserved.",
+    "One normal shared Engine produces storage and tilemap; fourteen exports match real combined imports, diagnostics remain Engine-owned, six combined/four storage/one terrain header-first probes compile and loader resolves this clone DSO.",
+    "Literal 3x2/two named ordered layers/explicit nulls/two spawns/map ID round-trip through actual Map edits, full final diff/apply/checked save and fresh independent complete literal/numeric reconstruction.",
+    "Actual committed seeded 2D cave source yields full semantic occupancy; explicit wall/floor keys and labels remain separate from derived cardinal visual IDs, with final semantic diff and fresh independent full reconstruction.",
+    "Key/ID/label/mapping/bounds/metadata/exact-base/duplicate/late-rule refusals preserve adopted owners, complete labels/visuals and held results; invalid save preserves exact predecessor bytes and fresh reload. Runtime and file publication boundaries are separate.",
+    "One accumulated invocation per selection: 90 shared, 189 storage CPU, 71 procedural; 350 unique names passed, zero failed/skipped. Review-time pre-copy key-byte admission is covered by an additional 3/3 affected world recheck, with 12 combined child exits zero in total; complete commands/logs and immediate exits saved."
+  ],
+  "limitations": [
+    "Real display/input, atlas decode/upload, capture, graphical teardown and visual/fun acceptance remain unverified; unchanged X11 :1 failure not retried.",
+    "Shared Debug ASan/UBSan pass with command-local detect_leaks=0 and halt_on_error; leaks remain unverified. Standalone storage Debug is unsanitized; standalone procedural is Debug/UBSan.",
+    "GNU/Linux source-tree shared Engine proof only; installed SDK, static/Release Engine and other-platform/toolchain ABI are unverified.",
+    "Private diagnostic identity tables and simple verifiable cave configuration are engineering choices, not game terrain policy or user API preference evidence.",
+    "Full snapshots/witnesses are bounded correctness evidence, not compact retention, saved recipe/patch format, fsync/power-loss, hostile-race, multiwriter or distributed-transaction guarantees.",
+    "Two initial new-caller build errors were corrected before all test invocations. Review then added key-byte preflight/refusal coverage and rechecked only the three affected world scenarios. Full diagnostics are retained; no test failed or was skipped."
+  ],
+  "next_action": "Coordinator reviews this exact checked descendant and saved evidence, verifies publisher backup/drained processes, then selects any worker1 promotion. Worker2 remains idle; no automatic follow-up or sibling mutation."
+}
