@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-016` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-018` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -839,6 +839,115 @@ ready receipt is written only after focused acceptance; the controller, not this
 worker, selects U8 after the current run drains. The receipt reports execution,
 not automatic coordinator source/platform acceptance.
 
+## U8 bounded advisory structural routes
+
+**ST-017 — Return an owned shortest structural route, never playback authority.**
+The new public-header caller (implemented and executed) is:
+
+```cpp
+#include <cheryl/core/game-framework/dialogue-route.h>
+const auto route = CE::Dialogue::find_route(*definition, {"start"}, {"end"}, {});
+if (route) {
+    // For the literal graph: nodes = start,z,end; choices = c0,c0.
+    // choices[i] is scoped to nodes[i], targeting nodes[i+1].
+}
+```
+
+Route owns definition ID/revision, ordered NodeIds and ChoiceIds, plus resource
+usage. Its two sequences have sizes edges+1 and edges, with each choice explicitly
+scoped to the corresponding source node. No DefinitionHandle, borrowed parser or
+input string storage, Selection/incarnation, session ID or gameplay flag survives
+in the result. Callers supply a live const Definition reference and stable endpoint
+IDs for the call; there is no nullable handle overload. Independent frozen reads
+can run concurrently. Earlier routes and the definition stay unchanged on every
+refusal or exception; result adoption belongs to the caller.
+
+Iterative BFS uses one bounded FIFO and first-discovery parent-node/choice ordinals.
+Edges are visited in authored choice order; FIFO discovery determines equal-length
+ties, including parallel choices. Sorting IDs/authored node positions never chooses
+a route. Arbitrary endpoints need not be entry or terminal. Equal known endpoints
+return the one node and zero choices, without traversing outgoing edges. Self edges,
+cycles, repeated choice names across nodes, conditional/effect-bearing edges and
+terminal-free definitions remain valid. UnknownFrom, UnknownTo and Unreachable
+are distinct ordinary errors, with no partial usable output. Structural paths
+ignore every condition: they prove no actual availability, effects, resume history,
+termination or completion. The operation accepts no handlers and constructs no
+Session; an unavailable live choice remains rejected by Session.
+
+Own implementation in the real Engine source glob, CE_API on find_route, and a
+self-contained CPU/JSON-free header. A public-header-first consumer links the actual
+Cheryl::Engine and tests returned values, owned lifetime, typed refusals and shared
+symbol ownership; it does not patch exports, copy source or include private app/JSON
+headers. Existing inspection/console/session implementations and all file schemas
+remain unchanged. Two obsolete detached lookup comments from U7 are corrected to
+match its already-implemented comparison contract; no lookup behavior changes.
+
+Alternatives: DFS can return a longer route; all-pairs/prebuilt adjacency adds
+retained policy/storage unrelated to one query; a generic graph/A* service imports
+unneeded costs and heuristics. Returning live choices would confuse advisory
+structure with session authority. Explicit parallel arrays avoid copying source
+IDs twice and preserve existing scoped ChoiceId meaning. Confidence is high in
+BFS/ownership and medium in type spelling; this is engineering judgment, not user
+API taste. Changing result spelling affects this small consumer, with no save/file
+migration. U9 transition observations remain a separate queued assignment.
+
+**ST-018 — Budget complete input counts, indexed search and owned output.**
+RouteLimits defaults are 256 authored nodes, 2048 total choices, 255 output edges,
+128 KiB repeated output-ID bytes, 1 MiB requested payload and 128 Mi work units.
+Hard request ceilings are 4096 nodes, 65536 choices, 4095 output edges, 4 MiB ID
+bytes, 16 MiB payload and 1 Gi work units. Larger compiled CPU definitions than the
+private JSON caps are supported up to these ceilings when callers raise allowances.
+Every ceiling is independent; zero permits none. No private loader/schema policy
+is imported. Above-ceiling and size_t-maximum requests return InvalidLimits before
+traversal/allocation. There is no allocate-to-budget behavior.
+
+Preflight counts all authored rows and choices, even unreachable ones, using checked
+subtraction/addition. Source/destination lookups charge work before exact U7 immutable
+indexed lookup. Each lookup reserves `(bit_width(N)+1)*(1+query_bytes)` units: at most
+bit_width(N) lower_bound string comparisons plus final equality, each bounded by
+query length plus fixed length comparison. This is a conservative byte/comparison
+reservation, not actual prefix measurements or constant-time lookup. Multiplication
+uses division against remaining work before evaluating the product. Long unknown
+query keys therefore cannot escape work accounting. A future lookup algorithm
+change must revisit this bound; U7 is a verified prerequisite, not a cache assumption.
+
+After endpoints are found, check copied definition/source minima and scratch/minimum
+output payload before allocating. A single 3*N size_t scratch vector owns parents,
+parent choice ordinals and FIFO; unique discovery bounds queue occupancy by N.
+Checked count/product arithmetic precedes allocation; no recursion or extra edge
+storage is used. Each examined edge charges a visit and indexed target lookup.
+Search ends at first destination discovery or queue exhaustion. Output-edge budget
+is checked after shortest-path discovery; it never truncates search or converts a
+resource refusal into Unreachable. Parent walks determine exact length and repeated
+ID bytes before result vector/string allocation. Assembly reserves all remaining
+initialization/copy visits, ID bytes and terminators first.
+
+For N nodes and R returned edges, requested peak payload is
+`3*N*sizeof(size_t) + sizeof(Route) + (R+1)*sizeof(NodeId) + R*sizeof(ChoiceId)
+ + copied_id_bytes + 2*R+2`. This counts one terminator for definition and each
+returned ID. Borrowed input/Definition indices, fixed stack, allocator bookkeeping,
+rounding and implementation-specific string capacity are excluded; it is an honest
+payload budget, not RSS/exhaustion prevention or a timing guarantee. Work also
+charges preflight rows, initialized scratch/result slots, BFS nodes/edges, path
+walks and output copy visits/bytes/terminators. Search is O(N+E) traversal plus
+O((E+2)*log(N+1)*L) reserved query byte work and output copying. Usage is independent
+of unused budget headroom. There is no timing campaign.
+
+Ordinary resource errors distinguish NodeLimit, ChoiceLimit, OutputLimit,
+CopiedIdLimit, StorageLimit and WorkLimit. Failure precedence is hard ceilings,
+authored counts/work, source then destination lookup, minimum payload, search,
+then output count/ID/storage/copy work; resource refusal can precede an endpoint
+or unreachable diagnosis. std::bad_alloc/other allocation exceptions propagate;
+violating immutable compiled target membership is a programming-invariant
+std::logic_error, not an ordinary content error. Nothing partial is published.
+
+Confidence is high in checked bounds and finite BFS, medium in budget defaults,
+ceilings and conservative lookup charging. Reversing those engineering choices
+needs public limit/usage contract and boundary-test review, but no file-format or
+application-policy migration. These choices extend ST-014's bounded CPU discipline
+without changing inspect's work accounting or making a general budget framework.
+Actual checks, pass counts, limitations and receipt status belong to next.md.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -1075,3 +1184,16 @@ comparison also confirms the validation/reporting body is unchanged. next.md own
 complete logs/commands/counts and portability/leak/SDK/runtime limits. The committed
 U7 ready/true receipt is execution evidence; queue selection/source review remain
 separate, and this worker stops without starting U8.
+
+
+U8 has executed its assigned focused acceptance: **138/138** checks passed (all
+121 retained names/order, 14 Engine route cases and three actual shared-Engine
+consumer cases). Literal shortest/tie/conditional/cycle routes and 512 independent
+BFS-reference endpoint queries agree. Owned output survives definition/draft release;
+exact/one-short/zero/above-ceiling/size_t-maximum budgets and typed endpoint/no-route
+refusals pass. The public header is first in the actual-Engine consumer, with
+executed dladdr/equivalent export ownership. All 54 complete console transcripts
+match U7 byte for byte; no skips/unrun cases or ASan/UBSan diagnostics occurred.
+next.md preserves complete logs/statuses, the static premature-audit correction,
+limits and gaps. A ready U8 receipt reports this execution; source review and U9
+selection remain the queue controller/coordinator's next action after run drain.

@@ -269,14 +269,16 @@ namespace CE::Dialogue {
 /**
  * @fn const CE::Dialogue::Node* CE::Dialogue::Definition::find_node(const NodeId& id) const noexcept
  * @brief Find an exact node name without mutation, allocation or normalization.
- * @return Borrowed node or nullptr for a miss; retain a DefinitionHandle through access. Lookup is linear in node count.
+ * @return Borrowed node or nullptr for a miss; retain a DefinitionHandle through access.
+ * Immutable ordinal search uses logarithmically many exact string comparisons; byte work depends on ID prefixes.
  */
 
 /**
  * @fn const CE::Dialogue::Choice* CE::Dialogue::Definition::find_choice(const NodeId& node, const ChoiceId& id) const noexcept
  * @brief Find an exact choice within one exact node.
  * @return Borrowed choice or nullptr for either lookup miss. Retain a DefinitionHandle through access.
- * Lookup is linear in node count plus that node's choice count. Equal choice names in different nodes remain independent.
+ * Immutable ordinal searches use logarithmically many exact string comparisons in each scope, without allocation.
+ * Byte work depends on ID prefixes. Equal choice names in different nodes remain independent.
  */
 
 /**

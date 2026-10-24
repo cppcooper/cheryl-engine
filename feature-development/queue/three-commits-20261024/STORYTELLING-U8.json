@@ -1,0 +1,21 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "STORYTELLING-U8",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u8-build-1.log",
+    "builds/storytelling-u1-debug/u8-build-2.log",
+    "builds/storytelling-u1-debug/u8-registration.log",
+    "builds/storytelling-u1-debug/u8-ctest-1.log",
+    "builds/storytelling-u1-debug/u8-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u8-results-audit.log",
+    "builds/storytelling-u1-debug/u8-boundary-rules.log"
+  ],
+  "limitations": [
+    "Leak detection remains unavailable under ST-008; ASan/UBSan passed with invocation-local detect_leaks=0, leak coverage is unverified.",
+    "Native proof covers GNU/Linux Debug shared Engine; other platforms/allocators, installed SDK/mixed-version ABI and wider runtime integration remain unverified.",
+    "Lookup work uses a documented conservative comparison/byte reservation; payload excludes allocator overhead, and no timing or gameplay authority guarantee is claimed.",
+    "Allocation/programming exception paths are documented/source-inspected, not exhaustively failure-injected."
+  ]
+}

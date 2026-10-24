@@ -1,4 +1,157 @@
-# U7 immutable dialogue lookup indices
+# U8 bounded advisory structural routes
+
+STORYTELLING-U8 starts from clean executed U7
+`dc94612134b11f03e3af9bdf91c8a442ca4eab29`; its committed ready receipt and saved
+121-pass/54-child/allocation evidence were inspected before dependent work. The
+finite policy, immutable plan and materialized U8 task were read. Implementation
+and focused acceptance are complete: **138/138 checks passed**, **all 121 U7 names
+retained in order**, 14 new Engine route cases and three actual shared-Engine
+consumer cases. There are zero skips/unrun cases or ASan/UBSan diagnostics. All
+**54 full child transcripts remain byte-identical** (21 exit 0/15 exit 2/18 exit 3).
+The ready U8 receipt is worker execution evidence, not automatic source/platform
+acceptance. Only this one U8 checkpoint is assigned in this invocation.
+
+## Implemented caller and semantics
+
+```cpp
+#include <cheryl/core/game-framework/dialogue-route.h>
+const auto route = CE::Dialogue::find_route(*definition, {"start"}, {"end"}, {});
+// Literal graph: route->nodes = start,z,end; route->choices = c0,c0.
+// choices[i] is scoped to nodes[i], targeting nodes[i+1].
+```
+
+Route owns definition/revision, ordered node IDs and source-scoped choice IDs,
+plus usage. FIFO BFS and first discovery resolve shortest-edge ties in authored
+choice order, independent of sorted IDs, authored node order or entry position.
+Known equal endpoints return one node/zero edges. Self/parallel/conditional edges,
+cycles and terminal-free components are valid. UnknownFrom/UnknownTo/Unreachable
+are separate typed failures. There is no nullable handle overload; a live
+Definition reference is required. Structural advice proves no gameplay availability,
+effect history, resume authority, termination or completion. No handler, predicate,
+effect or Session is accepted/constructed/called by the operation. The session
+activity test deliberately shows a structurally advised edge remaining unavailable
+under an unchanged live application predicate/cursor.
+
+Use one 3*N size_t scratch allocation (parents, parent-choice ordinals, FIFO),
+checked arithmetic and preflight of all authored nodes/choices, even unreachable
+ones. U7 indexed lookup reserves `(bit_width(N)+1)*(1+query_bytes)` before each
+query: a conservative comparison/byte bound, not measured prefix work or a timing
+promise. Search is O(N+E) visits plus O((E+2)*log(N+1)*L) reserved lookup byte work
+and owned copies. A future core lookup change must revalidate that bound.
+
+RouteLimits defaults: 256 nodes, 2048 choices, 255 output edges, 128 KiB repeated
+output-ID bytes, 1 MiB requested payload, 128 Mi work units. Absolute request
+ceilings: 4096/65536/4095/4 MiB/16 MiB/1 Gi. Independent zero budgets permit none;
+above-ceiling/size_t-maximum requests return InvalidLimits before traversal or
+allocation. Larger core definitions than private JSON caps can use higher allowed
+budgets. Output-edge limits reject the discovered shortest route without truncating
+search or claiming unreachability. ID/output/storage/copy-work checks precede result
+allocation. Payload is `3*N*sizeof(size_t)+sizeof(Route)+(R+1)*sizeof(NodeId)
++R*sizeof(ChoiceId)+copied_id_bytes+2*R+2`; allocator metadata/rounding, excess string
+capacity, fixed stack and borrowed definition/index storage are excluded. This is
+not RSS containment. Allocation exceptions propagate; impossible broken compiled
+target membership throws logic_error. Neither refusal nor exception publishes a
+partial route or changes a definition/previous result.
+
+ST-017/018 in both decision views give exact precedence, units, ownership,
+alternatives, confidence and reversal cost. These are engineering choices, not
+new user API taste. Engine owns the new source through its normal glob and CE_API
+boundary. The independent public-header-first consumer links actual Cheryl::Engine;
+no private/app/JSON includes, export patch, source copy or alternate library exists.
+Existing definition/inspection/session and private CLI/JSON/file implementations
+are unchanged. Two obsolete detached U7 linear-lookup comments are corrected to
+its already-implemented indexed semantics, with no lookup behavior change.
+
+## Executed native verification
+
+Reused builds/storytelling-u1-debug and preserved Debug, shared Engine, CMake
+policy minimum 3.5, pins, all OFF selections and clone-local incremental outputs.
+Every configure/build/native command ran through the shared wrapper with one job
+and the unchanged adaptive monitor/no-swap/admission policy. The original CTest
+registration session waited in the normal queue and completed; it was not cancelled
+or relaunched. No resource refusal, build/test failure or sanitizer/configuration
+change occurred. A premature **static** name audit read the still-empty discovery
+log; its exact AssertionError and correction are saved. Native work was not retried.
+
+ASan/UBSan instrumentation and halt-on-error remained active. Invocation-only
+ASAN_OPTIONS=detect_leaks=0 is the already-confirmed ST-008 tracing accommodation;
+leak coverage stays **unverified**. No broad suite, GUI/device, installed SDK,
+documentation generation, package/dependency retrieval, protected/sibling cache,
+subagent/external agent or publication transport was used.
+
+Actual commands from the clone root (all immediate exits **0**):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-dialogue-inspection --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-lookup\.allocation$)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-lookup\.allocation$)'
+```
+
+Second build strengthens only consumer assertions (check error-state before error()
+and pointer before dereference, plus nonnullable-header proof), before any CTest
+execution. No tests needed rerunning after implementation changes: all 138 ran
+once with final source. Checks discover 65 Engine GoogleTests, eight public consumer
+GoogleTests, 64 private console GoogleTests and one isolated allocation probe.
+
+| Files under builds/storytelling-u1-debug/ | Actual evidence |
+| --- | --- |
+| u8-configure.log, .exit | 0; existing configuration choices retained. |
+| u8-build-1.log, .exit; u8-build-2.log, .exit | 0; real Engine/new public route and focused runners compile/link/discover. Second build updates only strengthened consumer checks. |
+| u8-registration.log, .exit; u8-registration-audit.log | 0; nonempty 138 names match final source order; all 121 old names/order retained, 17 new. |
+| u8-ctest-1.log, .exit | 0; 138/138 passes, 17.34 seconds, no skipped/unrun cases. |
+| u8-ctest-details-1.log | Full preserved LastTest.log: 137 matching RUN/OK pairs plus allocation probe, 138 CTest pass records and every child transcript/immediate exit. |
+| u8-results-audit.log | Names/results/counts agree; all 54 complete child blocks equal U7 byte for byte; no ASan/UBSan diagnostics. Core definition/session/inspection and private CLI implementations unchanged. |
+| u8-boundary-rules.log | Real shared Engine owns route.cpp.o with export flag; consumer imports without private/app/JSON wiring and executes dladdr/equivalent against that exact library; both instrumented. |
+| u8-audit-diagnostics.log | Exact premature static name-audit failure, empty log while registration session was live, then successful dependent audit after its exit 0. No native failure/relaunch. |
+
+Full logs/statuses are ignored clone-local outputs; the committed receipt references
+nonempty actual native evidence. Five changed C++ files pass clang-format dry-run
+with Werror and git whitespace checks. No old receipt/history is rewritten.
+
+| New passing cases | Meaningful coverage |
+| --- | --- |
+| dialogue_route.caller, ties, shortest | Literal ordered route and scoped choices; nonfirst/nonentry endpoints; shorter later branch beats first longer branch; nonlexical authored ties, swapped tie, self and conditional parallel first edge. |
+| cycles, equal, endpoints | Cyclic/terminal-free components, unreachable isolated terminal and reverse terminal path; known prompt/terminal/self equality with zero output edges; empty/case/prefix/missing IDs and source-first diagnosis. |
+| owned, advisory | 4096-byte/NUL/high-byte identities and owned definition/revision/choice strings after draft mutation/destruction and final owner release; structural edge remains disabled in a live unchanged session with zero effects. |
+| budgets, payload, invalid_limits, larger, lookup_work | All six exact budgets and each one-short/zero refusal; literal payload; post-search ID/storage refusal preserves old output; hard+1 and size_t-max requests; 257 nodes/2049 choices with raised allowances; long known/unknown queries consume reserved work. |
+| reference | 512 endpoint queries across eight bounded independent graphs compared with a separate linear-name/queued-owned-path BFS reference, including complete ordered choices. |
+| dialogue_route_consumer.caller, retained, refusals | Public-header-first real shared Engine execution/export owner; owned output after definition release; exact/short/invalid budgets and all endpoint/no-route errors without altering earlier route. |
+
+## Receipt, remaining gaps and next action
+
+Committed receipt:
+feature-development/queue/three-commits-20261024/STORYTELLING-U8.json,
+exact batch/milestone bindings, ready/true with actual nonempty native log paths.
+No unresolved assigned prerequisite or acceptance blocker remains. This reports
+worker execution, not automatic coordinator source acceptance or an unrun platform.
+
+Next concrete action: finite queue controller checks the clean descendant
+checkpoint/receipt after this run drains and selects the preassigned U9 owned
+transition-observation task. This worker stops after U8; no U9/background/sibling
+unit, integration, publication or recurring scheduling starts here.
+
+Confidence is high in BFS/ownership/checked bounds and executed shared imports,
+medium in public spelling/defaults/ceilings and conservative work accounting.
+Changing those choices requires consumer/budget checks and matching builds; no
+persisted data migration is introduced. Leak coverage, other platforms/allocators,
+installed SDK/mixed-version ABI and wider runtime integration remain unverified.
+Allocator/programming exception paths are specified/source-inspected, not exhaustively
+failure-injected; payload budgets exclude allocator overhead and there is no timing
+benchmark or gameplay availability/history/termination claim.
+
+## Retained U7 immutable dialogue lookup indices
 
 STORYTELLING-U7 starts from clean, coordinator-accepted U6
 `4bb94118413233cc476fac3938f1af75573765f7`. Only this milestone in finite batch

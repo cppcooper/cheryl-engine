@@ -19,7 +19,9 @@ These remain engineering choices, not personal taste evidence.
 U6 exposes Engine inspection under ST-013/014/015; next.md distinguishes its
 executed boundary checks and retained regressions. U7 preserves the caller with
 ST-016 indices; all 121 checks (112 retained plus nine new) passed, with 54 unchanged
-child transcripts and a verified allocation-denial probe.
+child transcripts and a verified allocation-denial probe. U8 adds ST-017/018; all
+138 checks passed, including 17 new cases and all 121 retained names. Its 54
+complete child transcripts remain byte-identical and public shared export executes.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -182,3 +184,23 @@ retained index memory and compile-time sorting for logarithmic comparison counts
 long prefixes still cost byte comparisons. Confidence is high in ownership and
 semantics, medium in the per-node-vector layout; changing that private layout is
 local, with matching Engine/consumer rebuilds.
+
+
+## ST-017 — Find owned structural routes without live authority
+
+Return owned definition/revision, ordered nodes and source-scoped choices from
+iterative BFS. FIFO first discovery and authored choices resolve shortest-edge
+ties; equal known endpoints have zero edges. Conditions are ignored and no session
+or handler runs. This trades gameplay conclusions for structural advice with
+independent lifetime. Confidence is high in semantics, medium in spelling;
+changing this new result affects a small consumer without migrating saves.
+
+## ST-018 — Bound route input, lookup reservations and output
+
+Preflight authored counts, reserve indexed comparison/byte work, and use one
+3*N scratch vector. Check path length, repeated ID bytes, payload and copy work
+before result allocation; typed refusals publish nothing. Defaults cover the
+console-sized graphs and hard ceilings permit larger CPU inputs. This trades
+conservative work accounting for predictable bounds. Confidence is high in
+mechanics, medium in ceilings; tuning requires public budget/usage and boundary
+review, without persistence changes.
