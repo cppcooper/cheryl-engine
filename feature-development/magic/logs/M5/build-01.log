@@ -1,0 +1,45 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  3%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[  7%] Linking CXX static library libmagic_compiler.a
+[  7%] Built target magic_compiler
+[ 10%] Building CXX object CMakeFiles/magic_inspect.dir/src/main.cpp.o
+[ 14%] Linking CXX executable magic_inspect
+[ 14%] Built target magic_inspect
+[ 17%] Building CXX object CMakeFiles/magic_checks.dir/tests/compiler.cpp.o
+[ 21%] Linking CXX executable magic_checks
+[ 21%] Built target magic_checks
+[ 25%] Building CXX object CMakeFiles/magic_caller_checks.dir/tests/caller.cpp.o
+[ 28%] Linking CXX executable magic_caller_checks
+[ 28%] Built target magic_caller_checks
+[ 32%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 35%] Linking CXX static library libmagic_reference_host.a
+[ 35%] Built target magic_reference_host
+[ 39%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[ 42%] Linking CXX executable magic_host_checks
+[ 42%] Built target magic_host_checks
+[ 46%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[ 50%] Linking CXX executable magic_reference_demo
+[ 50%] Built target magic_reference_demo
+[ 53%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[ 57%] Linking CXX executable magic_engraving_checks
+[ 57%] Built target magic_engraving_checks
+[ 60%] Building CXX object CMakeFiles/magic_engraving_demo.dir/src/engraving-demo.cpp.o
+[ 64%] Linking CXX executable magic_engraving_demo
+[ 64%] Built target magic_engraving_demo
+[ 67%] Building CXX object CMakeFiles/magic_learning.dir/src/learning.cpp.o
+[ 71%] Linking CXX static library libmagic_learning.a
+[ 71%] Built target magic_learning
+[ 75%] Building CXX object CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o
+[ 78%] Linking CXX executable magic_learning_checks
+[ 78%] Built target magic_learning_checks
+[ 82%] Building CXX object CMakeFiles/magic_learning_demo.dir/src/learning-demo.cpp.o
+[ 85%] Linking CXX executable magic_learning_demo
+[ 85%] Built target magic_learning_demo
+[ 89%] Building CXX object CMakeFiles/magic_annular_checks.dir/tests/annular.cpp.o
+[ 92%] Linking CXX executable magic_annular_checks
+[ 92%] Built target magic_annular_checks
+[ 96%] Building CXX object CMakeFiles/magic_annular_demo.dir/src/annular-demo.cpp.o
+[100%] Linking CXX executable magic_annular_demo
+[100%] Built target magic_annular_demo
+
+exit_status=0

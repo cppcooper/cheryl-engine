@@ -1,0 +1,41 @@
+$ git diff --cached --check
+exit_status=0
+$ git diff --cached --stat
+ feature-development/agent-notes.md                 |  71 ++
+ feature-development/decisions.md                   |  26 +-
+ .../magic/logs/M5/accumulated-01.log               | 574 +++++++++++++++
+ feature-development/magic/logs/M5/affected-01.log  |  55 ++
+ feature-development/magic/logs/M5/build-01.log     |  45 ++
+ feature-development/magic/logs/M5/build-02.log     |   9 +
+ feature-development/magic/logs/M5/configure-01.log |   6 +
+ .../magic/logs/M5/static-review.log                |  38 +
+ feature-development/next.md                        |  58 +-
+ .../feature-round-20261024-0500/MAGIC-M5.json      | 114 +++
+ projects/magic/CMakeLists.txt                      |  11 +
+ projects/magic/fixtures/m5/burst.common            |   7 +
+ projects/magic/fixtures/m5/burst.verse             |   7 +
+ projects/magic/fixtures/m5/lesson.common           |   7 +
+ projects/magic/fixtures/m5/lesson.verse            |   7 +
+ projects/magic/fixtures/m5/practice.common         |   7 +
+ projects/magic/fixtures/m5/practice.verse          |   7 +
+ projects/magic/include/magic/compiler.h            |  29 +-
+ projects/magic/include/magic/learning.h            |   8 +-
+ projects/magic/include/magic/reference-host.h      |   2 +-
+ projects/magic/src/annular-demo.cpp                | 140 ++++
+ projects/magic/src/compiler.cpp                    |  83 ++-
+ projects/magic/src/learning.cpp                    |  30 +-
+ projects/magic/src/reference-host.cpp              |  41 +-
+ projects/magic/tests/annular.cpp                   | 791 +++++++++++++++++++++
+ projects/magic/tests/learning.cpp                  |   5 +-
+ 26 files changed, 2113 insertions(+), 65 deletions(-)
+exit_status=0
+$ git diff --name-only
+exit_status=0
+$ git branch --show-current
+feat/magic
+exit_status=0
+Staged query/grammar/provenance, lesson/knowledge, checked host selection/schema paths and real caller/test/fixture diffs inspected.
+Exact batch receipt, five staged passing native logs and matching compact/detailed/next records verified.
+All predecessor receipts/evidence preserved; M4 assertions now retain the original subset and reject the next unknown bit.
+No unstaged/untracked intended work; no fourth magic milestone is selected or scheduled.
+staged review exit_status=0

@@ -57,7 +57,7 @@ namespace Magic {
     enum class CastingMode { Release };
     enum class Trigger { None, ItemTouch };
     enum class Delivery { Contact, Ray, Burst, ItemEvent };
-    enum class Query { WillingTouchedActor, EligibleDisk, WillingEventToucher };
+    enum class Query { WillingTouchedActor, EligibleDisk, WillingEventToucher, EligibleAnnulus };
     enum class BindingTime { Release, Activation };
 
     struct Entry {
@@ -75,7 +75,8 @@ namespace Magic {
         std::uint32_t radius_mm = 0;
         BindingTime anchor_time = BindingTime::Release;
         BindingTime query_time = BindingTime::Release;
-        bool inclusive = true; // EligibleDisk uses actor centres, not intersection of actor bounds.
+        bool inclusive = true;             // Outer boundary; queries use actor centres, not intersection of actor bounds.
+        std::uint32_t inner_radius_mm = 0; // EligibleAnnulus only: distance >inner and <=radius_mm; zero excludes centre.
         bool operator==(const Binding&) const = default;
     };
 
@@ -98,18 +99,33 @@ namespace Magic {
     };
 
     // Registered invented grammar productions and Common operation concepts; no live authority.
-    enum class Rule : std::uint8_t { CommonHeal, CommonFire, CommonSlow, TargetBridge, MendHeal, MendSlow, CinderFire, CinderSlow };
+    enum class Rule : std::uint8_t {
+        CommonHeal,
+        CommonFire,
+        CommonSlow,
+        TargetBridge,
+        MendHeal,
+        MendSlow,
+        CinderFire,
+        CinderSlow,
+        AnnularTarget
+    };
     using RuleMask = std::uint16_t;
-    inline constexpr RuleMask all_rules = 255;
+    inline constexpr RuleMask all_rules = 511;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 8 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 9 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
         Span clause;
         std::string grammar;
         Rule rule = Rule::CommonHeal;
+    };
+
+    struct BindingProvenance {
+        Span declaration;
+        Rule rule = Rule::TargetBridge;
     };
 
     struct OperationSchema {
@@ -128,6 +144,7 @@ namespace Magic {
         bool burst = true;
         bool item_event = true;
         bool together = true;
+        bool annular = true;
     };
 
     struct PixelContext {
@@ -171,6 +188,7 @@ namespace Magic {
         Meaning meaning_;
         std::string source_;
         std::vector<Provenance> provenance_;
+        std::vector<BindingProvenance> binding_provenance_;
         std::string conversion_;
         std::string common_;
         std::string inspection_;
@@ -182,6 +200,7 @@ namespace Magic {
     public:
         Plan(const Plan&) = delete;
         Plan& operator=(const Plan&) = delete;
+        [[nodiscard]] const std::vector<BindingProvenance>& binding_provenance() const noexcept { return binding_provenance_; }
         [[nodiscard]] RuleMask requirements() const noexcept { return requirements_; }
         [[nodiscard]] const Meaning& meaning() const noexcept { return meaning_; }
         [[nodiscard]] std::string_view source() const noexcept { return source_; }

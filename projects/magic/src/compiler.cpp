@@ -69,6 +69,8 @@ namespace Magic {
             Query query;
             Token frame;
             Quantity radius;
+            Quantity inner_radius;
+            Span span;
         };
         struct AuthoredEffect {
             Token target;
@@ -276,12 +278,35 @@ namespace Magic {
                         expect("activation");
                     }
                 } else if (query.text == "eligible") {
-                    binding.query = Query::EligibleDisk;
                     expect("actors");
                     expect("in");
                     binding.frame = name();
-                    expect("disk");
-                    binding.radius = quantity();
+                    const auto shape = take();
+                    if (shape.text == "disk") {
+                        binding.query = Query::EligibleDisk;
+                        binding.radius = quantity();
+                        if (peek().text == "except" || peek().text == "excluding")
+                            fail(
+                                Code::AmbiguousScope, peek().span,
+                                "A disk has no implicit hole; use the explicit annulus excluding inner disk declaration."
+                            );
+                    } else if (shape.text == "annulus") {
+                        binding.query = Query::EligibleAnnulus;
+                        expect("excluding");
+                        expect("inner");
+                        expect("disk");
+                        binding.inner_radius = quantity();
+                        expect("inclusive");
+                        expect("within");
+                        expect("outer");
+                        expect("disk");
+                        binding.radius = quantity();
+                        expect("inclusive");
+                    } else
+                        fail(
+                            Code::UnknownPhrase, shape.span,
+                            "Unknown shape; choose disk or annulus with explicit inner/outer disk boundaries."
+                        );
                     expect("around");
                     expect("aim");
                     expect("captured");
@@ -290,14 +315,20 @@ namespace Magic {
                     expect("queried");
                     expect("at");
                     expect("activation");
-                    expect("inclusive");
+                    if (binding.query == Query::EligibleDisk)
+                        expect("inclusive");
+                    if (peek().text == "except" || peek().text == "excluding")
+                        fail(
+                            Code::AmbiguousScope, peek().span, "Exclusion belongs inside an explicit annulus declaration before around aim."
+                        );
                 } else {
                     fail(
                         Code::RoleMismatch, query.span,
                         "An effect needs an actor binding: willing touched actor, eligible disk actors or willing event toucher."
                     );
                 }
-                expect(";");
+                const auto end = expect(";");
+                binding.span = {start.span.offset, end.span.offset + end.span.length - start.span.offset};
                 syntax.bindings.push_back(binding);
             }
             expect("together");
@@ -577,8 +608,9 @@ namespace Magic {
                     Code::UnsupportedCombination, syntax.onset.number.span,
                     "Engraved entries need immediate item-event delivery; contact is immediate. Other combinations are unsupported."
                 );
-            retain(syntax.bindings.size() * sizeof(Binding));
+            retain(syntax.bindings.size() * (sizeof(Binding) + sizeof(BindingProvenance)));
             meaning.bindings.reserve(syntax.bindings.size());
+            plan.binding_provenance_.reserve(syntax.bindings.size());
             retain(1); // conversion string terminator
             for (const auto& raw : syntax.bindings) {
                 spend(1, raw.name.span);
@@ -593,9 +625,21 @@ namespace Magic {
                 Binding binding;
                 binding.name = copy(raw.name.text, raw.name.span);
                 binding.query = raw.query;
-                if (raw.query == Query::EligibleDisk) {
+                if (raw.query == Query::EligibleDisk || raw.query == Query::EligibleAnnulus) {
                     binding.frame = copy(raw.frame.text, raw.frame.span);
                     binding.radius_mm = value(raw.radius, Dimension::Length, true, max_quantity, raw.frame.text, &plan.conversion_);
+                    if (raw.query == Query::EligibleAnnulus) {
+                        if (!catalog_.annular)
+                            fail(Code::UnsupportedCombination, raw.span, "Host catalog disables annular targeting.");
+                        binding.inner_radius_mm =
+                            value(raw.inner_radius, Dimension::Length, false, max_quantity, raw.frame.text, &plan.conversion_);
+                        if (binding.inner_radius_mm >= binding.radius_mm)
+                            fail(
+                                Code::Range, raw.inner_radius.number.span,
+                                "Annulus requires 0 <= inner radius < outer radius; the entire inner boundary is excluded."
+                            );
+                        plan.requirements_ |= rule_bit(Rule::AnnularTarget);
+                    }
                     binding.query_time = BindingTime::Activation;
                     if (meaning.delivery != Delivery::Burst)
                         fail(Code::UnsupportedCombination, raw.name.span, "A disk query requires burst delivery in M1.");
@@ -612,6 +656,10 @@ namespace Magic {
                         );
                     }
                 }
+                spend(1, raw.span);
+                plan.binding_provenance_.push_back(
+                    {raw.span, raw.query == Query::EligibleAnnulus ? Rule::AnnularTarget : Rule::TargetBridge}
+                );
                 meaning.bindings.push_back(std::move(binding));
             }
             if (meaning.delivery == Delivery::Ray && meaning.onset_ticks != 0)
@@ -693,9 +741,17 @@ namespace Magic {
                 else {
                     append(output, "eligible actors in ");
                     append(output, binding.frame);
-                    append(output, " disk ");
-                    number(output, binding.radius_mm);
-                    append(output, " mm around aim captured at release queried at activation inclusive");
+                    if (binding.query == Query::EligibleAnnulus) {
+                        append(output, " annulus excluding inner disk ");
+                        number(output, binding.inner_radius_mm);
+                        append(output, " mm inclusive within outer disk ");
+                        number(output, binding.radius_mm);
+                        append(output, " mm inclusive around aim captured at release queried at activation");
+                    } else {
+                        append(output, " disk ");
+                        number(output, binding.radius_mm);
+                        append(output, " mm around aim captured at release queried at activation inclusive");
+                    }
                 }
                 append(output, " ;\n");
             }
@@ -757,6 +813,11 @@ namespace Magic {
                 number(inspection, plan.provenance_[i].clause.length);
                 append(inspection, ".\n");
             }
+            if (plan.requirements_ & rule_bit(Rule::AnnularTarget))
+                append(
+                    inspection,
+                    "Annulus: inner_radius < distance(actor centre, captured aim) <= outer_radius. Inner disk includes its boundary; zero inner still excludes centre.\n"
+                );
             append(inspection, plan.conversion_);
             append(inspection, "Exact Common:\n");
             append(inspection, plan.common_);
@@ -808,6 +869,8 @@ namespace Magic {
                 return "cinder.fire@1";
             case Rule::CinderSlow:
                 return "cinder.slow@1";
+            case Rule::AnnularTarget:
+                return "target.annulus@1";
         }
         return "invalid-rule";
     }

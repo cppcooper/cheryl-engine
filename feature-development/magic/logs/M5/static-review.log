@@ -1,0 +1,38 @@
+$ git diff --check
+exit_status=0
+$ clang-format --dry-run --Werror projects/magic/include/magic/compiler.h projects/magic/include/magic/learning.h projects/magic/include/magic/reference-host.h projects/magic/src/compiler.cpp projects/magic/src/learning.cpp projects/magic/src/reference-host.cpp projects/magic/src/annular-demo.cpp projects/magic/tests/annular.cpp projects/magic/tests/learning.cpp
+exit_status=0
+$ git diff --exit-code HEAD -- projects/magic/tests/compiler.cpp projects/magic/tests/caller.cpp projects/magic/tests/reference-host.cpp projects/magic/tests/engraving.cpp projects/magic/src/reference-demo.cpp projects/magic/src/engraving-demo.cpp projects/magic/src/learning-demo.cpp projects/magic/fixtures/m4
+exit_status=0
+M1: committed earlier receipt and all saved evidence bytes preserved
+M2: committed earlier receipt and all saved evidence bytes preserved
+M3: committed earlier receipt and all saved evidence bytes preserved
+M4: committed earlier receipt and all saved evidence bytes preserved
+M5 exact receipt binding and all five complete passing native-command logs verified
+accumulated-01: 1: 35 contract cases passed; 0 failed.
+accumulated-01: 10: Exact S2 activation work=308
+accumulated-01: 10: 37 reference host cases passed; 0 failed.
+accumulated-01: 12: 34 engraving/checkpoint cases passed; 0 failed.
+accumulated-01: 14: 25 learning/book/tome cases passed; 0 failed.
+accumulated-01: 15: 1 teach-compose-cast caller passed (recognition, lesson, host refusal, failed edit, real cast).
+accumulated-01: 16: annular activation work=326 disk=308 selector=32
+accumulated-01: 16: annular compiler tokens=73 work=3007 retained=3103
+accumulated-01: 16: annular lesson work=25335 retained=18937
+accumulated-01: 16: 24 annular composition cases passed; 0 failed.
+accumulated-01: 17: 1 annular lesson-edit-move-checkpoint-cast caller passed.
+accumulated-01: 100% tests passed out of 17
+affected-01: 16: annular activation work=326 disk=308 selector=32
+affected-01: 16: annular compiler tokens=73 work=3007 retained=3103
+affected-01: 16: annular lesson work=25335 retained=18937
+affected-01: 16: 25 annular composition cases passed; 0 failed.
+affected-01: 100% tests passed out of 1
+projects/magic/include/magic/compiler.h sha256=d1306d8f8eb20f5d864e815590232f98f268d72c359e1853b19488d346844467
+projects/magic/include/magic/learning.h sha256=f630a942f277a1c2ee4d47f0087121f71647e87f955c36e80e1b1d54bdff30af
+projects/magic/include/magic/reference-host.h sha256=e0e17bb7db91566bb23460ec5cdf387e053d0ae7086e4a7f7d50a02572abd788
+projects/magic/src/compiler.cpp sha256=d3c55a8cb9afbb8db684b610d178240e9d76a10a20dad8cbca011288a5c07cc5
+projects/magic/src/learning.cpp sha256=8415d71fa535a6d9adbe7f7756b8759b4d5c0576993e6d9cb6382947d548e993
+projects/magic/src/reference-host.cpp sha256=5722185728e3407959d1303830c828c935bbb6c55d3ac8b5f560949e9214fcc0
+projects/magic/src/annular-demo.cpp sha256=b2affd00dea9206a81c474b5dfa337cc08f3ecfb4b0bc5ceb403c9ded4171008
+projects/magic/tests/annular.cpp sha256=98edd33a7654f89debfad020e82422cf0af37cf7d0c78de84eab6428fefe9c3d
+projects/magic/tests/learning.cpp sha256=d478720a758d3c8ee508c457bf4c8ad026e50684ca22967964feee9cad233fb1
+static review exit_status=0

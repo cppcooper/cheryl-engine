@@ -1,0 +1,9 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_annular_checks --parallel 1
+[ 25%] Built target magic_compiler
+[ 50%] Built target magic_learning
+[ 75%] Built target magic_reference_host
+[ 87%] Building CXX object CMakeFiles/magic_annular_checks.dir/tests/annular.cpp.o
+[100%] Linking CXX executable magic_annular_checks
+[100%] Built target magic_annular_checks
+
+exit_status=0

@@ -135,7 +135,7 @@ namespace Magic::Reference {
         std::size_t pending = pending_capacity;
         std::size_t statuses = actor_capacity;
         std::size_t selected_targets = 128; // (binding, actor) pairs over the complete operation
-        std::size_t selector_work = 1024;   // visited slots, including empty slots
+        std::size_t selector_work = 1024;   // units/visited slot including empty: disk1, annulus2
         std::size_t work = 16384;
         std::size_t plan_bytes = 32768; // per retained M1 plan, logical metric; handles avoid deep copies
         std::uint64_t max_tick = 1'000'000'000;

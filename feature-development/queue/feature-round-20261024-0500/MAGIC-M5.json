@@ -1,0 +1,114 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "MAGIC-M5",
+  "status": "ready",
+  "checks_passed": true,
+  "base_commit": "79dfd22d76b020e95f524865f27771e873d909b6",
+  "prerequisites": [
+    {
+      "milestone_id": "MAGIC-M4",
+      "receipt": "feature-development/queue/feature-round-20261024-0500/MAGIC-M4.json",
+      "committed_ready_receipt_actual_source_and_all_seven_passing_native_logs_inspected": true
+    },
+    {
+      "milestone_id": "MAGIC-M3",
+      "receipt": "feature-development/queue/feature-round-20261024-0500/MAGIC-M3.json",
+      "committed_ready_receipt_actual_source_and_all_seven_passing_native_logs_inspected": true
+    }
+  ],
+  "evidence": [
+    "feature-development/magic/logs/M5/configure-01.log",
+    "feature-development/magic/logs/M5/build-01.log",
+    "feature-development/magic/logs/M5/accumulated-01.log",
+    "feature-development/magic/logs/M5/build-02.log",
+    "feature-development/magic/logs/M5/affected-01.log"
+  ],
+  "verification": {
+    "platform": "GNU/Linux Debug C++23 GNU16; ASan+UBSan; warnings as errors; same clone-local incremental native build",
+    "sanitizer_environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "configure_invocations": 1,
+    "build_invocations": 2,
+    "accumulated_suite_invocations": 1,
+    "affected_suite_invocations": 1,
+    "accumulated_ctest_entries_passed": 17,
+    "affected_ctest_entries_passed": [
+      1
+    ],
+    "annular_cases_by_run": [
+      24,
+      25
+    ],
+    "final_annular_contract_cases": 25,
+    "annular_real_caller_scenarios": 1,
+    "new_authored_verse_common_files": 6,
+    "retained_m1": {
+      "ctest_entries": 9,
+      "compiler_cases": 35,
+      "ordinary_callers": 4,
+      "file_fixtures": 6,
+      "cli_processes": 9
+    },
+    "retained_m2": {
+      "ctest_entries": 2,
+      "host_cases": 37,
+      "reference_callers": 6
+    },
+    "retained_m3": {
+      "ctest_entries": 2,
+      "item_checkpoint_cases": 34,
+      "reference_callers": 3
+    },
+    "retained_m4": {
+      "ctest_entries": 2,
+      "learning_cases": 25,
+      "teach_compose_cast_callers": 1
+    },
+    "fixture_exact_boundaries": {
+      "inner_mm": 100,
+      "outer_mm": 250,
+      "annular_activation_work": 326,
+      "equivalent_disk_work": 308,
+      "annular_selector_units_per_binding": 32,
+      "disk_selector_units_per_binding": 16,
+      "complete_step_selector_limit_unchanged": 1024,
+      "selected_pairs_limit_unchanged": 128,
+      "canonical_compiler_tokens": 73,
+      "canonical_compiler_work": 3007,
+      "canonical_compiler_retained_bytes": 3103,
+      "annular_lesson_work": 25335,
+      "annular_lesson_retained_bytes": 18937,
+      "aligned_targets": 8,
+      "aligned_effects": 4,
+      "registered_rules": 9,
+      "studied_lesson_receipts": 5,
+      "updated_m4_edit_work": 14824,
+      "updated_m4_lesson_work": 23361,
+      "updated_m4_lesson_retained_bytes": 17972
+    },
+    "all_native_exit_statuses": 0,
+    "results": "All17 accumulated entries pass once, including all15 M1-M4 names and initial24 new cases plus one actual caller. A test-only runnable disjoint-band/max-alignment and five-receipt refinement passes the annular contract entry alone,25 cases. No production/caller changes after accumulated pass; no native/compiler failure, resource/auth refusal or sanitizer finding."
+  },
+  "implemented_contracts": [
+    "M5-025: Distinct appended EligibleAnnulus query and owned inner radius implement0<=inner<outer<=1000000mm, inner\u00b2<distance(actor centre,captured aim)\u00b2<=outer\u00b2. Zero inner excludes centre, old disk tag/default inner0 still includes it. Exact controlled Common and explicit school-compatible targeting bridges preserve units/boundaries/capture/query/effect ordering; Common reparses equal typed meaning.",
+    "Checked grammar and owned binding provenance/diagnostics refuse unknown or ambiguously scoped shape, false boundary markers, equal/reversed/negative/inexact/wrong-dimension/unsupported-unit/overflow radii. Both contextual px radii require existing explicit projection/scale context; accepted world geometry and aim remain frozen after authoring input changes.",
+    "M5-026: Current Catalog annular capability gates compiler/live host and exact checkpoint schema identity. Known-tag/range validation and checked squared arithmetic precede selection; no fallback to disk. Existing all-binding resolution, field-overlap/active-slow refusal, whole-step adoption/resource/queue rollback and no-refund laws remain shared.",
+    "Unchanged compiler/host/learning numeric quotas; annuli explicitly add two radius-work units and one extra selector unit per slot. Exact326/325 work,32/31 selector, complete-step1024/1023 and128/127 selected-pair checks prove refusal without raising ceilings.",
+    "M5-027: Existing bounded tome validates target.annulus@1 from actual parsed bindings and owns up to8 target alignments alongside4 effect rows. Ninth registered rule/fifth lesson handle are the explicit fixed extension; learning requires target bridge and grants no operation/host/event authority. Five coexisting lesson definitions, duplicate/idempotent behavior and revision exhaustion are verified.",
+    "Real independent headless learner edits an accepted disk into annular fire+slow, moves members over inner/outer boundaries, removes/disables others, checkpoints pending aim/due/actual plan, destroys inputs/owner, restores with fresh authority and executes centre50 versus ring42/slow750 until300. Both insertion orders and independent literal states/meaning/Common are tested.",
+    "Actual pending annular and older disk/item checkpoints remain owned and usable across new lessons/book edits/destruction. Unsupported current query capture/incompatible schema restore refuse before adoption, old live cast/event capabilities stay foreign, logical event resume/one-charge receipt semantics persist; no source regeneration or cross-version disk promise.",
+    "All predecessor receipts/evidence preserved; one coherent checkpoint includes source/caller/fixtures/checks, matching M5-025..027 decision records, actual command/exit evidence and final idle handoff."
+  ],
+  "limitations": [
+    "Private deterministic native-owner fixture, not production Engine combat integration/security sandbox, physics, line-of-sight or graphical/camera acquisition. Current host permission/key+primitive checks remain authoritative.",
+    "One finite annular constructor only; no arbitrary set-expression graph/recursive shape VM, new effect family, provider/NLP, general trigger/rearm or ray runtime. Mend/Cinder words remain invented.",
+    "No human comprehension/enjoyment/playtest or graphical spellbook acceptance. Exact verbose Common has only mechanical evidence.",
+    "Owned in-memory checkpoints require exact current schema/limit identity; no disk codec, cross-version/process migration, crash/power-loss durability or external exactly-once guarantee. Deliberate whole-world rewind preserves M3 timeline policy; books/knowledge are outside its state.",
+    "Logical storage/work models exclude allocator/control-block/fixed metadata overhead and caller-retained immutable history; no exact RSS/CPU accounting, allocator fault injection or OOM verification. Binding/target text copies are charged within unchanged ceilings.",
+    "GNU/Linux Debug GNU16 ASan/UBSan only; known tracing restriction leaves leak checking unverified, other platforms/toolchains/ABIs unverified.",
+    "Opaque validated Plans/Checkpoints expose no raw mutable query decoder; unknown source shapes, unsupported current query/capability and incompatible schema are tested, not forged deserialization of enum payloads."
+  ],
+  "next_action": "Remain idle: this is the third/final magic milestone in feature-round-20261024-0500. Coordinator reviews actual source/receipt/logs; no fourth unit, worker or service is scheduled. Unselected next evidence is a separately assigned human prediction check for protected-centre boundaries/shared school scope from Common. Publisher handles ordinary feat/magic backup."
+}

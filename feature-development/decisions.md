@@ -1,7 +1,7 @@
 # MAGIC decisions
 
 Coordinator MAGIC-001–012 remain design intent in coordination/magic/design.md;
-this clone implements M1–M4 compilation, finite execution/checkpoints and owned learning records. Detailed
+this clone implements M1–M5 compilation, finite execution/checkpoints, owned learning and annular composition. Detailed
 evidence and original caller/baseline are in [agent-notes.md](agent-notes.md).
 
 | ID | Choice, reason, tradeoff and confidence |
@@ -35,7 +35,7 @@ and all saved evidence remain unchanged.
 | M3-021 | A distinct opaque immutable checkpoint owns full continuation, actual pending/item plan handles, ledger/counters and exact schema/limit identity. Capture/restore validate complete bounded state before allocation/adoption; restore replaces the world with a fresh incarnation and clears live prepared input. Snapshot stays observational. Whole-world rewind intentionally rewinds charges/facts; each resulting timeline still deduplicates. Strict compatibility and refusal of intrinsically invalid pending work trade flexibility for coherent continuation. High confidence in in-memory ownership; no disk/crash/external delivery guarantee. |
 
 M3 execution evidence and current handoff are in [next.md](next.md) and the
-batch receipt. Private runtime supports spoken contact/G0 disks and immediate
+batch receipt. Private runtime supports spoken contact/G0 disks/annuli and immediate
 one-charge item-touch only; ray and broader triggers remain unsupported. Graphics,
 fun, human learning, other platforms, leak coverage, allocator fault injection and
 production durability remain unverified. M4 continues the accepted source below.
@@ -43,14 +43,28 @@ production durability remain unverified. M4 continues the accepted source below.
 
 | ID | Choice, reason, tradeoff and confidence |
 | --- | --- |
-| M4-022 | Emit eight registered rule bits and a production ID per actual checked compiler clause. School syntax requires its Common operation concept and explicit target bridge; Common can replace unknown school syntax while host key/schema/permission checks remain independent. This proves recognition/knowledge/authority without scanning text heuristically. Grammar, Meaning and Common stay stable; plan/provenance storage and work metrics include metadata. High confidence in separation, medium in reversible private registry shape. |
+| M4-022 | M4 emits the original eight registered rule bits and actual clause production IDs; M5 appends one targeting rule. School syntax requires its Common operation concept and explicit target bridge; Common can replace unknown school syntax while host key/schema/permission checks remain independent. This proves recognition/knowledge/authority without scanning text heuristically. Grammar, Meaning and Common stay stable; plan/provenance storage and work metrics include metadata. High confidence in separation, medium in reversible private registry shape. |
 | M4-023 | Keep eight owned book identities, one immutable accepted revision and one current owned Attempt each. Success increments a checked revision; syntax/knowledge/capability/work/storage/text failure preserves accepted source/plan/Common/annotation and records a repairable bounded draft. Reserve a fixed failure envelope, admit compilation through remaining quotas and stage pointer adoption. Caller-held old history is outside quotas; no removal/history editor is added. High confidence in ownership, medium in private APIs. |
-| M4-024 | Validate one owned bilingual lesson's original/practice plans, exact Common glosses and actual registered school production; derive aligned clauses from compiler spans. Four studied lesson handles enforce identity/definition consistency, including typed effect keys. Learning idempotently adds only one production after concept/bridge prerequisites, with checked revision. It supplies no host authority or reward. This proves deterministic rule transfer; teaching/enjoyment need human evidence. High confidence in bounded mechanics, medium in pedagogy. |
+| M4-024 | Validate one owned bilingual lesson's original/practice plans, exact Common glosses and actual registered school production; derive aligned clauses from compiler spans. M4 retains four school lesson handles for identity/definition consistency, including typed effect keys; M5 adds one targeting lesson slot. Learning idempotently adds only one production after concept/bridge prerequisites, with checked revision. It supplies no host authority or reward. This proves deterministic rule transfer; teaching/enjoyment need human evidence. High confidence in bounded mechanics, medium in pedagogy. |
 
 M4's real caller teaches invented Cinder duration-first slowing, transfers it into
 new Mend healing plus slow (9 hp, 600 permille, 3 s; 300 mm disk, 500 ms onset), preserves a
 failed draft and executes with ordinary live host authority. Current proof/counts
 are in [next.md](next.md) and the M4 receipt. No graphical editor, generic language
 pack/provider, disk book format or human comprehension result is claimed. The
-next pinned unit is M5, only after the controller's predecessor gate and real
-source/receipt/log review. This worker ends idle after one coherent checkpoint.
+M5 continuation is implemented below after the required predecessor source,
+receipt and saved-log review.
+
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M5-025 | Append a distinct annular query and inner radius field, keeping old disks centred/inclusive. Common states excluded inclusive inner disk and included outer disk, capture/query times and units; the same binding feeds existing invented-school clauses. Own bounded binding provenance for teaching. Exact0<=inner<outer<=1000000mm and existing contextual pixel rules refuse unsupported input. High confidence in tagged semantics/ownership; medium in verbose private spelling. No general shape graph. |
+| M5-026 | Gate annuli through current Catalog capability and exact checkpoint schema identity. Checked squared distance tests inner²<distance²<=outer²; charge two radius units and two selector units/slot, with all prior quotas unchanged. Shared resolve-before-write, overlap, slow, whole-step and no-refund laws apply. Pending checkpoints retain actual shape/aim/time, restore with fresh authority, and refuse incompatible support. High confidence in deterministic finite behavior; no disk/cross-version durability guarantee. |
+| M5-027 | Teach target.annulus@1 through M4's validated tome, adding at most eight span-derived target rows and one fifth lesson receipt. The new rule requires the target bridge and grants no effect/host authority. Existing storage/work ceilings stay fixed; exact resource evidence is updated for added provenance. Real learner edits a burst, moves members and executes retained restored work. High confidence in mechanics; human comprehension/enjoyment remain untested. |
+
+M5 execution/limits are in [next.md](next.md) and the batch receipt. The selected
+three-milestone magic lane ends here; the worker remains idle and schedules
+nothing. Coordinator source review is next. A concrete **unselected** next
+evidence is a small human prediction exercise for centre/inner/outer boundaries
+and shared school bridges; no playtest/GUI or new capability work is authorized
+by this handoff. Existing platform/leak/allocator/durability gaps remain.

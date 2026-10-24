@@ -63,7 +63,7 @@ namespace Magic::Reference {
                 refuse(Error::InvalidAim);
             return value * value;
         }
-        bool within(Point a, Point b, std::uint32_t radius) {
+        std::uint64_t distance_squared(Point a, Point b) {
             // Validated +/-1e6 positions keep subtraction in int64; multiply/add are checked independently.
             const auto dx = static_cast<std::int64_t>(a.x) - b.x;
             const auto dy = static_cast<std::int64_t>(a.y) - b.y;
@@ -71,7 +71,10 @@ namespace Magic::Reference {
             const auto y2 = square(static_cast<std::uint64_t>(dy < 0 ? -dy : dy));
             if (x2 > std::numeric_limits<std::uint64_t>::max() - y2)
                 refuse(Error::InvalidAim);
-            return x2 + y2 <= square(radius);
+            return x2 + y2;
+        }
+        bool within(Point a, Point b, std::uint32_t radius) {
+            return distance_squared(a, b) <= square(radius);
         }
     }
 
@@ -88,7 +91,8 @@ namespace Magic::Reference {
         }
         bool same_catalog(const Catalog& a, const Catalog& b) {
             if (a.spoken != b.spoken || a.engraved != b.engraved || a.contact != b.contact || a.ray != b.ray || a.burst != b.burst ||
-                a.item_event != b.item_event || a.together != b.together || a.operations.size() != b.operations.size())
+                a.item_event != b.item_event || a.together != b.together || a.annular != b.annular ||
+                a.operations.size() != b.operations.size())
                 return false;
             for (std::size_t i = 0; i < a.operations.size(); ++i) {
                 const auto& x = a.operations[i];
@@ -249,11 +253,14 @@ namespace Magic::Reference {
             if (meaning.delivery == Delivery::Contact) {
                 if (binding.query != Query::WillingTouchedActor || binding.query_time != BindingTime::Release)
                     meter.fail(Error::UnsupportedBinding);
-            } else if (
-                binding.query != Query::EligibleDisk || binding.frame != "G0" || !binding.inclusive ||
-                binding.anchor_time != BindingTime::Release || binding.query_time != BindingTime::Activation
-            )
-                meter.fail(Error::UnsupportedBinding);
+            } else {
+                const bool annular = binding.query == Query::EligibleAnnulus;
+                if ((binding.query != Query::EligibleDisk && !annular) || binding.frame != "G0" || !binding.inclusive ||
+                    binding.anchor_time != BindingTime::Release || binding.query_time != BindingTime::Activation ||
+                    binding.radius_mm == 0 || binding.radius_mm > 1'000'000 ||
+                    (annular ? (!catalog_.annular || binding.inner_radius_mm >= binding.radius_mm) : binding.inner_radius_mm != 0))
+                    meter.fail(Error::UnsupportedBinding);
+            }
         }
         payload_schema(plan, meter);
         if (paying)
@@ -321,10 +328,26 @@ namespace Magic::Reference {
                 selected[b][recipient->slot] = true;
                 any = true;
             } else {
+                const bool annular = binding.query == Query::EligibleAnnulus;
+                if (binding.query != Query::EligibleDisk && !annular)
+                    meter.fail(Error::UnsupportedBinding);
+                std::uint64_t inner2 = 0, outer2 = 0;
+                if (annular) {
+                    meter.spend(2);
+                    inner2 = square(binding.inner_radius_mm);
+                    outer2 = square(binding.radius_mm);
+                }
                 for (std::size_t i = 0; i < actor_capacity; ++i) {
                     meter.visit();
+                    if (annular)
+                        meter.visit(); // explicit inner comparison/selector charge, including empty slots
                     const auto& slot = state.world.actors[i];
-                    if (slot.present && slot.data.health > 0 && slot.data.eligible && within(slot.data.position, *aim, binding.radius_mm)) {
+                    if (!slot.present || slot.data.health == 0 || !slot.data.eligible)
+                        continue;
+                    const auto distance = annular ? distance_squared(slot.data.position, *aim) : 0;
+                    const bool inside =
+                        annular ? distance > inner2 && distance <= outer2 : within(slot.data.position, *aim, binding.radius_mm);
+                    if (inside) {
                         meter.select();
                         selected[b][i] = true;
                         any = true;

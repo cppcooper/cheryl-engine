@@ -344,7 +344,7 @@ int main() {
         l = {};
         ++l.max_revision;
         rejects(L::Spellbook::create(l), L::Error::InvalidLimits);
-        rejects(L::Learner::create(256), L::Error::InvalidLimits);
+        rejects(L::Learner::create(static_cast<RuleMask>(all_rules + 1)), L::Error::InvalidLimits);
         rejects(L::Learner::create(0, 1'000'001), L::Error::InvalidLimits);
         check(rule_bit(static_cast<Rule>(255)) == 0, "unknown registry ordinal cannot set arbitrary bit");
     });
@@ -511,7 +511,8 @@ int main() {
         slow.practice_gloss = replace(slow.gloss, "750", "700");
         check(take(l.learn(slow.make())), "Mend slow");
         check(
-            l.snapshot().known == all_rules && l.snapshot().revision == 4, "eight registered rule bits, four learned production receipts"
+            l.snapshot().known == (all_rules & ~rule_bit(Rule::AnnularTarget)) && l.snapshot().revision == 4,
+            "original eight rule bits; four school productions do not teach annular targeting"
         );
     });
     test("learned rule never creates live release or item authority", [] {

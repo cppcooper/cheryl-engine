@@ -80,7 +80,8 @@ namespace Magic::Learning {
         const auto bit = rule_bit(lesson->rule());
         if (state_.known & bit)
             return false;
-        const auto required = rule_bit(concept_for(lesson->rule())) | rule_bit(Rule::TargetBridge);
+        const auto required =
+            rule_bit(Rule::TargetBridge) | (lesson->rule() == Rule::AnnularTarget ? 0 : rule_bit(concept_for(lesson->rule())));
         const auto missing = static_cast<RuleMask>(required & ~state_.known);
         if (missing)
             return std::unexpected(Problem{Error::Prerequisite, {}, missing});
@@ -203,7 +204,7 @@ namespace Magic::Learning {
             if (input.rule.size() > 32)
                 fail(Error::UnknownRule);
             std::optional<Rule> rule;
-            for (unsigned i = 4; i < 8; ++i)
+            for (unsigned i = 4; i < 9; ++i)
                 if (rule_key(static_cast<Rule>(i)) == input.rule)
                     rule = static_cast<Rule>(i);
             if (!rule)
@@ -234,6 +235,17 @@ namespace Magic::Learning {
                 retained = plus(retained, b.length, limits.retained_bytes);
                 meter.spend(a.length + b.length);
             }
+            if (*rule == Rule::AnnularTarget) {
+                for (std::size_t i = 0; i < worked->binding_provenance().size(); ++i) {
+                    const auto& a = worked->binding_provenance()[i];
+                    if (a.rule != Rule::AnnularTarget)
+                        continue;
+                    const auto b = gloss->binding_provenance()[i].declaration;
+                    retained = plus(retained, a.declaration.length, limits.retained_bytes);
+                    retained = plus(retained, b.length, limits.retained_bytes);
+                    meter.spend(a.declaration.length + b.length);
+                }
+            }
             auto lesson = std::shared_ptr<Lesson>(new Lesson);
             lesson->identity_ = input.identity;
             lesson->annotation_ = input.annotation;
@@ -248,6 +260,20 @@ namespace Magic::Learning {
                     {std::string(lesson->worked_->source().substr(a.clause.offset, a.clause.length)),
                      std::string(gloss->source().substr(b.offset, b.length)), a.rule}
                 );
+            }
+            if (*rule == Rule::AnnularTarget) {
+                // Reserve only the validated bounded binding count; no source scanning or caller-supplied alignment.
+                lesson->target_aligned_.reserve(lesson->worked_->binding_provenance().size());
+                for (std::size_t i = 0; i < lesson->worked_->binding_provenance().size(); ++i) {
+                    const auto& a = lesson->worked_->binding_provenance()[i];
+                    if (a.rule != Rule::AnnularTarget)
+                        continue;
+                    const auto b = gloss->binding_provenance()[i].declaration;
+                    lesson->target_aligned_.push_back(
+                        {std::string(lesson->worked_->source().substr(a.declaration.offset, a.declaration.length)),
+                         std::string(gloss->source().substr(b.offset, b.length)), a.rule}
+                    );
+                }
             }
             lesson->usage_ = {meter.work, retained};
             return LessonHandle(std::move(lesson));

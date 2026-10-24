@@ -1,0 +1,55 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_annular_contracts$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 16
+    Start 16: magic_annular_contracts
+
+16: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_annular_checks
+16: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+16: Test timeout computed to be: 30
+16: PASS independent complete annular meaning Common and school bridge equivalence
+16: PASS literal geometry in both actor insertion orders
+16: PASS zero inner excludes exact centre while old disk includes it
+16: PASS literal delayed release onset and exact duration
+16: PASS activation queries moved removed ineligible and dead current centres
+16: PASS both contextual pixel radii freeze independently of changed authoring camera
+16: PASS inner equal greater negative inexact dimensions unsupported units and overflow refuse
+16: PASS unknown and ambiguous shape scope has owned diagnostics
+16: PASS max normalized radii and extreme checked distance arithmetic
+16: PASS compiler and current host can explicitly disable new query
+16: PASS disk annulus overlapping field conflicts in both binding/effect/storage orders
+16: PASS active slow and status limits cannot be evaded by annular selection
+16: PASS empty annular selection and whole-step later failure preserve all accepted work
+16: annular activation work=326 disk=308 selector=32
+16: PASS explicit selector32 and work exact versus one-short without raising caps
+16: PASS complete-step selector ceiling1024 exact and1023 rollback
+16: PASS selected target ceiling128 exact and127 rollback
+16: annular compiler tokens=73 work=3007 retained=3103
+16: PASS new provenance text tokens work storage exact compiler budgets
+16: PASS targeting lesson derives owned exact target alignment and teaches only ninth bit
+16: annular lesson work=25335 retained=18937
+16: PASS annular lesson work retained exact and one-short, false claims refuse
+16: PASS full eight target alignments and four effect rows remain bounded
+16: PASS five bounded lesson receipts and knowledge revision boundary coexist
+16: PASS book lesson edit preserves prior accepted disk and malformed annular draft
+16: PASS pending annulus checkpoint owns plan point time and M3 event ledger across destruction
+16: PASS checkpoint unsupported current query or incompatible schema refuses before adoption
+16: PASS old disk/item checkpoint remains meaningful after new lesson and book edits
+16: 25 annular composition cases passed; 0 failed.
+1/1 Test #16: magic_annular_contracts ..........   Passed    0.04 sec
+
+The following tests passed:
+	magic_annular_contracts
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.04 sec
+
+exit_status=0

@@ -48,7 +48,7 @@ namespace Magic::Learning {
     // Fixture-owned knowledge; edits cannot create ReferenceHost tickets or permissions.
     class Learner final {
         Knowledge state_;
-        std::array<std::shared_ptr<const Lesson>, 4> studied_;
+        std::array<std::shared_ptr<const Lesson>, 5> studied_;
         std::uint64_t max_revision_;
         Learner(RuleMask known, std::uint64_t max_revision)
         : state_{1, known, 0}, max_revision_(max_revision) {}
@@ -56,7 +56,7 @@ namespace Magic::Learning {
         [[nodiscard]] static std::expected<Learner, Problem> create(RuleMask known, std::uint64_t max_revision = 1'000'000);
         [[nodiscard]] Knowledge snapshot() const noexcept { return state_; }
         [[nodiscard]] RuleMask missing(const Plan& plan) const noexcept { return plan.requirements() & ~state_.known; }
-        // Idempotent; only one registered school production changes, never an operation concept.
+        // Idempotent; only one registered school/annular production changes, never an operation concept.
         [[nodiscard]] std::expected<bool, Problem> learn(const std::shared_ptr<const Lesson>& lesson);
     };
     class Spellbook;
@@ -132,6 +132,7 @@ namespace Magic::Learning {
         Rule rule_ = Rule::CinderSlow;
         PlanHandle worked_, practice_;
         std::vector<Alignment> aligned_;
+        std::vector<Alignment> target_aligned_;
         Usage usage_;
         Lesson() = default;
         friend std::expected<std::shared_ptr<const Lesson>, Problem> make_lesson(const LessonInput&, const Catalog&, Limits);
@@ -141,11 +142,12 @@ namespace Magic::Learning {
         [[nodiscard]] Rule rule() const noexcept { return rule_; }
         [[nodiscard]] const PlanHandle& worked() const noexcept { return worked_; }
         [[nodiscard]] const PlanHandle& practice() const noexcept { return practice_; }
+        [[nodiscard]] const std::vector<Alignment>& target_alignments() const noexcept { return target_aligned_; }
         [[nodiscard]] const std::vector<Alignment>& aligned() const noexcept { return aligned_; }
         [[nodiscard]] Usage usage() const noexcept { return usage_; }
     };
     using LessonHandle = std::shared_ptr<const Lesson>;
-    // One immutable lesson per object, at most four compiler-derived aligned clauses; no content interpreter.
+    // One immutable lesson per object, at most four effect and eight target alignments; no content interpreter.
     [[nodiscard]] std::expected<LessonHandle, Problem> make_lesson(const LessonInput& input, const Catalog& catalog, Limits limits = {});
     [[nodiscard]] std::string_view error_name(Error error) noexcept;
 }

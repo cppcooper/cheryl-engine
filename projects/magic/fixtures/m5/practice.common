@@ -1,0 +1,7 @@
+spoken release via burst after 1000 ms {
+  bind near = eligible actors in G0 annulus excluding inner disk 50 mm inclusive within outer disk 300 mm inclusive around aim captured at release queried at activation ;
+  together ordered {
+    on near bridge Common@1 { heal 9 hp instant } ;
+    on near bridge Common@1 { multiply speed by 750 permille for 2000 ms } ;
+  }
+}
