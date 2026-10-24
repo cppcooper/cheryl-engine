@@ -10,7 +10,7 @@ namespace OfflineStory {
     namespace D = CE::Dialogue;
     enum class Origin { Manual };
     enum class Method { Pay, Repair, Decline };
-    enum class Knowledge { None, SawFare, SawRepair, SawDecline, HeardPassage };
+    enum class Knowledge { None, SawFare, SawRepair, SawDecline, HeardPassage, VerifiedFare, HeardTestimony };
 
     struct Facts {
         int coins = 8, planks = 3;

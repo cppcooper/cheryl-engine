@@ -157,3 +157,81 @@ TEST(story_offline_transcript, demonstration) {
     EXPECT_NE(result.output.find("Three bright circles buy a quiet crossing."), std::string::npos);
     EXPECT_NE(result.output.find("The river roars; five coins keep your place aboard."), std::string::npos);
 }
+
+TEST(story_continuation_transcript, routes) {
+    const auto paid = child({"--watch", "tide", "pay", "evidence", "0", "restore"});
+    ASSERT_EQ(paid.code, 0);
+    EXPECT_TRUE(paid.error.empty());
+    EXPECT_NE(paid.output.find("Continuation [manually authored; no model/provider]: fare-inquiry"), std::string::npos);
+    EXPECT_NE(paid.output.find("Ferry completed: destination ferry-effects=1"), std::string::npos);
+    EXPECT_NE(paid.output.find("fare-record: Show the fare record [available]"), std::string::npos);
+    EXPECT_NE(paid.output.find("withhold: Keep your explanation to yourself [available]"), std::string::npos);
+    EXPECT_NE(paid.output.find("Watch reply: Ivo checks the fare record. I was wrong: your passage was licensed."), std::string::npos);
+    EXPECT_NE(paid.output.find("Restored watch pair; old selection rejected; no repeated fare/reward."), std::string::npos);
+    EXPECT_NE(
+        paid.output.find("Later response: Ivo: I remember the explanation. No second proof or payment is needed."), std::string::npos
+    );
+    EXPECT_NE(paid.output.find("Actual facts: coins=5 planks=3 passage=1 licensed=1 paid=1 repaired=0 declined=0"), std::string::npos);
+    EXPECT_NE(paid.output.find("Observer ivo: knowledge=verified-fare belief-unlicensed=0 attitude=1"), std::string::npos);
+    EXPECT_NE(paid.output.find("Observer lena: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+    EXPECT_NE(paid.output.find("Effects: ferry=1 watch=1"), std::string::npos);
+    EXPECT_NE(paid.output.find("Ivo: I remember your licensed passage. No accusation today."), std::string::npos);
+    const auto repair = child({"--watch", "tide", "repair", "evidence"});
+    ASSERT_EQ(repair.code, 0);
+    EXPECT_TRUE(repair.error.empty());
+    EXPECT_NE(repair.output.find("mara-testimony: Ask Mara to vouch for the repair [available]"), std::string::npos);
+    EXPECT_NE(repair.output.find("Mara confirms your repair earned licensed passage. Ivo withdraws the suspicion."), std::string::npos);
+    EXPECT_NE(repair.output.find("Actual facts: coins=8 planks=1 passage=1 licensed=1 paid=0 repaired=1 declined=0"), std::string::npos);
+    EXPECT_NE(repair.output.find("Observer ivo: knowledge=heard-testimony belief-unlicensed=0 attitude=1"), std::string::npos);
+    const auto ashore = child({"--watch", "tide", "decline", "evidence"});
+    ASSERT_EQ(ashore.code, 0);
+    EXPECT_TRUE(ashore.error.empty());
+    EXPECT_NE(ashore.output.find("Ferry completed: shore ferry-effects=1"), std::string::npos);
+    EXPECT_NE(ashore.output.find("You remain on the original bank; the ferry has left."), std::string::npos);
+    EXPECT_NE(ashore.output.find("explain-stay: Explain that you declined the ferry [available]"), std::string::npos);
+    EXPECT_NE(ashore.output.find("Actual facts: coins=8 planks=3 passage=0 licensed=0 paid=0 repaired=0 declined=1"), std::string::npos);
+    EXPECT_NE(ashore.output.find("Ivo: I remember you stayed ashore. No crossing to question."), std::string::npos);
+    EXPECT_EQ(ashore.output.find("You step onto the harbor quay."), std::string::npos);
+}
+
+TEST(story_continuation_transcript, withholding_flavour) {
+    for (const auto prior : {"pay", "decline"}) {
+        const auto withheld = child({"--watch", "tide", prior, "withhold"});
+        ASSERT_EQ(withheld.code, 0);
+        EXPECT_TRUE(withheld.error.empty());
+        EXPECT_NE(withheld.output.find("Watch reply: Ivo lets the question rest; you keep your own counsel."), std::string::npos);
+        EXPECT_NE(withheld.output.find("Effects: ferry=1 watch=0"), std::string::npos);
+        EXPECT_EQ(withheld.output.find("Later response:"), std::string::npos);
+        EXPECT_NE(withheld.output.find("Observer lena: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+        if (std::string_view(prior) == "pay")
+            EXPECT_NE(withheld.output.find("Observer ivo: knowledge=heard-passage belief-unlicensed=1 attitude=-1"), std::string::npos);
+        else
+            EXPECT_NE(withheld.output.find("Observer ivo: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+    }
+    const auto alternate = child({"--watch", "storm", "repair", "evidence", "1", "restore"});
+    ASSERT_EQ(alternate.code, 0);
+    EXPECT_TRUE(alternate.error.empty());
+    EXPECT_NE(alternate.output.find("Mara names the boards you gave. Ivo accepts her testimony."), std::string::npos);
+    EXPECT_NE(alternate.output.find("Actual facts: coins=8 planks=2 passage=1 licensed=1 paid=0 repaired=1 declined=0"), std::string::npos);
+    EXPECT_NE(alternate.output.find("Effects: ferry=1 watch=1"), std::string::npos);
+}
+
+TEST(story_continuation_transcript, refusal) {
+    const auto lost = child({"--watch", "tide", "pay", "evidence", "0", "drain"});
+    ASSERT_EQ(lost.code, 3);
+    EXPECT_TRUE(lost.error.empty());
+    EXPECT_NE(lost.output.find("fare-record: Show the fare record [available]"), std::string::npos);
+    EXPECT_NE(lost.output.find("Watch choice rejected: unavailable"), std::string::npos);
+    EXPECT_NE(lost.output.find("Observer ivo: knowledge=heard-passage belief-unlicensed=1 attitude=-1"), std::string::npos);
+    EXPECT_TRUE(lost.output.ends_with("Effects: ferry=1 watch=0\n"));
+    for (const auto& options :
+         {std::vector<std::string>{"--watch", "unknown", "pay", "evidence"},
+          std::vector<std::string>{"--watch", "tide", "teleport", "evidence"},
+          std::vector<std::string>{"--watch", "tide", "pay", "mint_gold"},
+          std::vector<std::string>{"--watch", "tide", "pay", "evidence", "7"}, std::vector<std::string>{"--watch"}}) {
+        const auto bad = child(options);
+        EXPECT_EQ(bad.code, 2);
+        EXPECT_TRUE(bad.output.empty());
+        EXPECT_NE(bad.error.find("Usage: story-offline --watch"), std::string::npos);
+    }
+}

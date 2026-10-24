@@ -13,7 +13,7 @@ namespace OfflineStory {
             f.passage != (f.paid || f.repaired) || f.licensed != f.passage)
             return false;
         for (std::size_t i = 0; i < 3; ++i) {
-            if (state.knowledge[i] < Knowledge::None || state.knowledge[i] > Knowledge::HeardPassage || state.attitude[i] < -100 ||
+            if (state.knowledge[i] < Knowledge::None || state.knowledge[i] > Knowledge::HeardTestimony || state.attitude[i] < -100 ||
                 state.attitude[i] > 100)
                 return false;
             if (state.knowledge[i] == Knowledge::None && (state.attitude[i] != 0 || state.believes_unlicensed[i]))
@@ -153,6 +153,12 @@ namespace OfflineStory {
                     break;
                 case Knowledge::HeardPassage:
                     out << "heard-passage";
+                    break;
+                case Knowledge::VerifiedFare:
+                    out << "verified-fare";
+                    break;
+                case Knowledge::HeardTestimony:
+                    out << "heard-testimony";
                     break;
             }
             out << " belief-unlicensed=" << state.believes_unlicensed[i] << " attitude=" << state.attitude[i] << '\n';

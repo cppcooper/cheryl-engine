@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-024` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-028` IDs;
 [next](next.md) records the next coordinator review action.
 
 U10 now proves private offline creative candidate validation/projection with two
@@ -20,6 +20,11 @@ manual ferry sets and a real headless consumer: 176/176 focused checks pass,
 including all 154 U9 regressions. ST-021 through ST-024 below record its creative
 scope, authority, ownership and bounded reference state; next.md owns actual
 commands/results and the idle coordinator-review handoff.
+
+U11 adds a playable, consequence-sensitive watch continuation composed from
+shared manual ingredients. All 176 regressions passed; the 18 new checks have
+passing execution after correcting one new authority-test expectation. See
+ST-025 through ST-028 and next.md for actual attempts, limits and idle handoff.
 
 ## Authority, scope and evidence limits
 
@@ -1202,6 +1207,148 @@ No stdin action parser, scheduler or networking is involved. Native tests includ
 literal expected facts/attitudes/text rather than deriving expectations from plans.
 Commands, complete logs, actual counts and remaining gaps belong to next.md.
 
+## U11 consequence-sensitive playable continuation
+
+U11 starts at the accepted clean U10 `9771d7aec720c02bbbd1ed4df9ca2566460f4386`,
+outside the completed finite queue. Current workspace/clone instructions, autonomy,
+memory policy, feature brief, story-generation.md and U10 source/records/evidence
+were inspected. The assignment selects creative continuity, shared composition
+and the real private consumer. Existing agent-written Engine/U10 contracts are
+compatibility constraints, not evidence of personal taste. No new v3 preference
+claim is made. Public Engine APIs, fixed Session semantics and console formats
+remain unchanged. Magic may read these ownership/meaning lessons without imports.
+
+**ST-025 — Compose and retain shared manual ingredients.** The proposed caller,
+shown before dependent APIs, is implemented in `src/continuation.h/.cpp` and
+`story_continuation.caller` under projects/apps/story-offline:
+
+```cpp
+const auto completed = ferry.capture().value(); // Terminal paired ferry boundary.
+const auto content = compose_watch(manual_library(), ferry_graph, completed, 0).value();
+auto watch = WatchEncounter::start(content, {"watch-01"}).value();
+const auto offered = watch.view().value();      // Real issued live authority.
+watch.choose(offered.choices[0].selection).value();
+const auto paired = watch.capture().value();   // Reply boundary, world + evidence availability.
+watch.restore(paired).value();                  // Fresh incarnation, no reward replay.
+watch.choose(watch.view().value().choices[0].selection).value(); // Explicit later question.
+```
+
+The literal manual library contains 18 greeting/wording/reply fragments with two
+flavours each, three typed consequence fragments and three recipes. Recipes bind
+proposition/action/outcome identities, actor Ivo and fragment references to prior
+paid/repaired/declined facts. Arrival, suspicion, withholding, later question and
+closure ingredients are shared; there are no three unrelated monolithic handlers.
+Each ingredient is checked even when not selected. Duplicate identities/prior
+recipes, unknown or missing references, wrong fragment roles, unsupported actor/
+operation/condition, conflicting learned-knowledge/attitude claims, invalid enum/
+origin/revision and incompatible context refuse without a usable partial artifact.
+At most three candidate recipes are examined, without regeneration or random search.
+
+A tiny host table permits only verify_record/has_record/fare-confirmed,
+hear_testimony/mara_available/repair-confirmed and
+explain_shore/still_ashore/shore-explained, with their exact typed knowledge and
+absolute attitude targets. Fragment content cannot register callbacks, charge a
+fare or grant a reward. Validation checks structured meaning/roles, not arbitrary
+prose truth. Continuation's private factory deep-copies Library and Checkpoint into
+an actual const object, retains the immutable source Projection and frozen watch
+Definition, and exposes const observations. Constructor/copy bypasses are closed;
+source library/context mutation/destruction cannot alter accepted content. Normal
+allocation exceptions propagate without publishing a partial continuation.
+An extensible provider schema or generic composition search was rejected for this
+proof. Confidence is high in ownership/authority, medium in this private recipe
+shape; replacement is local but retained meaning requires revision discipline.
+
+**ST-026 — Evidence changes information, never crossing facts.** Paid passage
+offers fare-record evidence; repair offers Mara's testimony; decline offers an
+explanation on the original bank. Each also offers withholding, which has no
+effect and preserves the current account. All definitions have five fixed nodes,
+four choices and three terminals. Clarification enters the understood reply;
+Ask Again, guarded by is-informed, or Finish then explicitly ends the conversation.
+Withholding immediately reaches its own terminal. All destinations are chosen
+before compilation; callbacks never route, generate, recompose or perform I/O.
+
+| Source | Evidence / Ivo knowledge after clarification | Ivo attitude / belief | Authoritative facts |
+| --- | --- | --- | --- |
+| paid | fare-record / VerifiedFare | +1 / no unlicensed belief | 5 coins, 3 planks; paid, licensed passage |
+| repaired | mara-testimony / HeardTestimony | +1 / no unlicensed belief | 8 coins, 1 plank; repaired, licensed passage |
+| declined | explain-stay / SawDecline | 0 / no unlicensed belief | 8 coins, 3 planks; declined, no passage |
+
+The table uses the tide fixture; storm repair retains 8 coins/2 planks. Mara's
+prior attitude/knowledge and Lena's unawareness remain unchanged. U11 adds only
+VerifiedFare/HeardTestimony to the existing private Knowledge enum; U10's initial
+unaware-context contract and all old printed bytes stay intact (ST-023).
+Flavour changes text but not choice IDs, keys, targets or state consequences.
+
+WatchEncounter borrows pure handlers synchronously through real Session and U9
+choose_with_transition. Host evidence availability may change after presentation;
+selection rechecks it before effects. Clarification prepares a complete scalar
+WatchState, verifies exact unchanged Facts/Mara/Lena and coherent Ivo information,
+then adopts nonthrowingly. The absolute attitude target is not a repeatable
+increment/reward. Engine still prepares its owned success before effects and
+commits only nonthrowing cursor/result movement afterward. Counters are unsaved
+instrumentation. The later issued Ask Again checks learned knowledge; an edited
+reply cursor alone cannot enable it. A separately prepared remembered greeting
+uses explicit latest world context, without starting another session or changing
+the already frozen greeting. Known ashore text explicitly remembers no crossing.
+Confidence is high in tested separation, medium in these social rules/pacing;
+participant fun/comprehension need actual evidence, not headless pass counts.
+
+**ST-027 — Completed origin, serialized handoff and value resume.** Preparation
+checks bounded source identity values, coherent ferry/world/observer context and
+an exact source Session::resume, then requires a terminal destination/shore node
+consistent with the supplied facts. It never infers resources or knowledge from
+node/step, authenticates history or invokes handlers. The retained terminal ferry
+cursor is origin context, not live selection authority. A host may supply updated
+knowledge alongside that historical completion when explicitly preparing new
+content; the demo labels this remembered greeting as prepared, not started.
+
+Watch start copies the accepted world into one serialized reference owner. Its
+paired checkpoint owns Snapshot, world and evidence_available. Resume validates
+exact definition/revision and coherent world with unchanged source Facts/Mara/Lena,
+constructs a fresh idle Session, then adopts session/state nonthrowingly. Failures
+preserve the current pair and live token; successful resume revokes old incarnation
+tokens. Same-owner and fresh-owner resume at the clarified reply followed by Ask
+Again keep original fare/resources unchanged, with watch effect counts one and
+zero respectively. Failed context/ingredient preparation preserves both previous
+completed ferry pair and existing accepted/live watch values. Idle moves preserve
+authority; moved-from operations reject safely. No disk format, durable transaction,
+external rollback, authentication or exactly-once crash promise is added. Confidence
+is high in exercised value ownership, medium in deliberately strict context policy;
+expanding historical/world compatibility requires another bounded contract review.
+
+**ST-028 — Bounded composition and execution.** Lower-only hard ceilings are 24
+fragments (two flavour strings each), 3 consequence fragments, 3 recipes/candidates,
+5 nodes/4 choices, 1024 bytes per source/generated string, 32768 counted string
+bytes, 256 KiB requested payload and 1 Mi work units. Library IDs/refs cap at 64
+lowercase ASCII/digit/hyphen/underscore bytes. Existing core snapshot identity bytes
+are opaque, nonempty and cap at 128 each. Counts precede loops/copies, lengths
+precede scans/concatenation, checked remaining-budget arithmetic precedes growth.
+Both flavours and unused ingredients are checked. A combined greeting exceeding
+the string cap refuses before concatenation. Above-hard-cap/size_t-maximum requests
+are typed InvalidLimits; zero or one-short allowances refuse as appropriate.
+
+Usage charges new library/context objects and vector slots, string bytes/terminators,
+projected Draft/OperationKeys payload and generated copy work. It charges query
+length-plus-one comparisons, rows/slots, small fixed semantic allowances and a
+conservative bounded source-factory lookup reservation. Generated ID size reserves
+one extra byte. Pre-existing shared ferry storage remains under U10's separate
+caps; Engine factory/compiler/frozen-definition internals, allocator capacity/
+rounding/control blocks, stack/diagnostic overhead and RSS are excluded. Work is
+declared units, not instruction/time bounds. Compiler inputs are exactly bounded
+by the five-node/four-edge graph; ordinary allocation exceptions remain possible.
+This keeps the resource contract honest without a generic graph/allocator framework.
+Confidence is high in tested boundaries, medium in reversible caps/model.
+
+The existing default-OFF headless app gains only explicit
+`--watch tide|storm pay|repair|decline evidence|withhold [0|1 [none|restore|drain]]`.
+Default and old explicit U10 modes stay byte-compatible. New mode plays one
+completed ferry then one watch encounter, prints manual provenance,
+issued choices/replies and actual consequences separately; it never starts an
+automatic scene loop. Unknown/missing commands exit 2 before play, live denial
+exits 3, completed scenarios 0. Tests use independent literal state/text expectations.
+Actual attempts, original assertion failure/correction, retained transcript proof
+and remaining visual/leak/platform/durability/fun gaps are recorded in next.md.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -1485,3 +1632,16 @@ Unicode/prose truth, actual model output and human fun remain unverified. next.m
 owns exact commands, full logs/statuses, receipt and coordinator review action.
 This completes only the private U10 proof; it selects no provider, public story
 service, integration, spell system or automatic next unit.
+
+U11 has passing execution for **194 unique focused cases across attempts**: the
+single accumulated run passed 193/194, including all 176 regressions; one new
+stale-before-terminal expectation was corrected to the existing Engine ordering,
+then its exact 1/1 recheck passed. Original failure/exit 8 is preserved alongside
+successful rebuild/recheck, with no Engine fix or broad rerun. All 63 prior child
+blocks remain byte-identical and 12 new children match expected exits (6 normal,
+5 usage, 1 live denial). There are no skipped/unrun cases or ASan/UBSan diagnostics.
+Meaningful state/prose, context ownership, no-effect preparation, paired restore,
+authority and resource boundaries have native evidence in next.md. The receipt
+reports worker execution; source review and participant/platform/leak/durability
+acceptance remain distinct. Stop after U11's coherent local checkpoint, idle for
+coordinator review rather than selecting another scene or integration.

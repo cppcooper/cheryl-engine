@@ -1,0 +1,36 @@
+{
+  "milestone_id": "STORYTELLING-U11",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u11-configure.log",
+    "builds/storytelling-u1-debug/u11-build-1.log",
+    "builds/storytelling-u1-debug/u11-registration.log",
+    "builds/storytelling-u1-debug/u11-registration-audit.log",
+    "builds/storytelling-u1-debug/u11-ctest-1.log",
+    "builds/storytelling-u1-debug/u11-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u11-build-2.log",
+    "builds/storytelling-u1-debug/u11-ctest-2.log",
+    "builds/storytelling-u1-debug/u11-ctest-details-2.log",
+    "builds/storytelling-u1-debug/u11-results-audit.log",
+    "builds/storytelling-u1-debug/u11-demo-transcripts.log",
+    "builds/storytelling-u1-debug/u11-boundary-rules.log"
+  ],
+  "implemented_contracts": [
+    "A private manual library composes 18 shared greeting/wording/reply fragments, three typed consequence fragments and three bounded recipes into a deeply owned immutable continuation and ordinary frozen five-node/four-choice Definition.",
+    "Completed paid/repaired/declined ferry context selects fare-record evidence, Mara testimony or an explicit ashore explanation. Withholding is independently available; prose flavours change wording/replies without changing mechanical identities, keys or fixed targets.",
+    "Only host-approved structured operations may clarify Ivo's knowledge/belief/attitude. Facts/resources/licensed passage and Mara/Lena remain unchanged; new knowledge controls a later real issued question and separately prepared remembered greeting.",
+    "Pure availability rechecks reject withdrawn evidence before effects. Complete scalar state preparation precedes nonthrowing adoption, using actual Session-issued selections and unchanged Engine pre-effect-result/nonthrowing-commit semantics.",
+    "Owned source/artifact lifetimes, checked terminal context, failed preparation preservation, same/fresh-owner paired watch resume without repeated fare/reward, failed-resume token preservation and stale/foreign/incarnation/move/step boundaries are exercised.",
+    "Lower-only fragment/outcome/recipe/candidate/text/payload/work/graph allowances refuse before growth/copies; unsupported/conflicting/missing ingredients, operations and impossible contexts return owned failures without a partial usable continuation.",
+    "All 194 unique cases have passing execution across preserved attempts: accumulated 193/194 including all 176 retained passes, then 1/1 after correcting only a new test's stale-before-terminal expectation. All 63 old child transcripts remain byte-identical; 12 new actual child outcomes match expected statuses. No skips or ASan/UBSan diagnostics."
+  ],
+  "limitations": [
+    "The initial CTest exit 8 is retained: one new authority assertion expected Finished instead of the existing earlier StaleSelection. Only that test was corrected and rechecked; this is not a claim of one entirely green 194-case run.",
+    "Leak detection remains unverified under ST-008's command-local detect_leaks=0 accommodation. Native coverage is GNU/Linux Debug shared Engine, not wider platforms, Release, installed SDK, runtime or visual acceptance.",
+    "New requested payload/work accounting excludes pre-existing U10-owned ferry storage, Engine factory/compiler/frozen-definition internals, allocator capacity/rounding/control blocks, stack/diagnostic overhead and RSS. Work units are not instruction/time guarantees; normal allocation exceptions propagate.",
+    "The source completion cursor is origin context, not authenticated/current watch history. Paired resume is in-memory and provides no disk format, durable transaction, external rollback or exactly-once crash delivery guarantee.",
+    "Manual offline prose is not actual model output or proven truthful/Unicode-valid. Participant fun/play/comprehension remain untested; no provider/network, generic reputation/story framework, automatic scene loop or magic integration is added."
+  ],
+  "next_action": "Coordinator reviews U11 source, receipt and saved evidence, then selects any further bounded creative/participant-validation work. Worker remains idle; no next scene or integration starts automatically."
+}

@@ -256,6 +256,7 @@ validate/resume before adopting either. This trades global reputation/durable
 transactions for a completed-boundary reference owner. Confidence is high in tested
 sequencing, medium in observer policy; changing policy is private but affects
 retained-content interpretation.
+U11 reuses this state for checked watch clarification.
 
 ## ST-024 — Bound the private proof and execute its consumer
 
@@ -266,3 +267,41 @@ and literal state/transcript checks. Accounting excludes compiler internals and
 allocator/RSS overhead. Confidence is high in tested boundaries, medium in caps;
 changing caps requires boundary review, while play quality and provider usefulness
 remain untested hypotheses.
+
+## ST-025 — Compose a private continuation from shared fragments
+
+Select one of three bounded recipes against an explicit completed ferry context.
+Combine owned greeting, wording, response and typed consequence ingredients into
+an immutable continuation and ordinary definition. Flavours preserve mechanics;
+prose cannot register operations. This trades provider/general story machinery for
+three useful playable combinations. Confidence is high in authority and ownership,
+medium in recipe shape; changing the private library is cheap with revision review.
+
+## ST-026 — Let evidence change knowledge while facts remain fixed
+
+Offer fare records, Mara's testimony or an ashore explanation alongside withholding.
+One host-approved clarification updates only Ivo's knowledge, belief and attitude;
+a later explicit question rechecks that knowledge. All targets are frozen before
+play, and Lena stays unaware. This trades social simulation for observable
+continuity. Confidence is high in tested separation, medium in pacing/rules;
+replacing private dialogue needs content and participant review.
+
+## ST-027 — Retain origin and adopt only checked paired state
+
+Validate a terminal ferry snapshot and compatible world context before constructing
+a separately owned watch encounter. Retain source meaning independently of producers.
+Resume a healthy idle watch snapshot with coherent state before nonthrowing pair
+adoption; failures preserve prior values/tokens. This trades authenticated history
+and durable transactions for an explicit serialized handoff. Confidence is high
+in checked ownership, medium in strict context policy; reversal requires private
+context/resume review.
+
+## ST-028 — Bound composition and verify the real continuation
+
+Limit fragment/recipe/candidate counts, text, requested payload, work and the five-node,
+four-choice graph before copies. Validate all ingredients, then scan at most three
+recipes without regeneration. Normal allocation exceptions propagate; compiler
+internals and previously owned ferry storage remain separate allowances. Execute
+the actual private console and retained regressions. Confidence is high in tested
+boundaries, medium in caps; expansion requires resource review, with fun and wider
+platforms still unverified.

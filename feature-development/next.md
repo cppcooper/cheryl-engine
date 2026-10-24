@@ -1,3 +1,155 @@
+# U11 playable consequence-sensitive continuation
+
+Starts on the requested clean feat/storytelling HEAD
+`9771d7aec720c02bbbd1ed4df9ca2566460f4386`. U10 source, records, ready receipt,
+176-pass/63-retained-child evidence and final affected rechecks agree with the
+accepted prerequisite. Read current workspace/clone instructions, autonomy/memory
+policy, storytelling brief and story-generation.md. This coordinator assignment
+is outside the completed finite queue; no queue/publisher/coordinator files changed.
+
+U11 implementation and focused acceptance are complete across saved attempts:
+**all 194 unique cases have passing execution**. The accumulated run was
+**193/194, exit 8**, including **all 176 retained U10 cases passing** and 17 new
+passes. One new test incorrectly expected Finished for an old token after reaching
+a terminal. Existing Engine checks stale node/step first: StaleSelection (0x0c),
+then terminal Finished (0x09). Corrected only that expectation, added terminal-view
+and wrong-session assertions, rebuilt the affected test target and rechecked
+**1/1, exit 0**. No Engine behavior changed or broad regression campaign repeated.
+Both original complete diagnostics and successful recheck are retained.
+
+All **54 original console transcripts and nine U10 offline transcripts are
+byte-identical** (63 retained). Twelve new actual --watch children have expected
+outcomes: 6 exit 0, 5 usage exit 2, 1 live-refusal exit 3. No skipped/unrun cases
+or ASan/UBSan diagnostics occurred. Worker execution is recorded in
+[story/STORYTELLING-U11.json](story/STORYTELLING-U11.json), distinct from coordinator
+source acceptance and unexecuted platform/fun/durability claims.
+
+## Implemented caller and useful continuity
+
+```cpp
+const auto completed = ferry.capture().value(); // Terminal ferry + world pair.
+const auto content = compose_watch(manual_library(), ferry_graph, completed, 0).value();
+auto watch = WatchEncounter::start(content, {"watch-01"}).value();
+const auto offer = watch.view().value();
+watch.choose(offer.choices[0].selection).value(); // Fare record / testimony / ashore explanation.
+const auto paired = watch.capture().value();
+watch.restore(paired).value();                  // No original fare/reward repeated.
+watch.choose(watch.view().value().choices[0].selection).value(); // Explicit later question.
+```
+
+The private manual library combines 18 shared fragments (two flavours each), three
+typed consequences and three recipes. Paid passage offers fare-record evidence;
+repair offers Mara's testimony; decline stays on the original bank and offers an
+explanation. Each presents withholding alongside evidence. These are real issued
+Session selections into ordinary fixed-target definitions, not generated scripts.
+Ivo learns VerifiedFare/HeardTestimony/SawDecline and drops the mistaken belief;
+his attitude becomes +1/+1/0. Actual costs/passage/licensing and Mara/Lena stay
+unchanged. Withholding preserves the existing account with no effect. Flavour
+changes prose only. A later Ask Again condition observes the new knowledge;
+edited cursor position alone cannot enable it. A separately composed remembered
+greeting is printed as **not started**, including explicit remembered ashore text.
+
+Caller: `story-offline --watch tide|storm pay|repair|decline evidence|withhold
+[0|1 [none|restore|drain]]`. It explicitly plays one ferry and one continuation;
+there is no automatic scene loop. `drain` withdraws the evidence source after
+presentation, demonstrating no-effect refusal. New usage errors exit 2 before
+play, live refusal 3, completed scenarios 0. Default/old U10 modes and all console
+formats/runtime remain compatible. Only private app CMake/source/tests changed.
+
+ST-023 and new ST-025/026/027/028 match both decision views. Actual const factory
+artifacts own Library/context independently of producer lifetime, retaining the
+immutable source Projection and new frozen Definition. Structured host-approved
+operations/consequences remain authoritative. Pure eligibility precedes complete
+scalar preparation and nonthrowing adoption; U9's post-effect cursor/result commit
+contract is unchanged. Watch resume validates fresh session/state then adopts both
+nonthrowingly; failure preserves the previous pair/token, success renews incarnation.
+The source terminal cursor is origin context, not authenticated/current watch
+history. No disk format, provider call, global reputation, sibling or magic import.
+
+## Actual commands and complete saved evidence
+
+Reused builds/storytelling-u1-debug, Debug/shared Engine, pins, OFF selections and
+incremental outputs. Every configure/build/discovery/native check used the shared
+wrapper, one job, existing adaptive/no-swap/4GiB admission policy; sessions were
+retained through completion. No resource/auth/allowance refusal or cancellation.
+ASan/UBSan and halt-on-error remain enabled; only ST-008's command-local tracing
+accommodation detect_leaks=0 is used. Leak checking is **unverified**.
+
+Executed commands from clone root, in order (immediate exits **0, 0, 0, 8, 0, 0**):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-story-offline --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_continuation\.live_authority$'
+```
+
+| Saved files under builds/storytelling-u1-debug/ | Actual result |
+| --- | --- |
+| u11-configure.log, .exit; u11-build-1.log, .exit | 0/0; private continuation, real Engine-linked executable and focused runners compile/link/discover. |
+| u11-registration.log, .exit; u11-registration-audit.log | 0; 194 unique names, all 176 U10 names/order retained, exactly 15 new model/owner and three new transcript cases. |
+| u11-ctest-1.log, .exit; u11-ctest-details-1.log | 8; 193/194 in 25.42 seconds, full original new-test failure and all 75 child arguments/stdout/stderr/immediate exits retained. |
+| u11-build-2.log, .exit; u11-ctest-2.log, .exit; u11-ctest-details-2.log | 0/0; only new authority-test expectation corrected, affected runner rebuilt; exact nonempty 1/1 recheck passes in 0.10 seconds. |
+| u11-results-audit.log | All 194 unique names executed with passing results across attempts; complete 63 old child blocks unchanged; 12 new expected outcomes, zero skips/unrun cases or ASan/UBSan diagnostics. |
+| u11-demo-transcripts.log | Unchanged extraction of all 12 new actual child blocks from details log, no extra native execution. |
+| u11-boundary-rules.log | Instrumented private source/test rules and actual shared Engine executable links, no Engine/public/console change or new runtime/provider/JSON dependency. |
+
+| New passing checks | Evidence |
+| --- | --- |
+| caller, combinations, shared_flavours, remembered_context | Three independently expected routes/costs/knowledge/attitudes/replies, shared fragments, two meaningful alternatives, unchanged flavour mechanics, actual later question and different remembered greetings without teleport. |
+| ownership, pure_preparation | Source producer/context mutation/destruction, retained artifact/definition/view, compile/inspection/start/view/snapshot without effects; source terminal pair unchanged. |
+| live_authority, paired_resume, restore_refusal, moves_boundaries | Rechecked unavailable source, wrong session/incarnation/stale rejection, exact terminal state, safe idle moves, max-step refusal, failed-resume token preservation, same/fresh paired resume with unchanged resources and no repeated effect. |
+| context_refusal, ingredient_refusal | Impossible/incomplete/mismatched source context, unknown/missing/conflicting ingredients/operations, duplicate scopes, owned diagnostics; prior completed pair and accepted/live artifact remain usable. |
+| count_limits, payload_limits, invalid_limits | Exact/one-short/zero counts, candidates, graph, text/payload/work; 1024/1025 text, 64/65 IDs, raw NUL, above-ceiling and size_t-maximum requests; old artifact preserved on refusal. |
+| Three new transcript cases | 12 real inherited-envelope child consoles: paid/repair/ashore evidence, paid/ashore withholding, storm alternate flavour/paired restore, live withdrawal and five usage rejections; literal output/state checked independently. |
+
+Logs/statuses are ignored, nonempty and clone-local. Child consoles inherit the
+wrapper's resource/sanitizer envelope without reacquiring the build lock. No broad
+suite, system install, download, GUI/device, SDK/docs build, external agent,
+protected/sibling cache/process or publication ran. C++ format, staged whitespace,
+matching decision IDs/word counts and receipt/log paths are checked before commit.
+
+## Resource/quality limits and exact next action
+
+No execution blocker remains. ST-028 gives lower-only ceilings: 24 fragments with
+two flavours, three outcomes/recipes/candidates, five nodes/four choices, 1024-byte
+strings, 32768 counted text bytes, 256KiB new requested payload and 1Mi work units.
+Previously owned ferry storage is separately bounded by U10; Engine internal
+factory/compiler/definition allocation, allocator overhead/capacity, stack/diagnostic
+cost and RSS are excluded. Normal allocation exceptions propagate; work units are
+not CPU/time guarantees. No unbounded compatible-story search occurs. Confidence
+is high in exercised meaning/ownership/authority boundaries, medium in recipes,
+strict context policy, caps and social pacing; these private choices are reversible
+with content/revision and boundary review, not inferred personal API taste.
+
+Material limits remain: manual prose is not proven truthful or fully Unicode-valid;
+no actual model output/provider behavior, participant fun/comprehension, visual,
+other-platform/Release, SDK/runtime, leak or durable/external transaction coverage.
+Snapshots and edited state do not authenticate history or promise exactly-once
+external rewards. There is no new disk/schema, reputation service or automatic loop.
+
+Next action: **coordinator reviews U11 source, receipt and saved evidence and selects
+any further bounded creative/participant-validation work. Worker is idle after the
+checkpoint; no next scene/provider/public framework or magic integration starts.**
+
+---
+
+Historical records follow; U11 above owns the current result and handoff.
+
 # U10 private offline creative encounter sets
 
 STORYTELLING-U10 starts from the requested clean completed U9 HEAD
