@@ -1,0 +1,38 @@
+{
+  "milestone_id": "STORYTELLING-U10",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u10-configure.log",
+    "builds/storytelling-u1-debug/u10-build-1.log",
+    "builds/storytelling-u1-debug/u10-registration.log",
+    "builds/storytelling-u1-debug/u10-registration-audit.log",
+    "builds/storytelling-u1-debug/u10-ctest-1.log",
+    "builds/storytelling-u1-debug/u10-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u10-results-audit.log",
+    "builds/storytelling-u1-debug/u10-demo-transcript.log",
+    "builds/storytelling-u1-debug/u10-boundary-rules.log",
+    "builds/storytelling-u1-debug/u10-audit-diagnostics.log",
+    "builds/storytelling-u1-debug/u10-build-2.log",
+    "builds/storytelling-u1-debug/u10-ctest-2.log",
+    "builds/storytelling-u1-debug/u10-ctest-details-2.log",
+    "builds/storytelling-u1-debug/u10-final-audit.log"
+  ],
+  "implemented_contracts": [
+    "Two explicitly manually authored offline ferry candidate sets validate into privately constructed deep-owned immutable accepted content; no actual model output or provider call is claimed.",
+    "Host actor/operation/condition/reward vocabulary and typed outcome plans retain authority. Unknowns, broken/scoped duplicate references, conflicting consequences and lower-only count/text/payload/work limits reject before play without partial publication.",
+    "Projection uses current Draft/compile into ordinary frozen fixed-target definitions. Two concurrently available meaningful actions retain distinct literal costs and observer relationships after rejoining; flavours change prose without becoming mechanical branches.",
+    "Actual Session-issued selections and choose_with_transition recheck pure live eligibility. The serialized reference owner stages complete state before nonthrowing adoption; factual licensed passage remains separate from knowledge, mistaken belief and attitude.",
+    "Idle in-memory paired snapshot/state restore validates fresh values before nonthrowing adoption; failure preserves the old pair/token, success renews incarnation without repeating costs or rewards.",
+    "Default-OFF private headless executable links actual shared Engine with no public Engine/console schema/runtime change. Nine actual child processes and independent literal state/output checks pass.",
+    "176/176 focused cases passed once, retaining all 154 U9 names/order and 54 byte-identical prior child transcripts. Final enum-initialization/invalid-method review hardening also passes a targeted rebuild and 22/22 private recheck with all nine child blocks unchanged; all native exits are zero, with no skips or ASan/UBSan diagnostics."
+  ],
+  "limitations": [
+    "Leak detection remains unverified under ST-008's command-local detect_leaks=0 tracing accommodation; ASan/UBSan and halt-on-error remain enabled.",
+    "Native acceptance covers this GNU/Linux Debug shared Engine build; wider platforms, Release, installed SDK, runtime/graphics integration and human fun/play quality are unverified.",
+    "Payload/work allowances model private retained/projected values, excluding Engine compilation/index internals, allocator rounding/control blocks, stack/diagnostic overhead and RSS; work units do not promise instruction or wall-time bounds.",
+    "Manual prose is not checked for semantic truth or full Unicode validity. No provider format/calls, free-text parser, public story framework, global reputation service or magic integration is implemented.",
+    "Paired restore is an in-memory completed-boundary reference checkpoint, not authenticated gameplay history, a disk schema, production transaction, external rollback or durable exactly-once effect delivery."
+  ],
+  "next_action": "Coordinator reviews the private U10 implementation, receipt and saved evidence, then selects any further bounded creative/playtest work. Worker remains idle; no subsequent unit starts automatically."
+}

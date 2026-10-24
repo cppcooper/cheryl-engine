@@ -1,3 +1,162 @@
+# U10 private offline creative encounter sets
+
+STORYTELLING-U10 starts from the requested clean completed U9 HEAD
+`4f5e7eab4af961d95f5a04d6f4f079517e39a758`, on feat/storytelling. Source, current
+records, ready U9 receipt and complete 154-pass/54-child evidence agree with the
+prerequisite. Workspace/clone instructions, autonomy/memory policy, storytelling
+brief and story-generation.md were read. This explicitly assigned continuation
+is outside the completed three-commit batch; earlier receipts stay unchanged.
+
+Implementation and focused execution are complete: **176/176 passed**, **all 154
+accepted U9 names/order retained**, with 18 new private model/owner cases and four
+new executable transcript cases. There are zero skipped/unrun cases or ASan/UBSan
+diagnostics. All **54 prior full child transcripts are byte-identical** to U9
+(21 exit 0, 15 exit 2, 18 exit 3). Nine new actual child processes have expected
+outcomes (4 exit 0, 4 exit 2, 1 exit 3); the default child plays eight finite
+scenarios. Receipt [story/STORYTELLING-U10.json](story/STORYTELLING-U10.json) reports
+worker execution, not automatic coordinator source acceptance or untested quality.
+Final source review initialized the host method enum and added an invalid-method
+refusal assertion; the targeted rebuild and **22/22 private recheck** also pass,
+with all nine child outputs/statuses unchanged. The accumulated suite ran once.
+
+## Implemented caller and creative boundary
+
+```cpp
+namespace S = OfflineStory; // Private story-offline/src/story.h, not an Engine API.
+const auto content = S::accept(S::manual_sets()[0], S::ferry_catalogue(), {}).value();
+const auto graph = S::project(content, 0).value();
+auto encounter = S::Encounter::start(graph, {"ferry-01"}).value();
+const auto offered = encounter.view().value();
+encounter.choose(offered.choices[0].selection).value(); // Actual checked Session.
+const auto saved_pair = encounter.capture().value();
+encounter.restore(saved_pair).value();                // No repeated fare/reward.
+const auto fresh = encounter.view().value();           // Old tokens lost authority.
+encounter.choose(fresh.choices[0].selection).value();   // Explicit Continue.
+```
+
+The real `story-offline` executable prints Proposed/manual, Accepted, issued choices,
+NPC prose, actual facts and each observer's knowledge/belief/attitude. No arguments
+run both manual sets' three actions and alternate-pay flavours (eight scenarios).
+CLI `story-offline tide|storm pay|repair|decline [0|1 [none|restore|drain]]` selects
+one finite scenario. Usage rejects before play with exit 2; checked refusal exits
+3, success 0. `drain` changes live resources after presentation to demonstrate
+availability recheck. This is a bounded action selector, not a free-text parser.
+
+Both pay and repair are available together from 8 coins/3 planks. Tide costs three
+coins or two planks; storm costs five coins or one plank, with distinct repair
+relationships. Routes rejoin destination after separate NPC replies; decline
+ends ashore with supplies intact. Two flavours per action change wording/response
+without changing mechanics. Typed host-approved plans, not prose or callbacks,
+fix the costs/rewards/targets. Mara recognizes and approves; Ivo disapproves under
+a mistaken belief despite factual licensed passage; Lena remains unaware. No
+global reputation, arbitrary operations or observer belief can rewrite those facts.
+
+ST-021/022/023/024 match both decision views. Private Accepted/Projection factories
+deep-copy into actual const objects and retain their ownership. Count/text/work/
+payload preflight precedes copies/projection; ordinary allocation exceptions
+propagate without partial publication. Projected Draft goes through current
+Engine compilation into at most six nodes/six edges. Public Engine APIs, indices,
+Session authority, existing console JSON/schema/file rules and Runtime are unchanged.
+The only root wiring is a default-OFF CHERYL_BUILD_STORY_OFFLINE option and its
+private app/test directory. No JSON parser, provider/package/pin, sibling dependency,
+magic integration, implicit callback routing or Engine source copy was added.
+
+Availability is pure. The serialized owner stages/validates complete scalar state,
+then adopts it nonthrowingly inside the checked effect; U9 prepares its owned
+success before that effect and commits cursor/result without allocation afterward.
+Pair restore validates state and constructs fresh Session before idle nonthrowing
+adoption. Failed restore preserves exact old pair/live token; success renews
+incarnation and never replays effects. Instrumentation counts are not saved ledgers.
+
+## Actual native commands and evidence
+
+Reused builds/storytelling-u1-debug and incremental outputs, preserving Debug/shared
+Engine, all prior OFF choices, policy minimum and pins. Only the new private app
+was enabled. All configure/build/discovery/execution ran through the shared wrapper,
+one job, under existing adaptive/no-swap/admission limits. Original command sessions
+were kept through completion. No resource refusal, native failure or cancellation
+occurred. Review hardening justified one private rebuild/recheck below; unchanged
+Engine/console regressions were not repeated. ASan/UBSan and halt-on-error remain enabled;
+command-local detect_leaks=0 is ST-008's tracing accommodation, not passing leaks.
+
+Executed from clone root, immediate exits **0**:
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug \
+  -DCHERYL_BUILD_STORY_OFFLINE=ON
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target story-offline tests-story-offline --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.'
+```
+
+| Saved files under builds/storytelling-u1-debug/ | Actual result |
+| --- | --- |
+| u10-configure.log, .exit | 0; prior Debug/OFF configuration/pins preserved, private app ON. |
+| u10-build-1.log, .exit | 0; real shared Engine-linked app/model/focused runners compile, link and discover. |
+| u10-registration.log, .exit; u10-registration-audit.log | 0; 176 unique nonempty names; all 154 U9 names/order plus exactly 22 new source names. |
+| u10-ctest-1.log, .exit | 0; 176/176 passed in 20.96 seconds; accumulated suite ran once. |
+| u10-ctest-details-1.log | Complete preserved LastTest.log, 174 matching GoogleTest RUN/OK pairs plus two probes; all 63 actual child arguments/output/errors/immediate exits. |
+| u10-results-audit.log | Result/name agreement; 54 old child blocks byte-identical; nine new outcomes as expected; no skips/unrun cases or ASan/UBSan diagnostics. |
+| u10-demo-transcript.log | Unchanged extraction of actual paid/paired-restore child and eight-scenario default child's complete output from details log; no extra execution. |
+| u10-boundary-rules.log | Seven instrumented private compile rules, both actual Engine-linked executables; no export patch/private source copy/new platform/JSON dependency; prior OFF options unchanged. |
+| u10-audit-diagnostics.log | Read-only link matcher initially exited 1: AssertionError ('tests-story-offline', 0). Corrected for CMake's second explicit Ninja output; static audit now passes. No native failure or rerun caused by this audit. |
+| u10-build-2.log, .exit; u10-ctest-2.log, .exit | 0; final review initialized Outcome::method and added invalid-enum rejection coverage. Only private targets rebuilt, 22/22 private cases rechecked in 2.63 seconds. |
+| u10-ctest-details-2.log; u10-final-audit.log | Full final private execution, all 22 names/order and nine full child blocks unchanged, no skips/unrun cases or ASan/UBSan diagnostics. |
+
+| New passing cases | Meaningful boundary |
+| --- | --- |
+| caller, routes, flavours | Actual issued choices; two meaningful actions available; independent literal costs/resources/attitudes/endings for six routes; two flavours preserve keys/targets/state while changing prose. |
+| ownership, pure_preparation, prose_not_authority | Mutate/destroy all candidate/catalogue/context sources, retain owner/frozen definition; validation/projection/compile/inspection/views have no effects; false reward prose cannot grant authority. |
+| eligibility, observers | Changed live resources reject before mutation; surviving eligible token works and stale token rejects; knowledge/belief/evaluation cannot rewrite licensed facts. |
+| paired_resume, failed_resume | Same/fresh owner restores invoke no reward; old incarnation rejects, seven malformed pairs preserve old token/state, wrong flavour rejects; edited step does not replay or prove rewards. |
+| unknowns, duplicates, conflicts, owning_diagnostics | Unknown actor/op/condition/reward, broken refs, scoped duplicates, conflicting costs/flags/actors/methods/context reject before play; diagnostics survive source destruction. |
+| count_limits, text_limits, storage_work, invalid_limits | Exact/one-short/zero count/text/work/payload budgets; 1024/1025-byte strings, 64/65-byte IDs, control bytes, above-ceiling/size_t-maximum requests; old accepted/projected values survive refusal. |
+| Four story_offline_transcript cases | Nine real inherited-envelope children: paid paired restore, storm repair/alternate flavour, decline, live denial, four usage failures, finite eight-scenario demonstration with literal expected output/state. |
+
+Logs/statuses are ignored, clone-local, nonempty regular files. Children inherit the
+wrapped sanitizer/resource envelope without reacquiring the native lock. Static
+format/whitespace and matching decision/receipt/log-path checks accompany staged
+review. No broad suite, GUI/device, SDK/docs build, provider/download/install,
+subagent/external agent, protected/sibling cache or publication was used.
+
+## Limits, confidence and exact next action
+
+No U10 execution blocker remains. Confidence is high in the exercised private
+ownership/authority/paired-restore contracts; medium in vocabulary, caps, observer
+policy and pacing. The lower-only ceilings and exact accounting exclusions are
+in ST-024: storage is requested private payload, not Engine compile internals,
+allocator rounding/control blocks or RSS; work is declared units, not instructions/
+time. Compiler inputs remain structurally capped. Unicode/prose correctness is not
+validated. Fixtures are manually authored, **not actual model output**. No provider
+quality, human fun/playtest, graphical behavior, other platform/Release, SDK/runtime
+integration or leak/durability coverage is established. An edited snapshot/state
+is not authenticated history; no production transaction, disk format, rollback of
+external effects or exactly-once crash guarantee is claimed.
+
+Next action: **coordinator reviews this private U10 implementation, receipt and
+saved evidence, then selects any further bounded creative/playtest work.** Worker
+is idle after this checkpoint; no provider, free-text parser, public story service,
+global reputation, magic integration or subsequent unit starts automatically.
+
+---
+
+Earlier milestone records below remain historical evidence; U10 above owns the
+current result and next action.
+
 # U9 owned successful transition observations
 
 STORYTELLING-U9 starts from clean completed U8

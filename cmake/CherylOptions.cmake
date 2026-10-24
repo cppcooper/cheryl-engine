@@ -228,6 +228,8 @@ function(cheryl_configure_root_options)
             REQUIRES CHERYL_BUILD_STARTUP CHERYL_STARTUP_OPENGL CHERYL_BUILD_UI_TGUI CHERYL_NATIVE_INPUT)
     cheryl_option(CHERYL_BUILD_DIALOGUE_CONSOLE
             "Build the headless dialogue encounter and paired save consumer" OFF)
+    cheryl_option(CHERYL_BUILD_STORY_OFFLINE
+            "Build the private offline creative encounter proof" OFF)
 
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)

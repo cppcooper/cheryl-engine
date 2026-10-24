@@ -227,3 +227,42 @@ This trades two small instantiations for matching rejection/fault ordering witho
 wrapper preparation gaps. Confidence is high in sequencing and move guarantees,
 medium in private spelling; changes require allocation, exception and authority
 checks, not persistence migration.
+
+## ST-021 — Accept manual creative proposals under host authority
+
+Retain privately constructed, deeply copied const candidate/catalogue/context
+values after bounded validation. Two explicitly manual ferry sets reference typed
+host outcomes; unknown vocabulary, broken references and conflicting claims
+reject before play. Prose grants no reward authority. This trades provider/format
+generality for an executable creative boundary. Confidence is high in ownership,
+medium in the small vocabulary; replacing the private shape is local, not evidence
+of personal API taste.
+
+## ST-022 — Project mechanics separately from flavour
+
+Compile ordinary fixed-target definitions from accepted actions and one wording/
+response flavour. Paying and repairing rejoin after distinct response nodes while
+retaining different costs and relationships; decline stays ashore. Flavours change
+prose without multiplying mechanical choices. This trades dynamic routing for
+deterministic host-approved plans. Confidence is high in separation, medium in the
+six-node presentation; topology changes need private identity/revision review.
+
+## ST-023 — Stage facts and observer state on one owner
+
+Keep authoritative passage/resources separate from observer knowledge, mistaken
+belief and attitude. Pure eligibility rechecks precede staging and nonthrowing
+state adoption inside the checked effect. Pair an idle snapshot with owned state;
+validate/resume before adopting either. This trades global reputation/durable
+transactions for a completed-boundary reference owner. Confidence is high in tested
+sequencing, medium in observer policy; changing policy is private but affects
+retained-content interpretation.
+
+## ST-024 — Bound the private proof and execute its consumer
+
+Apply lower-only count, text, payload-storage and work allowances before copies
+or projection. Return one owned typed refusal; allocation exceptions propagate.
+Build a default-OFF headless executable against actual Engine with finite scenarios
+and literal state/transcript checks. Accounting excludes compiler internals and
+allocator/RSS overhead. Confidence is high in tested boundaries, medium in caps;
+changing caps requires boundary review, while play quality and provider usefulness
+remain untested hypotheses.

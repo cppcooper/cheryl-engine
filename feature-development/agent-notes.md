@@ -12,8 +12,14 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-020` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-024` IDs;
 [next](next.md) records the next coordinator review action.
+
+U10 now proves private offline creative candidate validation/projection with two
+manual ferry sets and a real headless consumer: 176/176 focused checks pass,
+including all 154 U9 regressions. ST-021 through ST-024 below record its creative
+scope, authority, ownership and bounded reference state; next.md owns actual
+commands/results and the idle coordinator-review handoff.
 
 ## Authority, scope and evidence limits
 
@@ -1048,6 +1054,154 @@ effects; reversing that private arrangement requires validation-order, ownership
 exception and allocation probes. Actual executed checks and portability/leak limits
 belong to next.md; no source/commit alone establishes acceptance.
 
+## U10 private offline creative candidate projection
+
+The explicit U10 assignment follows completed U9
+`4f5e7eab4af961d95f5a04d6f4f079517e39a758`, outside the finished finite batch.
+Its clean source, ready receipt, 154-case evidence and current records were read
+before dependent work. The workspace's `coordination/story-generation.md` supplies
+the proposal/authority and facts/knowledge/attitude decomposition; this assignment
+selects the private proof, not a provider format or public story framework. These
+are engineering interpretations with stated uncertainty, not new personal API
+taste evidence. No Engine/public dialogue or existing console code/schema changes.
+
+**ST-021 — Retain bounded manual proposals under host authority.** The caller
+introduced before accumulating helpers is now exercised in `story_offline.caller`:
+
+```cpp
+namespace S = OfflineStory; // Private projects/apps/story-offline/src/story.h
+const auto sets = S::manual_sets();             // Explicitly manual, no model call.
+const auto accepted = S::accept(sets[0], S::ferry_catalogue(), S::Context{}).value();
+const auto graph = S::project(accepted, 0).value();
+auto owner = S::Encounter::start(graph, {"ferry-01"}).value();
+const auto offer = owner.view().value();        // Actual Session-issued selections.
+const auto observed = owner.choose(offer.choices[0].selection);
+const auto paired = owner.capture().value();   // Idle snapshot + owned State.
+owner.restore(paired).value();                 // Fresh incarnation, no reward replay.
+```
+
+`CandidateSet` owns origin, ID/revision, proposition and ordered actions. Actions
+own actor/operation/condition/outcome references, structured claimed consequences,
+reward references and scoped wording/NPC-response flavours. `Catalogue` is the
+tiny host owner: actors Mara/Ivo/Lena, canonical pay_fare/repair_hull/decline and
+can_pay/can_repair/can_decline keys, permitted passage reward and five typed
+outcomes. Outcome's method defaults to Decline; invalid enum values still reject
+explicitly. A candidate cannot register code or add vocabulary; its actor, method,
+costs, flags, reward and attitude claims must match an approved outcome. All
+catalogue rows are checked, including unused ones. Actions cannot duplicate a
+mechanical Method; two flavours are paraphrases, not extra actions. At least two
+actions must be initially eligible together. Initial context must be coherent,
+unsettled and observer-unaware. Text may still make false promises: validation
+cannot prove prose truth, and a literal promise of a crown/1000 coins grants neither.
+
+`accept` returns an owned first typed Error with field/row/offending value capped
+at 64 bytes, or an immutable AcceptedHandle. Private constructors, deleted copies,
+deep copies of every source/catalogue/context value and allocation of an actual
+`const Accepted` prevent a surviving mutable alias. Projection likewise has a
+private factory and actual const object; it retains Accepted and the compiled
+Definition. Lifetime checks mutate/destroy every source, release producer handles,
+play successfully, then retain the frozen definition independently. Normal
+allocation exceptions propagate without a partially published accepted artifact.
+A borrowed/provider-backed content object was rejected because it would make
+later play depend on producer lifetime. Confidence is high in tested ownership,
+medium in the private shape; replacing it is local, with no provider/save migration.
+
+**ST-022 — Fixed mechanics, independently chosen flavour.** `validation.cpp`
+prepares an ordinary Draft and OperationKeys, then uses existing `Dialogue::compile`;
+compile failures retain its complete owning diagnostic vector. Authored action
+order is preserved. `eligible-ACTION`/`apply-ACTION` keys bind only to approved
+typed plans through the private owner, never executable text. The initial offer
+chooses a fixed reply node with its effect, followed by an explicit no-effect
+Continue to fixed destination/shore terminals. With three actions the graph has
+six nodes/six choices/two terminals; nothing advances automatically or routes
+inside effects. Conditions are pure and structural inspection ignores them.
+
+| Manual set / action | Cost from 8 coins, 3 planks | Final resources | Mara / Ivo / Lena attitude | Terminal |
+| --- | --- | --- | --- | --- |
+| tide / pay | 3 coins | 5 coins, 3 planks | +1 / -1 / 0 | destination |
+| tide / repair | 2 planks | 8 coins, 1 plank | +3 / -2 / 0 | destination |
+| storm / pay | 5 coins | 3 coins, 3 planks | +1 / -1 / 0 | destination |
+| storm / repair | 1 plank | 8 coins, 2 planks | +4 / -3 / 0 | destination |
+| either / decline | none | 8 coins, 3 planks | 0 / 0 / 0 | shore |
+
+This composition selects different approved material/costs/relationships, not
+merely different adjectives. Each action has two literal wording/response flavours
+with identical mechanical keys/targets/consequences. Definition identity is
+`story-SET-flavour-N`, with the set revision; changing flavour rejects old paired
+state. Revision discipline is the host's responsibility, not a content hash or
+proof of history. Random callback outcomes and a generic branch language would
+violate the existing fixed-target boundary. Confidence is high in mechanics,
+medium in this reply/Continue pacing; changing topology is cheap privately but
+requires exact identity/revision and resume checks. Fun/pacing need human playtest.
+
+**ST-023 — Facts, information and evaluation remain separate.** `encounter.cpp`
+owns bounded resources and factual paid/repaired/declined/licensed passage,
+three knowledge values, three beliefs and three attitudes. Mara witnesses and
+approves passage; Ivo hears of it and disapproves under a deliberately mistaken
+unlicensed belief; Lena remains unaware. Ivo's belief does not revoke factual
+licensed passage. Decline is witnessed neutrally only by Mara. Observer roles are
+fixed reference application policy, not propagation, renown or global reputation.
+
+Encounter retains Projection and delegates to actual Session APIs, including U9
+choose_with_transition. View and choice recheck eligibility without mutation.
+After live resources change, an old enabled row rejects before effects; another
+still-eligible issued choice can succeed. A bounded scalar `stage` prepares and
+validates complete State before its statically nothrow assignment inside the
+effect. Engine already prepares the owned Transition/result before effect entry;
+after effect success only its nonthrowing cursor/result commit remains. The
+saturating effect counter is unsaved instrumentation, not a gameplay flag/ledger.
+
+One serialized owner captures idle healthy Snapshot and State together. Restore
+validates state, constructs a fresh Session::resume, then nonthrowingly adopts
+session/state. Failure preserves the old pair and live token; success invalidates
+old incarnation tokens and invokes no handlers. Same-owner and fresh-owner restore
+at the reply followed by Continue do not reapply cost/reward: counters stay one
+and zero respectively. Edited step or observer belief does not authenticate
+history or reconstruct facts. No disk format, crash durability, external rollback
+or exactly-once reward guarantee is claimed. A durable ledger/global reputation
+service would need a separate assignment. Confidence is high in exercised owner
+sequencing, medium in fixed social policy; changes affect private interpretation.
+Magic may read these authority/ownership lessons alongside U9 without branch
+import; no spell system or shared backend is introduced.
+
+**ST-024 — Explicit private allowances and a real finite consumer.** Limits are
+lower-only against these starting ceilings: 8 actors, 8 outcomes, 3 actions,
+4 flavours per action, 8 names per vocabulary list, 4 reward references per list,
+1024 bytes per string, 32768 aggregate counted string bytes, 256 KiB requested
+payload storage and 1 Mi work units. IDs additionally allow only lowercase ASCII,
+digits, hyphen/underscore, at most 64 bytes. Text rejects empty/C0 bytes except
+newline/tab; Unicode correctness/markup/prose truth are not validated. Zero
+allowances allow none; above-ceiling/size_t-maximum requests reject as InvalidLimits
+before traversal. Input is already-owned C++ data, not a new parser/format.
+
+Preflight checks row counts before walking/copying them and checks string length
+before scanning. Storage charges object/vector slots plus string bytes/terminators;
+work charges rows/slots, scan/copy bytes, query-length-plus-one comparisons and a
+fixed allowance for small scalar validation. Checked remaining-budget arithmetic
+precedes additions/products; all counts have small hard ceilings. Projection
+rechecks limits before creating Draft, reserves bounded vectors and charges
+accepted retention plus private projected payload, generated names and copy work.
+Some generated key/target lengths are conservatively reserved. Its usage is a
+separate allowance, not incremental process RSS. Engine compiler/Definition/index
+internals, allocator rounding/control blocks and stack/diagnostic overhead are
+excluded; the compiler input itself is at most six nodes/six edges. Work units
+are a conservative prototype model, not CPU instructions or a wall-time promise.
+This avoids a generic allocation framework; ordinary allocation failures propagate.
+Exact/one-short/zero/count/text/work/storage/overflow request checks establish
+the declared model, not a system allocator cap. Confidence is high in tested
+mechanics, medium in reversible ceilings/model; expansion needs boundary review.
+
+`CHERYL_BUILD_STORY_OFFLINE` defaults OFF. Its private static model and real
+`story-offline` executable link actual Cheryl::Engine without Engine source copies,
+JSON/provider dependencies or platform modules. No arguments run eight finite
+scenarios; explicit `tide|storm pay|repair|decline [0|1 [none|restore|drain]]`
+selects a demonstration. Output separates Proposed/manual, Accepted, actual
+issued choices, NPC prose and actual facts/observer consequences. Usage errors
+exit 2 before play; a checked refusal exits 3; completed demonstrations exit 0.
+No stdin action parser, scheduler or networking is involved. Native tests include
+literal expected facts/attitudes/text rather than deriving expectations from plans.
+Commands, complete logs, actual counts and remaining gaps belong to next.md.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -1313,3 +1467,21 @@ logs, corrected static link-rule audit and remaining leak/platform/SDK/runtime
 limits are in next.md. The ready U9 receipt reports execution only. This completes
 the third assigned milestone of the finite batch and stops for coordinator source
 review; no new unit, dispatch/persistence framework or publication is selected.
+
+U10 now has executed acceptance: **176/176** focused checks passed, retaining all
+**154 U9 names/order** and all **54 byte-identical prior child transcripts**.
+Eighteen private candidate/projector/reference-owner cases and four actual
+executable transcript cases add nine child outcomes (4 exit 0, 4 exit 2, 1 exit 3);
+the default child completes eight finite scenarios. Literal state/output checks,
+owned lifetimes, semantic/refusal/budget boundaries, no-effect preparation,
+changed live eligibility and same/fresh-owner paired restore all pass. Final review
+default-initialized the host method enum and added an invalid-method assertion;
+a targeted rebuild and **22/22 private recheck** pass, with all nine child blocks
+unchanged. The accumulated regression campaign ran once. The read-only link audit initially
+missed CMake's second explicit Ninja output; its corrected matcher and diagnostic
+are saved, without weakening or rerunning native checks. No skips/unrun cases or
+ASan/UBSan diagnostics occurred. Leak checking, other platforms, durability,
+Unicode/prose truth, actual model output and human fun remain unverified. next.md
+owns exact commands, full logs/statuses, receipt and coordinator review action.
+This completes only the private U10 proof; it selects no provider, public story
+service, integration, spell system or automatic next unit.
