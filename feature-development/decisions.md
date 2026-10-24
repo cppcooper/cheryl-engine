@@ -4,6 +4,7 @@ This independent branch combines the exact committed feature heads listed in [so
 
 - [tilemap](features/tilemap/decisions.md), [detailed contracts](features/tilemap/agent-notes.md), [handoff/evidence](features/tilemap/next.md), [provenance](features/tilemap/provenance.json).
 - [map-storage](features/map-storage/decisions.md), [detailed contracts](features/map-storage/agent-notes.md), [handoff/evidence](features/map-storage/next.md), [provenance](features/map-storage/provenance.json).
+- [procedural-generation](features/procedural-generation/decisions.md), [detailed contracts](features/procedural-generation/agent-notes.md), [handoff/evidence](features/procedural-generation/next.md), [provenance](features/procedural-generation/provenance.json).
 
 ## WINT-001 — Preserve feature history and records
 

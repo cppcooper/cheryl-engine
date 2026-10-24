@@ -1,0 +1,33 @@
+{
+  "source_feature": "procedural-generation",
+  "source_commit": "946c2db7d9a14311a398664444fc4d1fe0417a90",
+  "documents": [
+    {
+      "source_path": "feature-development/decisions.md",
+      "source_blob": "ce9a384c55360b576e5cf721ecb7823c20a5f2ef",
+      "source_sha256": "c9f3247f859e65959bad63db3b5288d7159d6f62f9a6081c4cf69971772d242d",
+      "archived_path": "feature-development/features/procedural-generation/decisions.md",
+      "archived_sha256": "c9f3247f859e65959bad63db3b5288d7159d6f62f9a6081c4cf69971772d242d",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    },
+    {
+      "source_path": "feature-development/agent-notes.md",
+      "source_blob": "c6b42c7a42d9106a9b9b58d221f465cca5aa0523",
+      "source_sha256": "5e3abf1a12a5682423e6aca65f7300d0f0346cf28ef779cee03386dcb424e5fe",
+      "archived_path": "feature-development/features/procedural-generation/agent-notes.md",
+      "archived_sha256": "5e3abf1a12a5682423e6aca65f7300d0f0346cf28ef779cee03386dcb424e5fe",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    },
+    {
+      "source_path": "feature-development/next.md",
+      "source_blob": "856d5b0860d68741886b093ed1e5b8c2392cc1ce",
+      "source_sha256": "cbb9c958ef6a19ac3207afabf399427b165d9463ecc8ae9e0ae90bfb7a166762",
+      "archived_path": "feature-development/features/procedural-generation/next.md",
+      "archived_sha256": "cbb9c958ef6a19ac3207afabf399427b165d9463ecc8ae9e0ae90bfb7a166762",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    }
+  ]
+}

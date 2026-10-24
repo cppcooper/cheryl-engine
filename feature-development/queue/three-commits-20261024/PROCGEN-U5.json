@@ -1,0 +1,15 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "PROCGEN-U5",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u5/build-1.log",
+    "builds/procedural-generation/logs/u5/ctest-1.log"
+  ],
+  "limitations": [
+    "GNU/Linux Debug/UBSan only; other compilers/OSes, ASan and large-domain performance remain unverified.",
+    "Integer cardinal cell distance is not Euclidean radius or a circular-actor/physical collision guarantee.",
+    "No public Engine/SDK extraction, persisted input-identity/recipe format or sibling integration."
+  ]
+}

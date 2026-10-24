@@ -1,0 +1,16 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "PROCGEN-U7",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u7/build-1.log",
+    "builds/procedural-generation/logs/u7/ctest-1.log"
+  ],
+  "limitations": [
+    "GNU/Linux Debug/UBSan only; other compilers/OSes, ASan, large-domain performance and public Engine/SDK integration remain unverified.",
+    "Bounded placement may return explicit attempt-limit partial achievement; it neither solves packing feasibility nor promises a global layout optimum.",
+    "Corridors may cross rooms or each other; the logical chain is not the complete physical-adjacency graph, and room IDs are result-local.",
+    "No persisted recipe/base-identity/save format, assets, physical-clearance or subjective-quality guarantee, or sibling integration."
+  ]
+}
