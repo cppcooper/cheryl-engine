@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -30,8 +30,13 @@ target_link_libraries(procgen-tunnel-tests PRIVATE procgen-private procgen-check
 add_executable(procgen-tunnel-consumer tunnel-consumer.cpp)
 target_link_libraries(procgen-tunnel-consumer PRIVATE procgen-private procgen-checks)
 
+add_executable(procgen-dungeon-tests dungeon-tests.cpp)
+target_link_libraries(procgen-dungeon-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-dungeon-consumer dungeon-consumer.cpp)
+target_link_libraries(procgen-dungeon-consumer PRIVATE procgen-private procgen-checks)
+
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
-                        procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer)
+                        procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -87,3 +92,11 @@ foreach(case IN ITEMS tunnel_literal tunnel_multiple tunnel_exhaustive tunnel_ge
 endforeach()
 add_test(NAME procgen.tunnel_consumer COMMAND procgen-tunnel-consumer)
 set_tests_properties(procgen.tunnel_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS dungeon_literal dungeon_layout dungeon_partial dungeon_controls dungeon_replay dungeon_ownership
+                      dungeon_invalid dungeon_limits dungeon_exhaustion)
+    add_test(NAME procgen.${case} COMMAND procgen-dungeon-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.dungeon_consumer COMMAND procgen-dungeon-consumer)
+set_tests_properties(procgen.dungeon_consumer PROPERTIES TIMEOUT 30)

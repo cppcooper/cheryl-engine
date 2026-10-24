@@ -1586,3 +1586,261 @@ complete staged diff saved as `logs/u6/staged-review.diff` under the preserved
 build directory. No unstaged or unrelated work remains. Whitespace check passes.
 Only header wording clarification and records/receipt edits follow acceptance;
 production behavior and executed fixtures are unchanged.
+
+## PROCGEN-U7 — Proposed caller before dependent APIs
+
+Clean predecessor `fb0b0ffe758325af6424f8173a9aa852f207e81b`, U6 ready receipt,
+next.md, source and saved61/61 native evidence were inspected before dependent
+work. U7 is the third/final pinned procedural milestone; no later unit is started.
+Proposed engineering spelling (not personal taste evidence):
+
+```cpp
+const std::array<Index,2> extents{31,21};
+const StreamKey key{42,0x64756e67656f6e,7};
+const DungeonConfiguration small{8,{2,2},{4,4},1,1,256};
+const DungeonConfiguration large{4,{5,5},{7,7},2,2,256};
+auto a = generate_dungeon(extents,key,small,budget).value();
+auto b = generate_dungeon(extents,key,large,budget).value();
+// inspect owned rooms(), connections(), occupancy(), measurements()/descriptor()
+```
+
+Proposal: binary occupancy0=floor/1=solid in x-fast rows. Half-open nonoverlapping
+room rectangles with requested blank-cell separation and outer margin>=1; IDs
+are acceptance order, scoped to this result. Rejection placement has a configured
+finite attempt limit; hitting it succeeds with explicit requested/achieved counts
+and attempt_limit, possibly zero rooms. A minimum room unable to fit at all is a
+cheap known contradiction. Resource exhaustion returns no partial value. Chain
+connections join lower-center cells of rooms i-1/i with seeded first-axis L routes;
+intersections/room crossings are allowed and may create extra physical adjacency.
+Graph chain connectivity is checked separately from actual cardinal occupancy.
+Native checks and implementation are pending at this point.
+
+### PROCGEN-027 — Implemented room configuration and achievement
+
+Source: `projects/tests/procedural-generation/dungeon.h/.cpp`,
+`generate_dungeon` -> checked Domain -> `replay_dungeon`. This new independent
+private utility reuses accepted Domain, StreamKey/IntegerStream/sample_below,
+Work, CaveBudgets and expected failures; it does not import sibling storage or
+force layouts through U6's cave transform. Existing U1–U6 algorithms/replays,
+consumers and test sources remain unchanged. New Failure reasons append without
+renumbering old ones. Caller spelling/algorithm/limits are engineering choices;
+no new personal taste inference supersedes PROCGEN-002 source provenance.
+
+Domain exactly2D, positive extents, x=axis0 fastest, index=x+width*y. A room is
+[id,lower{x,y},upper{x,y}] with half-open rectangle [x0,x1)*[y0,y1). Room IDs
+are contiguous acceptance-order integers local to this result, not stable IDs
+across changed seeds/configs or persisted application entities. Inclusive width/
+height ranges must be positive and ordered; maximum sizes may exceed available
+space (such drawn candidates reject, never clamp). Rooms<=64, attempts<=8192,
+margin>=1. Spacing is any u64, tested via subtraction gaps, never unchecked
+expanded-rectangle addition. Rectangles are disjoint: one axis has at least
+spacing blank cells. Spacing0 permits adjacent room cells. Margin applies to
+rooms/corridors, leaving at least the outermost cell solid.
+
+Each candidate draws width,height; if both fit the margin-shrunk domain, draw
+x,y in the inclusive feasible origin range. Compare accepted rooms in ID order,
+reject first conflict or append candidate. Each geometric candidate, accepted or
+rejected, counts once. Every raw draw is charged separately; RNG rejection does
+NOT count as another geometric candidate. Stop
+when target met or configured attempts exhausted. Requested options equal
+effective options without normalization/clipping; requested/achieved/attempts and
+fit/overlap-rejection counts are retained. Attempt0 validly returns zero rooms
+with attempt_limit for positive target. Requested0 returns empty complete output.
+
+If no minimum room can fit at all for a positive target, return contradiction/
+dungeon_fit before allocation. This cheap proof does not solve general packing.
+Larger unsatisfied requests return explicit attempt_limit success with achieved
+rooms, possibly0, and a fully connected nonempty occupancy when any room exists.
+This policy deliberately distinguishes partial ACHIEVEMENT from leaking a partial
+value on budget failure: the latter returns only Failure. Empty success is solid,
+connected=false, with no fabricated room. Tiny/unit-axis domains support requested0;
+positive targets without interior reject. Margin up to UINT64_MAX is safe: compare
+to extent/2 before computing2*margin. No unbounded rejection or packing search.
+
+### PROCGEN-028 — Graph, corridor intersections and physical validation
+
+After all placement, carve rooms in acceptance order. Connection i joins roomi
+and roomi+1, producing an intended chain/tree over achieved room IDs. Endpoints
+are lower-center cells lower+(extent-1)/2, including the lower of two centers for
+even sizes. Each connection draws first_axis in{0,1}; walk monotonically along
+that axis, then the other, charging the starting cell and every step. Store room
+IDs, first axis, cardinal edge length and count of formerly solid cells changed
+by that corridor. Counts never double-count overlap, endpoint floors or earlier
+corridors. Chain endpoint records are semantic IDs, not tile/rendering values.
+
+All corridors may cross other rooms/corridors or form new adjacencies/cycles.
+Room spacing is measured before this carving; no preserved wall/door between
+rooms is promised. The graph is not a complete physical-adjacency graph and a
+connected logical chain alone is insufficient acceptance. Both centers lie
+inside the margin rectangle, so axis-aligned L routes also do; outer wall stays
+solid. A final full occupancy/perimeter/count scan and cardinal flood verify every
+floor reached. A logic_error indicates an internal failed invariant, not invalid
+caller options. All-solid output has floor0/connected=false; nonempty floor is
+connected. No claim of floor acyclicity, keys/locks, stairs, portals, masks,
+protected interiors, progression, encounters, actors or physical clearance.
+
+The test/consumer oracle `dungeon-checks.cpp::inspect` independently checks room
+bounds/sizes/IDs and separation through minimum Chebyshev CELL distance>spacing.
+It paints rectangles cellwise, paints the two closed axis segments using bounding
+coordinates instead of the production walker, checks each link's literal length/
+new carve count, and compares the ENTIRE expected occupancy. Separate coordinate-
+pair cardinal BFS counts floor components (no Domain::neighbor, generation queue
+or scratch reuse). Oracle caps at4096 cells. Native acceptance is recorded below.
+
+### PROCGEN-029 — Replay, ownership, storage and work
+
+Separate DungeonAlgorithm::rooms_and_chain version1; unknown algorithm/version
+reject unsupported before allocation. Replay owns Domain, caller StreamKey,
+exact requested config and caller budgets. Stable encoding: base is the existing
+LE64 tuple derivation of seed/stage/stream; placement uses
+IntegerStream::for_stage({base,0x64756e67656f6e50,0}), corridors uses stage word
+0x64756e67656f6e43. Candidate width,height,x,y and accepted-room order are fixed;
+only fit candidates consume origin draws. Placement is complete before corridor
+sampling. Unrelated local stream consumption cannot perturb output; no clock,
+global RNG, mutable registry, std::hash or implementation-dependent distribution.
+
+Existing SplitMix64/unbiased sample_below arithmetic/ordering portability contract
+applies on8-bit bytes/64-bit Index/size_t. Every raw draw, including bound1 and
+rejections, consumes work; rejection sampling has no automatic finite worst-case
+draw count and can refuse. Usage includes raw draws and total charged work.
+Geometric attempt cap is content configuration; resource budgets only govern
+admission/runtime refusal. Equal successful replay with sufficient budgets returns
+the same rooms/links/occupancy/metrics. No seed uniqueness, randomness security
+or perceptual-quality promise. Independent Python integer-spec calculation saved
+`logs/u7/reference-vectors.log` supplies child-stage and tiny-layout vectors;
+that calculation is not native project acceptance.
+
+Dungeon copies own every room/connection/occupancy vector; descriptor is copied
+and input extent borrowing ends at return. Read-only spans expire on owner
+move/assignment/destruction; moved-from supports destruction/assignment only.
+No generation scratch aliases output or earlier values. Expected failures alone
+are caught; bad_alloc/length/programming exceptions propagate with caller-owned
+previous results unchanged. Nothing is published on numeric/input/budget failure.
+Persisted recipes, long-term old-version execution/migration and exact-base edit
+formats remain unselected (generation-storage.md). Seed alone or local room ID
+cannot identify edited occupancy. U5 clearance must be recomputed if geometry
+changes; no stale layer is automatically adopted. Later layout/quest/story/site
+adapters can consume semantic rooms/links; this unit implements none of them,
+or geography/settlement/tectonic layers, physics/AI or public Engine/SDK export.
+
+For C cells and R requested room capacity, peak requested buffer payload is
+4096+10*C+80*R bytes: C-byte output, C-byte visited, C u64 validation queue,
+R 40-byte room and R 40-byte connection capacities. All vector capacities,
+checked products/sums and metadata allowance are preflighted; reserve once,
+never geometric vector growth. Static assertions check record sizes/fixed metadata.
+Allocator/runtime overhead and pre-existing caller results are excluded; not RSS.
+Hard65536 cells/4MiB/100M work,64 rooms,8192 geometric attempts. No huge rejected
+allocation or host pressure is used for checks.
+
+Minimum4*C work covers3*C buffer initialization and C final scan only. Additional
+work: one per candidate, EVERY raw draw including rejections, one per room-pair
+separation test, accepted-room append and per-room carving setup/cell; one per
+corridor setup/append plus starting cell and every route step; flood enqueue/pop
+and four neighbor probes per floor (6*floor). Runtime checks govern all these
+operations. Size/overlap rejections never evade the work cap. Complete bounds:
+O(attempts*R + R*(width+height) + C + raw_draws) operation count, O(C+R) payload.
+At most max(R-1,0) corridors; individual length<=width+height-2, rooms disjoint with total
+area<=C; arithmetic on indexes/counts is safe under checked domain/hard caps.
+No finite raw-draw guarantee is inferred from expected rejection rate. A tiny
+budget can pass the lower bound yet refuse during sampling/carving/validation.
+
+### PROCGEN-030 — Executed evidence and final finite-queue checkpoint
+
+U7 is based on completed U6 `fb0b0ffe758325af6424f8173a9aa852f207e81b` and its
+ready receipt. Initial status/diff was clean; preserve all preceding source,
+logs, incremental outputs and cache. New sources build under the same private
+standalone C++23 target. CMake adds dungeon.cpp/oracle/test/consumer; all61 prior
+registrations remain and all57 prior case assertion counts exactly match U6.
+No root dependency/Engine/SDK exports, pin changes, sibling integration, protected
+mutation, settings work or model substitutions. Public extraction is unverified.
+
+Actual configuration: GNU16.2.1/Linux/Ninja, Debug/C++23, strict warnings as errors,
+UBSan ON/no recovery/frame pointers, preserved `builds/procedural-generation`.
+Compiler/cache metadata and target flags are inspected; no ASan or broader platform
+claim. Every format/configure/build/native check uses the shared wrapper
+`/mnt/projects/cheryl-features/scripts/build --`, one job. The queued CTest command
+waited normally in its original session27375, then completed successfully. No
+cancel/relaunch, duplicate queue command, resource refusal, unchanged retry or
+native failure. Shared adaptive limits/no swap/host floor remain monitor-owned.
+
+Complete stdout/stderr and immediate exits are clone-local ignored files under
+`builds/procedural-generation/logs/u7/` (truncated tool display is not lost evidence):
+
+| Executed check | Saved evidence | Actual outcome |
+| --- | --- | --- |
+| `clang-format -i` on new/owned C++ files | format-1.log | exit0 |
+| `cmake --build builds/procedural-generation --parallel 1` | build-1.log | exit0; existing standalone cache regenerated and all targets compile/link |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1` | ctest-1.log | exit0;71 passed/0 failed/0 skipped |
+| Immediate statuses | exits.tsv | all three commands exit0 |
+| Python integer-spec vector calculation | reference-vectors.log | source/vector evidence only, not native project acceptance |
+
+The accumulated suite ran ONCE after implementation; all71 entries passed with
+66 cases/27265 assertions plus five consumers. Prior61 entries retain57 cases/
+26849 assertions plus maze8/8,cave2/2,clearance2/2,tunnels2/2 demonstrations. Nine
+new cases add416 assertions: literal44,layout171,partial53,controls33,replay16,
+ownership17,invalid39,limits27,exhaustion16. New consumer passes2/2 (16 total
+consumer demonstrations across five entries). Internal oracle per-cell/rectangle/
+segment checks execute too but are not inflated into harness counts. No failure,
+skip, compiler warning or UBSan diagnostic; no resolved failure is hidden.
+
+Literal geometry:5x5 with one fixed3x3 room gives id0/[1,1)..[4,4),9 floors,
+no corridor and4 raw draws.5x3 with three1x1 rooms at x2,3,1/y1 gives links
+(0,1,first_axis1,length1,carved0) and (1,2,axis0,length2,carved0). Second corridor
+passes through room0, testing the stated crossing policy. Independent Python
+vectors pin base0xd2d031f03b516dab, placement first0x5e4ccc6be9d72faf,
+corridor first0xd2cf01a41f51dafb and subsequent values. No seed uniqueness asserted.
+
+Layout checks use seeds0,1,42,991,6543 at both31x21 configurations plus18 bounded
+8x5 seeds/spacing fixtures. Independent painting/BFS verifies every rectangle,
+separation, reported route cell, length/newly carved count, full occupancy equality,
+margin and connected floor. Control checks distinguish requested room count,
+size area1 vs9, spacing UINT64_MAX allowing only one room, and exact margin3.
+Overpacked5x5 target2 fixed3x3/attempt4 returns one room with three overlap
+rejections, explicit attempt_limit; it does not return a false full achievement.
+Attempt0 yields empty partial success; requested0 accepts solid tiny/unit axes.
+
+Invalid dimension/range/caps/margin, unsupported algorithm/version, minimum-room
+fit contradiction, empty/zero/product/byte overflow and metadata planning are
+checked without huge allocation. Empty3x3 accounts4186 bytes and36 work; exact
+cell/storage/work succeeds, each one-short refuses before allocation using a
+scoped test-only allocation denial. Real31x21 layout succeeds with exact reported
+storage/work and refuses one-short storage/work, preserving prior output. Planning-
+only over-cell-cap Domain verifies65536 hard cap without allocating that input.
+A deliberate width bound2^63+1 rejects its first raw draw, accepts a huge second
+width, then draws height:3 raw draws, one size-rejected attempt and empty partial
+success at exactly104 work.103 refuses; a singleton accepted room can exhaust
+its final validation budget. No budget exhaustion is treated as placement proof.
+Owned-copy buffers, local descriptor lifetime, moves, allocation propagation,
+rejected input and old results are exercised independently of caller lifetime.
+
+Executed semantic consumer on the SAME31x21 Domain/key{42,0x64756e67656f6e,7}:
+
+| Requested configuration | Achievement | Attempts/links | Room/corridor/floor | Cardinal components | Work/raw draws |
+| --- | --- | --- | --- | --- | --- |
+|8 rooms,size2..4 per axis,spacing1,margin1,attempt256 |8/8 complete |21/7 |84/54/138 |1 |3828/91 |
+|4 rooms,size5..7 per axis,spacing2,margin2,attempt256 |2/4 attempt_limit |256/1 |98/8/106 |1 |5007/1025 |
+
+The second result is an explicit bounded placement shortfall, not proof no four-
+room layout exists. Consumer prints replay parameters, achieved count/status,
+semantic floor/graph metrics and independent checks, without rendering/assets.
+The completed ready/true U7 receipt records actual nonempty relative native
+logs. It reports worker execution, not automatic coordinator source acceptance or
+an unexecuted-platform result. U5/U6/U7 are the three coherent new checkpoints in
+this lane; do not count unrelated history or start a fourth task. Controller owns
+completion observation, publisher owns assigned-branch transport, and coordinator
+owns source review/any later bounded assignment. No integration/publication command.
+
+Confidence high for these verified finite layout/replay/resource/ownership
+contracts, medium in private API/placement/corridor policy choices. No unresolved
+blockers. Other compiler/OS, ASan, large-domain performance, physical quality and
+public Engine/SDK integration remain unverified. No global packing optimum,
+collision-free streams, cryptographic or subjective quality guarantee. Later
+layout/topology, quests/stories, settlements/geography/tectonics and persistent
+recipes/edits remain proposals/backlog; no doors/locks/masks/stairs/encounters,
+renderer, storage adapter or general AI/physics is implemented.
+
+Final staged review covers all13 coherent task files, including receipt and both
+matching decision views. Complete diff is saved under the preserved build as
+`logs/u7/staged-review.diff`; whitespace checks pass, no unrelated/unstaged work.
+Only records and receipt changed after native acceptance; compiled source and
+executed tests remain unchanged. Commit one U7 checkpoint and stop this lane.

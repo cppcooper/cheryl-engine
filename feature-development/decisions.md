@@ -258,3 +258,43 @@ BFS/dense Dijkstra verify literals, all512 small interiors, generated caves and
 refusals. Consumer passes2/2 with fresh clearance. Ready receipt records saved
 native logs, not automatic source acceptance. Finite controller owns U7 admission;
 publisher owns transport. Other platforms/ASan/performance remain unverified.
+
+## PROCGEN-027 — Finite rooms and explicit placement achievement
+
+**User controls; engineering policy, high confidence in semantics.** Owned half-open
+2D rectangles get local acceptance-order IDs. Positive inclusive size ranges,
+spacing and margin>=1 govern bounded rejection placement. Requested room count
+and achieved count stay distinct. Attempt-limit success may contain fewer or zero
+rooms; minimum-size nonfit is a known contradiction. Resource exhaustion returns
+no partial value. No packing-feasibility guarantee, persistent cross-seed IDs or
+subjective layout-quality claim is made.
+
+## PROCGEN-028 — Logical chain and physical corridors
+
+**Engineering choice; high confidence.** Join rooms i-1/i at their lower-center
+cells using L-shaped corridors with seeded first axis. Report endpoints, edge
+length and newly carved cells. Corridors may cross rooms and each other; spacing
+applies to original room rectangles. The chain records intended connections,
+not every physical adjacency. Independently validate cardinal floor connectivity
+and preserve a solid outer margin. No tree/perfect-maze claim for floor topology.
+
+## PROCGEN-029 — Dungeon replay and bounded resource use
+
+**User requirement plus engineering choices.** Separate rooms-and-chain v1 replay
+retains exact config/Domain/seed-stage-stream/budgets. Derive separate placement/
+corridor streams via stable numeric stage words and existing integer sampling.
+Attempts affect content; sufficient budgets affect admission only. Hard caps64
+rooms/8192 attempts/65536 cells/4MiB/100M work; account4096+10*C+80*requested_rooms
+bytes and every rejection draw, pair test, carving and validation. Expected refusal
+publishes nothing; allocation/programming exceptions propagate. Existing versions stay intact.
+
+## PROCGEN-030 — Dungeon acceptance and final queue boundary
+
+**User requirement; executed GNU/Linux Debug/UBSan evidence.** All71 accumulated
+CTest entries pass:66 cases/27265 assertions plus five consumers. Retains prior61
+entries/26849 assertions; nine dungeon cases add416. Independent painting/BFS,
+stream vectors, geometry, controls and refusal checks pass. Consumer reports8/8
+small rooms and explicit2/4 attempt-limit achievement for larger rooms, both
+connected. Ready receipt records execution, not automatic source acceptance.
+This final pinned milestone stops the lane; broader platforms/ASan/public reuse
+remain unverified.

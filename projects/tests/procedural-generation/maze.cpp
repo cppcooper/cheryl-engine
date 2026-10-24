@@ -125,6 +125,16 @@ namespace ProcGen {
                 return "preserving a boundary floor contradicts a solid outer boundary";
             case Reason::tunnel_version:
                 return "unsupported cave tunnel transformation version";
+            case Reason::dungeon_dimensions:
+                return "dungeons require exactly two axes: width, height";
+            case Reason::dungeon_options:
+                return "dungeon room counts/attempts exceed caps, size ranges are invalid, or margin is zero";
+            case Reason::dungeon_fit:
+                return "minimum room cannot fit inside the requested domain/margin";
+            case Reason::dungeon_algorithm:
+                return "unsupported dungeon algorithm";
+            case Reason::dungeon_version:
+                return "unsupported dungeon replay version";
         }
         return "unknown failure reason";
     }

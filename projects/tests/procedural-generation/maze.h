@@ -54,7 +54,12 @@ namespace ProcGen {
         clearance_threshold,
         tunnel_dimensions,
         tunnel_boundary,
-        tunnel_version
+        tunnel_version,
+        dungeon_dimensions,
+        dungeon_options,
+        dungeon_fit,
+        dungeon_algorithm,
+        dungeon_version
     };
 
     struct Failure {

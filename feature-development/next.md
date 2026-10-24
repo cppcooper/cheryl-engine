@@ -1,49 +1,53 @@
 # Procedural-generation next action
 
-PROCGEN-U6 is implemented and verified on `feat/procedural-generation`, based on
-clean U5 `483493998776586a1d0d75f1683d8dec57cbcf55` and its ready receipt/logs.
-Private `connect_cave` returns complete owned replacement plus exact source bytes,
-Domain/version, carving/connection measurements and usage. It preserves all floors
-and solid perimeter, deterministically joins nonempty interior components, and
-leaves empty/one-component inputs unchanged. Existing cave/maze replay and U5
-clearance are untouched. Recompute clearance explicitly for changed occupancy.
+PROCGEN-U7 is implemented and verified on feat/procedural-generation from clean
+U6 `fb0b0ffe758325af6424f8173a9aa852f207e81b` and its ready receipt/logs. Private
+2D dungeon output owns half-open room rectangles/local IDs, logical chain links,
+binary occupancy, versioned replay, requested/achieved metrics and charged usage.
+Room size/count/spacing/margin and finite placement attempts have explicit effects.
+Existing cave/maze/clearance/tunnel replay and test sources remain unchanged.
 
 Preserved GNU16.2.1/Linux Debug/C++23/UBSan build passes. Accumulated nonempty
-CTest ran ONCE after final code: **61 passed,0 failed,0 skipped**,57 cases with
-26849 assertions plus four consumers. All52 prior entries/22276 assertions remain;
-eight tunnel cases add4573 assertions. New consumer passes2/2, retaining earlier
-maze8/8,cave2/2,clearance2/2. No UBSan diagnostics. Complete logs/immediate exits:
-`builds/procedural-generation/logs/u6/` (build-1/build-2/ctest-1 plus formatting).
-PROCGEN-023–026 match between decisions.md and agent-notes.md.
+CTest ran ONCE: **71 passed,0 failed,0 skipped**,66 cases/27265 assertions plus
+five consumers. All61 prior entries/26849 assertions remain; nine new dungeon
+cases add416 assertions. New consumer2/2; total consumer demonstrations16/16.
+No compiler warning or UBSan diagnostic. Full diagnostics/immediate exits:
+`builds/procedural-generation/logs/u7/` (format-1/build-1/ctest-1 and exits.tsv).
+Normal queue wait completed in original session27375; no resource refusal/retry.
+PROCGEN-027–030 match between compact decisions and detailed agent notes.
 
 Ready receipt is committed with this checkpoint:
-`feature-development/queue/three-commits-20261024/PROCGEN-U6.json`.
-This reports worker execution, not automatic coordinator source acceptance.
-Next action belongs to the finite controller: after this exact run drains,
-validate clean descendant checkpoint/receipt/logs and select preassigned U7
-(first finite dungeon rooms/corridors). This worker starts no next unit, sibling
-work, background agent or publication command. Publisher handles assigned-branch
-transport; no integration is performed here.
+`feature-development/queue/three-commits-20261024/PROCGEN-U7.json`.
+It reports worker execution, not automatic coordinator source acceptance.
+This is the third/final pinned milestone in this lane: U5 clearance4834939,
+U6 tunnelsfb0b0ff and this U7. Next concrete action: coordinator/controller review
+of these coherent source checkpoints, receipts and saved logs after this run
+fully drains. Publisher handles assigned-branch transport. No fourth task,
+sibling work, background agent, recurring loop or integration is started here.
 
-Assumptions/confidence: high in explicit tested floor/perimeter/connectivity/
-least-immediate-carve/ownership/resource contracts; medium in reversible private
-API/cap choices. No unresolved blockers. Each greedy search minimizes its immediate
-new solid-cell cost, not a global tunnel network. Ties are cost/index then first
-strict parent in canonical neighbor order. Route edges and carved cells remain
-separate. A boundary floor is a known contradiction; version unsupported, malformed
-input invalid, work exhaustion a resource refusal, never impossibility proof.
-All-solid/unit-axis solid inputs succeed without fabricated floor, connected=false.
+Assumptions/confidence: high in explicit tested rectangles/margin/spacing, replay,
+occupancy connectivity, ownership and refusal semantics; medium in private API
+and first placement/corridor choices. No unresolved blockers. Underfilled placement
+is explicit attempt_limit success with actual achieved count, possibly zero;
+minimum-room nonfit is a cheap known contradiction, general packing feasibility
+is not solved. Budget exhaustion publishes nothing and proves no infeasibility.
+Same31x21/key42 demonstrations: small2..4 rooms achieve8/8,84 room+54 corridor
+floor; large5..7 rooms achieve2/4 after256 attempts,98+8 floor. Both nonempty floors
+are connected; the latter does not imply four rooms are mathematically impossible.
 
-Accounted peak4096+139*C is not RSS; hard65536 cells/16MiB/100M work. Heap <=5*C
-pushes per search, at most original-components-minus-one searches, runtime work
-bounds repeats/comparisons/flood/reconstruction. Exact work admission can vary
-with stdlib heap comparison counts; sufficient-budget logical replay is stable.
-Other platforms/compiler, ASan, large-domain performance and public integration
-remain unverified. No width/circular-actor/physical-geology guarantee.
+Margin>=1 preserves outer walls. Room spacing applies before corridors, which
+may cross rooms/each other and add physical adjacency/cycles beyond the logical
+chain. Independent occupancy BFS, not graph connectivity alone, verifies floors.
+IDs are local to one result; no cross-seed/persistent entity identity is promised.
+Hard64 rooms/8192 attempts/65536 cells/4MiB/100M work; peak4096+10*C+80*R is not
+RSS. Every raw rejection draw, pair test, carve and flood operation is bounded.
+Attempts affect content, sufficient budgets admission only; child stages are
+fixed numeric derivations, with no global RNG or mutable registry.
 
-Retained layers need exact original Domain/source occupancy plus transform family/
-version and any upstream cave replay. Source changes invalidate old clearance;
-new replacement is not the same base merely because seed/dimensions match.
-No persisted recipe, save policy, hash/witness-file format or sibling dependency
-is selected. U7 remains queued; advanced mazes, geography, settlements, tectonics,
-ports/masks and broader AI/physics remain future bounded scopes.
+Other compilers/OSes, ASan, large-domain performance, physical/perceptual quality,
+public Engine/SDK and storage integration remain unverified. Retention needs exact
+algorithm/version/Domain/config/seed-stage-stream and exact base identity before
+edits; no saved recipe, save policy, hash/witness-file format or adapter is selected.
+Changed geometry invalidates old derived clearance. Later layout/topology, maze
+controls, quests/stories, settlements/geography/tectonics stay backlog. No keys,
+locks, encounters, masks, stairs/3D, renderer/assets or broad AI/physics is added.
