@@ -12,6 +12,8 @@
 namespace Magic::Reference {
     inline constexpr std::size_t actor_capacity = 16;
     inline constexpr std::size_t pending_capacity = 8;
+    inline constexpr std::size_t item_capacity = 8;
+    inline constexpr std::size_t touch_capacity = 16;
 
     enum class Error {
         InvalidLimits,
@@ -46,7 +48,20 @@ namespace Magic::Reference {
         ForeignTicket,
         StaleTicket,
         ConsumedTicket,
-        MissingAction
+        MissingAction,
+        ItemLimit,
+        MissingItem,
+        DisabledItem,
+        SpentItem,
+        InvalidEvent,
+        ForeignEvent,
+        RepeatedEvent,
+        DuplicateFact,
+        MissingFact,
+        EventLimit,
+        NonceLimit,
+        InvalidCheckpoint,
+        IncompatibleCheckpoint
     };
     struct Failure {
         Error code;
@@ -100,6 +115,7 @@ namespace Magic::Reference {
         std::size_t plan_bytes = 0;
         bool operator==(const PendingView&) const = default;
     };
+    // Observational projection only: it omits retained plans, schemas, items and live authority.
     struct Snapshot {
         std::uint64_t tick = 0;
         std::uint64_t revision = 0;
@@ -127,6 +143,39 @@ namespace Magic::Reference {
         std::uint64_t max_ticket = 1'000'000;
         std::uint64_t max_revision = 1'000'000'000;
         std::uint64_t max_generation = 1'000'000;
+        std::size_t items = item_capacity;
+        std::size_t touch_receipts = touch_capacity; // lifetime admissions; never evicted
+        std::uint64_t max_event_nonce = 1'000'000;
+        std::uint64_t max_fact_id = 1'000'000'000;
+        bool operator==(const HostLimits&) const = default;
+    };
+    struct ItemId {
+        std::uint32_t slot = 0;
+        std::uint64_t generation = 0;
+        bool operator==(const ItemId&) const = default;
+    };
+    struct ItemView {
+        ItemId id;
+        bool present = false;
+        bool enabled = true;
+        std::uint32_t charges = 0;
+        std::uint32_t prepaid_mana = 0; // informational installation cost; never refundable
+        std::size_t plan_bytes = 0;
+        bool operator==(const ItemView&) const = default;
+    };
+    struct TouchRecord {
+        std::uint64_t fact = 0;
+        std::uint64_t nonce = 0;
+        ItemId item;
+        ActorId toucher;
+        bool consumed = false;
+        bool operator==(const TouchRecord&) const = default;
+    };
+    struct ItemSnapshot {
+        std::array<ItemView, item_capacity> items;
+        std::array<TouchRecord, touch_capacity> ledger;
+        std::uint64_t events_issued = 0;
+        bool operator==(const ItemSnapshot&) const = default;
     };
     struct Usage {
         std::size_t work = 0;
@@ -154,7 +203,33 @@ namespace Magic::Reference {
     using Observed = std::shared_ptr<const Observation>;
     using StepResult = std::expected<Observed, Failure>;
 
+    struct ItemObservation {
+        Snapshot before, after;
+        ItemSnapshot items_before, items_after;
+        Usage usage;
+    };
+    using ItemObserved = std::shared_ptr<const ItemObservation>;
     class ReferenceHost;
+    // Opaque native-owner admission. Copies share one use; failure preserves it. Never serialized/revived.
+    class TouchEvent {
+        std::shared_ptr<const void> owner_;
+        std::uint64_t nonce_ = 0;
+        TouchEvent(std::shared_ptr<const void> owner, std::uint64_t nonce)
+        : owner_(std::move(owner)), nonce_(nonce) {}
+        friend class ReferenceHost;
+    public:
+        TouchEvent() = default;
+    };
+    // Owned immutable continuation, distinct from observational Snapshot. No live tickets are retained.
+    class Checkpoint {
+        struct Data;
+        std::shared_ptr<const Data> data_;
+        explicit Checkpoint(std::shared_ptr<const Data> data)
+        : data_(std::move(data)) {}
+        friend class ReferenceHost;
+    public:
+        Checkpoint() = default;
+    };
     // Opaque host-incarnation-bound input. Copying does not create a second use.
     // Default is invalid; destruction does not cancel an already queued action.
     class Ticket {
@@ -179,6 +254,8 @@ namespace Magic::Reference {
         struct State {
             Snapshot world;
             std::array<PlanHandle, pending_capacity> plans;
+            ItemSnapshot items;
+            std::array<PlanHandle, item_capacity> inscriptions;
         };
         struct Prepared {
             PlanHandle plan;
@@ -186,6 +263,7 @@ namespace Magic::Reference {
             std::uint64_t revision;
             std::uint64_t serial;
         };
+        friend class Checkpoint;
         Catalog catalog_;
         HostLimits limits_;
         State state_;
@@ -195,7 +273,10 @@ namespace Magic::Reference {
         ReferenceHost(Catalog catalog, HostLimits limits);
         struct Meter;
         void validate(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
-        void apply(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const;
+        void payload_schema(const PlanHandle& plan, Meter& meter) const;
+        void inscription(const PlanHandle& plan, Meter& meter) const;
+        void apply(const PlanHandle& plan, std::optional<ActorId> recipient, std::optional<Point> aim, State& state, Meter& meter) const;
+        void continuation(const State& state, std::uint64_t tickets, Meter& meter) const;
         [[nodiscard]] const Prepared& authorize(const Ticket& ticket) const;
         [[nodiscard]] StepResult adopt(State&& next, Observation observation);
 
@@ -204,6 +285,21 @@ namespace Magic::Reference {
         ReferenceHost& operator=(const ReferenceHost&) = delete;
         [[nodiscard]] static std::expected<std::unique_ptr<ReferenceHost>, Failure> create(const Catalog& catalog, HostLimits limits = {});
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
+        [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
+        // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.
+        [[nodiscard]] std::expected<ItemId, Failure> install(const PlanHandle& plan, ActorId funder);
+        [[nodiscard]] std::expected<void, Failure> enable_item(ItemId item, bool enabled);
+        [[nodiscard]] std::expected<void, Failure> remove_item(ItemId item);
+        // Only this trusted native-owner boundary admits facts. Logical IDs alone cannot apply payloads.
+        [[nodiscard]] std::expected<TouchEvent, Failure> admit_touch(std::uint64_t fact, ItemId item, ActorId toucher);
+        // Owner reauthorizes only an existing unconsumed fact (e.g. after restore); no new logical admission.
+        [[nodiscard]] std::expected<TouchEvent, Failure> resume_touch(std::uint64_t fact) const;
+        // Failed applications preserve admission, charge, resources and all world state.
+        [[nodiscard]] std::expected<ItemObserved, Failure> touch(const TouchEvent& event);
+        // Capture may refuse incoherent retained work (departed caster, changed schema, time horizon or work cap).
+        [[nodiscard]] std::expected<Checkpoint, Failure> checkpoint() const;
+        // Exact schema/limit identity, whole-world rewind, fresh incarnation; failed restore changes nothing.
+        [[nodiscard]] std::expected<void, Failure> restore(const Checkpoint& checkpoint);
         [[nodiscard]] std::expected<ActorId, Failure> add_actor(const ActorSpec& actor);
         [[nodiscard]] std::expected<void, Failure> update_actor(ActorId id, const ActorSpec& actor);
         [[nodiscard]] std::expected<void, Failure> remove_actor(ActorId id);

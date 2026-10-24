@@ -1,0 +1,29 @@
+$ git diff --cached --check
+exit_status=0
+$ git diff --cached --stat
+ feature-development/agent-notes.md                 |  67 ++
+ feature-development/decisions.md                   |  26 +-
+ .../magic/logs/M3/accumulated-01.log               | 459 ++++++++++++++
+ feature-development/magic/logs/M3/affected-01.log  |  72 +++
+ feature-development/magic/logs/M3/affected-02.log  |  74 +++
+ feature-development/magic/logs/M3/build-01.log     |  22 +
+ feature-development/magic/logs/M3/build-02.log     |  14 +
+ feature-development/magic/logs/M3/build-03.log     |  15 +
+ feature-development/magic/logs/M3/configure-01.log |   6 +
+ .../magic/logs/M3/static-review.log                |  13 +
+ feature-development/next.md                        |  51 +-
+ .../feature-round-20261024-0500/MAGIC-M3.json      |  79 +++
+ projects/magic/CMakeLists.txt                      |  10 +
+ projects/magic/include/magic/reference-host.h      | 100 ++-
+ projects/magic/src/engraving-demo.cpp              | 132 ++++
+ projects/magic/src/reference-host.cpp              | 376 ++++++++++-
+ projects/magic/tests/engraving.cpp                 | 693 +++++++++++++++++++++
+ 17 files changed, 2159 insertions(+), 50 deletions(-)
+exit_status=0
+$ git diff --name-only
+exit_status=0
+Staged implementation/header/CMake/caller/tests and compact/detailed/next/receipt diffs inspected.
+All seven native logs are nonempty staged files with immediate exit_status=0.
+Old receipts, compiler source, spoken tests/caller and fixtures unchanged (static-review.log).
+No untracked source or unstaged mutation is intended; outputs remain ignored in the existing private build.
+staged review exit_status=0

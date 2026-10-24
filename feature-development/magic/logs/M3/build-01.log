@@ -1,0 +1,22 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[ 11%] Built target magic_compiler
+[ 22%] Built target magic_inspect
+[ 33%] Built target magic_checks
+[ 44%] Built target magic_caller_checks
+[ 50%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 55%] Linking CXX static library libmagic_reference_host.a
+[ 55%] Built target magic_reference_host
+[ 61%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[ 66%] Linking CXX executable magic_host_checks
+[ 66%] Built target magic_host_checks
+[ 72%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[ 77%] Linking CXX executable magic_reference_demo
+[ 77%] Built target magic_reference_demo
+[ 83%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[ 88%] Linking CXX executable magic_engraving_checks
+[ 88%] Built target magic_engraving_checks
+[ 94%] Building CXX object CMakeFiles/magic_engraving_demo.dir/src/engraving-demo.cpp.o
+[100%] Linking CXX executable magic_engraving_demo
+[100%] Built target magic_engraving_demo
+
+exit_status=0

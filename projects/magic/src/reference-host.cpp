@@ -40,7 +40,8 @@ namespace Magic::Reference {
             return l.actors <= c.actors && l.pending <= c.pending && l.statuses <= c.statuses && l.selected_targets <= c.selected_targets &&
                    l.selector_work <= c.selector_work && l.work <= c.work && l.plan_bytes <= c.plan_bytes && l.max_tick <= c.max_tick &&
                    l.max_action <= c.max_action && l.max_ticket <= c.max_ticket && l.max_revision <= c.max_revision &&
-                   l.max_generation <= c.max_generation;
+                   l.max_generation <= c.max_generation && l.items <= c.items && l.touch_receipts <= c.touch_receipts &&
+                   l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -71,6 +72,32 @@ namespace Magic::Reference {
             if (x2 > std::numeric_limits<std::uint64_t>::max() - y2)
                 refuse(Error::InvalidAim);
             return x2 + y2 <= square(radius);
+        }
+    }
+
+    namespace {
+        const ItemView& item(const ItemSnapshot& state, ItemId id) {
+            if (id.slot >= item_capacity || id.generation == 0 || !state.items[id.slot].present || state.items[id.slot].id != id)
+                refuse(Error::MissingItem);
+            return state.items[id.slot];
+        }
+        void eligible(const Snapshot& world, ActorId id) {
+            const auto& a = actor(world, id);
+            if (!a.data.eligible || !a.data.willing || a.data.health == 0)
+                refuse(Error::Contact);
+        }
+        bool same_catalog(const Catalog& a, const Catalog& b) {
+            if (a.spoken != b.spoken || a.engraved != b.engraved || a.contact != b.contact || a.ray != b.ray || a.burst != b.burst ||
+                a.item_event != b.item_event || a.together != b.together || a.operations.size() != b.operations.size())
+                return false;
+            for (std::size_t i = 0; i < a.operations.size(); ++i) {
+                const auto& x = a.operations[i];
+                const auto& y = b.operations[i];
+                if (x.key != y.key || x.primitive != y.primitive || x.max_quantity != y.max_quantity ||
+                    x.max_duration_ticks != y.max_duration_ticks)
+                    return false;
+            }
+            return true;
         }
     }
 
@@ -107,6 +134,8 @@ namespace Magic::Reference {
     : catalog_(std::move(catalog)), limits_(limits), owner_(std::make_shared<const std::uint8_t>(0)) {
         for (std::size_t i = 0; i < actor_capacity; ++i)
             state_.world.actors[i].id.slot = static_cast<std::uint32_t>(i);
+        for (std::size_t i = 0; i < item_capacity; ++i)
+            state_.items.items[i].id.slot = static_cast<std::uint32_t>(i);
     }
 
     std::expected<std::unique_ptr<ReferenceHost>, Failure> ReferenceHost::create(const Catalog& catalog, HostLimits limits) {
@@ -226,6 +255,22 @@ namespace Magic::Reference {
             )
                 meter.fail(Error::UnsupportedBinding);
         }
+        payload_schema(plan, meter);
+        if (paying)
+            static_cast<void>(later(state.world.tick, meaning.onset_ticks, limits_));
+        const auto cost = static_cast<std::uint32_t>(meaning.effects.size() * 10); // M1 has <=4 effects
+        if (paying && caster.data.mana < cost)
+            meter.fail(Error::Resources);
+    }
+
+    void ReferenceHost::payload_schema(const PlanHandle& plan, Meter& meter) const {
+        if (!plan)
+            meter.fail(Error::NoPlan);
+        if (plan->metrics().retained_bytes > limits_.plan_bytes)
+            meter.fail(Error::PlanLimit);
+        const auto& meaning = plan->meaning();
+        if (meaning.effects.size() > 1 && !catalog_.together)
+            meter.fail(Error::SchemaMismatch);
         for (const auto& effect : meaning.effects) {
             bool supported = false;
             for (const auto& schema : catalog_.operations) {
@@ -239,31 +284,47 @@ namespace Magic::Reference {
             if (!supported)
                 meter.fail(Error::SchemaMismatch);
         }
-        if (paying)
-            static_cast<void>(later(state.world.tick, meaning.onset_ticks, limits_));
-        const auto cost = static_cast<std::uint32_t>(meaning.effects.size() * 10); // M1 has <=4 effects
-        if (paying && caster.data.mana < cost)
-            meter.fail(Error::Resources);
+    }
+    void ReferenceHost::inscription(const PlanHandle& plan, Meter& meter) const {
+        payload_schema(plan, meter);
+        const auto& m = plan->meaning();
+        if (m.entry.kind != EntryKind::Engraved || m.entry.mode != CastingMode::Release || m.entry.trigger != Trigger::ItemTouch ||
+            m.entry.charges != 1 || m.onset_ticks != 0)
+            meter.fail(Error::UnsupportedEntry);
+        if (m.delivery != Delivery::ItemEvent)
+            meter.fail(Error::UnsupportedDelivery);
+        if (!catalog_.engraved || !catalog_.item_event)
+            meter.fail(Error::SchemaMismatch);
+        for (const auto& b : m.bindings) {
+            meter.spend(b.name.size() + b.frame.size() + 1);
+            if (b.query != Query::WillingEventToucher || b.query_time != BindingTime::Activation)
+                meter.fail(Error::UnsupportedBinding);
+        }
     }
 
-    void ReferenceHost::apply(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const {
+    void ReferenceHost::apply(
+        const PlanHandle& plan,
+        std::optional<ActorId> recipient,
+        std::optional<Point> aim,
+        State& state,
+        Meter& meter
+    ) const {
         const auto& meaning = plan->meaning();
         std::array<std::array<bool, actor_capacity>, 8> selected{};
         // Resolve every binding against the same pre-activation world before building any writes.
         for (std::size_t b = 0; b < meaning.bindings.size(); ++b) {
             bool any = false;
             const auto& binding = meaning.bindings[b];
-            if (binding.query == Query::WillingTouchedActor) {
+            if (binding.query == Query::WillingTouchedActor || binding.query == Query::WillingEventToucher) {
                 meter.visit();
                 meter.select();
-                selected[b][request.contact->slot] = true;
+                selected[b][recipient->slot] = true;
                 any = true;
             } else {
                 for (std::size_t i = 0; i < actor_capacity; ++i) {
                     meter.visit();
                     const auto& slot = state.world.actors[i];
-                    if (slot.present && slot.data.health > 0 && slot.data.eligible &&
-                        within(slot.data.position, *request.aim, binding.radius_mm)) {
+                    if (slot.present && slot.data.health > 0 && slot.data.eligible && within(slot.data.position, *aim, binding.radius_mm)) {
                         meter.select();
                         selected[b][i] = true;
                         any = true;
@@ -337,7 +398,7 @@ namespace Magic::Reference {
             const auto due = later(state_.world.tick, plan->meaning().onset_ticks, limits_);
             if (plan->meaning().onset_ticks == 0) {
                 auto scratch = state_;
-                apply(plan, request, scratch, meter);
+                apply(plan, request.contact, request.aim, scratch, meter);
             } // Delayed preview cannot promise future members/status capacity.
             return Preview{static_cast<std::uint32_t>(plan->meaning().effects.size() * 10), due, meter.usage};
         } catch (Failure failure) {
@@ -412,7 +473,7 @@ namespace Magic::Reference {
                 next.plans[slot] = input.plan;
                 kind = EventKind::Queued;
             } else
-                apply(input.plan, input.request, next, meter);
+                apply(input.plan, input.request.contact, input.request.aim, next, meter);
             next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
             next.world.actions_issued = id;
             Observation observation{state_.world, next.world, {}, 1, meter.usage};
@@ -478,7 +539,7 @@ namespace Magic::Reference {
                     current_action = p.action;
                     const Request request{p.caster, std::nullopt, p.aim};
                     validate(next.plans[*index], request, next, meter, false);
-                    apply(next.plans[*index], request, next, meter);
+                    apply(next.plans[*index], request.contact, request.aim, next, meter);
                     next.world.pending[*index] = {};
                     next.plans[*index].reset();
                     observation.events[observation.event_count++] = {EventKind::Activated, p.action, *due};
@@ -515,6 +576,280 @@ namespace Magic::Reference {
             meter.fail(Error::MissingAction);
         } catch (Failure failure) {
             return std::unexpected(failure);
+        }
+    }
+
+    std::expected<ItemId, Failure> ReferenceHost::install(const PlanHandle& plan, ActorId funder) {
+        try {
+            Meter meter(limits_);
+            inscription(plan, meter);
+            const auto& payer = actor(state_.world, funder);
+            if (!payer.data.can_cast || payer.data.health == 0)
+                meter.fail(Error::Permission);
+            const auto cost = static_cast<std::uint32_t>(plan->meaning().effects.size() * 10);
+            if (payer.data.mana < cost)
+                meter.fail(Error::Resources);
+            auto next = state_;
+            for (std::size_t i = 0; i < limits_.items; ++i) {
+                meter.spend();
+                auto& slot = next.items.items[i];
+                if (slot.present)
+                    continue;
+                if (slot.id.generation == limits_.max_generation)
+                    meter.fail(Error::GenerationLimit);
+                revision(next.world, limits_);
+                ++slot.id.generation;
+                slot.present = true;
+                slot.enabled = true;
+                slot.charges = 1;
+                slot.prepaid_mana = cost;
+                slot.plan_bytes = plan->metrics().retained_bytes;
+                next.inscriptions[i] = plan;
+                next.world.actors[funder.slot].data.mana -= cost;
+                const auto id = slot.id;
+                state_ = std::move(next);
+                return id;
+            }
+            meter.fail(Error::ItemLimit);
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<void, Failure> ReferenceHost::enable_item(ItemId id, bool enabled) {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(item(state_.items, id));
+            auto next = state_;
+            revision(next.world, limits_);
+            next.items.items[id.slot].enabled = enabled;
+            state_ = std::move(next);
+            return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<void, Failure> ReferenceHost::remove_item(ItemId id) {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(item(state_.items, id));
+            auto next = state_;
+            revision(next.world, limits_);
+            next.items.items[id.slot] = {id};
+            next.inscriptions[id.slot].reset();
+            state_ = std::move(next);
+            return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<TouchEvent, Failure> ReferenceHost::admit_touch(std::uint64_t fact, ItemId id, ActorId toucher) {
+        try {
+            Meter meter(limits_);
+            if (fact == 0 || fact > limits_.max_fact_id)
+                meter.fail(Error::InvalidEvent);
+            static_cast<void>(item(state_.items, id));
+            static_cast<void>(actor(state_.world, toucher));
+            for (const auto& record : state_.items.ledger) {
+                meter.spend();
+                if (record.fact == fact)
+                    meter.fail(Error::DuplicateFact);
+            }
+            if (state_.items.events_issued == limits_.touch_receipts)
+                meter.fail(Error::EventLimit);
+            if (state_.items.events_issued == limits_.max_event_nonce)
+                meter.fail(Error::NonceLimit);
+            auto next = state_;
+            revision(next.world, limits_);
+            const auto index = static_cast<std::size_t>(next.items.events_issued);
+            const auto nonce = next.items.events_issued + 1;
+            next.items.ledger[index] = {fact, nonce, id, toucher, false};
+            next.items.events_issued = nonce;
+            TouchEvent event(owner_, nonce);
+            state_ = std::move(next);
+            return event;
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<TouchEvent, Failure> ReferenceHost::resume_touch(std::uint64_t fact) const {
+        try {
+            Meter meter(limits_);
+            if (fact == 0 || fact > limits_.max_fact_id)
+                meter.fail(Error::InvalidEvent);
+            for (const auto& record : state_.items.ledger) {
+                meter.spend();
+                if (record.fact != fact)
+                    continue;
+                if (record.consumed)
+                    meter.fail(Error::RepeatedEvent);
+                static_cast<void>(item(state_.items, record.item));
+                static_cast<void>(actor(state_.world, record.toucher));
+                return TouchEvent(owner_, record.nonce);
+            }
+            meter.fail(Error::MissingFact);
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<ItemObserved, Failure> ReferenceHost::touch(const TouchEvent& event) {
+        try {
+            Meter meter(limits_);
+            if (!event.owner_)
+                meter.fail(Error::InvalidEvent);
+            if (event.owner_ != owner_)
+                meter.fail(Error::ForeignEvent);
+            if (event.nonce_ == 0 || event.nonce_ > state_.items.events_issued)
+                meter.fail(Error::InvalidEvent);
+            const auto index = static_cast<std::size_t>(event.nonce_ - 1);
+            const auto& record = state_.items.ledger[index];
+            if (record.consumed)
+                meter.fail(Error::RepeatedEvent);
+            const auto& current = item(state_.items, record.item);
+            if (!current.enabled)
+                meter.fail(Error::DisabledItem);
+            if (current.charges == 0)
+                meter.fail(Error::SpentItem);
+            inscription(state_.inscriptions[record.item.slot], meter);
+            eligible(state_.world, record.toucher);
+            auto next = state_;
+            revision(next.world, limits_);
+            apply(next.inscriptions[record.item.slot], record.toucher, std::nullopt, next, meter);
+            --next.items.items[record.item.slot].charges;
+            next.items.ledger[index].consumed = true;
+            auto report =
+                std::make_shared<const ItemObservation>(ItemObservation{state_.world, next.world, state_.items, next.items, meter.usage});
+            static_assert(std::is_nothrow_move_assignable_v<State>);
+            state_ = std::move(next);
+            return ItemObserved(std::move(report));
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+
+    struct Checkpoint::Data {
+        ReferenceHost::State state;
+        Catalog catalog;
+        HostLimits limits;
+        std::uint64_t tickets_issued;
+    };
+    void ReferenceHost::continuation(const State& state, std::uint64_t tickets, Meter& meter) const {
+        const auto& w = state.world;
+        const auto& it = state.items;
+        auto check = [&](bool valid) {
+            if (!valid)
+                meter.fail(Error::InvalidCheckpoint);
+        };
+        check(
+            w.tick <= limits_.max_tick && w.revision <= limits_.max_revision && w.actions_issued <= limits_.max_action &&
+            tickets <= limits_.max_ticket && it.events_issued <= limits_.touch_receipts && it.events_issued <= limits_.max_event_nonce
+        );
+        std::size_t statuses = 0;
+        for (std::size_t i = 0; i < actor_capacity; ++i) {
+            meter.spend();
+            const auto& a = w.actors[i];
+            check(a.id.slot == i && a.id.generation <= limits_.max_generation);
+            if (a.present) {
+                check(i < limits_.actors && a.id.generation != 0 && spec_valid(a.data));
+                if (a.slow.until_tick) {
+                    ++statuses;
+                    check(
+                        a.slow.until_tick > w.tick && a.slow.until_tick <= limits_.max_tick && a.slow.permille > 0 &&
+                        a.slow.permille <= 1000
+                    );
+                } else
+                    check(a.slow == Slow{});
+            } else
+                check(a.data == ActorSpec{} && a.slow == Slow{});
+        }
+        check(statuses <= limits_.statuses);
+        for (std::size_t i = 0; i < pending_capacity; ++i) {
+            meter.spend();
+            const auto& p = w.pending[i];
+            if (!p.present) {
+                check(p == PendingView{} && !state.plans[i]);
+                continue;
+            }
+            check(
+                i < limits_.pending && p.action > 0 && p.action <= w.actions_issued && p.due_tick > w.tick && p.due_tick <= limits_.max_tick
+            );
+            check(
+                state.plans[i] && state.plans[i]->metrics().retained_bytes == p.plan_bytes && state.plans[i]->meaning().onset_ticks != 0 &&
+                state.plans[i]->meaning().delivery == Delivery::Burst
+            );
+            for (std::size_t j = 0; j < i; ++j) {
+                meter.spend();
+                check(!w.pending[j].present || w.pending[j].action != p.action);
+            }
+            validate(state.plans[i], Request{p.caster, std::nullopt, p.aim}, state, meter, false);
+            for (const auto& effect : state.plans[i]->meaning().effects) {
+                meter.spend();
+                static_cast<void>(later(p.due_tick, effect.duration_ticks, limits_));
+            }
+        }
+        for (std::size_t i = 0; i < item_capacity; ++i) {
+            meter.spend();
+            const auto& a = it.items[i];
+            check(a.id.slot == i && a.id.generation <= limits_.max_generation);
+            if (!a.present) {
+                check(a == ItemView{a.id} && !state.inscriptions[i]);
+                continue;
+            }
+            check(i < limits_.items && a.id.generation != 0 && a.charges <= 1 && state.inscriptions[i]);
+            inscription(state.inscriptions[i], meter);
+            check(
+                a.plan_bytes == state.inscriptions[i]->metrics().retained_bytes &&
+                a.prepaid_mana == state.inscriptions[i]->meaning().effects.size() * 10
+            );
+        }
+        for (std::size_t i = 0; i < touch_capacity; ++i) {
+            meter.spend();
+            const auto& r = it.ledger[i];
+            if (i >= it.events_issued) {
+                check(r == TouchRecord{});
+                continue;
+            }
+            check(
+                r.fact > 0 && r.fact <= limits_.max_fact_id && r.nonce == i + 1 && r.item.slot < limits_.items && r.item.generation > 0 &&
+                r.item.generation <= it.items[r.item.slot].id.generation && r.toucher.slot < limits_.actors && r.toucher.generation > 0 &&
+                r.toucher.generation <= w.actors[r.toucher.slot].id.generation
+            );
+            for (std::size_t j = 0; j < i; ++j) {
+                meter.spend();
+                check(it.ledger[j].fact != r.fact);
+            }
+            // Historical references may be departed/replaced. They remain receipts, never live authority.
+        }
+    }
+    std::expected<Checkpoint, Failure> ReferenceHost::checkpoint() const {
+        try {
+            Meter meter(limits_);
+            meter.spend(220); // bounded catalog metadata/key copy, in addition to fixed State overhead
+            continuation(state_, tickets_issued_, meter);
+            return Checkpoint(std::make_shared<const Checkpoint::Data>(Checkpoint::Data{state_, catalog_, limits_, tickets_issued_}));
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<void, Failure> ReferenceHost::restore(const Checkpoint& checkpoint) {
+        try {
+            Meter meter(limits_);
+            if (!checkpoint.data_)
+                meter.fail(Error::InvalidCheckpoint);
+            const auto& data = *checkpoint.data_;
+            // Catalog is bounded (three keys, at most64 bytes each); charge identity comparison before copying.
+            meter.spend(220);
+            if (data.limits != limits_ || !same_catalog(data.catalog, catalog_))
+                meter.fail(Error::IncompatibleCheckpoint);
+            continuation(data.state, data.tickets_issued, meter);
+            auto next = data.state;
+            auto incarnation = std::make_shared<const std::uint8_t>(0);
+            state_ = std::move(next);
+            owner_ = std::move(incarnation);
+            tickets_issued_ = data.tickets_issued;
+            prepared_.reset();
+            return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
         }
     }
 
@@ -556,6 +891,19 @@ namespace Magic::Reference {
             MAGIC_ERROR(StaleTicket);
             MAGIC_ERROR(ConsumedTicket);
             MAGIC_ERROR(MissingAction);
+            MAGIC_ERROR(ItemLimit);
+            MAGIC_ERROR(MissingItem);
+            MAGIC_ERROR(DisabledItem);
+            MAGIC_ERROR(SpentItem);
+            MAGIC_ERROR(InvalidEvent);
+            MAGIC_ERROR(ForeignEvent);
+            MAGIC_ERROR(RepeatedEvent);
+            MAGIC_ERROR(DuplicateFact);
+            MAGIC_ERROR(MissingFact);
+            MAGIC_ERROR(EventLimit);
+            MAGIC_ERROR(NonceLimit);
+            MAGIC_ERROR(InvalidCheckpoint);
+            MAGIC_ERROR(IncompatibleCheckpoint);
         }
 #undef MAGIC_ERROR
         return "InvalidError";

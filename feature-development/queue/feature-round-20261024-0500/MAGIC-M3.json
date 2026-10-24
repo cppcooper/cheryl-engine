@@ -1,0 +1,79 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "MAGIC-M3",
+  "status": "ready",
+  "checks_passed": true,
+  "base_commit": "8b6dcad36002eaaf9007b94b712bb2cf2288a64a",
+  "evidence": [
+    "feature-development/magic/logs/M3/configure-01.log",
+    "feature-development/magic/logs/M3/build-01.log",
+    "feature-development/magic/logs/M3/accumulated-01.log",
+    "feature-development/magic/logs/M3/build-02.log",
+    "feature-development/magic/logs/M3/affected-01.log",
+    "feature-development/magic/logs/M3/build-03.log",
+    "feature-development/magic/logs/M3/affected-02.log"
+  ],
+  "verification": {
+    "platform": "GNU/Linux Debug C++23 GNU16, warnings as errors, ASan+UBSan",
+    "sanitizer_environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "configure_invocations": 1,
+    "incremental_build_invocations": 3,
+    "accumulated_suite_invocations": 1,
+    "accumulated_ctest_entries_passed": 13,
+    "affected_ctest_entries_passed": [
+      2,
+      2
+    ],
+    "new_contract_cases_by_run": [
+      29,
+      32,
+      34
+    ],
+    "final_engraving_checkpoint_cases": 34,
+    "new_caller_scenarios": 3,
+    "retained_m1": {
+      "ctest_entries": 9,
+      "compiler_cases": 35,
+      "ordinary_callers": 4,
+      "file_fixtures": 6,
+      "cli_scenarios": 9
+    },
+    "retained_m2": {
+      "ctest_entries": 2,
+      "host_cases": 37,
+      "reference_callers": 6
+    },
+    "exact_boundaries": {
+      "items": 8,
+      "touch_receipts": 16,
+      "tested_nonce_horizon": 1,
+      "touch_work": 168,
+      "base_checkpoint_work": 348,
+      "selected_targets": 1,
+      "selector_visits": 1
+    },
+    "all_native_exit_statuses": 0,
+    "results": "All13 accumulated entries pass once; checkpoint-only review changes pass the two affected entries with32 cases; final test/caller-only nonzero-aim and restored-exhaustion refinements pass the same2 entries with34 cases and3 callers. No sanitizer findings; no compiler failures or resource/auth admission refusals. Shared-lock queueing retains the original build session."
+  },
+  "implemented_contracts": [
+    "M3-019: Trusted native-owner installation retains actual immutable M1 one-charge item-touch plans, generation-checked bounded items and prepaid10 mana/effect. S5 heals the accepted eligible willing event toucher by12 and spends one charge in a single successful staged adoption; spent items remain visible and inert.",
+    "Shared spoken/item payload schema checks, all-binding resolution and staged writes; exact current symbolic key AND primitive/quantities/capability rechecks, overlap refusal and active-slow refusal. No fake spoken caster or copied effect implementation.",
+    "M3-020: Opaque incarnation-bound touch admission, unique bounded logical facts/nonces and lifetime non-evicting ledger. Default/foreign/repeated/stale-generation inputs refuse; copies share one use; failed application preserves admission and all world/item/ledger/resource state. Trusted resume reauthorizes only existing outstanding facts after restore.",
+    "M3-021: Distinct opaque immutable validated in-memory checkpoint owns world/clock/counters/schema/limits, actual pending and item plan handles, items/charges and event issuance/receipt ledger. Observational Snapshot cannot restore. Exact-compatible restoration validates whole proposed state before fresh-incarnation adoption; live prepared tickets/capabilities never revive.",
+    "Owner/source/compiler/catalog destruction, immutable old outputs, armed/spent whole-world rewind, retained nonzero aim/due tick and pending/active-slow continuation verified through real finite caller and independent literal assertions.",
+    "Checked finite item/receipt/nonce/fact/generation/revision/time/work/selector/target/retained-plan bounds, before-adoption reports and no silent eviction, wrap, refund, retry or retargeting. Existing M1/M2 source laws and tests retained."
+  ],
+  "limitations": [
+    "Private trusted single-thread native fixture owner; admission asserts contact. No network authentication, item physics, public Engine combat integration or security sandbox.",
+    "In-memory only: no disk codec, process restart, crash/power-loss durability or external exactly-once delivery. Intentional whole-world rewind can restore an armed earlier timeline; dedupe applies within each resulting timeline.",
+    "Immediate item-touch/one-charge only; no automatic rearming, general trigger graph/event bus, ray/non-G0 runtime, balance/fun/graphical/learner acceptance.",
+    "Exact catalog ordering/schema/capabilities and all limits must match restore destination. Capture refuses currently invalid retained pending work until owner correction/cancellation; no migration or implicit repair.",
+    "Lifetime receipts are never evicted, including failed/spent/departed facts; finite exhaustion refuses. Failed touch preserves its admission; installed mana never refunds.",
+    "Logical work/payload limits are not CPU-cycle/exact heap/RSS accounting; allocator/control-block overhead and caller-retained immutable history are outside host quotas. Allocation exceptions propagate before adoption; no fault injection/OOM test.",
+    "GNU/Linux Debug GNU16 ASan/UBSan only; known tracing restriction leaves LSan unverified, other platforms/toolchains/ABIs unverified."
+  ],
+  "next_action": "Remain idle after this single local feat/magic checkpoint. Finite controller may admit pinned MAGIC-M4 only after clean/drained committed passing predecessor receipt/evidence; that unit inspects actual M3 source/logs first. Publisher handles backup; no worker scheduling or later-unit implementation here."
+}

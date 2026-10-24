@@ -1,31 +1,30 @@
 # Next MAGIC action
 
-MAGIC-M2 is **ready for review**: the private finite host executes actual owned
-M1 spoken contact and immediate/delayed disk plans. S1–S4 and novel heal+slow cause
-real reference-state changes; S5 remains inspectable and runtime-refused.
-Receipt: [magic/MAGIC-M2.json](magic/MAGIC-M2.json).
+MAGIC-M3 is **ready for coordinator review**. Immediate one-charge item-touch
+engravings use actual retained M1 plans and the shared M2 payload path. S5 heals
+the admitted eligible willing toucher by 12 and atomically spends one prepaid
+charge. A distinct owned in-memory checkpoint retains plans, pending work,
+items, replay receipts and schema/limit identity. Restore creates fresh authority;
+Snapshot remains observational.
 
-The worker ends idle after the local checkpoint. Next: coordinator reviews M2,
-then may assign a bounded item/event/charge/checkpoint unit with explicit event
-authority, dedupe retention and armed/spent restore. No later runtime work starts
-without that assignment. Publisher owns ordinary feat/magic backup transport.
+Receipt: [MAGIC-M3.json](queue/feature-round-20261024-0500/MAGIC-M3.json).
+Evidence: accumulated **13/13** CTest entries once, including all M1/M2 regressions.
+Two affected **2/2** runs verify checkpoint refinements and final caller/test
+witnesses: **34 new contract cases and 3 caller scenarios**. Separate retained
+counts: 35 compiler cases, 4 ordinary callers, 6 fixtures, 9 CLI scenarios; 37 M2 host
+cases and 6 reference callers. Complete commands/exits and limits are in
+[agent-notes.md](agent-notes.md), with logs under magic/logs/M3.
 
-Evidence: accumulated suite **11/11** once, retaining all 9 M1 CTest entries
-(35 compiler cases, 4 callers, 6 file fixtures, 9 CLI scenarios). After directly
-related source/test changes, **2/2 affected entries** pass with 37 host cases and 6
-reference caller scenarios. A final test-only insertion-order improvement passes
-all 37 host cases in a **1/1** focused recheck. See [agent-notes.md](agent-notes.md) for actual commands,
-counts, literal states, ownership, resource limits and complete saved logs.
+The worker ends idle. Next pinned task is MAGIC-M4 learning records/tome, only
+through the finite controller's clean/drained committed-receipt/evidence gate.
+Its worker must inspect actual M3 source and evidence before building on it;
+this turn starts no later unit. Publisher handles ordinary feat/magic backup.
 
-Deliberate runtime rules: one host-bound prepared ticket; live schema/key/primitive,
-permission/contact/funds rechecks; 10 mana/effect at accepted release; no refund
-after accepted delay or cancellation. Complete advance refusal preserves world,
-clock and queue until explicit correction/cancellation. Actor/field overlap and
-active-slow replacement refuse. Expiry precedes same-tick activation.
-
-S5, ray and non-G0 delivery remain runtime-refused. Item authentication/charges,
-dedupe/checkpoints/durability, production integration/balance, graphics/learning/
-fun, allocation fault injection and other platforms/ABIs remain pending. Leak
-checking remains unverified under tracing; only recorded commands disable leak
-detection while retaining address/undefined sanitizers. No external effect or
-exactly-once delivery guarantee is claimed.
+Runtime remains private and finite: spoken contact/G0 disks and immediate
+item-touch only; ray, general triggers and rearming refuse or remain absent.
+Prepaid 10 mana/effect never refunds. Sixteen lifetime touch receipts never evict;
+exhaustion refuses. Restore requires exact catalog/limit identity and deliberately
+rewinds the whole world, with duplicate prevention inside each resulting timeline.
+No disk/process/crash guarantee or external exactly-once claim. Graphics/fun,
+production integration, learning, other platforms, leak coverage under tracing,
+allocator fault injection and exact heap accounting remain unverified.

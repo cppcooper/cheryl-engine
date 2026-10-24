@@ -1,0 +1,74 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_engraving_(contracts|caller)$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 12
+    Start 12: magic_engraving_contracts
+
+12: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_checks
+12: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+12: Test timeout computed to be: 30
+12: PASS literal armed/released/spent worlds and immutable report
+12: PASS accepted event binds actual toucher rather than installer/previous target
+12: PASS unwilling ineligible and dead admission stays usable after explicit correction
+12: PASS installation funds exactly10 once; nine and permission refuse
+12: PASS live key primitive quantity and capability changes refuse atomically
+12: PASS unknown owned key never dispatches solely by enum
+12: PASS default foreign copied and repeated capabilities
+12: PASS disabled refusal preserves admission; spent stays visible and inert
+12: PASS removed/reused item generation rejects old fact and never refunds
+12: PASS removed/reused toucher cannot retarget an old admission
+12: PASS item generation horizon refuses first-free reuse without mutation
+12: PASS item exact capacity eight and one-short zero
+12: PASS receipt exact sixteen and one-short admission limits; no eviction
+12: PASS nonce and fact horizons exact and one-short without wrap
+12: PASS installation refuses wrong envelope and missing plan
+12: PASS whole payload shares slow/health logic; conflicting bindings cannot partially heal
+12: PASS plan byte quota exact and one-short on installation
+12: touch exact work=168
+12: PASS touch work exact boundary and one-short preserve charge and receipt
+12: PASS touch selector and selected target one-short
+12: PASS owned armed checkpoint survives source catalog and original owner destruction
+12: PASS restore fresh authority rejects both old tickets and event copies; resume explicit
+12: PASS explicit whole-world rewind restores charges but not old live authority
+12: PASS checkpoint retains ledger tombstones across removal/replacement
+12: PASS default/incompatible schema/limits restore preserves old world and casting ticket
+12: PASS checkpoint rejects currently unsupported retained schema and departed pending caster
+12: PASS pending plan captured aim due tick active slow and expiry survive checkpoints
+12: PASS checkpoint state work bound refuses without changing caller outputs
+12: PASS one checkpoint coherently retains items receipts slow and pending spoken work
+12: PASS checkpoint refuses intrinsic pending duration beyond time horizon
+12: PASS checkpoint capture and restore work exact348 and one-short347
+12: PASS revision exhaustion preserves touch charge and admission
+12: PASS nonzero accepted aim remains fixed across owner movement and destruction
+12: PASS restoration retains issuance and generation exhaustion horizons
+12: PASS new limit ceilings refuse rather than raising storage
+12: 34 engraving/checkpoint cases passed; 0 failed.
+1/2 Test #12: magic_engraving_contracts ........   Passed    0.02 sec
+test 13
+    Start 13: magic_engraving_caller
+
+13: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_demo
+13: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+13: Test timeout computed to be: 30
+13: restored armed rune: health 50 -> 62, charges 1 -> 0
+13: restored spent rune: SpentItem, health remains62
+13: restored delayed disk aim(1000,-500) radius250mm: tick99 hp50; tick100 hp42 speed750 until300; tick300 speed1000
+13: 3 engraving/checkpoint caller scenarios passed (armed, spent, delayed plus active-status continuation).
+2/2 Test #13: magic_engraving_caller ...........   Passed    0.01 sec
+
+The following tests passed:
+	magic_engraving_contracts
+	magic_engraving_caller
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.03 sec
+
+exit_status=0

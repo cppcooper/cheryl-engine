@@ -1,0 +1,13 @@
+$ git diff --check
+exit_status=0
+$ git diff --exit-code HEAD -- projects/magic/include/magic/compiler.h projects/magic/src/compiler.cpp projects/magic/tests/compiler.cpp projects/magic/tests/caller.cpp projects/magic/tests/reference-host.cpp projects/magic/src/reference-demo.cpp projects/magic/fixtures feature-development/magic/MAGIC-M1.json feature-development/magic/MAGIC-M2.json
+exit_status=0
+$ clang-format --dry-run --Werror projects/magic/include/magic/reference-host.h projects/magic/src/reference-host.cpp projects/magic/src/engraving-demo.cpp projects/magic/tests/engraving.cpp
+exit_status=0
+MAGIC-M1: predecessor receipt and all saved evidence are unchanged committed files
+MAGIC-M2: predecessor receipt and all saved evidence are unchanged committed files
+M3 receipt: seven complete native-command logs exist with immediate exit_status=0; exact batch/milestone bindings pass
+projects/magic/src/reference-host.cpp sha256=6669eb90c62a7a247b8d363601369b8c1944ebfff9b389eff4ba35915eefdf7d
+projects/magic/tests/engraving.cpp sha256=f27dbc3d75fd12d210f7025c9d0c233e09b0d086fdf693365ee1ef599427d4bf
+projects/magic/src/engraving-demo.cpp sha256=ea8a5053e370eb6ed375f1c7fbc8b763f2449ec7caaae24736210279fde08a1a
+static review exit_status=0
