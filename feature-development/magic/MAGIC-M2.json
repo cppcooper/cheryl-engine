@@ -1,0 +1,87 @@
+{
+  "milestone_id": "MAGIC-M2",
+  "status": "ready",
+  "checks_passed": true,
+  "base_commit": "3980904cf9fc03fac913d1fafd56c6f17d677b4e",
+  "evidence": [
+    "feature-development/magic/logs/M2/configure-01.log",
+    "feature-development/magic/logs/M2/build-01.log",
+    "feature-development/magic/logs/M2/build-02.log",
+    "feature-development/magic/logs/M2/build-03.log",
+    "feature-development/magic/logs/M2/build-04.log",
+    "feature-development/magic/logs/M2/accumulated-01.log",
+    "feature-development/magic/logs/M2/affected-01.log",
+    "feature-development/magic/logs/M2/affected-02.log",
+    "feature-development/magic/logs/M2/static-review.log",
+    "feature-development/magic/logs/M2/staged-review.log"
+  ],
+  "verification": {
+    "platform": "GNU/Linux",
+    "compiler": "GNU 16.2.1",
+    "configuration": "Existing private Debug C++23 build; ASan+UBSan; -Wall -Wextra -Wpedantic -Werror",
+    "sanitizer_environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "configure_invocations": 1,
+    "build_invocations": 4,
+    "accumulated_suite_invocations": 1,
+    "affected_rechecks": 2,
+    "accumulated_ctest_entries_passed": 11,
+    "affected_ctest_entries_passed": [
+      2,
+      1
+    ],
+    "unique_ctest_entries": 11,
+    "final_host_contract_cases": 37,
+    "reference_caller_scenarios": 6,
+    "spoken_caller_executions": 5,
+    "engraved_caller_inspection_refusals": 1,
+    "retained_m1": {
+      "ctest_entries": 9,
+      "compiler_contract_cases": 35,
+      "ordinary_caller_scenarios": 4,
+      "file_fixtures": 6,
+      "cli_process_scenarios": 9
+    },
+    "results": "All configure/build/native invocations exit 0. Accumulated run includes M1 once and initial 34 host cases. Directly related test/header/caller changes pass the two affected entries with 37 host cases and 6 caller scenarios. A final test-only actual actor-insertion-order witness change passes the host entry alone (37 cases); production host/caller remain unchanged. No sanitizer findings.",
+    "exact_boundaries": {
+      "s2_activation_work": 308,
+      "selected_binding_actor_pairs": 128,
+      "selector_slot_visits": 1024,
+      "pending_casts": 8,
+      "active_slows": 16
+    },
+    "object_bytes_on_verified_abi": {
+      "host": 1872,
+      "snapshot": 1496,
+      "observation": 3216
+    },
+    "final_host_recheck_log": "feature-development/magic/logs/M2/affected-02.log"
+  },
+  "implemented_contracts": [
+    "Private finite deterministic spoken reference host consumes actual owned immutable M1 plans, with no provider/network/callback/physics/Engine or sibling dependency",
+    "Real S1-S4 and novel mixed-school healing-plus-slow execution, independent full literal before/release/onset/expiry states, headless caller with actual moved actors and observed results",
+    "Host-local actor slot/generation identities and live permission/contact/resources; opaque host-incarnation single-use prepare/release tickets reject default, foreign, superseded, stale and repeated inputs; preview is pure",
+    "Current exact symbolic key AND primitive, quantity/duration schema and capability validation before release and delayed activation; enum-only dispatch cannot authorize a foreign/changed key",
+    "Caster pays10 mana/effect exactly once at accepted release; delayed casts reserve a bounded slot and freeze accepted G0 world aim; no automatic retry or refund after accepted release/cancellation",
+    "Current eligible living actor centres queried at activation with inclusive checked distance; onset100 and duration200 ticks, status expiry before same-tick action-ID-ordered activation",
+    "All bindings resolve before writes; cross-binding actor/health or actor/speed conflicts refuse, active slow replacement/stacking refuses, health clamps and pre-activation eligibility is explicit",
+    "Whole finite state/resource/queue/action/observation staging before nonthrowing adoption; failed advances preserve clock, prior statuses, actors, resources and entire queue including earlier scratch actions",
+    "Immutable owned old observations outlive host and plan; pending slots retain real M1 handles without deep text/program copies; explicit cancellation frees slot and retained handle",
+    "Bounds for actors/statuses/queue, selector and selected-target complete-step work, charged total work, retained per-plan logical bytes, positions/scalars and checked time/action/ticket/revision/generation horizons",
+    "M1 regression suite retained and run once; complete command/stdout/stderr/immediate exit status logs saved; only two affected entries rechecked after directly related changes"
+  ],
+  "limitations": [
+    "Finite private reference owner, not public Engine combat/runtime integration or a security sandbox against arbitrary native callers; owner edits and host-local logical IDs are trusted",
+    "Runtime supports spoken release contact and immediate/delayed inclusive G0 disks only; ray, engraved/item-event S5 and non-G0 bindings explicitly refuse without retargeting",
+    "No item charges, authenticated event dispatch, replay/deduplication, checkpoints/restoration, durable saves or external exactly-once delivery",
+    "Failed due action can block whole advancement until explicit owner correction/cancellation; accepted-release mana is never refunded and future targets/status capacity are not reserved",
+    "One slow per actor with no stacking/replacement/refresh; same-actor field conflicts inside an activation refuse; separate accepted actions follow chronological due tick then action ID",
+    "Coarse reference eligibility/can_cast/willingness, fixed fixture price and health rules; no line-of-sight, contact physics, faction/resistance, production balance, learner progression, graphics or fun/playtest acceptance",
+    "Resource meters are deterministic operation/logical payload models, not CPU-cycle or exact heap/RSS guarantees; allocator/control-block overhead and caller-retained output history are outside host quotas",
+    "Allocation exceptions propagate before adoption; fault injection/OOM experiments are unexecuted",
+    "GNU/Linux Debug GNU16 ASan/UBSan only; LSan tracing restriction preserves unverified leak checking, other platforms/toolchains/ABIs and installed Engine SDK remain unverified"
+  ],
+  "next_action": "Leave worker idle after coherent local feat/magic checkpoint. Coordinator reviews M2, then may assign a bounded item/event/charge/checkpoint unit covering event authority, dedupe retention and coherent armed/spent restore; no durable external delivery claim. Coordinator publisher handles backup transport."
+}

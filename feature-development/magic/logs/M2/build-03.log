@@ -1,0 +1,12 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[ 14%] Built target magic_compiler
+[ 28%] Built target magic_inspect
+[ 42%] Built target magic_checks
+[ 57%] Built target magic_caller_checks
+[ 71%] Built target magic_reference_host
+[ 85%] Built target magic_host_checks
+[ 92%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[100%] Linking CXX executable magic_reference_demo
+[100%] Built target magic_reference_demo
+
+exit_status=0

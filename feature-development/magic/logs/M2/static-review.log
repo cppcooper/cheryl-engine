@@ -1,0 +1,13 @@
+$ /mnt/projects/cheryl-features/scripts/build -- clang-format --dry-run --Werror projects/magic/include/magic/reference-host.h projects/magic/src/reference-host.cpp projects/magic/src/reference-demo.cpp projects/magic/tests/reference-host.cpp
+exit_status=0
+$ git diff --exit-code 3980904cf9fc03fac913d1fafd56c6f17d677b4e -- projects/magic/include/magic/compiler.h projects/magic/src/compiler.cpp projects/magic/src/main.cpp projects/magic/tests/compiler.cpp projects/magic/tests/caller.cpp projects/magic/tests/cli.py projects/magic/tests/literals.h projects/magic/fixtures feature-development/magic/MAGIC-M1.json
+exit_status=0
+PASS receipt required fields, all10 nonempty relative logs, complete native command exit statuses, exact accepted counts and unaffected M1 source/fixtures/receipt.
+PASS worktree/index agreement and assigned feat/magic scope.
+96cc68f48e6c10014edc54602367bcefc1c7b178c65af772456aede5dd18703c  projects/magic/CMakeLists.txt
+3ffb393185e793d1957540bc210cc46bc932ebff7732808a65b58d0c79f945a8  projects/magic/include/magic/reference-host.h
+5cd172e36c92d6d07f13e9aac8ec003480ce9f5f9807472ac55c3f2d369b51f0  projects/magic/src/reference-demo.cpp
+6ce38570b2ddcdf8adb08efd34c5faa91a11b1da6248e178f6ab8792d8f8300b  projects/magic/src/reference-host.cpp
+0e08be163f72734ef8b017ec44833babc50563edff60d512b7c762293f0fd6b0  projects/magic/tests/reference-host.cpp
+Final source hashes identify the verified host/caller/check inputs; no repeated accumulated suite or unavailable leak/platform/fun/durability claim.
+exit_status=0

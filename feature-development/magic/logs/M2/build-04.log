@@ -1,0 +1,8 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_host_checks --parallel 1
+[ 33%] Built target magic_compiler
+[ 66%] Built target magic_reference_host
+[ 83%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[100%] Linking CXX executable magic_host_checks
+[100%] Built target magic_host_checks
+
+exit_status=0

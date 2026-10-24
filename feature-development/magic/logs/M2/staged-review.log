@@ -1,0 +1,34 @@
+$ git branch --show-current
+feat/magic
+exit_status=0
+$ git rev-parse HEAD
+3980904cf9fc03fac913d1fafd56c6f17d677b4e
+exit_status=0
+$ git diff --cached --stat
+ feature-development/agent-notes.md                 | 305 ++++++++
+ feature-development/decisions.md                   |  32 +-
+ feature-development/magic/MAGIC-M2.json            |  87 +++
+ .../magic/logs/M2/accumulated-01.log               | 389 ++++++++++
+ feature-development/magic/logs/M2/affected-01.log  | 114 +++
+ feature-development/magic/logs/M2/affected-02.log  |  66 ++
+ feature-development/magic/logs/M2/build-01.log     |  16 +
+ feature-development/magic/logs/M2/build-02.log     |  16 +
+ feature-development/magic/logs/M2/build-03.log     |  12 +
+ feature-development/magic/logs/M2/build-04.log     |   8 +
+ feature-development/magic/logs/M2/configure-01.log |   6 +
+ feature-development/next.md                        |  43 +-
+ projects/magic/CMakeLists.txt                      |  14 +
+ projects/magic/include/magic/reference-host.h      | 220 ++++++
+ projects/magic/src/reference-demo.cpp              | 105 +++
+ projects/magic/src/reference-host.cpp              | 563 ++++++++++++++
+ projects/magic/tests/reference-host.cpp            | 832 +++++++++++++++++++++
+ 17 files changed, 2803 insertions(+), 25 deletions(-)
+exit_status=0
+$ git diff --cached --check
+exit_status=0
+Staged review covers new reference host/header, actual caller, independent literal and refusal checks, CMake additions, both decision views, next action and M2 receipt/evidence.
+Reviewed key+primitive/current-schema authority, host-bound single-use input, live rechecks, release payment, captured aim/current membership, all-binding overlap, active-slow policy and exact expiry.
+Reviewed fixed-array staging/result allocation before noexcept adoption, complete-step rollback and explicit cancellation; no callback/production/durable guarantee.
+Strengthened overlap witness now creates actors in both actual insertion orders and checks both effect orders; final host recheck passes37 cases.
+All native commands have complete saved diagnostics and immediate exit0; M1 is retained and run once, only affected names repeat.
+No protected/sibling changes, merges, dependency-pin changes, resets/cleans/stashes/rebases/amends, global config changes or pushes.

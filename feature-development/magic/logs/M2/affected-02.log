@@ -1,0 +1,66 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_host_contracts$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 10
+    Start 10: magic_host_contracts
+
+10: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_host_checks
+10: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+10: Test timeout computed to be: 30
+10: PASS S1 full literal release and pure preview
+10: PASS S2 full literal release/onset/expiry
+10: PASS S4 full literal release/onset/expiry
+10: PASS S3 immediate literal slow and expiry
+10: PASS novel heal plus slow literal state
+10: PASS current membership moved point boundary and eligibility
+10: PASS removed target and generation replacement
+10: PASS source catalog and plan lifetime in pending slot
+10: PASS accepted aim freezes world context
+10: PASS forged foreign repeated and superseded tickets
+10: PASS pure preview grants no ticket and discarded token is inert
+10: PASS world revision staleness without lost prior output
+10: PASS live permission mana contact and willingness rechecks
+10: PASS contact exact50 and invalid actor references
+10: PASS exact and insufficient mana with cap and zero health
+10: PASS key plus primitive current schema authority
+10: PASS current schema rechecked at delayed activation
+10: PASS pending permission and caster generation recheck
+10: PASS overlap health conflicts both storage and effect orders
+10: PASS overlap speed fields across distinct bindings
+10: PASS active slow refuses replacement then expires before activation
+10: PASS whole advance rollback after earlier successful scratch action
+10: PASS exact paid delayed funds need no second debit
+10: PASS active slow at delayed onset refuses complete activation
+10: PASS deferred status quota is checked at activation
+10: PASS cancellation never refunds or repeats an accepted action
+10: PASS empty current selection has no charge and delayed empty preserves queue
+10: PASS engraved and ray inspect but refuse runtime
+10: PASS unsupported frame invalid aim null and exact plan bytes
+10: PASS distance extremes and valid actor limits
+10: PASS pending exact ceiling and no debit on full queue
+10: PASS active status exact ceiling and one less
+10: PASS complete step target128 and selector1024 exact bounds
+10: Exact S2 activation work=308
+10: PASS exact work boundary and rejected work preserves prior state
+10: PASS time exact onset expiry and range exhaustion
+10: PASS action ticket revision and generation exhaustion
+10: PASS zero quotas and fixed ceilings
+10: Fixed object bytes: host=1872 snapshot=1496 observation=3216
+10: 37 reference host cases passed; 0 failed.
+1/1 Test #10: magic_host_contracts .............   Passed    0.03 sec
+
+The following tests passed:
+	magic_host_contracts
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.03 sec
+
+exit_status=0

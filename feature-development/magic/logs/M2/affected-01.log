@@ -1,0 +1,114 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_(host_contracts|reference_caller)$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 10
+    Start 10: magic_host_contracts
+
+10: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_host_checks
+10: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+10: Test timeout computed to be: 30
+10: PASS S1 full literal release and pure preview
+10: PASS S2 full literal release/onset/expiry
+10: PASS S4 full literal release/onset/expiry
+10: PASS S3 immediate literal slow and expiry
+10: PASS novel heal plus slow literal state
+10: PASS current membership moved point boundary and eligibility
+10: PASS removed target and generation replacement
+10: PASS source catalog and plan lifetime in pending slot
+10: PASS accepted aim freezes world context
+10: PASS forged foreign repeated and superseded tickets
+10: PASS pure preview grants no ticket and discarded token is inert
+10: PASS world revision staleness without lost prior output
+10: PASS live permission mana contact and willingness rechecks
+10: PASS contact exact50 and invalid actor references
+10: PASS exact and insufficient mana with cap and zero health
+10: PASS key plus primitive current schema authority
+10: PASS current schema rechecked at delayed activation
+10: PASS pending permission and caster generation recheck
+10: PASS overlap health conflicts both storage and effect orders
+10: PASS overlap speed fields across distinct bindings
+10: PASS active slow refuses replacement then expires before activation
+10: PASS whole advance rollback after earlier successful scratch action
+10: PASS exact paid delayed funds need no second debit
+10: PASS active slow at delayed onset refuses complete activation
+10: PASS deferred status quota is checked at activation
+10: PASS cancellation never refunds or repeats an accepted action
+10: PASS empty current selection has no charge and delayed empty preserves queue
+10: PASS engraved and ray inspect but refuse runtime
+10: PASS unsupported frame invalid aim null and exact plan bytes
+10: PASS distance extremes and valid actor limits
+10: PASS pending exact ceiling and no debit on full queue
+10: PASS active status exact ceiling and one less
+10: PASS complete step target128 and selector1024 exact bounds
+10: Exact S2 activation work=308
+10: PASS exact work boundary and rejected work preserves prior state
+10: PASS time exact onset expiry and range exhaustion
+10: PASS action ticket revision and generation exhaustion
+10: PASS zero quotas and fixed ceilings
+10: Fixed object bytes: host=1872 snapshot=1496 observation=3216
+10: 37 reference host cases passed; 0 failed.
+1/2 Test #10: magic_host_contracts .............   Passed    0.03 sec
+test 11
+    Start 11: magic_reference_caller
+
+11: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_reference_demo
+11: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+11: Test timeout computed to be: 30
+11: S1 before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S1 release tick=0 mana=90 target hp=62 factor=1000 entrant hp=80 factor=1000
+11: S2 before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S2 release tick=0 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S2 before onset tick=99 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S2 onset tick=100 mana=80 target hp=50 factor=1000 entrant hp=72 factor=750
+11: S2 expiry tick=300 mana=80 target hp=50 factor=1000 entrant hp=72 factor=1000
+11: S3 before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S3 release tick=0 mana=90 target hp=50 factor=750 entrant hp=80 factor=1000
+11: S3 expiry tick=200 mana=90 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S4 before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S4 release tick=0 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S4 before onset tick=99 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: S4 onset tick=100 mana=80 target hp=50 factor=1000 entrant hp=72 factor=750
+11: S4 expiry tick=300 mana=80 target hp=50 factor=1000 entrant hp=72 factor=1000
+11: mixed-schools before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: mixed-schools release tick=0 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: mixed-schools before onset tick=99 mana=80 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: mixed-schools onset tick=100 mana=80 target hp=50 factor=1000 entrant hp=92 factor=750
+11: mixed-schools expiry tick=300 mana=80 target hp=50 factor=1000 entrant hp=92 factor=1000
+11: S5 before tick=0 mana=100 target hp=50 factor=1000 entrant hp=80 factor=1000
+11: Compilation/inspection only. One together activation; effect order is retained, not a timeline.
+11: Each binding names one selection shared by all its bridges; distinct names select separately.
+11: Separate bindings may overlap; the host must check live conflicts after selection.
+11: Mend/Cinder names and words are invented placeholders; no existing fantasy-language grammar is claimed.
+11: Heal restores hp; fire deals dp damage; multiply speed by N permille means N/1000 of the prior speed.
+11: Disks query eligible actor centres once at activation, inclusive world radius. Aim is captured at release.
+11: Touched actor is singular and willing, selected at release, no fallback. Event toucher is the accepted event actor.
+11: Host must recheck live permission, resources, eligibility and delivery (including contact/ray path).
+11: Entry: engraved; mode release; trigger item-touch; one charge required, metadata only. No item, charge consumption or persistence is installed.
+11: Effect 0: game.heal -> binding 0 (toucher) duration 0 ticks (10 ms each); grammar Mend@1 span 146+48.
+11: Exact Common:
+11: engraved item-touch charges 1 release via item-event after 0 ms {
+11:   bind toucher = willing event toucher at activation ;
+11:   together ordered {
+11:     on toucher bridge Common@1 { heal 12 hp instant } ;
+11:   }
+11: }
+11: S5 inspected one-charge item-touch plan; runtime UnsupportedEntry
+11: 6 reference caller scenarios passed (five spoken executions, one engraved refusal).
+2/2 Test #11: magic_reference_caller ...........   Passed    0.01 sec
+
+The following tests passed:
+	magic_host_contracts
+	magic_reference_caller
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.04 sec
+
+exit_status=0

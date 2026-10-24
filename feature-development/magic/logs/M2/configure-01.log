@@ -1,0 +1,6 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+
+exit_status=0

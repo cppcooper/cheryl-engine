@@ -313,3 +313,308 @@ simulation advancement and whole-step conflict policy. Ray scope earns only an
 independent delivery-edit witness here; its next evidence is an actual contact/ray
 eligibility/occlusion refusal in that host. No M2 code begins in this unit. The worker
 ends idle; the coordinator publisher owns ordinary feat/magic backup pushes.
+
+# MAGIC-M2 — proposed host contract before implementation
+
+Starting clean at 3980904cf9fc03fac913d1fafd56c6f17d677b4e on feat/magic.
+Run 20261024T035059Z-885902496b58, same assigned worker/thread; runtime record
+confirms configured ultra reasoning and admitted memory scope. Current assignment
+splits runtime spoken execution from later item/event/checkpoint work. S5 remains
+compilable/inspectable and runtime-refused. No integration/sibling changes.
+M1 contracts and intentional v3 provenance above remain evidence; recent compiler
+APIs are compatibility constraints, not a new claim about personal API taste.
+
+Proposed private caller, recorded before adding host APIs:
+
+```cpp
+auto host = ReferenceHost::create(current_game_catalog, limits);
+auto caster = (*host)->add_actor(caster_spec);
+auto recipient = (*host)->add_actor(recipient_spec);
+auto plan = Magic::compile(edited_verse, compiler_catalog);
+auto preview = (*host)->preview(*plan, {*caster, *recipient, std::nullopt});
+auto ticket = (*host)->prepare(*plan, {*caster, *recipient, std::nullopt});
+auto released = (*host)->release(*ticket); // rechecks live state/schema, then adopts whole step
+// For burst: request has a world-mm aim point instead of contact.
+auto observed = (*host)->advance_to(100); // explicit ticks, no service or wall clock
+```
+
+M2-016 (proposed): finite private host, actor slot+generation identities, immutable
+owned reports, one host-incarnation-bound prepared ticket. A new preparation
+invalidates the old ticket; successful release/discard consumes it. Ordinary
+world changes make a preparation stale; live schema/permission/resource/contact
+checks run before revision comparison for precise actionable refusal. Failed
+release keeps the token and game state intact; a successful/repeated or foreign
+input refuses. Preview issues no token and changes nothing. Host edits are trusted
+fixture-owner operations, not security credentials for arbitrary native callers.
+
+M2-017 (proposed): release costs 10 mana per effect, paid once by the caster.
+Delayed release reserves one pending slot, captures the accepted world point and
+retains the immutable M1 plan handle. Current members are queried on activation;
+no future target/status capacity is promised. Cancellation frees the scheduled
+slot, with no refund after accepted release. Advance stages the complete finite
+step; any due refusal leaves clock, actors, resources and queue unchanged. There
+is no automatic retry. Owner must correct the cause or explicitly cancel that
+action. Same-tick activations run by increasing accepted action ID, with status
+expiry first. This is deterministic reference ownership, not external delivery.
+
+M2-018 (proposed): resolve every binding before writes. Any two writes to the same
+actor/health field or actor/speed field in one activation refuse, including across
+distinct bindings; binding names and actor storage order do not decide mechanics.
+An active slow refuses any replacement/stacking; expiry restores multiplier 1000
+and the next activation at that tick may apply a new one. Eligibility is frozen
+for the activation before effects; health clamps to [0,max], status applies to
+those selected even if simultaneous damage reaches zero. Later queries exclude
+dead actors. These are reversible fixture laws, not balance or production combat.
+
+Planned bounds: 16 actor slots, 8 pending casts, 16 active slows (one per actor),
+128 selected (binding,actor) pairs and 1024 selector visits per complete step;
+16,384 charged work units; one retained prepared plan plus up to eight pending
+plans, each <=32,768 M1 logical bytes. World frame G0 only, positions +/-1,000,000
+mm, contact centre distance <=50 mm, integer health/mana/base speed <=1,000,000;
+clock, action/ticket/revision/generation counters have explicit tightenable caps.
+World/scratch/report collections are fixed arrays; plan handles avoid deep copies.
+Allocation for host/catalog/report occurs before nonthrowing adoption and may
+throw without changing the existing host or ticket. Exact limits and executed
+boundary evidence will be recorded after implementation.
+
+## M2 implemented contract and evidence
+
+The private native project now links `magic_reference_host` to the unchanged M1
+compiler. `magic_reference_demo` is a small ordinary caller that compiles actual
+fixture files, previews/prepares/releases them, advances simulation explicitly,
+edits real actor positions and reads actual snapshots. It executes S1, S2, S3,
+S4 and the novel mixed-school heal+slow spell. It prints S5's actual immutable
+inspection, then verifies `UnsupportedEntry` and unchanged state. There is no
+provider/network, random interpretation, Engine/sibling dependency, physics,
+background loop, arbitrary callback or external effect path.
+
+M2-016–018 are implemented as proposed above. The API is intentionally private,
+with one reference owner and explicit edits. This is a selected engineering
+experiment, not evidence of a personal preference inferred from agent code.
+Intentional v3 evidence and its confidence/counterevidence remain in the M1 record.
+No new personal API inference or sibling inspection is needed for this unit.
+
+### Identity, ownership, authority and adoption
+
+`ActorId` is a host-local slot (0..15) plus nonzero generation. Removal preserves
+the slot generation; the next add increments it. Creation chooses the first free
+slot; exhaustion of that slot's generation refuses rather than silently finding a
+new identity policy. Actor references are logical host-local values, not global
+credentials. Add/update/remove/catalog replacement and cancellation are trusted
+fixture-owner operations; this library is not a sandbox against arbitrary native
+code. Position, health/mana/base speed and permission/eligibility/willingness are
+owned finite values. No external actor pointers or live camera references exist.
+
+`Ticket` has private fields: a retained host-incarnation marker plus monotonic
+serial. Default/foreign/superseded/consumed tickets refuse. Copying a token does
+not create another use; host destruction cannot make its token valid in a new
+host. There is at most one prepared record, retaining the plan and value request.
+Successful new preparation supersedes the old token. Failed preparation preserves
+the prior record (including ticket-exhaustion refusal). Preview issues no token,
+changes no world/revision/resource/action and has no release authority. Delayed
+preview validates current support and resources without promising future targets,
+status capacity or a free queue slot.
+
+Every release revalidates caster generation/aliveness, can_cast permission,
+contact/aim shape, current schemas and available release mana before comparing the
+prepared world revision. Any ordinary owner edit, successful release/cancellation
+or time advancement changes revision and makes old preparations stale. Live
+permission/resource/contact/schema failures have specific diagnostics before the
+stale check. Failed release preserves the prepared input and complete world;
+successful release/discard consumes it. Irrevocably stale input needs a fresh
+prepare. Discard changes only prepared authority, with no gameplay charge.
+
+Plans are the actual `shared_ptr<const Magic::Plan>` artifacts from M1. M2 copies
+no source, compiler tree, key collection or Common text into runtime programs.
+Prepared/pending records retain handles; bounds check the M1 logical retained-byte
+metric before taking a runtime reference. Removing the final queue reference can
+destroy the original plan after all source/catalog/compiler owners are gone.
+Observations own fixed value snapshots and action events, and retain no plan or
+host pointers. Const observation handles remain usable after later steps and
+host/plan destruction. Snapshots returned by value can be edited without changing
+the host. Callers own any observations/tickets they retain; the host does not keep
+an unbounded output history.
+
+Current schema validation compares **both exact symbolic key and primitive**, then
+checks positive quantity and duration against the current host maximum, primitive
+shape and supported medium/delivery/bundle flags. An M1 Heal plan with a foreign
+key cannot dispatch by enum. A known key whose primitive changes also refuses.
+Current hot-replaced quantity, duration or capability limits are rechecked before
+release and again at delayed activation. Existing accepted active slows retain
+their settled expiry; schema replacement is not retroactive rollback.
+
+All gameplay mutations use finite scratch state. Release stages complete writes,
+resource debit, accepted action ID and queue insertion. Advance stages every due
+action and expiry up to the requested tick. An immutable owned Observation with
+before/after world and accepted action events allocates **before** nonthrowing
+state adoption; static assertions cover state/result moves. Actor edits use fixed
+value copies; catalog replacement validates and copies bounded strings before
+nonthrowing catalog/world adoption. Standard allocation exceptions propagate with
+the old host/prepared input intact. Allocation-failure injection is not executed;
+this guarantee is established by source ordering and noexcept assertions, not an
+OOM experiment. No arbitrary external callback transaction is claimed.
+
+### Time, resource and overlap laws
+
+The caster pays exactly **10 mana per effect on accepted release**: 10 for S1/S3,
+20 for S2/S4/mixed healing+slow. Failed prepare/release pays nothing. Delayed
+release reserves one queue slot and accepts the prepared candidate point as a
+fixed world-mm G0 aim. Changing the request, camera authoring context or caster
+position afterward cannot move this point or the already normalized radius.
+Activation queries current eligible, living actor centres, including the exact
+radius boundary, and checks current caster lifetime/permission/schema. No second
+mana debit or funds reservation occurs; a cast paid from exactly 20 mana executes
+with zero mana remaining.
+
+Contact is immediate and singular: the explicit actor must still be living,
+eligible, willing and within inclusive **50 mm** centre distance of the caster.
+There is no fallback. Burst supports the M1 inclusive disk query in G0; actor
+willingness is a contact predicate, while disk membership uses the host's eligible
+flag. The reference policy has no faction, line-of-sight, knowledge, resistance,
+physical contact manifold or production combat permission system.
+
+S2/S4 due time is release+**100 ticks**, each 10 ms. Slow is active from activation
+through the tick before activation+**200 ticks**: [100,300). S3 uses [0,200).
+`advance_to` accepts nondecreasing bounded simulation ticks; no wall time is read.
+It visits finite event boundaries, expires statuses first, then activates casts
+by ascending accepted action ID at each due tick. Distinct accepted actions use
+this declared chronological/ID order; an individual together bundle is never
+converted into sequential authored `then`.
+
+Every binding resolves from one pre-activation snapshot before writes. Selected
+(binding,actor) pairs retain separate scope even when both names select the same
+actor. Two writes to that actor's health field (heal/heal, fire/fire or heal/fire)
+or speed field in one activation refuse as `Overlap`, independent of binding name,
+effect order and actor storage order. A speed write encountering an existing slow
+refuses the entire activation as `ActiveSlow`; there is no stacking, replacement
+or refresh. Expiry occurs before a new activation at the same tick, allowing a new
+independent status then. Base speed stays separate and the active multiplier is
+exact permille; effective speed is represented in thousandths of mm/s with no
+rounding or movement integration.
+
+Health clamps to [0,max_health]. Eligibility is fixed before the whole activation;
+a selected actor can reach zero health from fire and still receive that same
+bundle's finite slow. Future queries exclude zero-health actors. These are explicit
+fixture laws, not implied death/resurrection or balance mechanics.
+
+Any due failure rejects the **complete advance**: original clock, active statuses,
+health/resources, action counter and every pending slot survive, including earlier
+successful scratch actions in that attempted step. Failure records the attempted
+event tick and accepted action context. A failed release allocates no action ID
+(error action=0); successful logical IDs are host-local and never reused. Nothing
+automatically retries a refusal. The owner must explicitly correct the cause or
+cancel the pending action. Cancellation frees its slot/plan handle and does not
+refund accepted release mana; a repeated cancellation refuses. A poisoned queue
+can therefore block advancement until the owner acts. This tradeoff is deliberate.
+There are no ambiguous partial external effects because this host has none.
+
+### Independent literal runtime baseline and actual caller
+
+Contract checks compare full before/release/onset/expiry snapshots against authored
+values. Only the queued plan's byte accounting is taken from its compiler metric;
+world mechanics are independent literals. The common starting actors are caster
+C=(225,0), health100/mana100/ineligible/can_cast; T=(250,0), health50/eligible;
+O=(251,0), health80/eligible. Maximum health100, base speed1000 mm/s. G0 aim=(0,0).
+
+| Fixture | Release state | Onset state | Expiry boundary |
+| --- | --- | --- | --- |
+| S1 | tick0 C mana90, T health62; no queue/status | immediate | no status |
+| S2 and S4 | tick0 C mana80, T health50, due100; tick99 unchanged health/speed | tick100 T health42, factor750 until300; O health80 unaffected | tick299 factor750; tick300 factor1000, T health42 |
+| S3 | tick0 C mana90, T health50, factor750 until200; O unaffected | immediate | tick200 factor1000, T health50 |
+| Novel heal+slow | tick0 C mana80, due100 | tick100 T health62, factor750 until300 | ordinary shared status expiry |
+| S5 | plan inspection remains exact | runtime UnsupportedEntry, no mutation | no installed charge/event |
+
+The actual `magic_reference_demo` additionally moves T to (1000,1000) after release
+and moves O to (150,200), exactly 250 mm from the captured aim. At tick100 T remains
+health50/factor1000; O changes health80->72 for S2/S4 or80->92 for the novel healing
+bundle and gets factor750 until300. Output is read from adopted snapshots and
+asserted, not a transcript of assumed execution. An independent caller scenario
+also changes the camera/scale context and request after preparation; the accepted
+point and 250 mm world radius remain fixed.
+
+### Actual resource and arithmetic model
+
+All HostLimits can tighten fixed ceilings, including zero; expanding any of seven
+size quotas or five uint64 counter horizons refuses. Identity/time counters check
+exhaustion before addition. Positions are validated before int64 subtraction;
+squared unsigned distance multiplication/addition is checked before the inclusive
+comparison. Health addition uses a bounded uint64 intermediate; no allocation size
+comes from an authored coordinate, duration or quantity.
+
+| Resource | Bound and evidence |
+| --- | --- |
+| Actors | 16 fixed slots; lower quota enforced, including zero. Each generation <=1,000,000. First-free exhausted generation refuses. |
+| Pending casts | 8 fixed slots. Eight accepted releases then a ninth refusal preserves queue/funds; cancellation permits a fresh monotonic action in the freed slot. Pending=0 still allows immediate contact. |
+| Active statuses | 16 fixed actor-local slots, one slow per actor. Exact 16 accepted;15/0 refuse. Capacity is checked at activation, with no future reservation promise. |
+| Targets | <=128 (binding,actor) selections across a complete operation. Eight casts selecting16 actors exactly reach 128;127 refuses the entire advance. |
+| Selector work | <=1024 visited slots across the complete operation, including empty slots. Eight casts x8 bindings x16 slots exactly reach1024 with only 64 selected pairs;1023 refuses without adoption. |
+| Complete work | <=16,384 charged units. Fixed80 setup/copy/report units plus variable schema/name checks, selector visits, selected pairs, field scans and event scans. This is a deterministic operation model with fixed-width helper costs, not CPU cycles or a timing guarantee. Exact S2 activation work308 accepts,307 refuses and preserves paid queue/world. |
+| Runtime plan retention | One prepared plus up to8 pending handles, each M1 logical bytes <=32,768, at most288 KiB distinct logical plan payload charged conservatively; no deep runtime copies. Exact per-plan metric accepts and one less refuses. M1's metric excludes unused capacity/control blocks/allocator overhead. |
+| Clock/revision | Clock0..1,000,000,000 ticks; revision0..1,000,000,000. Nondecreasing advance; expiry/due arithmetic checked. A fire-only cast due exactly at the horizon succeeds without adding onset twice. |
+| Action/ticket IDs | Monotonic host-local values1..1,000,000; zero not an accepted identity. Tight horizons prove action/ticket/revision exhaustion with no debit/queue mutation or ID reuse. |
+| Actor scalar fields | Coordinates +/-1,000,000 mm; positive max health <=1,000,000; health within max; mana/base mm/s speed0..1,000,000. Contact <=50 mm; compiler's radius <=1,000,000 mm. |
+| Retained state/outputs | Fixed arrays, bounded catalog of at most3 schemas and64-byte keys; one host marker. This ABI reports sizeof host 1872, Snapshot 1496, Observation 3216 bytes, excluding separately allocated catalog/marker/control blocks and retained plans. Each report allocates one bounded object/control block before adoption; caller-retained reports have no host-owned history cap. No exact heap/RSS guarantee is claimed. |
+
+### Commands, results and saved logs
+
+Current build reuse is inspected before changes: `projects/magic/build`, Debug,
+GNU16.2.1, C++23, MAGIC_SANITIZERS=ON. All configure/build/native checks use the
+workspace wrapper, one job, clone-local incremental output; complete stdout/stderr,
+exact command and immediate `exit_status` are saved. No native lock cancellation,
+resource refusal, allowance/auth workaround, dependency retrieval/install or sibling
+cache/process/ref write occurs. Existing LSan tracing limitation is preserved;
+ASAN_OPTIONS=detect_leaks=0 is command-local, UBSAN_OPTIONS=halt_on_error=1 remains.
+No leak acceptance is inferred. Existing compiler/M1 source, fixtures, checks and
+prior logs remain unchanged.
+
+| Actual wrapper command (from clone root) | Complete evidence, result |
+| --- | --- |
+| `/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug` | `magic/logs/M2/configure-01.log`, exit0. |
+| `/mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1` | `magic/logs/M2/build-01.log`, `build-02.log`, `build-03.log`, all exit0. Later builds add the three activation checks, header contract/include clarification and actual S5 inspection output. |
+| `/mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_host_checks --parallel 1` | `magic/logs/M2/build-04.log`, exit0; strengthens the overlap witness to create the same logical actors in both actual insertion orders. |
+| `ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1` | `magic/logs/M2/accumulated-01.log`, exit0, **11/11 entries**. Runs the entire prior 9-entry M1 suite exactly once plus initial 34 host cases and 6 reference caller scenarios. |
+| Same environment and wrapper CTest command with `-R '^magic_(host_contracts\|reference_caller)$'` | `magic/logs/M2/affected-01.log`, exit0, **2/2 affected entries**. Final **37 host cases** and 6 caller scenarios after source/test changes; no repeat of unaffected M1 entries. The saved log contains the exact shell-quoted regex (the table escapes its pipe for Markdown). |
+
+Same environment/wrapper CTest command with `-R '^magic_host_contracts$'` is
+saved in `magic/logs/M2/affected-02.log`: exit0, **1/1 affected entry**, all 37 host
+cases pass after the insertion-order witness is strengthened. Production host code
+and the already-checked reference caller do not change in this final test edit.
+
+Final unique suite remains 11 CTest names: prior 9 M1 names (35 compiler cases,
+4 ordinary callers, 6 file fixtures, 9 CLI processes), one host entry with 37 final
+cases, and one reference caller entry with 6 scenarios (five spoken executions,
+one S5 inspection/refusal). The focused runs recheck existing names (two entries, then one); they
+do not increase the unique count. All executed builds and native checks pass; no sanitizer
+findings appear. Format, evidence/source hashes and staged review are saved in
+`magic/logs/M2/static-review.log` and `staged-review.log` during finalization.
+
+Executed host coverage includes independent full literals, amount/clamp/eligibility,
+contact50, current moved/departed/replaced targets, accepted aim/context lifetime,
+plan lifetime, immutable old observations, forged/foreign/superseded/consumed and
+stale authorization, live permission/willingness/mana/contact, key/primitive/hot
+schema/capability refusals, active-status rules at prepare and activation,
+heal/fire and speed overlap in both actor/effect orders, complete-step rollback,
+explicit cancellation, empty selections, actor/queue/status/selector/target/work/
+plan/time/ID horizons, invalid owner inputs and unsupported ray/engraved/frame.
+
+## M2 handoff and remaining boundaries
+
+M2 is ready for coordinator review as one finite spoken reference host. S1–S4 and
+novel healing+slow produce actual reference-state changes. M1 accepted compiler
+coverage remains intact. This unit does not implement item charges, authenticated
+trigger dispatch, replay/dedupe, checkpoint restoration, durable saves or external
+exactly-once delivery. S5/ray/item-event are runtime-refused; only release-mode
+spoken contact and immediate/delayed G0 disks execute. No general VM, physics,
+Engine combat integration, line-of-sight, graphical spellbook, learner progression,
+production mana/balance system or fun/comprehension playtest is established.
+GNU/Linux Debug ASan/UBSan is verified; leak checking, allocation fault injection,
+other platforms/ABIs/toolchains and Engine SDK integration remain unverified.
+
+The finite transactional scratch owner is the scope growth that strengthens this
+proof: it makes live overlap, failed scheduling and resource accounting observable
+without callback rollback claims. Its fixed sizes and private API keep it
+reversible. Next evidence is coordinator review and a separately assigned bounded
+item/event/charge/checkpoint unit if selected; that unit must define event authority,
+deduplication retention and coherent armed/spent restore without claiming durable
+production delivery. No such work begins here. Worker ends idle after its local
+checkpoint; coordinator publisher handles ordinary feat/magic backup.
