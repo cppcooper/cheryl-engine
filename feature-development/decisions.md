@@ -138,3 +138,43 @@ endpoint refusals, overflow/budget and ownership boundaries. The text caller use
 zero failures/skips: 32 cases/8635 assertions plus the eight-demo consumer.
 The saved logs retain a corrected literal-count failure. Stop for coordinator
 review; broader portability, ASan and public extraction remain unverified.
+
+## PROCGEN-015 — Finite cellular cave occupancy
+
+**User technique requirement; engineering controls, medium confidence.** Add a
+private 2D CPU cave value with x-fast rows, floor0/solid1 and forced solid perimeter.
+Integer initial solid fill is a probability numerator over10000, not exact density.
+Use 0–64 simultaneous Moore-8 steps and explicit birth/survival count masks. Report
+initial and achieved counts. These small reversible controls supply a stylized
+occupancy prototype; physical geology, materials and presentation are outside it.
+
+## PROCGEN-016 — Cardinal components and empty outcomes
+
+**User requirement plus engineering choice; high confidence.** Offer retain-all
+components or keep-largest-floor only. Analyze cardinal-4 connectivity; diagonal
+contacts remain separate. Largest ties keep the smallest canonical root index;
+filtering solidifies other floors. Return counts before/after removal, whether
+connectivity was required and whether a nonempty connected result exists. Empty
+and tiny all-boundary domains stay empty, with no invented floor or nonempty
+success claim. No corridor solver.
+
+## PROCGEN-017 — Bounded ownership and cave replay
+
+**User requirements plus engineering choice; high confidence.** Separate cave
+cellular2D v1 replay preserves maze versions. Reuse checked Domain/integer streams,
+not maze topology, traversal scratch or sibling storage. Bound two occupancy
+buffers, labels/queue, all steps/probes/draws and return owned output. Reserve
+worst-case floor traversal work before allocation; rejection still needs runtime
+limits. Cap at1M cells/32MiB accounted storage/100M work. Allocation exceptions
+propagate; budgets affect admission only. No persistence policy or format selected.
+
+## PROCGEN-018 — Executed cave evidence and storage boundary
+
+**User requirement; high confidence for tested contracts.** Independent BFS/literal
+fixtures verify initialization, synchronous updates, diagonal separation and ties.
+Wrapped Debug/GNU/UBSan passes10 cave entries (nine cases/844 assertions plus
+consumer2/2), all33 maze entries (32 cases/8635 assertions plus consumer8/8), and
+the diagnostic follow-up; zero failures/skips. Generation-storage guidance adds
+replay concerns without selecting a format or sibling dependency. Stop for
+coordinator review; broader portability/ASan/performance/public integration remain
+unverified.

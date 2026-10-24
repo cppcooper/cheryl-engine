@@ -41,7 +41,14 @@ namespace ProcGen {
         path,
         traversability,
         coverage,
-        endpoint_policy
+        endpoint_policy,
+        cave_dimensions,
+        cave_fill,
+        cave_steps,
+        cave_rules,
+        cave_connectivity,
+        cave_algorithm,
+        cave_version
     };
 
     struct Failure {

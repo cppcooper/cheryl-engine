@@ -99,6 +99,20 @@ namespace ProcGen {
                 return "only full rectangular coverage is supported";
             case Reason::endpoint_policy:
                 return "fixed endpoints contradict the route contract or are unsupported by this construction";
+            case Reason::cave_dimensions:
+                return "caves require exactly two axes: width, height";
+            case Reason::cave_fill:
+                return "initial solid fill must be an integer in [0,10000]";
+            case Reason::cave_steps:
+                return "cave smoothing steps must be in [0,64]";
+            case Reason::cave_rules:
+                return "cave rule masks may contain only neighbor-count bits 0 through 8";
+            case Reason::cave_connectivity:
+                return "unsupported cave connectivity policy";
+            case Reason::cave_algorithm:
+                return "unsupported cave algorithm";
+            case Reason::cave_version:
+                return "unsupported cave replay version";
         }
         return "unknown failure reason";
     }

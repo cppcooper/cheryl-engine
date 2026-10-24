@@ -806,3 +806,293 @@ work, root dependency/export or protected/sibling content is staged. Full staged
 diff is saved locally as `logs/u3/staged-review.diff` under the existing build.
 Whitespace checks pass. The final C++ sources are those built/tested above; only
 internal handoff records change after final CTest.
+
+## U4 authority and proposed caller (PROCGEN-015–018)
+
+U3 is accepted at `533fabba686653500dd6a247e46855c88bd79a0c`. Initial branch
+`feat/procedural-generation` and index/worktree are clean; recent U1–U3 commits
+and current records were inspected. U4 broadens the utility collection to first
+2D caves; further maze controls remain proposed. Read workspace/clone AGENTS,
+autonomy/memory policy, brief/backlog/workstream, assignment and generation-storage
+coordination. No sibling header/history/import, protected workspace mutation,
+serialized recipe/save policy or integration is selected.
+
+Proposed caller before dependent API implementation (executable checks errors):
+
+```cpp
+const std::array<ProcGen::Index, 2> extents{32, 24}; // width, height
+const ProcGen::StreamKey key{42, 0x63617665, 7};
+const ProcGen::CaveBudgets budgets{4096, 128 * 1024, 2'000'000};
+const ProcGen::CaveConfiguration a{.solid_fill = 4200, .steps = 3,
+    .birth = 0x1e0, .survival = 0x1f0,
+    .connectivity = ProcGen::CaveConnectivity::retain_components};
+const ProcGen::CaveConfiguration b{.solid_fill = 5200, .steps = 4,
+    .birth = 0x1c0, .survival = 0x1f0,
+    .connectivity = ProcGen::CaveConnectivity::largest_floor};
+auto cave_a = ProcGen::generate_cave(extents, key, a, budgets);
+auto cave_b = ProcGen::generate_cave(extents, key, b, budgets);
+```
+
+Engineering choices, not inferred user taste: 0=floor/1=solid bytes, x axis0
+fastest, integer fill in [0,10000] (one unit=0.01 percentage point). A solid is
+born/survives iff the corresponding rule bit for its Moore-8 solid count is set.
+The outer perimeter is always solid, including tiny domains. Double-buffer all
+steps; cardinal-4 FIFO component analysis; largest ties keep smallest root index.
+No floor fabrication, diagonal walking, corridor carving or geology claim.
+
+Plan: separate cave algorithm/version and owned output, reuse only checked Domain,
+integer stream/sampler/Work/error vocabulary; add bounded occupancy/component
+buffers and conservative work reservation plus runtime charging. Test literal
+initial/step/component fixtures and independent cardinal BFS, then both consumer
+configs and new tests plus all 33 maze regressions once after implementation.
+Capture all wrapper logs/exits, reconcile both decision views, review/stage/commit
+and stop for coordinator review. Status here: proposed, not executed.
+
+Assumptions/confidence: these rules are a useful first stylized occupancy prototype
+(medium); simultaneous rules/cardinal connectivity and empty conventions are
+precise (high, verification pending). No blockers. Existing source provenance is
+PROCGEN-002; maze history does not establish a cave API or cellular rule preference.
+
+### PROCGEN-015 — Implemented cave domain and cellular controls
+
+Owners relative to this clone: `projects/tests/procedural-generation/cave.h` and
+`cave.cpp`: `CaveConfiguration`, `Cave`, `preflight`, `generate_cave`, `replay_cave`.
+The small two-configuration proposal above now matches `cave-consumer.cpp`.
+These exact names/rules are engineering choices, not user preference evidence.
+PROCGEN-002 retains exact intentional-v3/HyperMaze provenance and counterevidence;
+neither that history nor recent agent APIs establishes a cave algorithm/style.
+No new protected-source inspection, import, build, cache or Git operation occurred.
+
+Domain is exactly two positive u64 extents `{width,height}` through existing
+allocation-free `Domain::checked`, x=axis0 fastest, y=axis1; stride[0]=1,
+stride[1]=width, index=x+width*y. Coordinates/indexes round-trip in existing Domain;
+positive y advances rows, with no physical up/down convention. C=width*height is
+checked before unsafe arithmetic/allocation. Every outer cell is solid, including
+all cells when width<=2 or height<=2. There is no masked/subset domain. Occupancy
+is one byte: 0=floor, 1=solid. Floor means walkable in this cardinal point-cell
+model, not body clearance, material identity, asset selection or physical geology.
+
+`solid_fill` is an integer in [0,10000], exact probability numerator over10000
+for INTERIOR cells; one unit is 1/10000 (0.01 percentage point). No floating-point
+input/rounding/clamping is offered, so NaN/infinity are not representable options.
+Requested==effective on success. Reject out-of-range u32 values. Visit cells in
+ascending index, skip perimeter draws, and call U1 `sample_below(10000)` for EVERY
+interior cell, including fill0 and fill10000. Set solid iff sample<solid_fill.
+Initial measured interior solid count/I is observed, not guaranteed coverage.
+When I=0, the interior count/draws are0 and interior density is undefined; final
+whole-domain density is still well-defined as0/C.
+Forced boundary cells are separate from that probability denominator. Final floor/
+solid counts use the WHOLE C-cell domain; floor/C is the achieved density.
+
+Smoothing count S is 0–64, rejecting larger values rather than silently clamping.
+The `birth` and `survival` u16 masks allow only bits0..8. For an interior cell,
+count all eight Moore neighbors' solid bytes, excluding self. If current is floor,
+new solid=(birth has bit k); if current is solid, new solid=(survival has bit k).
+All other outcomes are floor. Set perimeter solid in every next buffer. Read
+only the current buffer for the entire step and swap after all C updates. No
+in-place asynchronous evolution or random smoothing order. Default B5678/S45678
+is a useful narrow prototype choice, not a quality/difficulty/geology guarantee.
+Config B uses B678/S45678. Meaningful k0/k8 and all/empty rule masks are supported.
+
+### PROCGEN-016 — Component policy and measurements
+
+Only two modes: `retain_components` and `largest_floor`. After smoothing, scan
+root indexes ascending, flood floor cells via negativeX/positiveX/negativeY/
+positiveY neighbors, mark labels before queue insertion, and count every component.
+Moore-8 is ONLY smoothing; walking/connectivity is cardinal-4, so diagonal-only
+contacts never connect. Each floor enqueues/pops once; no recursion or corridor
+carving. Root label is root+1, zero reserved for solid/unseen. The admitted C cap
+proves label increment and queue size safe. Compare component sizes with strict >,
+so equal-size ties retain the first (smallest root index). `largest_floor` then
+solidifies all floors whose label differs from the selected one. Never add floors.
+
+Report initial interior solid, generated floor/components (after smoothing before
+filter), final floor/solid/components, removed_floor and largest_floor. Under
+retain mode removed0 and generated==final; largest_floor is the largest existing
+component. Under largest mode final floor=largest_floor and removed=generated-
+final; final components is1 iff final floor>0, else0. The two explicit flags are
+`connectivity_required` (largest mode) and `connected` (exactly one NONEMPTY
+cardinal component). Empty success is allowed in either mode: floor0, solidC,
+components0, largest0, removed0, connected=false. In largest mode required=true
+and connected=false explicitly reports that a nonempty connected result was not
+achieved. No floor is fabricated and no proof of nonempty feasibility is implied.
+Tiny all-perimeter domains follow the same empty convention, not singleton maze
+conventions. A retain-mode result can happen to be connected without a guarantee.
+
+### PROCGEN-017 — Replay, ownership and bounded resource contracts
+
+`CaveReplay` identifies family `cave_cellular_2d`, `CaveAlgorithm::cellular_2d(1)`,
+version1, exact Domain/extents, StreamKey, all requested controls and budgets.
+Effective controls equal requested integer values. Cave v1 fixes probability
+sampling/consumption, index order, rule semantics/perimeter, synchronous steps,
+cardinal traversal, component ties and filtering. New reasons append existing
+Failure vocabulary without renumbering old reasons; no old maze algorithm,
+fixture, consumer source or test registration is changed. Unknown cave versions/
+algorithms use dedicated cave_version/cave_algorithm reasons and text; invalid
+options and domain/byte/work overflow reject explicitly.
+
+Fresh U1 stage-derived SplitMix64 is local to every call; no clock/global RNG,
+mutable registry, std::hash or library distribution. Numeric tuple encoding,
+modulo-u64 arithmetic and unbiased rejection are exactly PROCGEN-004. Cave
+consumer key is seed42/stage0x63617665/stream7; maze stage0x6d617a65 is unrelated.
+Replaying the same algorithm/version/domain/key/controls yields the same logical
+occupancy and measurements. Sufficient budgets affect admission metadata only.
+Portability inherits U1's 8-bit bytes/exact u32/u64/64-bit container and fixed
+metadata constraints. Cave adds no floating-point replay dependency. Actual
+execution remains Linux/GNU only; not a statistical independence, collision-free
+stream or cryptographic guarantee.
+
+Cave owns its occupancy vector and descriptor/measurements/usage. Copies deep-copy
+bytes, moves transfer them; a moved-from object only destroys/assigns. Const spans
+borrow the owner until destruction/move/assignment. No alias of scratch/input is
+returned. No existing result is an output parameter, so invalid/preflight/runtime
+refusal or exceptions cannot modify a previous caller-owned Cave. `bad_alloc`,
+length and programming exceptions propagate; only a local typed Stop carrying
+expected Failure is caught. There is no generic exception conversion.
+
+Use a separate `CaveBudgets{cells,storage_bytes,work}`: maze edge budgets have no
+meaning for an occupancy value. Practical hard caps are1,000,000 cells,32MiB
+accounted bytes,100,000,000 work, S<=64. Effective budgets=min(caller,hard).
+Cave preflight checks C/I/product/byte/work arithmetic and container capacities
+before any owned buffers, then cells/storage/work admission. I is0 when width<=2
+or height<=2, otherwise (width-2)*(height-2). A mathematically valid huge Domain
+can still overflow byte/work planning; it never triggers a huge buffer allocation.
+
+Accounted peak is `4096 + C*(2*sizeof(u8)+2*sizeof(Index)) = 4096+18*C` bytes.
+Two C-byte occupancy buffers coexist; one becomes output by move, not a third
+copy. Full C-entry u64 labels and queue coexist with both buffers; no hidden
+traversal/visited/recursive buffer. Static assertion protects fixed metadata/
+return helpers. This requested payload+fixed allowance is not exact RSS: excludes
+allocator bookkeeping/over-allocation, runtime/exception/sanitizer/OS overhead,
+prior caller-owned results/copies and the separate bounded test/consumer oracle.
+No actual memory pressure/OOM test or rejected huge allocation is attempted.
+
+Work is an operation model. Charge initialized elements of all four arrays (4C),
+initialization scan C, every raw initialization draw including rejection (minimum I),
+each smoothing step action plus C cell updates and8I neighbor probes, component
+root scan C, and each floor enqueue/pop/four probes (6F, F=generated_floor).
+Largest mode additionally charges C filter actions. Bounded O(D) header/preflight
+arithmetic precedes this runtime work, as in U1/U2. Let K be1 for largest mode,
+0 otherwise. Preflight reserves
+
+`W = 6*C + 7*I + S*(1+C+8*I) + K*C`.
+
+This conservatively reserves the flood for ALL possible I floors, not the exact
+necessary work for the final configuration. It can refuse a budget that would
+fit a solid-heavy realized cave; this is explicit admission policy. Exact actual
+work is `W - 6*(I-F) + (raw_draws-I)`. Unbiased rejection has no finite automatic
+worst-case draw bound; the remaining total Work cap is enforced before every draw,
+initialization, probe, flood and filter action. W suffices only when its slack
+covers additional draws. Expected sampling work is not used as a completion
+promise. Runtime exhaustion returns no partial occupancy or metrics. Complete
+successful operation complexity is O((S+1)*C + raw_draws), bounded by effective
+charged work, without a recursion proportional to C.
+
+Generation/storage implications: the shared coordination note is read-only
+requirements evidence, not a dependency. Return domain/coordinates/family/version/
+seed/stage/stream/options so a future caller can identify a reproducible base.
+No persisted recipe encoding, save/cache policy, exact-base edit fingerprint,
+version retention/migration service or map-storage adapter is implemented. A seed
+alone cannot identify a base; recording version1 does not promise indefinite
+old-version execution. Persistent edits would need an exact base witness/identity
+and explicit mismatch/migration behavior in a separately selected integration.
+Do not turn occupancy into tile IDs to fit a sibling format. Existing maze and
+cave results retain distinct semantic meanings.
+
+### PROCGEN-018 — Executed cave acceptance and next boundary
+
+Source: this U4 checkpoint based on accepted U3
+`533fabba686653500dd6a247e46855c88bd79a0c`. Added `cave-tests.cpp` and
+`procgen-cave-tests`, plus a dedicated `cave-consumer.cpp`/`procgen-cave-consumer`;
+the existing procgen-tests and consumer sources are unchanged. Test-only
+`cave-checks.cpp::inspect` independently scans byte counts/perimeter, checks row/
+coordinate round trips, and uses pairwise coordinate Manhattan-distance1
+adjacency with FIFO BFS. It does not call the generator's neighbor/label/queue
+helpers or reuse its labels. Oracle caps C4096; largest new test C187, consumerC768.
+Tiny initialization/steps use literal floor sets and independent Python integer/
+coordinate derivations saved in `logs/u4/reference-fixtures.py/.log` under the build.
+The Python code is a fixture calculation, not executed project native acceptance.
+
+Pinned initial 4x4 seed8/stage0x63617665/stream7, fill5000/S0 has interior samples
+[7647,2549,2069,5797], floor indexes[5,10], two separate diagonal components and
+initial interior solid2. Largest tie retains5, removes10. B7/S(empty) one-step
+fixture swaps floor indexes to[6,9]; an in-place x-fast update would incorrectly
+leave10 floor too, so the literal distinguishes simultaneous semantics. On 5x5
+fill0 with defaults, successive floor sets are [7,11,12,13,17], then[12], then[].
+6x3 fill5000/S0 seed42 has floor[7,9,10], components sizes1/2; largest retains9/10.
+These logical fixtures pin new replay without changing any maze golden vector.
+
+Tests also cover two genuinely different configurations across seeds0/1/42/991,
+independent final counts/BFS and largest selection versus unfiltered reference,
+repeatability, budget-independent content, unrelated maze-stage consumption,
+copy/move/local-input lifetime, previous output across invalid/refusal/allocation
+exceptions, solid finite boundaries, tiny/all-solid/empty-required outcomes,
+mask bits0/8/all/none, invalid rules/fill/step/policy/domain/versions, checked
+extent/product/storage/work overflow, hard cell caps and exact/one-less admission.
+Allocation denial proves early rejections avoid owned buffers and real bad_alloc
+propagates without host pressure. 3x3 fill0/S0 requires C9/I1/4258 bytes/W61 and
+uses exactly61 work/one draw under the normal key. Fill10000 uses55 but still
+requires reservation61. Existing algebraic forced-zero key
+{0xd78884aaeab763e4,0,0} rejects its first word for bound10000 (threshold1616):
+exact61 then exhausts at runtime without a result;62 succeeds with two raw draws.
+Previous owned output is preserved.
+
+Preserved build: Linux/GNU16.2.1, C++23, Debug/Ninja, UBSan ON/no recovery and
+warnings as errors. No new deps/pins, global settings, Engine/assets/GUI build,
+protected/sibling change, native queue cancellation or resource refusal. All
+configure/build/native operations use `/mnt/projects/cheryl-features/scripts/build --`,
+one job. The shared wrapper/monitor owns adaptive limits/admission; no cap/slot
+substitution or retry. Complete stdout/stderr logs plus immediate exit statuses
+are local/ignored under `builds/procedural-generation/logs/u4/`:
+
+| Wrapped operation | Log/result |
+| --- | --- |
+| `clang-format -i` on owned C++ changes | `format-1.log`, exit0 |
+| `cmake --build builds/procedural-generation --parallel 1` | `build-1.log`, exit0; preserved standalone cache regenerated, compile/link pass; `build-2.log` checks the later diagnostic-only change |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]cave_' --parallel 1` | `cave-ctest-1.log`, exit0;10 passed/0 failed/0 skipped: nine cases/844 assertions plus cave consumer2/2 |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' -E '^procgen[.]cave_' --parallel 1` | `maze-regressions-1.log`, exit0;33 passed/0 failed/0 skipped:32 cases/8635 assertions plus maze consumer8/8 |
+| Diagnostic-only incremental build and affected case | `build-2.log`, `cave-invalid-2.log`, both exit0;1/1 entry,36 assertions,0 failures/skips; cave-specific replay diagnostics replace maze-named reasons |
+| Immediate exit statuses | `exits.tsv`: all0; no failed run or diagnostic omitted |
+
+Both nonempty selections ran once after the initial implementation, covering all43
+registered entries,41 cases/9479 assertions and two consumer entries (ten
+demonstrations). Later source review adds dedicated cave replay-version/algorithm
+reasons instead of reusing the maze-named messages; accepted output, rules, budgets
+and existing maze messages are unchanged. The affected invalid-input case is
+rechecked separately as recorded in the table; successful unaffected suites are
+not repeated.
+There are zero skips/failures/UBSan diagnostics. No separate extra consumer rerun
+or broad build is needed after these successful checks. The task's native evidence
+is those runs, not source inspection or the Python calculation.
+
+Cave consumer uses same32x24 domain C768/I660 and key42/cave/7:
+
+| Configuration | Initial interior solid | Generated floor/components | Final floor/solid/components | Removed | Required/connected | Work/draws |
+| --- | --- | --- | --- | --- | --- | --- |
+| A: fill4200/S3/B5678/S45678/retain |290/660 |422/1 |422/346/1 |0 |false/true |25947/660 |
+| B: fill5200/S4/B678/S45678/largest |353/660 |369/3 |337/431/1 |32 |true/true |32446/660 |
+
+Both demonstrations pass independent boundary/count/BFS checks and print exact
+semantic coordinates/replay/options/achieved density, not terrain rendering or
+assets. Retaining a naturally connected A result is observed for this seed, not
+a general guarantee. Full prior maze implementation/endpoint limitations/replay,
+including strict true4D, remain accepted by all33 regressions.
+
+Confidence: high for finite occupancy, simultaneous update, component and resource
+contracts under tested toolchain; medium for default cellular options' usefulness.
+No unresolved blocker. Broader compilers/OSes, ASan, large-domain performance,
+public Engine/SDK integration and subjective cave quality/physical geology are
+unverified. Next useful bounded proposal: cave clearance/distance measurements
+with explicit floor-neighbor/empty conventions and independent tiny fixtures,
+without activating tunnels/entrances/masks, dungeons or persistence. Advanced maze
+endpoints/route/branch/loop controls stay in backlog. Geography, settlements and
+tectonic modification retain separate related output/invalidation concerns;
+no universal world framework, physics or AI implementation is implied.
+Stop for coordinator review and publisher checkpoint transport.
+
+Final staged review covers exactly12 task-owned files: cave production/checks/
+consumer/tests, private target registration, appended Failure reasons and the
+three matching records. Existing maze generation/search/configuration/tests/
+consumer code and old diagnostic messages remain unchanged. Full staged diff is
+saved locally as `logs/u4/staged-review.diff` under the preserved build; staged
+whitespace checks pass. No unrelated or sibling work is included.

@@ -1,36 +1,39 @@
 # Procedural-generation next action
 
-PROCGEN-U3 is implemented and verified from accepted U2
-`e4a735bf793287eb3126edff0e3feab4828b7e81` on `feat/procedural-generation`.
-The local checkpoint containing this record supplies exact traversal profiles,
-strict full-domain N-D labyrinth construction, bounded resources, explicit endpoint
-policies and separate replay. U1 DFS replay and U2 contracts remain intact.
+PROCGEN-U4 is implemented and verified from accepted U3
+`533fabba686653500dd6a247e46855c88bd79a0c` on `feat/procedural-generation`.
+This checkpoint adds private finite 2D cave occupancy, integer fill, synchronous
+Moore-8 smoothing, solid perimeter and retain-all/largest-floor component policies.
+Outputs own bytes, replay, exact requested/effective controls and measurements.
+Cardinal-4 connectivity distinguishes diagonal contacts, ties and empty outcomes.
+U1–U3 maze implementation, replay and documented fixed-endpoint limits are retained.
 
-Final preserved Debug/GNU16.2.1/UBSan CTest: **33 passed, 0 failed, 0 skipped**;
-32 cases/8635 assertions (1470 U1 +1210 U2 +5955 U3), plus consumer. Separate
-consumer **8 passed, 0 failed, 0 skipped**, including 0/.5/1 on the same 2D/4D
-domains. Value1 true4D is C36/E35, all36 route cells and12 fourth-axis edges.
-Full logs and immediate exits, including the corrected literal-count test failure,
-are in `builds/procedural-generation/logs/u3/`; exact commands/results and contracts
-in agent-notes PROCGEN-011–014, matching compact decisions in decisions.md.
-Queued native sessions completed normally; no resource refusal or cancelled queue.
+Executed through the one-job shared wrapper in preserved Debug/GNU16.2.1/UBSan:
+**10/10 cave CTest entries**, nine cases/844 assertions plus consumer2/2;
+**33/33 maze entries**,32 cases/8635 assertions plus consumer8/8. All43 entries
+passed after implementation, zero failures/skips/UBSan diagnostics. Final cave
+version/algorithm diagnostics additionally pass the targeted invalid-input case
+(36 assertions). Full logs, fixture calculations and immediate exits are in
+`builds/procedural-generation/logs/u4/`. Exact contracts/provenance/checks are in
+agent-notes PROCGEN-015–018, matching compact decisions in decisions.md.
 
-Next action: coordinator reviews the coherent committed U3 source and saved final
-logs. Assigned-branch transport stays with the publisher. Stop here; no automatic
-next unit, sibling integration, publication command or user reply is required.
+Next concrete action: coordinator reviews this coherent committed U4 and its
+saved logs. Publisher owns assigned-branch transport. Stop here; no automatic
+next unit, sibling integration, presentation, save format or public extraction.
+No user reply needed. No unresolved source/resource blockers or admission refusal.
 
-Assumptions/confidence: coverage-coupled traversal mapping is a useful bounded
-prototype (medium); auto-endpoint rectangular strict construction and measured
-invariants are independently tested (high). Fixed endpoints support only the
-seeded prefix pair in either orientation; passing parity does not prove feasibility
-elsewhere. No unresolved source/resource blockers. Other compilers/OSes, ASan,
-large-domain performance, public exports and subjective difficulty stay unverified.
+Assumptions/confidence: chosen cellular controls are a useful first stylized
+occupancy prototype (medium); bounded finite/simultaneous/cardinal contracts are
+independently verified (high). Fill is a probability on interior cells, not exact
+density. Largest mode can return empty with required=true/connected=false; it
+never invents floor. Work preflight conservatively reserves all possible floors,
+so realized solid-heavy caves may need less work than admission requires.
+Other platforms/compiler, ASan, performance, public Engine and physical/subjective
+quality remain unverified. Generation-storage guidance supplies replay/coordinate
+concerns; it selects no persisted recipe, exact-base edit integration or sibling import.
 
-Next proposed concrete scope, subject to coordinator selection: support a wider
-bounded fixed-endpoint policy while preserving exact coverage/length constraints
-and separating proven contradiction, unsupported construction and exhaustion.
-Route length/coverage/endpoints and branch count/depth/loops/masks remain separate
-future controls. General room/link endpoint/port/loopbacks stay separate from axes.
-Caves/dungeons may need masks/room graphs; geography fields/drainage; settlements
-sites/roads/parcels; tectonic edits explicit affected regions and dependent-layer
-remap/revalidation. None is activated. No presentation/public extraction in U3.
+Next useful proposal, subject to coordinator selection: bounded cave clearance/
+distance measurements with independent tiny/empty fixtures. Tunnels, entrances,
+masks/depth and advanced maze endpoints/route/branch/loop controls remain backlog.
+Dungeons, geography, settlements and tectonic modification remain separate later
+outputs with explicit ownership/provenance and dependent-layer revalidation.
