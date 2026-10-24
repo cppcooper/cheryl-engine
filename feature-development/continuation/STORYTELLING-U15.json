@@ -1,0 +1,57 @@
+{
+  "milestone_id": "STORYTELLING-U15",
+  "status": "ready",
+  "checks_passed": true,
+  "prerequisite_sha": "351f1682c053901e1ff8dc35572bc0e692486ca2",
+  "scope": "Standalone worker4 continuation on feat/storytelling; not a fourth milestone of feature-round-20261024-0500 or a new recurring queue.",
+  "evidence": [
+    "builds/storytelling-u1-debug/u15-prerequisite-audit.log",
+    "builds/storytelling-u1-debug/u15-configure.log",
+    "builds/storytelling-u1-debug/u15-build-1.log",
+    "builds/storytelling-u1-debug/u15-registration.log",
+    "builds/storytelling-u1-debug/u15-registration-audit.log",
+    "builds/storytelling-u1-debug/u15-ctest-1.log",
+    "builds/storytelling-u1-debug/u15-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u15-results-audit-1.log",
+    "builds/storytelling-u1-debug/u15-build-2.log",
+    "builds/storytelling-u1-debug/u15-ctest-2.log",
+    "builds/storytelling-u1-debug/u15-ctest-details-2.log",
+    "builds/storytelling-u1-debug/u15-results-audit-2.log",
+    "builds/storytelling-u1-debug/u15-demo-transcripts.log",
+    "builds/storytelling-u1-debug/u15-boundary-rules.log",
+    "builds/storytelling-u1-debug/u15-commands.log",
+    "builds/storytelling-u1-debug/u15-checkpoint-audit.log"
+  ],
+  "implemented_contracts": [
+    "Private story-offline --play unsigned-64-bit-SEED prepares the actual paid ferry/fare-record watch, selects U13 once and retains the exact immutable SelectedBargain/BargainHandle. Input plays substantive U12 decisions and explicit close; the actual terminal pair composes U14 without regenerating from a seed or route label. Explicit approach/step-away and issued payoff choices finish one finite episode.",
+    "Owned current View supplies every resolved Selection. Held commands preserve original node/phase/incarnation authority; no retokening follows progression or restore. Actual owners recheck live supplies/presence and stage full scalar state before nonthrowing adoption. Engine/public APIs, selector/cost/payoff policy and callback contracts remain unchanged.",
+    "Player-facing output uses current authored actor/text/order, real availability, own inventory/commitments and typed costs. Smaller negotiated quantity appears only after learning terms. Hidden observer arrays, attitudes/beliefs, world/debug tables and effect instrumentation stay outside normal play; independent private-state checks preserve known/unaware observer separation.",
+    "Finite lower-only caps64 commands,256-byte lines plus one detection byte,16KiB logical frame and64KiB combined output. No unbounded getline/drain/history. Help/show are pure; EOF/quit never select or settle. Checked prompt and final flushes; statuses0 complete episode,1 early,2 usage,3 malformed/limit,4 I/O,5 prep/observation. Reporting failure can follow a committed action without rollback/retry/durability claims.",
+    "Private friend tests exercise stale/foreign/incarnation/phase authority, safe moves/producer independence, failed-restore pair/token preservation, successful same-field restore renewal, live resource/presence loss, prompt/read/write/final-flush failures and exact/one-short limits. No user save/rewind, disk schema, provider/network, localization activation, public story framework or automatic next scene is introduced.",
+    "One accumulated262/262 pass retains all244 predecessor names/order and119 byte-identical complete old child blocks. Fourteen new driver/four transcript cases execute20 input-bearing child outcomes7x0/6x1/5x2/2x3. Review adds final-flush checking and a failed-restore assertion; final affected18/18 passes with all20 child blocks unchanged. All six native exits0; no skips/unrun/ASan/UBSan diagnostics. Complete history, source hashes and real shared Engine sanitizer compile/link evidence are saved."
+  ],
+  "executed_counts": {
+    "accumulated_passed": 262,
+    "accumulated_total": 262,
+    "retained_predecessor_names": 244,
+    "new_unique_cases": 18,
+    "affected_passed": 18,
+    "affected_total": 18,
+    "unchanged_prior_child_blocks": 119,
+    "new_input_child_blocks": 20,
+    "new_child_exits": {
+      "0": 7,
+      "1": 6,
+      "2": 5,
+      "3": 2
+    }
+  },
+  "limitations": [
+    "GNU/Linux Debug real shared Engine only; LSan remains unverified under ST-008 command-local detect_leaks=0, and other platforms/Release/SDK/visual/wider runtime remain unverified.",
+    "Participant fun/comprehension, localization/regional-language learning/profile/font work and provider quality need separately selected evidence; headless process success is not human gameplay acceptance or actual model output.",
+    "Logical input/frame/output quotas exclude allocator capacity/rounding/control blocks, transient formatting, stdio/OS buffering, parent/Session/compiler allocations and RSS/instruction time. Existing parent composition caps remain; ordinary allocation/programming exceptions may stop observation after a successful owner action.",
+    "No output/effect transaction, disk save/rewind, authenticated history, global exactly-once reward delivery, production rollback or crash/external durability. Process exit does not persist a pending promise; existing paired in-memory rewind semantics are unchanged.",
+    "This is one manual finite episode from a paid-quay setup, not an interactive prologue, general story framework, reputation/rumor service, provider/free-text parser, localization/magic integration or new scheduled unit. Receipt reports worker execution, not automatic coordinator source acceptance."
+  ],
+  "next_action": "Idle for coordinator review of this standalone U15 source/checkpoint, matching ST-041\u2013044 decision views, receipt and saved262+18 execution/child evidence. Publisher handles feat/storytelling transport. Any participant/language/other implementation needs a separately selected scope; no additional unit or background continuation starts."
+}

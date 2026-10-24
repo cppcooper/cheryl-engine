@@ -1,3 +1,156 @@
+# U15 standalone playable relief episode
+
+Starts exactly clean on feat/storytelling at
+`351f1682c053901e1ff8dc35572bc0e692486ca2`. Inspected actual U14 source, committed
+ready receipt,20 nonempty evidence logs and final source hashes. U14 passed244/244
+plus two17/17 identity-hardening rechecks; U13 passed227 plus33 affected, U12
+passed211, and U11's ORIGINAL193/194 + corrected test-only1/1 history remains
+unchanged. No assumed prerequisite, reset, dependency retrieval or pin change.
+U15 is a standalone assignment, not a fourth old-batch unit or another queue.
+
+## Implemented caller and player view
+
+```text
+story-offline --play 7
+choose ask-terms
+choose negotiate
+choose commit
+choose close
+approach
+choose deliver
+```
+
+A proposed caller/response was recorded before dependent APIs. Actual private
+PlayDriver prepares the paid ferry and fare-record watch through real owners
+(one effect each), selects U13 ONCE with version1, and retains its immutable
+SelectedBargain/BargainHandle independently of temporary producers. Input plays
+actual issued U12 choices including explicit close. Only that current terminal
+pair composes U14; no seed/route-label reconstruction or substantive auto-choice.
+Approach/step-away is an explicit existing host presence event; the real issued
+payoff choices conclude this one finite episode. No automatic next story starts.
+
+`help` describes `choose ID`, `show`, `approach`, `step-away`, `quit`.
+Plain text only, flushed prompts, no ANSI/TTY dependency. Show authored current
+text/actor, ordered actual choices/availability, player inventory and commitments.
+Typed retained rules annotate immediate/full-promise costs before commitment;
+asking reveals the smaller negotiated quantity only after information is learned.
+No observer arrays, hidden beliefs/attitudes, world/debug/effect table or future
+fragment dump is printed in normal play. Existing debug/fixture modes remain.
+
+Literal state checks: initial5 coins/3 planks; seed1 ordinary2-plank delivery ->
+5/1/delivered2/favor1; seed3 larger3 ->5/0/delivered3; seed7 negotiated1 ->
+5/2/delivered1. Immediate help ->5/2/no debt/favor; payment ->3/3/no debt/favor;
+breach ->5/3/Broken/delivered0/favor0; refusal ->5/3/no invented debt/reward.
+Independent private-state assertions inspect outcome, obligation, knowledge and
+counters, not just matching prose or deriving expectations from the effect helper.
+The authorized recipient changes; previously aware Ivo and unaware Lena retain
+their separate information. Source fixture/input destruction and moves do not
+change retained accepted meaning or already returned text.
+
+## Authority, budgets and failure boundary
+
+ST-041/042/043/044 match both decision views. Text resolves only against the
+retained owned View. A resolved PlayChoice keeps its ORIGINAL issued Selection
+and phase; it never re-resolves after node/phase/incarnation change. Actual owners
+recheck current resource/presence before mutation. Unknown/malformed/unavailable
+commands explain without mutation; held stale/foreign/resumed tokens reject.
+Failed restore retains pair and valid token; same-field successful restore rejects
+old authority. Tests use only a private owner friend for host resource/checkpoint
+changes, not normal debug commands. Existing Engine/session/public APIs and all
+selector/cost/payoff/snapshot policy remain unchanged.
+
+Callbacks stage complete bounded scalar state before nonthrowing adoption; no
+I/O/generation/routing occurs inside them. Observation/rendering happens afterward
+and can allocate/fail outside the Core's nonthrowing post-effect commit. A stopped
+write/flush may follow a committed action: there is no retry, effect rollback or
+output/effect transaction. No user save/rewind or disk format is added. Restoring
+an older complete world remains a new timeline, not global exactly-once history.
+
+Hard defaults/lower-only private limits:64 commands,256 data bytes per line,
+16KiB logical frame,64KiB combined stdout/stderr. Read fixed stack storage plus
+one detection byte; do not drain oversized input. Commands require newline; EOF
+discards a partial command. Invalid input counts toward command budget. Frame
+appends and whole output messages check remaining quota before growth/write.
+No transcript/history accumulates in production. Normal completion/early ending
+checks final stdout/stderr flush in addition to prompt flush before reading.
+
+Exit0 finished finite payoff (departure may retain a pending promise);1 quit/EOF;
+2 usage/invalid or overflow seed;3 malformed/oversized input or budget;4 stream
+failure;5 preparation/observation/owner failure. Recoverable choice refusals stay
+at the bounded prompt. Complete episodes do not read trailing commands.
+
+Accounting excludes allocator capacity/rounding/control blocks, transient scalar
+formatting, library/stdio/OS buffering, parent/Session/compiler allocations and
+RSS/instruction time. Existing composition caps are unchanged and independently
+bound those shapes. Limits are logical byte/work bounds, not measured peak memory
+or a durable transcript. Exceptions retain model semantics and stop the CLI.
+Confidence high in exercised ownership/authority/literal effects, medium in caps,
+pacing/text. These are reversible private engineering choices, not user API taste.
+
+## Exact executed native checks
+
+CWD: this clone. EVERY command below used prefix P:
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+```sh
+cmake -S . -B builds/storytelling-u1-debug
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ctest --test-dir builds/storytelling-u1-debug -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+# Review concern: check final buffered flush, add simulated final-flush failure
+# after committed delivery and strengthen failed-restore pair equality.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_play(_transcript)?\.'
+```
+
+All six immediate native exits0. Registration262 nonempty unique names. ONE
+accumulated **262/262,34.48s** (260 GoogleTest cases +2 allocation probes), retaining
+all **244 predecessor names/order** and **119 byte-identical complete prior child
+blocks**. New14 driver +4 transcript cases contain20 actual input-driven children:
+**7x0,6x1,5x2,2x3**. The combined139 child outcomes are59x0,6x1,46x2,28x3.
+
+Review then added final buffered-flush checking and an existing-test simulation,
+plus failed-restore pair equality. Final-source affected **18/18,2.97s** passes;
+all20 child blocks are unchanged. No second262 run is claimed. No native command,
+test or audit failed/skipped; no ASan/UBSan diagnostics. Normal shared-lock waits
+retained their original sessions until drained. No admission/refusal retry,
+dependency retrieval, pin/limit/global sanitizer change or unwrapped native run.
+
+Saved complete logs in `builds/storytelling-u1-debug/`:
+`u15-configure.log`, `u15-build-1.log`, `u15-registration.log`, `u15-ctest-1.log`,
+`u15-ctest-details-1.log`, `u15-build-2.log`, `u15-ctest-2.log`,
+`u15-ctest-details-2.log`; every native command has its immediate `.exit` file.
+Audits: `u15-prerequisite-audit.log`, `u15-registration-audit.log`,
+`u15-results-audit-1.log`, `u15-results-audit-2.log`, `u15-demo-transcripts.log`,
+`u15-boundary-rules.log`, `u15-commands.log`, `u15-checkpoint-audit.log`.
+The latter audits include final source hashes and real shared Engine/sanitizer
+compile/link rules. Child helper adds bounded supplied stdin only for new callers;
+all old argument/stdout/stderr/status blocks remain byte-identical. Children inherit
+the wrapped sanitizer/resource envelope and do not reacquire the native lock.
+Debug, existing19 BUILD OFF selections, STARTUP_OPENGL OFF, policy minimum3.5,
+pins and incremental outputs remain. ASan/UBSan halt-on-error remain; command-local
+`detect_leaks=0` is the ST-008 tracing accommodation, not passing leak evidence.
+
+## Precise standalone handoff — idle
+
+No unresolved U15 acceptance blocker. Coordinator reviews the coherent checkpoint,
+standalone `feature-development/continuation/STORYTELLING-U15.json`, both decision
+views and full saved evidence. The receipt reports worker execution, not automatic
+coordinator source acceptance or human gameplay acceptance. Publisher handles
+transport for feat/storytelling. No additional unit, queue or service starts.
+
+Remaining unverified: participant fun/comprehension, localization/regional-language
+learning/profile/fonts, provider quality, LSan, other platforms/Release/SDK/visual/
+wider runtime, authenticated history and production/external durability. The next
+action is coordinator review of this playable finite episode; subsequent participant
+or language work needs a separately selected scope. Worker is idle with exact
+accepted artifacts/pairs and evidence retained.
+
+---
+
 # U14 final-lane promise payoff
 
 Starts clean on feat/storytelling at actual U13

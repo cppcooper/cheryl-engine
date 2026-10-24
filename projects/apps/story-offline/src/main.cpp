@@ -3,6 +3,7 @@
 #include "bargain.h"
 #include "selection.h"
 #include "payoff.h"
+#include "play.h"
 
 #include <charconv>
 
@@ -11,6 +12,17 @@
 
 int main(int argc, char** argv) {
     try {
+        if (argc >= 2 && std::string_view(argv[1]) == "--play") {
+            if (argc == 3) {
+                const std::string_view text = argv[2];
+                std::uint64_t seed = 0;
+                const auto parsed = std::from_chars(text.data(), text.data() + text.size(), seed);
+                if (!text.empty() && parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size())
+                    return OfflineStory::play(seed, std::cin, std::cout, std::cerr);
+            }
+            std::cerr << "Usage: story-offline --play SEED (unsigned 64-bit decimal).\n";
+            return 2;
+        }
         if (argc >= 2 && std::string_view(argv[1]) == "--payoff") {
             if (argc == 5 || argc == 6) {
                 const std::string_view text = argv[2];

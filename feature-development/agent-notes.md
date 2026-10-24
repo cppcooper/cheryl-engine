@@ -12,8 +12,12 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-040` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-044` IDs;
 [next](next.md) records the next coordinator review action.
+
+U15 adds a standalone private terminal episode from the exact accepted U14
+checkpoint. ST-041–044 record retained selection, real issued authority, player-only
+presentation and bounded I/O; next.md owns actual execution and idle handoff.
 
 U14 now plays fulfillment/breach/acknowledgment from retained actual bargain
 results. One accumulated244/244 passes with227 old names and103 unchanged child
@@ -1909,6 +1913,206 @@ platforms/Release/SDK/runtime/visual integration and durable/external delivery r
 unverified. No provider/free-text parser, public story framework, magic integration,
 global reputation or fourth unit is selected. Worker ends idle for coordinator
 review of this third/final lane milestone and finite-round completion.
+
+## U15 proposed private interactive caller (before dependent APIs)
+
+Standalone continuation from exact clean U14 351f1682c053901e1ff8dc35572bc0e692486ca2,
+not a fourth old-queue unit. Source/receipt/final hashes and actual244 +17 +17
+execution were inspected; U13 227+33 and U11 193/194+1/1 histories remain intact.
+
+```text
+story-offline --play 7
+You paid 3 coins to cross by ferry and showed your fare record at the quay.
+Nera the quay steward
+Inventory: 5 coins, 3 planks. Commitment: none.
+  ask-terms ... [available]
+  refuse ... [available]
+> choose ask-terms
+... known revised promise: 1 plank later ...
+> choose negotiate
+> choose commit
+> choose close
+... retained accepted bargain becomes its payoff; no branch is auto-selected ...
+> approach
+> choose deliver
+... 2 planks left, 1 delivered, one favor; encounter finished ...
+```
+
+Use one actual paid ferry/watch setup, one U13 selection and retained immutable
+artifact, real U12 choices/close, then actual U14 composition from the completed
+pair. Proposed private PlayDriver retains owned issued View/Selection and phase;
+resolved choices do not re-resolve IDs after progression/restore. A test-only
+friend seam may inspect owner state or change live supplies/presence. UI shows
+only authored text, actual speaker, available rows, typed visible costs and own
+commitment/inventory/favor; private observer arrays/beliefs/attitudes stay hidden.
+
+Commands: help/show/choose ID/approach/step-away/quit; plain newline input, no TTY,
+save, rewind or debug editing. Proposed limits64 commands/256 bytes per line/
+64KiB combined emitted text/16KiB single frame; detect one extra input byte and
+stop instead of draining. Require newline to execute a command; EOF discards an
+unfinished line without inventing a choice. Invalid input uses the command quota.
+Exit0 finished one pair,1 quit/EOF early,2 usage/seed,3 limits/malformed input,
+4 stream failure,5 preparation/internal failure. Output after an already committed
+choice is not a durable transaction; failures stop without replay/rollback claims.
+Confidence medium in wording/caps until checks, high in preserving existing owner
+contracts. These are reversible engineering choices, not inferred personal taste.
+
+## U15 implemented private interactive episode
+
+### ST-041 — One selected artifact, one actual bargain/payoff pair
+
+The proposed caller above was recorded before adding `play.h`/`play.cpp`. The
+implemented executable uses `story-offline --play SEED`, preserving all earlier
+modes and their output. The narrow in-process caller is:
+
+```cpp
+auto driver = PlayDriver::start(7).value();
+const auto selected = driver.selected(); // Retained immutable U13 selection.
+const auto text = driver.render();
+auto held = driver.resolve("ask-terms").value(); // Copies a REAL displayed Selection.
+driver.apply(held).value();
+// Production: run_play(driver, input, output, diagnostics), with finite limits.
+```
+
+Start plays the existing paid ferry (`pay`, `continue`) and checked watch
+(`fare-record`, `ask-again`) through their actual owners. They each apply one
+effect before the relief episode. The truthful recap reports the three-coin
+fare and shown record; the player begins at the quay with five coins/three
+planks. U13 selects once with algorithm version1. `SelectedBargainHandle` retains
+exact accepted content, origin chain and source meaning after temporary fixture,
+catalogue and source-owner destruction. No seed reconstruction occurs afterward.
+
+Input chooses real U12 ask/help/payment/ordinary promise/negotiation/commit/refusal
+and its explicit close. Only the completed terminal bargain pair can prepare the
+one U14 follow-up. Preparation validates/copies content/state, starts an idle
+payoff and prepares its View before nonthrowing private phase adoption. Refusal
+leaves the terminal bargain/selected artifact intact. No substantive action is
+chosen automatically. `approach`/`step-away` supplies the existing serialized
+presence event; delivery/breach/acknowledgment/departure use actual issued choices.
+The first terminal payoff ends this finite episode, including a departure that
+leaves a promise pending. Exit0 means the episode ended, not every debt resolved.
+
+No public Engine/header, policy/cost, selector, snapshot/schema, callback routing,
+provider/parser, bank mode, prologue interaction or automatic scene loop changes.
+Private `PlayProbe` is defined only in tests; it is not a normal world-edit command.
+This is manually authored offline material, not model output. Confidence high in
+native ownership/sequence, medium in preset/pacing; changing this private preset
+or command spelling is cheap but needs literal-output review. Existing agent APIs
+supply compatibility, not new evidence of personal API taste.
+
+### ST-042 — Retain the displayed authority and preserve owner guarantees
+
+`PlayDriver` retains one independently owned current `View`. Text resolution scans
+only its rows and copies the original `Selection` plus Bargain/Payoff phase.
+No node/choice string constructs live authority. Held resolved commands never
+refresh their authority after progression, phase change or same-field restore.
+Unknown text returns a recoverable explanation; actual owners reject unavailable,
+stale, foreign and wrong-incarnation tokens with their original error ordering.
+Pure live resource/presence rechecks precede mutation. Rejection preserves the
+world/cursor, effect counts and existing valid authority where the owner promises
+it; completing a transition invalidates its old selection. `show` may obtain a
+new View without applying effects. Ordinary subsequent text uses that displayed
+offer; no protocol claims to know when a pasted line was authored.
+
+Engine guard/fault/reentrancy, pre-effect owned-transition preparation and
+allocation-free nonthrowing cursor/result commit are unchanged. App callbacks
+stage full scalar state before nonthrowing adoption and do no I/O, generation or
+target routing. After owner success, the terminal driver obtains/renders a View
+OUTSIDE the callback; this may allocate/fail after an action has committed. It
+stops with a truthful failure rather than retrying the effect or implying rollback.
+
+Tests retain tokens across moves, successful same-field bargain/payoff resume,
+failed restore, live supply/presence edits and phase changes. Existing paired
+checkpoint code remains the only restore boundary; the UI adds no save/rewind.
+Successful restore renews authority; failed restore preserves prior pair/token.
+Older complete-world restore is a rewind/new timeline, not authenticated history,
+global exactly-once delivery or durable external-effect rollback. Confidence high
+in exercised rejection/ownership. Any future concurrent commands, persistence or
+cross-scene rewind needs a separately selected contract; no such work starts here.
+
+### ST-043 — Render player-facing knowledge from retained typed meaning
+
+Normal output names the actual retained actor (Nera/Oren), the current authored
+scene, ordered issued IDs/wording/availability, own coins/planks and own accepted
+commitment/favor. Help/pay/full-promise annotations use typed intent/plan amounts;
+commit uses the negotiated amount only on its actual learned offer. Asking reveals
+the smaller revised quantity, then negotiation/commit preserves that accepted
+quantity into U14. No prose parsing supplies authority or computes a cost.
+
+Literal examples: seed1 ordinary delivery spends2 planks, leaving5 coins/1 plank,
+delivered2/favor1; seed3 spends3, leaving5/0/delivered3; seed7 ask/negotiate/commit
+spends1, leaving5/2/delivered1. Immediate help leaves5/2 with no future debt/reward;
+payment leaves3/3; deliberate breach leaves5/3/Broken without delivery/favor;
+earlier refusal leaves5/3/no debt. All are independently asserted in private
+state tests in addition to child prose. No repeated display/invalid command/EOF
+creates an obligation, fare, delivery or favor.
+
+Only recipient-appropriate authored dialogue and public presence are rendered.
+The full observer arrays, private beliefs/attitudes, truth tables, session/step
+identities, future fragments and effect counters remain in existing debug modes
+or tests. The known fare observer stays distinct from unaware Lena; payoff changes
+only the authorized recipient. Repeated pure render/help/show cannot spread
+knowledge or rewrite facts. Already returned strings remain owned after source
+fixture destruction/moves. These literal/absence checks are not a human
+comprehension or enjoyment study. Confidence high in tested projection/privacy,
+medium in wording. Localization/regional-language/profile/font work stays important
+backlog; no settings or language packs are activated by U15.
+
+### ST-044 — Bound input/output and stop on failures honestly
+
+Private defaults are hard ceilings:64 newline-terminated commands,256 data bytes
+per line,16384 logical bytes per frame,65536 requested output bytes shared by
+stdout/stderr. Test-only smaller allowances are valid; above-cap/SIZE_MAX requests
+reject before processing. Input uses a fixed256-byte stack buffer and at most
+one extra detection byte; oversized/control-byte input stops immediately without
+an unbounded drain. A final unfinished line is discarded at EOF. Tabs/CRLF are
+accepted; NUL/other C0/DEL rejects. Empty, malformed and unknown commands count
+against the finite command allowance. Trim/resolution uses bounded string views;
+no production transcript/history is accumulated. Commands after completion are
+not read or executed.
+
+A frame checks remaining bytes before every append; the complete frame/constant
+message is checked against shared output allowance before writing. Prompt is
+flushed and checked before each blocking read. Normal completion and early ending
+check final stdout/stderr flush; write/read/flush failures stop without automatic
+retry. A failed final flush can report I/O failure after successful delivery; that
+state remains committed. Fatal diagnostics share the same quota and can be omitted
+when exhausted/broken. This is not atomic output/effect delivery or durability.
+
+Statuses:0 finite episode complete;1 quit/EOF early, preserving pending state;
+2 malformed/overflow seed or bad arity;3 malformed/oversized input or resource
+limit;4 stream failure;5 owner/preparation/observation failure. Recoverable command,
+choice or presence refusals explain and return to the same bounded prompt. `help`
+prints all commands; `show` refreshes/prints without choosing; `quit` never chooses.
+
+Resource model: at most64*(256+1) input detection bytes; bounded row/action scans,
+16KiB frame construction and64KiB attempted output; one existing bounded selector
+and one bounded payoff composition per episode. Parent composition/compile caps
+are unchanged. Output is charged conservatively even on partial failed writes.
+Logical bytes exclude string capacity/rounding, transient scalar formatting,
+allocator/control-block overhead, stdio/OS buffering, retained parent/Session/
+compiler allocations and RSS/instruction time; their existing contracts remain.
+Normal allocation/programming exceptions stop the private CLI with status5, while
+normal model API exceptions retain their established propagation. These caps are
+not an exact peak-memory/time guarantee. Confidence high in boundary/refusal
+checks, medium in numerical limits; expansion needs private resource/test review.
+
+EOF/quit pending-state persistence is only in-process test observation; process
+exit does not save it. No disk service, user restore, authenticated history,
+provider, reputation/magic framework or extra scheduled unit is added. LSan,
+other platforms/Release/SDK/runtime integration, participant fun/comprehension,
+localization/provider quality and production/external durability remain unverified.
+
+Executed U15: ONE accumulated **262/262,34.48s**, all244 predecessor names/order,
+all119 old full child blocks byte-identical;14 new driver and4 transcript cases.
+Twenty new input-bearing children have expected exits7x0,6x1,5x2,2x3 (139 total
+children). Final-flush review and failed-restore assertion changes then pass
+**18/18 affected,2.97s**; all20 child blocks unchanged. This is not a second262
+run. All six native exits0, no skips/unrun/ASan/UBSan diagnostics. Initial/final
+source hashes, full logs/immediate statuses and compile/link rules are preserved
+in next.md/standalone receipt. U14's244+17+17, U13's227+33 and U11's193/194+1/1
+histories stay intact. No unresolved blocker; idle for coordinator review, not
+another queue unit or automatic human gameplay acceptance.
 
 ## Verification environment
 

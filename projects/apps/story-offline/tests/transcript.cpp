@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <string_view>
 #include <spawn.h>
 #include <fcntl.h>
 #include <sys/wait.h>
@@ -42,10 +44,19 @@ namespace {
             throw std::runtime_error("Child output exceeds 64 KiB");
         return {bytes.data(), static_cast<std::size_t>(stream.gcount())};
     }
-    Child child(std::vector<std::string> options) {
+    Child child(std::vector<std::string> options, std::optional<std::string_view> supplied = std::nullopt) {
+        if (supplied && supplied->size() > 32768)
+            throw std::runtime_error("Child input exceeds32KiB");
         Directory dir;
         const auto input = dir.path / "input", output = dir.path / "output", error = dir.path / "error";
-        std::ofstream(input).close();
+        {
+            std::ofstream stream(input, std::ios::binary);
+            if (supplied)
+                stream.write(supplied->data(), static_cast<std::streamsize>(supplied->size()));
+            stream.close();
+            if (!stream)
+                throw std::runtime_error("Cannot prepare child input");
+        }
         posix_spawn_file_actions_t actions;
         int code = posix_spawn_file_actions_init(&actions);
         if (code)
@@ -78,6 +89,11 @@ namespace {
         std::cout << "Offline child arguments:";
         for (const auto& option : options)
             std::cout << " [" << option << ']';
+        if (supplied) {
+            std::cout << "\nstdin (" << supplied->size() << " bytes):\n";
+            std::cout.write(supplied->data(), static_cast<std::streamsize>(supplied->size()));
+            std::cout << "\nend stdin";
+        }
         std::cout << "\nstdout:\n" << result.output << "stderr:\n" << result.error << "exit: " << result.code << '\n';
         return result;
     }
@@ -528,5 +544,121 @@ TEST(story_payoff_transcript, live_refusal_and_usage) {
         EXPECT_EQ(r.code, 2);
         EXPECT_TRUE(r.output.empty());
         EXPECT_NE(r.error.find("Usage: story-offline --payoff"), std::string::npos);
+    }
+}
+
+TEST(story_play_transcript, ordinary_and_negotiated_fulfillment) {
+    const auto ordinary = child({"--play", "1"}, "choose promise\nchoose close\napproach\nchoose deliver\nchoose deliver\n");
+    ASSERT_EQ(ordinary.code, 0);
+    EXPECT_TRUE(ordinary.error.empty());
+    EXPECT_NE(ordinary.output.find("Relief bargain - Nera the quay steward"), std::string::npos);
+    EXPECT_NE(ordinary.output.find("promise: 2 planks later; no reward now"), std::string::npos);
+    EXPECT_NE(ordinary.output.find("deliver - Deliver the recorded material [unavailable]"), std::string::npos);
+    EXPECT_NE(
+        ordinary.output.find("deliver - Deliver the recorded material [available]; cost: 2 planks; one relief favor on delivery"),
+        std::string::npos
+    );
+    EXPECT_NE(
+        ordinary.output.find("Inventory: 5 coins, 1 plank.\nCommitment: fulfilled; 2 planks delivered. Favor: one relief favor."),
+        std::string::npos
+    );
+    EXPECT_EQ(count(ordinary.output, "Encounter finished."), 1);
+    const auto large = child({"--play", "3"}, "choose promise\nchoose close\napproach\nchoose deliver\n");
+    ASSERT_EQ(large.code, 0);
+    EXPECT_TRUE(large.error.empty());
+    EXPECT_NE(large.output.find("promise: 3 planks later; no reward now"), std::string::npos);
+    EXPECT_NE(
+        large.output.find("Inventory: 5 coins, 0 planks.\nCommitment: fulfilled; 3 planks delivered. Favor: one relief favor."),
+        std::string::npos
+    );
+    const auto negotiated =
+        child({"--play", "7"}, "choose ask-terms\nchoose negotiate\nchoose commit\nchoose close\napproach\nchoose deliver\n");
+    ASSERT_EQ(negotiated.code, 0);
+    EXPECT_TRUE(negotiated.error.empty());
+    const auto learned = negotiated.output.find("Known revised promise: 1 plank later.");
+    EXPECT_NE(learned, std::string::npos);
+    EXPECT_EQ(negotiated.output.substr(0, learned).find("; promise: 1 plank later"), std::string::npos);
+    EXPECT_NE(negotiated.output.find("negotiate - Use the learned terms to revise the promise [available]"), std::string::npos);
+    EXPECT_NE(
+        negotiated.output.find("Inventory: 5 coins, 2 planks.\nCommitment: fulfilled; 1 plank delivered. Favor: one relief favor."),
+        std::string::npos
+    );
+    for (const auto* r : {&ordinary, &large, &negotiated})
+        for (auto word :
+             {"Observer ", "Effects:", "knowledge=", "attitude", "believes", "licensed=", "due_planks=", "session=", "definition="})
+            EXPECT_EQ(r->output.find(word), std::string::npos) << word;
+}
+
+TEST(story_play_transcript, acknowledgments_and_breach) {
+    const auto helped = child({"--play", "1"}, "choose help-now\nchoose close\napproach\nchoose acknowledge\n");
+    ASSERT_EQ(helped.code, 0);
+    EXPECT_TRUE(helped.error.empty());
+    EXPECT_NE(helped.output.find("help-now - Put boards into the work today [available]; cost: 1 plank now"), std::string::npos);
+    EXPECT_NE(helped.output.find("Inventory: 5 coins, 2 planks.\nCommitment: none. Favor: none."), std::string::npos);
+    const auto paid = child({"--play", "1"}, "choose pay\nchoose close\napproach\nchoose acknowledge\n");
+    ASSERT_EQ(paid.code, 0);
+    EXPECT_TRUE(paid.error.empty());
+    EXPECT_NE(paid.output.find("pay - Fund today's work with coins [available]; cost: 2 coins now"), std::string::npos);
+    EXPECT_NE(paid.output.find("Inventory: 3 coins, 3 planks.\nCommitment: none. Favor: none."), std::string::npos);
+    const auto broken =
+        child({"--play", "1"}, "choose promise\nchoose close\napproach\nstep-away\nchoose deliver\napproach\nchoose break\n");
+    ASSERT_EQ(broken.code, 0);
+    EXPECT_TRUE(broken.error.empty());
+    EXPECT_NE(broken.output.find("Choice refused: unavailable right now. No action was taken."), std::string::npos);
+    EXPECT_NE(broken.output.find("Inventory: 5 coins, 3 planks.\nCommitment: broken; no delivery. Favor: none."), std::string::npos);
+    const auto refused = child({"--play", "1"}, "choose refuse\nchoose close\napproach\nchoose acknowledge\n");
+    ASSERT_EQ(refused.code, 0);
+    EXPECT_TRUE(refused.error.empty());
+    EXPECT_NE(refused.output.find("Your earlier refusal stands. This meeting creates no promise or debt."), std::string::npos);
+    EXPECT_NE(refused.output.find("Inventory: 5 coins, 3 planks.\nCommitment: none. Favor: none."), std::string::npos);
+}
+
+TEST(story_play_transcript, early_end_and_refusals) {
+    const auto empty = child({"--play", "1"}, "");
+    EXPECT_EQ(empty.code, 1);
+    EXPECT_TRUE(empty.error.empty());
+    EXPECT_NE(empty.output.find("Inventory: 5 coins, 3 planks.\nCommitment: none."), std::string::npos);
+    const auto commands = child({"--play", "1"}, "\nwat\nchoose unknown\nchoose negotiate\nchoose pay extra\nhelp\nshow\nquit\n");
+    EXPECT_EQ(commands.code, 1);
+    EXPECT_TRUE(commands.error.empty());
+    EXPECT_NE(commands.output.find("Unknown command"), std::string::npos);
+    EXPECT_NE(commands.output.find("Unknown choice"), std::string::npos);
+    EXPECT_NE(commands.output.find("unavailable right now"), std::string::npos);
+    EXPECT_NE(commands.output.find("Inventory: 5 coins, 3 planks."), std::string::npos);
+    const auto pending = child({"--play", "1"}, "choose promise\nchoose close\n");
+    EXPECT_EQ(pending.code, 1);
+    EXPECT_TRUE(pending.error.empty());
+    EXPECT_NE(pending.output.find("Commitment: 2 planks pending. Favor: none."), std::string::npos);
+    EXPECT_EQ(pending.output.find("Encounter finished."), std::string::npos);
+    const auto partial = child({"--play", "1"}, "choose promise");
+    EXPECT_EQ(partial.code, 1);
+    EXPECT_TRUE(partial.error.empty());
+    EXPECT_EQ(partial.output.find("2 planks pending"), std::string::npos);
+}
+
+TEST(story_play_transcript, input_and_usage_boundaries) {
+    const auto exact = child({"--play", "1"}, std::string(256, 'x') + "\nquit\n");
+    EXPECT_EQ(exact.code, 1);
+    EXPECT_TRUE(exact.error.empty());
+    const auto over = child({"--play", "1"}, std::string(257, 'x') + "\nchoose promise\n");
+    EXPECT_EQ(over.code, 3);
+    EXPECT_NE(over.error.find("oversized or malformed"), std::string::npos);
+    std::string commands;
+    for (int i = 0; i < 63; ++i)
+        commands += "help\n";
+    const auto count_exact = child({"--play", "1"}, commands + "quit\n");
+    EXPECT_EQ(count_exact.code, 1);
+    EXPECT_TRUE(count_exact.error.empty());
+    const auto count_over = child({"--play", "1"}, commands + "help\nquit\n");
+    EXPECT_EQ(count_over.code, 3);
+    EXPECT_NE(count_over.error.find("command limit"), std::string::npos);
+    for (const auto& args :
+         {std::vector<std::string>{"--play"}, std::vector<std::string>{"--play", "-1"},
+          std::vector<std::string>{"--play", "18446744073709551616"}, std::vector<std::string>{"--play", "1x"},
+          std::vector<std::string>{"--play", "1", "extra"}}) {
+        const auto r = child(args, std::string_view{});
+        EXPECT_EQ(r.code, 2);
+        EXPECT_TRUE(r.output.empty());
+        EXPECT_NE(r.error.find("Usage: story-offline --play"), std::string::npos);
     }
 }

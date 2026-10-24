@@ -422,3 +422,40 @@ and accumulated regressions under the existing wrapper. This trades exact peak-m
 accounting for bounded conservative quotas with exclusions. Confidence is high in
 native boundaries, medium in caps; leaks, other platforms, participant fun and
 external durability remain unverified.
+
+## ST-041 — Play one retained bargain and its actual payoff
+
+Add private `--play SEED` after an actual paid ferry/watch setup. Select once,
+retain the immutable artifact, and let input choose every substantive bargain
+action and close before composing its real completed pair into the payoff.
+Approach/withdrawal stays explicit. This trades an interactive prologue for a
+small consequential episode. Confidence is high in native sequencing, medium
+in pacing; changing the preset or commands is private and reversible.
+
+## ST-042 — Keep displayed authority through command resolution
+
+Resolve text against the retained issued View; a held command owns its original
+Selection and phase. Let actual owners recheck conditions and reject stale,
+foreign or resumed authority without retokening. This trades a command protocol
+for a serialized private driver. Confidence is high in tested rejection and
+paired-state preservation; future concurrency or rewind would require a new
+contract. Rendering after a committed action may fail without rolling it back.
+
+## ST-043 — Present player knowledge and typed commitments
+
+Show authored scene/speaker, offered choices, availability, own inventory and
+commitments. Derive immediate/full-promise costs from retained typed rules; reveal
+the smaller negotiated quantity only after learning terms. Keep observer arrays,
+private belief/attitude and debug instrumentation outside normal play. This trades
+omniscient tracing for comprehensible agency. Confidence is high in literal/privacy
+checks, medium in clarity; participant evidence and later regional-language work
+remain separate, reversible follow-ups rather than inferred API taste.
+
+## ST-044 — Bound terminal interaction and report interrupted observation
+
+Use 64 commands, 256-byte lines, 16KiB frames and 64KiB combined output with
+lower-only private allowances. Detect oversize without draining; flush before
+input and check final flush. Distinguish completion, early ending, usage, limits,
+I/O and preparation failure. This trades unlimited interaction for finite resource
+use. Confidence is high in simulated boundaries, medium in caps; buffering/allocator
+overhead is excluded and failed presentation cannot undo an already committed effect.
