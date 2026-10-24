@@ -1,0 +1,17 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "PROCGEN-U6",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u6/build-1.log",
+    "builds/procedural-generation/logs/u6/build-2.log",
+    "builds/procedural-generation/logs/u6/ctest-1.log"
+  ],
+  "limitations": [
+    "GNU/Linux Debug/UBSan only; other compilers/OSes, ASan, large-domain performance and public Engine/SDK integration remain unverified.",
+    "Greedy least-carve attachments do not minimize the complete tunnel network; no tunnel-width or physical collision guarantee.",
+    "Exact work thresholds depend on stdlib heap comparison counts; sufficient-budget logical output is deterministic.",
+    "Exact source occupancy is retained in memory; no persisted input-identity/recipe/save format or sibling integration."
+  ]
+}

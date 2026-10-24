@@ -218,3 +218,43 @@ The committed ready receipt names complete native logs; it reports execution,
 not coordinator source acceptance. One coherent U5 checkpoint ends this run;
 finite controller owns later admission. Other platforms/ASan/performance/public
 integration remain unverified.
+
+## PROCGEN-023 — Cave connector boundary and exact source identity
+
+**User requirement; implemented private boundary, high confidence in semantics.**
+Transform borrowed binary2D occupancy into owned source bytes, replacement and
+connection measurements. Preserve every floor and require a solid perimeter;
+a boundary floor is a known contradiction, not silently removed. Empty succeeds
+without invented floor; already connected input is unchanged. Exact original
+bytes plus Domain identify arbitrary input. Seed-only identity, persistence and
+public integration are outside this boundary; API spelling is an engineering choice.
+
+## PROCGEN-024 — Deterministic greedy least-carve attachments
+
+**Engineering choice; high confidence in local objective.** Start at the lowest
+indexed floor component. Repeated multi-source Dijkstra minimizes new solid-cell
+carving cost to a settled external floor; zero-cost floor and unit-cost interior
+solid are distinct from route edges. Cost/index heap ties and canonical neighbors
+fix logical output. Greedy connections make no global network minimum claim.
+Callers recompute clearance for replacement; old fields keep their original
+input meaning. Existing cave/maze versions and RNG streams remain unchanged.
+
+## PROCGEN-025 — Bounded heap, repeated work and atomic return
+
+**User bounds requirement plus engineering limits.** Account4096+139*C bytes for
+source/output, flags, distance/parent/flood scratch, bounded heap and records.
+Each search settles at most C cells, probes at most4*C edges and pushes at
+most5*C entries; duplicates/comparisons/reconstruction consume runtime work.
+At most initial-components-minus-one searches; hard caps65536 cells/16MiB/100M
+work. Minimum admission8*C does not guarantee completion. Refusal returns no
+partial value; allocation/programming exceptions propagate. Payload is not RSS.
+
+## PROCGEN-026 — Tunnel evidence and queued handoff
+
+**User requirement; executed GNU/Linux Debug/UBSan evidence.** All61 accumulated
+CTest entries pass:57 cases/26849 assertions plus four consumers. Retains all52
+prior names/22276 assertions; eight tunnel cases add4573 assertions. Independent
+BFS/dense Dijkstra verify literals, all512 small interiors, generated caves and
+refusals. Consumer passes2/2 with fresh clearance. Ready receipt records saved
+native logs, not automatic source acceptance. Finite controller owns U7 admission;
+publisher owns transport. Other platforms/ASan/performance remain unverified.

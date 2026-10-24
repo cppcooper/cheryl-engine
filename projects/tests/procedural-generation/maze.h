@@ -51,7 +51,10 @@ namespace ProcGen {
         cave_version,
         clearance_dimensions,
         occupancy,
-        clearance_threshold
+        clearance_threshold,
+        tunnel_dimensions,
+        tunnel_boundary,
+        tunnel_version
     };
 
     struct Failure {

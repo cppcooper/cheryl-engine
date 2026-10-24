@@ -1347,3 +1347,242 @@ performance and public Engine/SDK integration remain unverified. No persistent
 input-ID/recipe/cache format, physics, assets or sibling dependency is added.
 U6 connecting tunnels and U7 dungeon rooms/corridors remain pinned later units;
 U5 does not implement them or general maze endpoint/branch/loop controls.
+
+## PROCGEN-U6 — Proposed caller before dependent APIs
+
+Predecessor inspected: clean `483493998776586a1d0d75f1683d8dec57cbcf55`, U5
+ready/true receipt and next.md, actual saved build/CTest logs. No unverified
+prerequisite is promoted. Queue plan pins U6 second; U7 remains controller-owned.
+User requirements: preserve existing floor and solid perimeter, bounded complete
+owned replacement, exact provenance and no stale clearance. Engineering proposal
+(high confidence in semantics, medium in eventual public API spelling):
+
+```cpp
+const auto domain = Domain::checked(std::array<Index,2>{7,3}).value();
+const std::array<std::uint8_t,21> chambers{
+    1,1,1,1,1,1,1,
+    1,0,1,1,1,0,1,
+    1,1,1,1,1,1,1};
+auto joined = connect_cave({domain,chambers}, budget).value();
+auto fresh = analyze_clearance(
+    {joined.descriptor().domain,joined.occupancy()},2,budget).value();
+```
+
+Expected tiny result: original floor indexes8/12 survive, indexes9/10/11 become
+floor, one connection has cost3 newly carved cells and length4 cardinal edges.
+Source remains unchanged. Pre-carving U5 fields remain valid for their old input,
+not for this replacement. No seed is needed by the deterministic transform.
+Proposed mechanism: greedy repeated multi-source Dijkstra, floor entry0/solid1,
+protected perimeter, exact cost then cell-index queue ties, strict relaxations.
+It minimizes each immediate attachment cost, not a whole tunnel network, and
+never removes chambers. Own an exact source-byte snapshot rather than claiming
+a seed/dimensions or collision-prone hash identifies arbitrary literal input.
+Implementation and native checks are pending at this point.
+
+### PROCGEN-023 — Implemented transform and provenance
+
+Source owner: `projects/tests/procedural-generation/tunnels.h/.cpp`,
+`connect_cave(OccupancyView,CaveBudgets,uint32_t)`. Input view is the accepted
+U5 shape/lifetime convention: Domain and bytes remain alive and unchanged until
+return; neither is retained by reference. Exact2D positive extents, binary bytes
+and exact count are mandatory. Axis0=x fastest; index=x+width*y; cardinal moves
+only. Empty dimension/zero extents/product overflow remain Domain failures.
+
+All perimeter cells must be1. A boundary0 is `contradiction/tunnel_boundary`:
+one cannot preserve that floor AND have a solid outer boundary. This is an
+actual contradiction, unlike work exhaustion. Unsupported versions reject
+explicitly; invalid shape/bytes reject as invalid_input. All-solid/unit-axis
+solid inputs succeed floor0/components0/connected=false. Single floor/component
+succeeds unchanged with connected=true. No discarded chamber, fabricated floor,
+mask, portal, 3D or protected interior input exists in this unit. Every valid
+nonempty interior is mutually reachable by carving interior solids, subject to
+resource budgets; an exhausted budget does not prove mathematical impossibility.
+
+Owned ConnectedCave includes exact original bytes, full replacement, copied
+Domain/version, connection records, measurements and charged usage. Copies deep-
+copy all three output vectors; moves transfer ownership (moved-from destruction/
+assignment only). A source/result may die without invalidating another result.
+Borrowed result spans expire on destruction/move/assignment. Allocation exceptions
+propagate. Local expected-failure transport alone is caught; logic_error guards
+signal programming invariants rather than returning a vague error. No failure
+publishes even a partially carved replacement, connection list or metrics.
+
+Exact source() bytes plus descriptor Domain are an input identity; transform
+family `greedy_least_carve_2d`, version1, fixes this operation. Calling connect_cave
+on that snapshot with the retained version reproduces logical output with
+sufficient budget. No RNG/clock is used. Caller retains any original CaveReplay
+for upstream provenance; the utility neither mutates it nor infers it from bytes.
+No saved recipe, witness-file format, cache policy, hash or sibling adapter is
+selected. Source changes invalidate old derived clearance just as in U5. This
+transform does not silently measure clearance; consumer/tests call U5 explicitly
+on replacement occupancy. Old fields remain independent values for old geometry.
+
+### PROCGEN-024 — Local objective, ties and limits of optimality
+
+The first lowest-index original floor component is the root region. Initial
+cardinal flood counts every original component. While floors remain outside the
+root region, initialize all current root-region cells at distance0 in ascending
+index order. Dijkstra edge cost is destination occupancy: floor0/interior solid1.
+Perimeter is excluded. Queue priority is (cost,index), with strict improvement
+only and canonical X-/X+/Y-/Y+ neighbors. Equal alternatives keep first parent;
+external floor is accepted at a current settled pop, never first discovery.
+Checked parent reconstruction carves intermediate solids, records source/target,
+newly carved cost and cardinal length; reflood grows the complete connected region.
+
+Distances are nonnegative. Each parent is an already settled predecessor;
+non-source parents cannot cycle. Current/stale pops are distinguished. A successful
+attachment contains newly carved cells followed by the external floor: with every
+current-region cell seeded, its measured edge length is carved+1. That fact does
+not equate carving cost and route length. Other components adjacent to a newly
+carved site can join in the same reflood, so record count can be less than the
+original component count minus one. Root region strictly grows and each search
+absorbs at least one remaining original component. No global minimum total
+network, fixed endpoint, loop budget, tunnel width or physical quality is promised.
+
+A* in `traversal.h` requires positive edge costs; these zero-cost floor entries
+do not fit it. Reuse Domain/Work/CaveBudgets/OccupancyView instead of weakening
+accepted U2 contracts or building a general graph framework. Logical output uses
+fixed integer arithmetic/ordering on the existing8-bit-byte/64-bit Index and
+size_t platform contract. Heap comparison counts can vary by stdlib algorithm,
+so exact work-admission thresholds/usage are implementation-specific; sufficient-
+budget logical results are stable. No broad compiler/OS execution is inferred.
+
+Existing intentional-source preference evidence remains PROCGEN-002 (archived
+v3 typed caller and nominated HyperMaze topology). It supplies no cave-tunnel API,
+zero-cost search, snapshot ownership or personal taste evidence. Current APIs are
+compatibility context; all new spelling/algorithm/caps are reversible engineering
+choices, not additional inferred user preferences. Confidence high for explicit
+finite contracts, medium for eventual public reuse. Later geography/settlement/
+tectonic edits need exact-base identity and derived-layer invalidation too; no
+implementation of those layers or public extraction is part of U6.
+
+### PROCGEN-025 — Peak storage and operation accounting
+
+For C cells, all products/additions and container capacities are checked before
+allocation; planning supports large valid Domain values without allocating buffers.
+Peak requested payload=4096+139*C bytes: C each for owned original, replacement
+and flags; C each u64 distance/parent/flood queue (24*C); heap capacity5*C pairs
+of u64 cost/index (80*C); up to C four-u64 connection records (32*C). Reserve
+full capacities once, reuse between searches and never rely on geometric growth.
+Fixed allowance covers bounded metadata/return construction with static assertion.
+Existing caller inputs/results, allocator bookkeeping and runtime overhead are
+excluded; this is not an exact RSS or system-memory guarantee.
+
+Clamp caller cells/bytes/work to hard65536/16MiB/100M. Version/shape/size and
+cell/storage/minimum-work admission precede scanning. Binary/perimeter validation
+charges C and completes before owned allocation; six C-sized initialized/copied
+arrays charge6*C; initial root scan charges C. Thus minimum8*C; all-solid uses
+exactly8*C, already-connected uses8*C+6*floor. Every flood enqueues/pops each
+reached floor once, charging those plus four neighbor probes (6 per floor).
+
+Each search charges resets (2*C distance/parent, C flags), canonical source scanC,
+source pushes, every heap push/pop and actual comparator, even stale entries;
+leftover heap entries are charged when retired. Settled cells <=C, inspected
+neighbors <=4*C, successful relaxations <=4*C plus <=C initial sources => at most
+5*C pushes/live entries per search. Explicit capacity invariants guard that bound.
+Heap operations are O(log(5*C)); at most original-components-minus-one searches
+=> O(C^2 log C) conservative total work, O(C) payload. Runtime100M cap bounds
+exploration even when this pessimistic total is too large. No unbounded all-pairs
+or Hamiltonian solver. Reconstruction charges each parent step (<=C), connection
+append, flags clearC and reflood6*reached. Heap retirement is charged on success.
+Actual complete work is reported; expected-work estimates never bypass limits.
+
+Executed resource tests below use no huge buffer or host pressure:
+planning-only overflow and a65537-byte over-cell-cap input verify refusal; allocation
+denial is scoped to the separate test executable. A one-short runtime budget
+must refuse after admitted initialization without mutating source/prior output.
+
+### PROCGEN-026 — Executed acceptance, diagnostics and finite receipt
+
+U6 source is based on `483493998776586a1d0d75f1683d8dec57cbcf55`. Existing
+U1–U5 test sources, callers, replay algorithms/versions and registration names
+remain unchanged. Only three appended Failure reasons/messages touch maze.h/.cpp;
+old enum values and diagnostics remain stable. CMake adds tunnels.cpp, separate
+oracle, stdlib-only test and semantic consumer to the same standalone private
+C++23 project. No Engine/SDK/root/dependency/pin/settings/sibling changes.
+
+Reused preserved `builds/procedural-generation`: GNU16.2.1/Linux, Ninja, Debug,
+C++23, warnings-as-errors, UBSan ON with no recovery and frame pointers. Cache,
+compiler metadata and compile/link flags were inspected after execution. Every
+native/format/build/check command uses `/mnt/projects/cheryl-features/scripts/build
+--`, one job, adaptive memory monitor/shared lock/no swap/host floor unchanged.
+Kept live tool sessions while waiting. No admission refusal, cancellation/relaunch,
+failed diagnostics, native failure or unchanged retry. Full diagnostics and immediate
+exits are clone-local ignored files under `builds/procedural-generation/logs/u6/`:
+
+| Check | Saved evidence | Actual result |
+| --- | --- | --- |
+| `clang-format -i` on owned C++ files | format-1.log | exit0 |
+| `cmake --build builds/procedural-generation --parallel 1` | build-1.log | exit0; standalone cache regenerated; all targets compile/link |
+| Added three-chamber merge assertion and accurate failure count, formatted two changed files | format-2.log | exit0; production unchanged |
+| Same incremental build | build-2.log | exit0; two test/consumer objects recompiled/relinked |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1` | ctest-1.log | exit0;61 passed/0 failed/0 skipped |
+| Immediate statuses | exits.tsv | all five commands exit0 |
+
+The accumulated suite ran ONCE after implementation and final test/consumer
+refinement.57 cases total26849 assertions, plus four consumer entries. Retains
+all52 previous entries/49 cases/22276 assertions and their consumer demonstrations
+(maze8/8,cave2/2,clearance2/2). Eight new tunnel cases add4573 assertions:
+literal14,multiple30,exhaustive4315,generated45,empty66,invalid54,limits30,
+ownership19. New consumer2/2, zero failures/skips/UBSan diagnostics. Independent
+oracle checks per occupancy/connection also execute but are not inflated into
+harness assertion totals. No redundant complete rerun or wider native build.
+
+Test-only `tunnel-checks.cpp::count` uses pairwise coordinate adjacency cardinal
+BFS independent of production Domain::neighbor/heap/flags. `first_cost` is a
+small dense Dijkstra using linear unsettled selection, independently constructed
+source component and pairwise neighbors, not the production heap. All512 binary
+3x3 interiors inside a5x5 solid boundary match counts/preservation/connectivity;
+every nontrivial first attachment matches reference least-carve cost. Literal
+fixtures pin complete carved occupancy, costs, endpoints and deterministic ties:
+7x3 roots8/12 carve9/10/11 (cost3,length4);7x5 roots8/12/24 produce two records
+(8,12,3,4) and (10,24,1,2); diagonal floors6/12 select index7 instead of11;
+floors6/8/12 merge all three original components by carving only7 in one search.
+
+Generated17x11 fixtures use seeds0,42,991,6543 at fill6500/steps0/retain-components.
+Independent counts confirm all floors and perimeter survive; source CaveReplay
+and bytes remain unchanged. Sufficient budgets and unrelated stream consumption
+preserve logical results. Replay from exact returned source/Domain/version agrees.
+Fresh U5 fields count replacement floor/regions; literal old distance at9 remains0
+while new is1. Solid tiny/unit axes return empty unchanged; singleton interior
+and connected cyclic interiors return unchanged without searches.
+
+Resource fixture C21 accounts7015 bytes/minimum168/push-cap105. All-solid succeeds
+at168; one-short cell/storage/minimum work refuses before allocation (test-only
+scoped allocation denial). Literal two-chamber complete work346 succeeds exactly;
+345 refuses with no partial result.168 can admit initialization then exhaust while
+flooding. Requirements overflow uses a planning-only huge Domain; positive-shape
+product overflow/empty/zero and invalid bytes/count/version are separately checked.
+A65537-byte solid input verifies the65536 hard cell cap without host pressure.
+Copies/lifetimes/moves, source modification, propagated bad_alloc and rejected
+invalid/budget/conflicting calls preserve prior independently owned values.
+
+New consumer prints semantic source identity, transform/version, before/after
+components/floor, carve cost and route edges, charged work/heap peak and fresh
+cardinal clearance (no terrain display or assets):
+
+| Source | Original floor/components | Carved/routes/edges | Final floor/components | Work/peak heap | Fresh minimum1 usable/regions |
+| --- | --- | --- | --- | --- | --- |
+| Literal7x3 two chambers |2/2 |3/1/4 |5/1 |346/1 |5/1 |
+| Cave17x11 v1, seed42/stage0x63617665/stream7, fill6500/steps0/retain |45/22 |22/19/41 |67/1 |40536/66 |67/1 |
+
+After native acceptance, the required ready/true receipt is included at
+`feature-development/queue/three-commits-20261024/PROCGEN-U6.json` with actual
+nonempty relative build/CTest logs and limitations. The receipt reports worker
+execution; it is not coordinator source acceptance or an unexecuted-platform
+claim. One coherent implementation/records/receipt checkpoint stops this worker.
+Finite controller alone admits preassigned U7 after the run drains and checkpoint/
+receipt gate passes; publisher alone transports the assigned branch.
+
+Confidence high in tested finite preservation/connectivity/local-cost/resource/
+ownership semantics; medium in private API/public reuse and cap choices. No
+unresolved blockers. Other compilers/OSes, ASan, large-domain performance and
+public Engine/SDK integration remain unverified. Greedy local attachments need
+not minimize total network; no collision/tunnel-width/physical-geology claim.
+No save/input-ID format, layer-cache service, masks, ports, broad AI or physics.
+
+Final review: all13 staged files are coherent U6 implementation/records/receipt;
+complete staged diff saved as `logs/u6/staged-review.diff` under the preserved
+build directory. No unstaged or unrelated work remains. Whitespace check passes.
+Only header wording clarification and records/receipt edits follow acceptance;
+production behavior and executed fixtures are unchanged.

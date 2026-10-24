@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -25,8 +25,13 @@ target_link_libraries(procgen-clearance-tests PRIVATE procgen-private procgen-ch
 add_executable(procgen-clearance-consumer clearance-consumer.cpp)
 target_link_libraries(procgen-clearance-consumer PRIVATE procgen-private procgen-checks)
 
+add_executable(procgen-tunnel-tests tunnel-tests.cpp)
+target_link_libraries(procgen-tunnel-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-tunnel-consumer tunnel-consumer.cpp)
+target_link_libraries(procgen-tunnel-consumer PRIVATE procgen-private procgen-checks)
+
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
-                        procgen-clearance-tests procgen-clearance-consumer)
+                        procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -75,3 +80,10 @@ foreach(case IN ITEMS clearance_literal clearance_outside clearance_exhaustive c
 endforeach()
 add_test(NAME procgen.clearance_consumer COMMAND procgen-clearance-consumer)
 set_tests_properties(procgen.clearance_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS tunnel_literal tunnel_multiple tunnel_exhaustive tunnel_generated tunnel_empty tunnel_invalid tunnel_limits tunnel_ownership)
+    add_test(NAME procgen.${case} COMMAND procgen-tunnel-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.tunnel_consumer COMMAND procgen-tunnel-consumer)
+set_tests_properties(procgen.tunnel_consumer PROPERTIES TIMEOUT 30)

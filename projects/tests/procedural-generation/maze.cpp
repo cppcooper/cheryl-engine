@@ -119,6 +119,12 @@ namespace ProcGen {
                 return "occupancy requires exactly one binary floor0/solid1 byte per cell";
             case Reason::clearance_threshold:
                 return "minimum cardinal distance must be a nonnegative signed 64-bit integer";
+            case Reason::tunnel_dimensions:
+                return "cave tunnels require exactly two axes: width, height";
+            case Reason::tunnel_boundary:
+                return "preserving a boundary floor contradicts a solid outer boundary";
+            case Reason::tunnel_version:
+                return "unsupported cave tunnel transformation version";
         }
         return "unknown failure reason";
     }
