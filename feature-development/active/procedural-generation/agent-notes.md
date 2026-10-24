@@ -1462,3 +1462,285 @@ memory model. Supply coherent known-face transports with explicit source/frame/
 clock and one lapse interpretation; do not bypass exact-context checks, infer
 available water from U10/U11, silently replace baseline geometry or replay old
 rain as a new impact. U13 launches no next unit/service or automatic integration.
+
+
+## PROCGEN-U14 — Scope, proposed caller and predecessor
+
+Authorized CLIMATE-P3 starts at clean `60d521d517a0cead32e0bca20b7fe86eaa1f5f9b`
+(U13). Inspected its committed exact-batch ready/true receipt, actual source and
+nonempty build/discovery/135-pass logs before dependent work. Conservation and
+ownership prerequisites are resolved on the recorded platform. No ref restoration,
+sibling integration, archive rewrite, questions or next-unit scheduling occurs.
+Workspace/clone instructions, autonomy policy, procedural workstream/brief,
+climate-weather CLIMATE-001..008/P3 and existing active contracts govern this unit.
+User delegation authorizes implementation/checkpoint; coordinator publisher owns
+transport and controller alone owns U15 admission.
+
+Proposed before dependent APIs (spelling remains engineering choice):
+
+```cpp
+auto weather = start_weather(baseline, water, flow, model, limits);
+auto next = advance_weather(weather.value(), baseline, 4, limits);
+inspect(next->state.water(), next->state.flow(), next->report.trajectory);
+```
+
+Implemented private sources are weather.h/.cpp, weather-kernel.h/.cpp,
+weather-forcing.cpp, weather-tests.cpp and weather-consumer.cpp under
+projects/tests/procedural-generation. Only standalone CMake wiring extends. No
+Engine/SDK/Runtime/root dependency or producer format changes. This is a useful
+CPU game surrogate, not complete pressure physics or forecast validation.
+Intentional v3 provenance remains archived squash
+`eb3f81c219e779b0200c1e82e5bc7239386528e8`,
+`include/abstracts/singleton.h::ConcreteSingleton::construct`: typed explicit
+caller setup supports that narrow inference with medium confidence; ownership
+singleton and legacy imports are counterevidence against copying its architecture.
+New APIs/numerics/parameter names are engineering choices; recent agent-authored
+source establishes compatibility, not personal taste. Existing U8/U9/U10/U11
+semantics remain: height ticks supply no metric water; minimax fill is not a lake
+reservoir; contributing cells are not rainfall/discharge.
+
+## CLIMATE-004 — Implemented surrogate and source ordering
+
+State per cell has surface temperature Ts in K, potential p in artificial m2/s2,
+east/north wind in m/s, and U13 vapour/cloud/finite depths in mm plus reference-air
+A in K. X is east/fast; y rows follow exact U12 north sign. Domain/metric/calendar/
+roughness/source fractions are owned in the unchanged baseline witness. Periodic
+or closed boundaries only, no open data/ghost store. Closed wave ghosts mirror
+normal wind and retain p/tangential wind; water exterior faces are exactly zero.
+Periodic seams share canonical pairs, unit-axis self transport does nothing.
+
+For c>0, q=p/c and row-oriented velocity solve the named linear surrogate
+q_t=-c*(u_x+v_y), u_t=-c*q_x, v_t=-c*q_y. The unsplit Rusanov/Lax-Friedrichs
+update uses centred physical flux and artificial characteristic-speed diffusion
+in each direction, with lx=c*dt/dx, ly=c*dt/dy. Choose lx+ly<=.5 (below the
+linear stencil's <=1 convex directional contraction boundary), not centred
+forward Euler. Periodic unit axes contribute zero change and are omitted in
+admission; closed unit axes retain wall response. c=0 disables the entire wave
+operator, preserving its work charges. The limited unforced Fourier test supports
+this stencil; it does not prove global stability of arbitrary coupled forcing.
+
+Within each admitted substep: relax Ts; relax reference air; relax p; rotate wind;
+relax wind toward background with drag; add terrain/curl acceleration; run wave;
+construct face averages; check actual donor/receiver fractions; run the exact
+shared U13 transport/phase step. The source split/order is part of numerics1.
+Rotation f=2*Omega*sin(latitude) uses u'=cos(fdt)u+sin(fdt)v,
+v'=-sin(fdt)u+cos(fdt)v: positive northern f turns east wind south and preserves
+speed within rounding. Omega may be signed to test rotation reversal.
+Drag gamma=base+roughness_coefficient*roughness_metres relaxes exactly toward
+background velocity; terrain adds -terrain_coefficient*(east_slope,north_slope)*dt.
+Terrain is finite steering, not an infinite wall or an additional lapse cooling.
+
+Model ranges: wave speed0 or[.1,50]m/s, declared maximum wind[.1,50]m/s;
+|Omega|<=.01/s; base/roughness/pressure/air relaxation coefficients[0,1];
+background norm<=declared cap; terrain coefficient[0,.01]m/s2;
+thermal potential gain[0,10]m2/(s2 K); uniform response[1,1e8]s.
+Initial and runtime p remain[-10000,10000], Ts[1,1000]K and Ts+lapse[249,601]K.
+U13 water/reference ranges remain unchanged. Runtime unsupported speed is a
+specific speed refusal; nonfinite/potential/thermal range is numeric refusal.
+No clipping, numerical repair, hidden catch-up or skipped time. Scalar relax and
+rotation helpers check their admitted ranges separately. Allocation/programming
+exceptions propagate; only private expected-refusal exceptions are caught.
+
+## CLIMATE-005 — Thermal and moisture coupling
+
+At each absolute OUTER tick, resample U12 circular sun with its exact physical
+frame/calendar. Derive slope illumination and absorbed/cooling equilibrium target
+using U12 parameters, then subtract the one height lapse. Hold that instantaneous
+target through the outer tick; this is a documented time discretization, not a
+daily average or iterative climatological equilibrium. Ts relaxes exactly via
+Ttarget+(Ts-Ttarget)*exp(-dt/tau), using U12 fraction-weighted response_seconds or
+a selected uniform timescale. Disabling thermal evolution freezes Ts.
+
+Reference A relaxes toward Ts+lapse. Local air is always A-lapse, exactly once;
+p target=-gain*(Ts-(A-lapse)), a chosen thermal-low heuristic rather than an ideal
+gas derivation. In weather source and phase updates no second windward cooling is
+added. The owned baseline remains the frozen source/identity witness; its initial
+solar sample is not overwritten by evolving weather. Expected baseline must match
+full relevant descriptor/context/revision/heights/surfaces/derived cells, not just
+IDs or same dimensions; changed admission metadata alone is irrelevant.
+
+U13 step/helpers move literally to moisture-kernel.h/.cpp; U13's consumer calls
+the SAME substep now used by WeatherState. Arithmetic/face order, capped phase
+fractions, intensive-temperature update and work charges remain. Moisture public
+header, tests, checks, consumer and receipt are untouched. Shared-face donor
+retention conserves water; intensive advective differences preserve a constant A
+under convergence. Finite evaporation moves reservoir water, replenishment is
+external and rain is export. No hydrological/soil adapter yet; U11 counts are not
+supply, U10 fill is not available water. Ledger residual=(final+rain)-initial-
+replenished, tolerance1e-10*max(1,initial+replenished+rain)m3. Uniform metric area
+converts whole-cell mm by dx*dy/1000; boundary in/out both0 for supported modes.
+No latent-heat feedback, atmospheric mass/energy or measured RH/dew-point claim.
+
+## CLIMATE-006 — Ownership, schedule, limits and exact accounting
+
+WeatherState owns complete baseline, model/semantic and cosmetic options, Q/L/
+finite/A and Ts/p/u/v arrays, integer tick and last direct curl faces. At start
+these faces are0; after an advance they describe tick=end-1's forcing. Result
+pairs owned state with current-interval transfers/ledger/<=10 trajectory samples.
+Deep copies are independent; no input borrow survives its synchronous call.
+Views expire on move/assignment/destruction; moved-from supports destroy/assign
+only, caller synchronizes adoption. Full state/context/options/clock, not a seed,
+are required to resume; no serialized checkpoint/event-delivery format is chosen.
+Sufficient budgets affect admission only; smallest accepted n depends on fixed
+model/frame, not elapsed request length, giving fixed-tick grouping repeatability.
+
+Caps128x128/16384 cells,16MiB accounted payload,100M charged work blocks,
+1..10 outer ticks/request and1..64 substeps/tick. Tick uses checked u64 addition;
+U12 calendar phase itself avoids tick*seconds overflow. Per-tick target/forcing
+sampling uses absolute tick, no free-running/global RNG. Floating replay requires
+same algorithm/model/numerics/build/platform/libm/order; integer keys do not imply
+cross-platform bit identity. Copies of original/held states are preexisting input,
+not part of candidate budget. Payload is a model, not RSS/allocator/runtime overhead.
+
+Let C=cells,F=(w+1)*h+w*(h+1),V=(w+1)*(h+1),K=active forcing scales,
+D=canonical nonself shared faces. Start payload32768+248*C+8*F bytes and work
+64+8*C+F. Advance payload32768+368*C+16*F+8*V bytes, including baseline184*C,
+water current/scratch64*C, flow current/scratch64*C, targets/outgoing16*C,
+transfers40*C, transport and retained forcing faces16*F and vertex potential8*V.
+Fixed32768 covers bounded metadata/domain descriptors/<=10 trajectory samples;
+static assertions check core sizes. Maximum-grid payload6723592 bytes. Requirements
+check Index products/sums before allocation; hard cap follows. No deliberate host
+pressure or huge-input buffers are used.
+
+Choose smallest trial n with dt=seconds_per_tick/n satisfying:
+- c*dt*(1/dx+1/dy)<=.5 (periodic unit axes omitted);
+- 2*declared_speed_cap*dt*active_inverse_spacing<=.5;
+- maximum source rate*dt<=1;
+- conservative maximum terrain/curl acceleration*dt<=.5*declared_speed_cap.
+
+Source rate maximum includes |f|, pressure/air relaxation, base+roughness drag,
+and active1/tau. Curl acceleration bound sums2*sqrt(2)*amplitude/min(dx,dy) across
+scales, plus maximum actual terrain-slope acceleration. This is a finite source
+accuracy/admission policy, not universal physical stability. Face donor/outgoing
+and intensive/incoming fractions are also checked<=1 after each actual wave;
+every evolved wind norm/potential/temperature and U13 water is checked. A supported
+initial field may later exceed its declared speed or numeric envelope and refuse
+completely. Arbitrary stiff sources/waves need not be admissible within64 steps.
+
+Exact successful advance work:
+B+4*n+ticks*(T+n*S), where B=64+12*C+2*F+V,
+T=10*C+1+2*K+V*(1+2*K)+F, S=25*C+F+2*D+2.
+B covers matching/rate scanning/candidate allocation-copy/final reductions;
+T covers target/forcing/trajectory; S covers sources/wave/face checking/shared
+moisture transport/phase/swaps. Fixed64 includes bounded scalar/options checks.
+Each trial costs4 even if it fails. Preflight minimum then exact schedule work
+before output allocation; runtime consume guards every loop. Rejected attempted
+work is charged; budget refusal may occur during an unsuccessful schedule search.
+No partial state/report/precipitation publishes and previous outputs remain intact.
+
+## CLIMATE-008 — Optional seeded sampled curl construction
+
+Core source/rest/wave/thermal checks pass BEFORE this extension is added.
+Up to4 optional scales: amplitude[0,100]m2/s2, integer pitch[4,128]cells,
+period[4,1000000]outer ticks, explicit patch-centre world origin within+/-1e7m.
+Wavelengths are pitch*dx and pitch*dy. Positive-amplitude periodic scales require
+both dimensions divisible by pitch; unsupported periodic geometry refuses, no
+silent wavelength adjustment. Closed finite potential windows are patch-local;
+this is not a global continuous chunk generator.
+
+For scale k derive `IntegerStream::for_stage({derive_stream_state(semantic),
+0x6375726c77696e64,k})`. Two SplitMix64 raw top53-bit draws map via
+bits*(2*pi/2^53) to spatial phases, no rejection. At vertices use world metres
+origin+(vertex-centre)*spacing with exact row/north sign, and time angle
+2*pi*(absolute_tick%period)/period. Potential is amplitude times
+sin(2*pi*east/wavelengthE+phaseE+time)*
+sin(2*pi*north/wavelengthN+phaseN-time), summed in scale order. Closed mode windows
+psi by sin²(pi*x/w)*sin²(pi*y/h), with exterior vertices explicitly0 BEFORE curl;
+periodic seams copy original vertices exactly. Raw draws, vertex/scale passes and
+face differences are charged, even on copied/windowed vertices.
+
+Direct face acceleration aE=rowsign*(psi[x,y+1]-psi[x,y])/dy,
+aN=-(psi[x+1,y]-psi[x,y])/dx has cancelling mixed differences in the discrete
+cardinal divergence (tested to1e-17 on both boundaries/row signs). Direct faces
+are retained for diagnostic proof. Cell source averages adjacent faces; subsequent
+rotation, drag, waves and final transport wind are NOT claimed divergence-free.
+Zero amplitude matches disabled forcing physically, though metadata/work differ.
+Cosmetic key is owned context but never read by semantic code: changing it leaves
+actual flow/water/precipitation unchanged. No noise-created rain or cosmetic
+perturbation of gameplay. No turbulence spectrum/spiral/physical calibration claim.
+
+## PROCGEN-050 — Executed checks, resolved failure and handoff
+
+GNU16.2.1/Linux/C++23/Ninja Debug/UBSan existing cache and shared wrapper, one job.
+All native commands/exits/full stdout/stderr are saved in
+builds/procedural-generation/logs/u14. No Engine/map campaign or sibling mutation.
+Core phase: format/build exit0; ctest-core exit8,17/18 pass. All13 retained
+moisture entries and core/source/wave/core-limits passed. Thermal test had one
+GUESSED amplitude ratio cutoff<.75; every per-tick independently computed scalar
+response already passed. Independent Python recurrence gave .7503764422274101,
+land range42.628406009857144K,water31.98735163950215K. Corrected TEST ONLY to pin
+those values, require smaller range and later peak; production did not change.
+Core-fix build and thermal recheck1/1 pass149 assertions before forcing extension.
+The failed log and immediate exit remain; it was not an unresolved prerequisite.
+
+Final extension format/build/discovery exit0; nonempty discovery147 entries keeps
+all135 U13 names. Accumulated ctest-final runs once:147/147 pass,0 failures/skips,
+135 cases/46492 assertions,twelve consumers/42 demos at that source stage.
+Source review added thermal-disabled consumer comparison,20-versus19 substep
+admission, stronger scalar/row-direction/cosmetic-rain checks and accurate
+numeric-vs-speed refusal classification. Build-review/build-review-2 exit0;
+affected ctest-review12/12 passes. Staged review then rejects nonfinite inactive
+forcing slots and preserves unsupported moisture-version refusal; three new checks
+pass in build-staged-fix/ctest-staged-fix12/12 against CURRENT weather sources.
+All stored scale parameters are validated even when inactive; only active positive
+periodic scales require matching domain wavelengths. Current totals
+are135 cases/46514 assertions (eleven new/1338) plus twelve consumers/43 demos
+(new weather consumer5/5). Earlier135 case counts/45176 assertions are unchanged.
+No final compiler/UBSan diagnostic, resource75/auth/allowance refusal or unchanged
+retry. Native sessions were retained/drained; no queue cancellation/relaunch.
+
+New current assertions by case: core39,sources22,wave120,thermal149,core_limits12,
+forcing326,replay9,coupled608,invalid27,limits16,ownership10. Independent expectations:
+- Rest/zero gradient, constant intensive A, exact half-life relax/drag,
+  negative thermal-low target, roughness drag and downslope north-sign scalars.
+- Literal three-cell pressure pulse predicts p=[.1,1.8,.1],u=[-.1,0,.1]; row
+  sign reverses physical north correctly. Periodic32-cell right-travel mode over
+  100 steps matches independent Fourier amplification (.98+.02*exp(-ik))^100
+  within1e-11. Measured amplitude.963026, phase error.00237042rad,RMS.0261964;
+  declared criteria amplitude error<.05,phase<.01,RMS<.04. Not a general error bound.
+- Uniform thermal one-cell analytic exponential and72 hourly independent solar
+  scalar recurrence: final-day peaks land13/water14 with above ranges. This is
+  piecewise-held hourly response, not an exact continuous diurnal solution.
+- Direct curl divergence/boundaries, zero amplitude, origin effect, unrelated-stage
+  and cosmetic isolation, direct versus grouped fixed ticks. Active-rain grouping
+  and cosmetic changes match exact arrays and summed report amounts.
+- Forty-tick generated metric coast/ridge run keeps finite wind/potential/water,
+  nonnegative reservoirs and independently reduced water ledger. Explicit finite
+  pool depletes; replenishment and rain are positive. No synthetic rain mask.
+- Wrong revision/frame/source despite same labels, shape/version/nonfinite options,
+  overflow, exact/one-short cell/storage/work/ticks/substeps, stiff-source schedule
+  work exhaustion, unsafe dynamic speed and deep-owned lifetime/failure preservation.
+
+Consumer retains U8 8x6/pitch3/-80..120/key{42,0x67656f6772617068,7}; explicit
+10m/tick/datum0,2000m cells/40N/southward rows,western replenished fraction and
+finite0.02mm pool. Clock36..76,600s/tick in four10-tick requests,20 substeps/tick.
+The SAME model/transport code runs each comparison. Enabled pulse centre moves
+fromx1 to5.77249651cells; final land/water Ts288.49612713/281.22824583K,wind
+meanE/N .36291896/-.02987156m/s. Final supplied-water interval ledger and all earlier
+intervals meet tolerance; total rain approximately2077.4482m3 versus2078.1952m3 forcing-off.
+Uniform response gives water Ts287.36578660K (6.13754077K higher); rotation reversal
+changes mean north by-.08434849m/s; thermal-disabled changes final east by
+.01633460m/s; curl on/off north difference.00006658m/s. These are measured controlled
+outcomes, not universal monotonic complexity or calibrated atmospheric effects.
+
+Preservation-before/after show39/40 identical hashes across archives/old producers/
+checks/receipts. Sole necessary change is moisture.cpp extracting existing step
+and helpers into shared kernel, with accepted arithmetic/order/charges and all13
+old moisture entries passing. All135 retained discovery names/case counts pass.
+Full commands, immediate exits (including resolved8), counts and current source
+SHA256 evidence live in {commands.txt,exits.tsv,ctest-core.log,ctest-core-fix.log,
+thermal-oracle.log,build-final.log,discovery.json,ctest-final.log,build-review.log,
+build-review-2.log,ctest-review.log,build-staged-fix.log,ctest-staged-fix.log,counts.json,source-evidence.json,
+preservation-before.json,preservation-after.json}. Ready receipt reports worker
+execution only, pending independent coordinator source/log review.
+
+No unresolved blocker. Confidence high in discrete checked contracts, ownership,
+accounting and local tests; medium in model/API/game usefulness. Other compilers/
+OSes,ASan/leaks,broad performance, physical/energy/atmospheric-mass/vertical-return
+flow,real turbulence/cyclone/forecast,visual attractiveness/fun,public Engine/SDK,
+file/save durability and prior WORLD visual/input/assets/ABI gaps remain unverified.
+No erosion/U11 discharge conversion/physical water/soil adapter here. Precise next
+step is idle for review/publisher; only controller may assign U15. If selected,
+inspect U14 receipt/source/evidence before consuming rain exports through an
+explicit surface-store/runoff contract; do not reinterpret U10 fill/U11 counts as
+reservoirs or reapply an old interval without identity/clock semantics.

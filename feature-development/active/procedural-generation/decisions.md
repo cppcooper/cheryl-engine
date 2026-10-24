@@ -228,7 +228,8 @@ fractions per cell. Account unsuccessful trials, every copy/pass/face and full
 candidate/report payload. Refusal preserves prior owners; no wind clipping or
 skipped time. Own exact baseline/model/state and latest forcing interval; floating
 replay is build/platform/order scoped. Confidence high in bounded publication,
-medium in numerical policy; no evolving pressure solver is selected here.
+medium in numerical policy. This preserves the known-wind U13 contract; U14's
+separate evolving owner and admission rules are below.
 
 ## PROCGEN-049 — Executed conservative transport checkpoint
 
@@ -239,3 +240,62 @@ exact resource limits, runtime refusal, grouping and ownership. All122 previous
 names/counts and33 preservation witnesses match. Confidence high in checked
 mechanisms, unverified for physical calibration, visuals, ASan/portability/public
 integration. Receipt reports execution; only controller may select U14.
+
+## CLIMATE-004 — Named bounded wave and rotating wind (U14)
+
+**User mechanism; implemented engineering model.** rusanov_regional_weather
+model/numerics1 evolves an artificial m2/s2 potential with an unsplit linear
+acoustic Rusanov stencil, exact split rotation/relaxations and bounded terrain
+acceleration. Potential is neither hPa nor projection pressure. Conservative wave,
+transport, source and acceleration admission plus runtime range checks replace an
+unconditional CFL claim. Roughness damps and terrain biases downslope without
+becoming walls. Tradeoff: diffusive, deliberately heuristic circulation; high
+confidence in checked local numerics, medium in game usefulness, unverified in
+atmospheric realism, attractive eddies or fun.
+
+## CLIMATE-005 — Thermal memory extension (U14)
+
+**User cause plus engineering interpretation.** Surface temperature relaxes toward
+U12 solar/cooling targets sampled at each absolute outer tick; declared land/water
+response times produce different memory. Reference air relaxes toward surface plus
+one lapse offset; the same U13 transport/capacity/phase kernel diagnoses local air
+with that lapse once. Thermal surface-minus-local-air contrast drives a negative
+potential target. This is an explicit game coupling with water conservation, not
+energy/atmospheric-mass conservation. Confidence high in scalar/ledger tests;
+physical calibration and latent heat remain unverified.
+
+## CLIMATE-006 — Owned dynamic checkpoint and admitted schedule (U14)
+
+**User limits; implemented private choice.** Own exact baseline witness, water,
+flow/surface/potential, model/forcing and integer clock. Smallest1..64 substeps
+must satisfy wave sum<=.5, conservative outgoing/incoming water bound<=.5,
+source-rate*dt<=1 and acceleration*dt<=.5*speed-cap. Actual face fractions and
+state ranges are checked again; exceedance refuses the entire candidate, without
+clipping/skipping. Caps128x128/16MiB/100M blocks and1..10 ticks. Account all arrays,
+scratch/report/copies and rejected schedule work; exceptions propagate. Adequate
+budgets change admission only. Confidence high locally, medium in accuracy policy;
+float replay remains model/numerics/build/platform/order scoped.
+
+## CLIMATE-008 — Optional semantic curl potential (U14)
+
+**User bounded detail; implemented after core numerical checks.** At most four
+world-coordinate/absolute-time keyed sinusoid-product potential scales use explicit
+stage identities. Window potential before taking its discrete curl at closed
+boundaries; periodic scales require matching integer wavelengths. Direct face
+acceleration has tested cancelling mixed differences; cell interpolation, waves,
+rotation and final wind do not inherit a divergence-free claim. Semantic options
+belong to replay; an unused recorded cosmetic key cannot affect water/rain.
+Tradeoff: sampled band-limited patterns rather than turbulence. Confidence high in
+sampled construction/isolation, unverified in artistic effect or physical spectra.
+
+## PROCGEN-050 — Executed U14 checkpoint
+
+**User acceptance; GNU16.2.1/Linux Debug/UBSan executed.** One accumulated147/147
+pass followed by two justified12/12 affected weather rechecks after review yields135 cases/
+46514 current assertions and twelve consumers/43 demos. All135 prior names/counts
+remain, including unchanged U13 replay/ledger/ownership. A guessed thermal ratio
+criterion initially failed; an independent scalar recurrence corrected that test
+without production changes. Saved diagnostics retain the failure. Necessary U13
+step extraction shares the exact kernel;39/40 preservation hashes match, with
+only moisture.cpp deliberately changed. Ready receipt reports execution, not
+coordinator source acceptance. Controller alone may select U15; no next job runs.

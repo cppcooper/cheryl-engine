@@ -1,0 +1,63 @@
+{
+  "batch_id": "procgen-climate-20261024-0615",
+  "milestone_id": "PROCGEN-U14",
+  "starting_head": "60d521d517a0cead32e0bca20b7fe86eaa1f5f9b",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u14/build-final.log",
+    "builds/procedural-generation/logs/u14/discovery.json",
+    "builds/procedural-generation/logs/u14/ctest-final.log",
+    "builds/procedural-generation/logs/u14/build-review-2.log",
+    "builds/procedural-generation/logs/u14/ctest-review.log",
+    "builds/procedural-generation/logs/u14/build-staged-fix.log",
+    "builds/procedural-generation/logs/u14/ctest-staged-fix.log"
+  ],
+  "executed": {
+    "retained_entries": 135,
+    "accumulated_entries_passed": 147,
+    "full_suite_runs": 1,
+    "current_cases": 135,
+    "assertions": 46514,
+    "new_cases": {
+      "weather_core": 39,
+      "weather_sources": 22,
+      "weather_wave": 120,
+      "weather_thermal": 149,
+      "weather_core_limits": 12,
+      "weather_forcing": 326,
+      "weather_replay": 9,
+      "weather_coupled": 608,
+      "weather_invalid": 27,
+      "weather_limits": 16,
+      "weather_ownership": 10
+    },
+    "new_assertions": 1338,
+    "consumers": 12,
+    "demonstrations": 43,
+    "new_consumer_demonstrations": 5,
+    "failed_current": 0,
+    "skipped": 0,
+    "full_initial_assertions": 46492,
+    "core_test_only_failure": "ctest-core exit8: guessed water/land range<.75; independent recurrence=.7503764422274101; corrected test criterion, production unchanged",
+    "current_check_scope": "ctest-final147/147 once, ctest-review12/12 after diagnostic/test/consumer review, ctest-staged-fix12/12 after inactive-option/version validation correction. Old135 sources/counts unaffected by final weather-only edits."
+  },
+  "contracts": {
+    "identity": "rusanov_regional_weather model/numerics1; full owned U12 witness, water/thermal/potential/east-north state, integer clock and model/forcing; input views confined to call. Same-build/platform/libm/order floating replay only. All stored forcing scales validate finite/range parameters, including inactive slots; unknown moisture versions reject unsupported.",
+    "numerics": "Unsplit acoustic Rusanov surrogate in q=p/c plus exact split thermal/pressure/drag relaxation and Coriolis rotation, bounded explicit terrain/curl acceleration. Potential artificial m2/s2, neither hPa nor projection multiplier. Solar target resampled at absolute outer tick; one lapse diagnosis.",
+    "admission": "Smallest1..64 substeps meeting wave sum<=.5, conservative multi-face bound<=.5, source-rate*dt<=1 and acceleration*dt<=.5*speed-cap; actual fractions/ranges checked again.1..10 ticks,128x128,16MiB,100M blocks. Unsupported dynamics refuse entire candidate without clamp/skipped time.",
+    "water": "Literal shared U13 substep preserves deterministic operation/face order and charges; retained U13 tests/counts pass. Actual conservative water ledger, finite depletion/external replenishment/rain export; intensive reference temperature not conserved heat. No double lapse/latent heat/energy claim.",
+    "forcing": "At most4 bounded world/absolute-tick keyed sinusoid-product vertex potentials; explicit curl stage0x6375726c77696e64. Closed potential window before curl, matching periodic pitches; direct face divergence tested, no divergence-free final wind claim. Cosmetic seed never used by semantic evolution.",
+    "resources": "C=cells,F=faces,V=vertices,K=scales,D=canonical nonself faces. Start32768+248*C+8*F bytes/work64+8*C+F. Advance32768+368*C+16*F+8*V bytes/work B+4*n+ticks*(T+n*S), B=64+12*C+2*F+V,T=10*C+1+2*K+V*(1+2*K)+F,S=25*C+F+2*D+2. Charge rejected trials/loops; payload excludes preexisting owners and RSS.",
+    "failure": "Invalid/unsupported/numeric/speed/budget refusal distinguished; old input/state/report preserved and no partial publication. Allocation/programming exceptions propagate.",
+    "preservation": "All135 prior names/counts retained.39/40 preservation hashes unchanged; sole necessary change moisture.cpp extracts literal shared kernel. Historical archives/WORLD/receipts untouched; no sibling integration."
+  },
+  "limitations": [
+    "GNU16.2.1/Linux Debug/UBSan only; other platforms/toolchains, ASan/leaks and broad performance unverified. Floating replay is version/build/platform/order scoped.",
+    "Artificial diffusive regional wave/thermal-low model, not atmospheric mass/energy/vertical return flow, cyclone/turbulence physics or a forecast. No latent heat or physical rain-shadow calibration.",
+    "Closed/periodic finite regions only. Solar/semantic forcing sampled at outer ticks; periodic nonzero forcing requires admitted integer wavelengths. Final wind is compressible; only direct curl faces have a discrete cancellation proof.",
+    "Rain remains export pending separately authorized soil/runoff work. U10 fill and U11 unit counts are not reservoirs/discharge. No persisted state/event format, public Engine/SDK or integration.",
+    "Graphical correctness/attractiveness/fun and prior WORLD visual/input/assets/ABI/file durability acceptance remain unexecuted."
+  ],
+  "next_action": "Remain idle for coordinator source/log review and publisher transport. Only finite controller may select U15 after clean drain and committed passing receipt; inspect actual source/evidence before any surface-store/runoff adapter."
+}
