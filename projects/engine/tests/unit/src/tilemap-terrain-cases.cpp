@@ -305,3 +305,195 @@ TEST(tilemap_terrain, empty) {
     TerrainMap logical(Maps::Map({1, 1}, 1), ground, std::array<TerrainLabel, 1>{{{9}}}, rule, arbitrary);
     EXPECT_EQ(logical.tiles().get(ground, {0, 0}), arbitrary[0]); // Every nonzero logical ID is valid here; retained binding is separate.
 }
+
+TEST(tilemap_terrain, batch_order) {
+    TerrainMap map(Maps::Map({3, 2}, 2), ground, std::vector<TerrainLabel>(6), cardinal(), ids());
+    const std::array stroke{Maps::TerrainEdit{{0, 0}, {1}}, Maps::TerrainEdit{{1, 0}, {1}}, Maps::TerrainEdit{{0, 0}, {2}}};
+    const auto original = stroke;
+    EXPECT_EQ(map.edit_batch(stroke, {3, 5, 26}), (std::vector<Maps::Point>{{0, 0}, {1, 0}, {0, 1}, {2, 0}, {1, 1}}));
+    EXPECT_EQ(stroke, original);
+    EXPECT_EQ(labels(map), (std::vector<TerrainLabel>{{2}, {1}, {0}, {0}, {0}, {0}}));
+    // Different semantic labels share the isolated visual ID, but never connect.
+    EXPECT_EQ(cells(map.tiles()), (std::vector<Maps::TileId>{{100}, {100}, {0}, {0}, {0}, {0}}));
+    EXPECT_EQ(cells(map.tiles(), detail), std::vector<Maps::TileId>(6));
+    const std::array maximum{Maps::TerrainEdit{{0, 0}, {std::numeric_limits<std::uint32_t>::max()}}};
+    EXPECT_FALSE(map.edit_batch(maximum, {1, 3, 100}).empty());
+    EXPECT_EQ(map.label({0, 0}).value, std::numeric_limits<std::uint32_t>::max());
+    TerrainMap first_occurrence(Maps::Map({3, 1}, 1), ground, std::vector<TerrainLabel>(3), cardinal(), ids());
+    const std::array ordering{Maps::TerrainEdit{{2, 0}, {0}}, Maps::TerrainEdit{{0, 0}, {1}}, Maps::TerrainEdit{{2, 0}, {1}}};
+    EXPECT_EQ(first_occurrence.edit_batch(ordering, {3, 3, 100}), (std::vector<Maps::Point>{{2, 0}, {1, 0}, {0, 0}}));
+}
+
+TEST(tilemap_terrain, batch_final_state) {
+    auto sparse = cardinal();
+    sparse.cases = {{2, 0}, {8, 1}};
+    const std::vector<Maps::TileId> mapping{{7}, {8}};
+    const Maps::Map base({2, 1}, 1);
+    const std::vector<TerrainLabel> initial(2);
+    TerrainMap map(base, ground, initial, sparse, mapping);
+    EXPECT_THROW(static_cast<void>(map.edit({0, 0}, {1})), bad_request); // Isolated intermediate mask0 is missing.
+    const std::array stroke{Maps::TerrainEdit{{0, 0}, {99}}, Maps::TerrainEdit{{1, 0}, {1}}, Maps::TerrainEdit{{0, 0}, {1}}};
+    EXPECT_EQ(map.edit_batch(stroke, {3, 2, 23}), (std::vector<Maps::Point>{{0, 0}, {1, 0}}));
+    EXPECT_EQ(cells(map.tiles()), mapping); // Both masks derive only from the final adjacent pair.
+    TerrainMap reversed(base, ground, initial, sparse, mapping);
+    const std::array reverse{Maps::TerrainEdit{{1, 0}, {1}}, Maps::TerrainEdit{{0, 0}, {1}}};
+    EXPECT_EQ(reversed.edit_batch(reverse, {2, 2, 22}), (std::vector<Maps::Point>{{1, 0}, {0, 0}}));
+    EXPECT_EQ(cells(reversed.tiles()), mapping);
+}
+
+TEST(tilemap_terrain, batch_caps) {
+    const Maps::Map base({3, 1}, 2);
+    const std::vector<TerrainLabel> initial(3, {1});
+    const std::array stroke{Maps::TerrainEdit{{0, 0}, {2}}, Maps::TerrainEdit{{1, 0}, {2}}};
+    // Two requests + ten candidate visits + three resolutions + twelve samples.
+    for (const auto limits : {Maps::TerrainBatchLimits{1, 3, 27}, {2, 2, 27}, {2, 3, 26}}) {
+        TerrainMap rejected(base, ground, initial, cardinal(), ids());
+        const auto before = cells(rejected.tiles());
+        EXPECT_THROW(static_cast<void>(rejected.edit_batch(stroke, limits)), bad_request);
+        EXPECT_EQ(labels(rejected), initial);
+        EXPECT_EQ(cells(rejected.tiles()), before);
+        EXPECT_EQ(cells(rejected.tiles(), detail), std::vector<Maps::TileId>(3));
+    }
+    TerrainMap exact(base, ground, initial, cardinal(), ids());
+    EXPECT_EQ(exact.edit_batch(stroke, {2, 3, 27}), (std::vector<Maps::Point>{{0, 0}, {1, 0}, {2, 0}}));
+    EXPECT_EQ(cells(exact.tiles()), (std::vector<Maps::TileId>{{102}, {108}, {100}}));
+
+    for (const auto subset : {false, true}) {
+        auto rule = cardinal();
+        if (subset) {
+            rule.bit_order = {Tiles::Direction::West};
+            rule.cases = {{0, 0}, {1, 1}};
+        }
+        TerrainMap one(Maps::Map({1, 1}, 1), ground, std::array<TerrainLabel, 1>{}, rule, ids());
+        const std::array paint{Maps::TerrainEdit{{0, 0}, {1}}};
+        const std::size_t work = subset ? 8 : 11; // Request, five visits, resolve, one/four outside samples.
+        EXPECT_THROW(static_cast<void>(one.edit_batch(paint, {1, 1, work - 1})), bad_request);
+        EXPECT_EQ(one.label({0, 0}).value, 0u);
+        EXPECT_EQ(one.edit_batch(paint, {1, 1, work}), (std::vector<Maps::Point>{{0, 0}}));
+        const std::array erase{Maps::TerrainEdit{{0, 0}, {0}}};
+        EXPECT_THROW(static_cast<void>(one.edit_batch(erase, {1, 1, 6})), bad_request);
+        EXPECT_EQ(one.label({0, 0}).value, 1u);
+        EXPECT_EQ(one.edit_batch(erase, {1, 1, 7}), (std::vector<Maps::Point>{{0, 0}})); // Empty resolves without selection/samples.
+        const auto maximum = std::numeric_limits<std::size_t>::max();
+        EXPECT_EQ(one.edit_batch(paint, {maximum, maximum, maximum}), (std::vector<Maps::Point>{{0, 0}}));
+    } // Huge caps do not reserve/allocate huge buffers or overflow debit arithmetic.
+}
+
+TEST(tilemap_terrain, batch_noops) {
+    auto sparse = cardinal();
+    sparse.cases = {{2, 0}, {10, 1}, {8, 2}};
+    TerrainMap map(Maps::Map({3, 1}, 1), ground, std::vector<TerrainLabel>(3, {1}), sparse, ids());
+    const auto before = cells(map.tiles());
+    EXPECT_TRUE(map.edit_batch({}, {}).empty());
+    const std::array noop{Maps::TerrainEdit{{1, 0}, {1}}};
+    EXPECT_TRUE(map.edit_batch(noop, {1, 0, 1}).empty());
+    EXPECT_THROW(static_cast<void>(map.edit_batch(noop, {1, 0, 0})), bad_request);
+    const std::array cancel{Maps::TerrainEdit{{1, 0}, {2}}, Maps::TerrainEdit{{1, 0}, {1}}};
+    EXPECT_THROW(static_cast<void>(map.edit({1, 0}, {2})), bad_request);             // Intermediate masks would fail.
+    EXPECT_THROW(static_cast<void>(map.edit_batch(cancel, {1, 0, 2})), bad_request); // Duplicate/cancelling records consume request quota.
+    EXPECT_THROW(static_cast<void>(map.edit_batch(cancel, {2, 0, 1})), bad_request);
+    EXPECT_TRUE(map.edit_batch(cancel, {2, 0, 2}).empty()); // No affected/selection budget is needed.
+    EXPECT_EQ(labels(map), std::vector<TerrainLabel>(3, {1}));
+    EXPECT_EQ(cells(map.tiles()), before);
+}
+
+TEST(tilemap_terrain, batch_failures) {
+    Maps::Map base({3, 2}, 2);
+    base.set(detail, {2, 1}, {42});
+    const std::vector<TerrainLabel> initial(6, {1});
+    const std::array stroke{Maps::TerrainEdit{{0, 0}, {0}}, Maps::TerrainEdit{{2, 1}, {0}}};
+    for (const auto failure : {0, 1, 2}) {
+        auto rule = cardinal();
+        auto mapping = ids();
+        if (failure == 0)
+            rule.cases.erase(2);
+        else if (failure == 1)
+            rule.cases[2] = std::numeric_limits<CE::Assets::Grids::CellIndex>::max();
+        else
+            mapping[2] = {0};
+        TerrainMap map(base, ground, initial, rule, mapping); // Every initial mask exists and maps.
+        const auto before = cells(map.tiles());
+        try {
+            static_cast<void>(map.edit_batch(stroke, {2, 6, 100}));
+            ADD_FAILURE() << "Expected a late batch refusal";
+        } catch (const bad_request& error) {
+            EXPECT_NE(std::string(error.what()).find("(0,1)"), std::string::npos);
+        }
+        EXPECT_EQ(labels(map), initial);
+        EXPECT_EQ(cells(map.tiles()), before);
+        EXPECT_EQ(cells(map.tiles(), detail), cells(base, detail));
+        for (const auto point :
+             {Maps::Point{-1, 0}, Maps::Point{0, -1}, Maps::Point{3, 0}, Maps::Point{0, 2},
+              Maps::Point{std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::min()}}) {
+            const std::array invalid{stroke[0], Maps::TerrainEdit{point, {0}}};
+            try {
+                static_cast<void>(map.edit_batch(invalid, {2, 6, 100}));
+                ADD_FAILURE() << "Expected input validation before derivation";
+            } catch (const bad_request& error) {
+                EXPECT_NE(std::string(error.what()).find("out of bounds"), std::string::npos);
+            }
+            EXPECT_EQ(labels(map), initial);
+            EXPECT_EQ(cells(map.tiles()), before);
+        }
+    }
+    TerrainMap complete(base, ground, initial, cardinal(), ids());
+    EXPECT_EQ(complete.edit_batch(stroke, {2, 6, 100}), (std::vector<Maps::Point>{{0, 0}, {1, 0}, {0, 1}, {2, 1}, {2, 0}, {1, 1}}));
+    EXPECT_EQ(labels(complete), (std::vector<TerrainLabel>{{0}, {1}, {1}, {1}, {1}, {0}}));
+}
+
+TEST(tilemap_terrain, batch_sequences) {
+    for (const auto extent : {Maps::Extent{5, 3}, Maps::Extent{1, 4}, Maps::Extent{4, 1}, Maps::Extent{1, 1}}) {
+        for (const auto reordered : {false, true}) {
+            auto rule = cardinal();
+            auto mapping = ids();
+            if (reordered) {
+                rule.bit_order = {Tiles::Direction::West, Tiles::Direction::South, Tiles::Direction::North, Tiles::Direction::East};
+                for (auto& id : mapping)
+                    id = {7}; // Visual equality never substitutes for semantic equality.
+            }
+            const auto count = static_cast<std::size_t>(extent.columns) * extent.rows;
+            std::vector<TerrainLabel> semantic(count);
+            TerrainMap map(Maps::Map(extent, 2), ground, semantic, rule, mapping);
+            for (std::size_t step = 0; step < 40; ++step) {
+                const auto before = semantic;
+                std::vector<Maps::TerrainEdit> requests;
+                for (std::size_t n = 0; n < step % 6; ++n) {
+                    const auto cell = (step * 7 + n * 2) % count;
+                    requests.push_back(
+                        {{static_cast<std::int64_t>(cell % extent.columns), static_cast<std::int64_t>(cell / extent.columns)},
+                         {static_cast<std::uint32_t>((step + n) % 3)}}
+                    );
+                }
+                if (step % 4 == 0) {
+                    requests.push_back({{0, 0}, {std::numeric_limits<std::uint32_t>::max()}});
+                    requests.push_back({{0, 0}, before[0]});
+                }
+                const auto borrowed = requests;
+                for (const auto request : requests)
+                    semantic[static_cast<std::size_t>(request.point.row) * extent.columns + request.point.column] = request.label;
+                // Independent full-grid union: any net-changed semantic rectangle
+                // within Manhattan distance one, not production's candidate/dedupe traversal.
+                std::vector<Maps::Point> expected;
+                for (std::int64_t row = 0; row < extent.rows; ++row)
+                    for (std::int64_t column = 0; column < extent.columns; ++column) {
+                        bool affected = false;
+                        for (std::int64_t source_row = 0; source_row < extent.rows; ++source_row)
+                            for (std::int64_t source_column = 0; source_column < extent.columns; ++source_column) {
+                                const auto cell = static_cast<std::size_t>(source_row) * extent.columns + source_column;
+                                if (before[cell] != semantic[cell] && std::abs(column - source_column) + std::abs(row - source_row) <= 1)
+                                    affected = true;
+                            }
+                        if (affected)
+                            expected.push_back({column, row});
+                    }
+                const auto changed = sorted(map.edit_batch(requests, {8, count, 1024}));
+                EXPECT_EQ(changed, expected);
+                EXPECT_EQ(std::adjacent_find(changed.begin(), changed.end()), changed.end());
+                EXPECT_EQ(requests, borrowed);
+                EXPECT_EQ(labels(map), semantic);
+                EXPECT_EQ(cells(map.tiles()), reference(extent, semantic, rule, mapping));
+                EXPECT_EQ(cells(map.tiles(), detail), std::vector<Maps::TileId>(count));
+            }
+        }
+    }
+}

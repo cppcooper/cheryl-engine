@@ -156,6 +156,32 @@ namespace {
         require(terrain.tiles().get(detail, {0, 0}).value == 999, "late refusal changed other layer");
         require(base.get(ground, {0, 0}).value == 0, "constructor mutated input map");
     }
+
+    void batch() {
+        auto terrain = owned();
+        auto other = owned();
+        const auto old = terrain->tiles();
+        std::vector<Maps::Point> affected;
+        {
+            std::vector<Maps::TerrainEdit> requests{{{0, 0}, {0}}, {{1, 0}, {2}}, {{0, 0}, {2}}};
+            affected = terrain->edit_batch(requests, {3, 5, 38}); // 3 + 10 + 5 + 20 nonempty samples.
+            requests.clear();
+        }
+        require(affected == std::vector<Maps::Point>{{0, 0}, {1, 0}, {0, 1}, {2, 0}, {1, 1}}, "public batch order differs");
+        require(terrain->label({0, 0}).value == 2 && terrain->label({1, 0}).value == 2, "public final semantics missing");
+        require(terrain->tiles().get(ground, {0, 0}).value == 102, "batch resolved intermediate semantics");
+        require(terrain->tiles().get(detail, {2, 1}).value == 999, "batch changed other layer");
+        require(other->label({0, 0}).value == 1 && old.get(ground, {0, 0}).value == 106, "batch changed another owner/copy");
+        const std::array invalid{Maps::TerrainEdit{{0, 0}, {0}}, Maps::TerrainEdit{{3, 0}, {0}}};
+        bool rejected = false;
+        try {
+            static_cast<void>(terrain->edit_batch(invalid, {2, 6, 100}));
+        } catch (const bad_request&) {
+            rejected = true;
+        }
+        require(rejected && terrain->label({0, 0}).value == 2, "public late bounds failure changed owner");
+    }
+
 }
 
 int main(const int argc, const char* const* argv) {
@@ -168,6 +194,8 @@ int main(const int argc, const char* const* argv) {
             errors();
         else if (check == "refusal")
             refusal();
+        else if (check == "batch")
+            batch();
         else
             require(false, "unknown check name");
         std::cout << check << ": passed\n";

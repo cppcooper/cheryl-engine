@@ -1,26 +1,24 @@
 # Tilemap milestone decisions
 
-U1–U6 provide CPU maps, computed-edge picking/visibility, retained submission and
-a private editor with compiled demo wiring. U7 proved cardinal terrain ownership;
-U8 promotes that same implementation to Engine, with a public-header consumer and
-shared-library diagnostic ownership. Stable IDs match [agent-notes.md](agent-notes.md).
-These are engineering choices under delegated authority, not user API preferences.
-[next.md](next.md) records the caller, executed checks and remaining acceptance.
+U1–U8 establish CPU maps/picking, retained submission/editor consumers and Engine
+cardinal terrain ownership. U9 adds one bounded atomic batch operation. These
+are engineering choices under delegation, not user API preferences. Stable IDs
+TM-001–011 match [agent-notes.md](agent-notes.md); [next.md](next.md) records exact
+contracts, caller, executed checks and remaining limits.
 
-U8 starts clean at accepted e97f6e8. U7 evidence remains 61 unique passing names
-across an initial 60/61 run and an assertion-only correction followed by 1/1;
-no all-green U7 61-case invocation is claimed. U8 builds/links Engine and the
-external consumer/header probe. Its one accumulated selection passes 64/64,
-zero failed/skipped, 37.21s (all 61 retained plus three new modes). Export/import
-inspection confirms sole Engine production and diagnostic RTTI ownership; normal
-GNU PIE COPY relocations are recorded in next.md. Initial consumer setup spelling
-and local symbol-parser errors were corrected before the passing checks;
-full diagnostics and immediate exits remain saved. No sanitizer diagnostic occurs.
+U9 starts clean at completed U8 `79c02fb` (64/64 Debug ASan/UBSan cases plus
+public header/link checks). U7's older 61-name evidence remains an initial 60/61
+plus assertion-only correction and 1/1, not a green 61-case invocation.
+U9 builds/exports and registers all 64 retained names plus nine new cases.
+One accumulated invocation passes 73/73, zero failed/skipped, 42.53s. Header/link
+checks pass; both builds have no warnings or errors. Post-test formatting corrects
+only a trailing comment and its alignment; all C++/assertion tokens remain
+identical. Full diagnostics and command exits are retained.
 
-The source-tree shared GNU/Linux ABI check does not establish installed SDK,
-Windows/cross-toolchain compatibility, Release, leaks, actual input/display,
-app upload or graphical teardown. X11 :1's recorded failure is not retried.
-The publisher owns transport; the finite queue controller selects later units.
+The source-tree GNU/Linux Debug/shared checks do not establish installed SDK,
+Windows/cross-toolchain, static, Release, leaks or graphics acceptance. No demo
+input, dependency/pin, backend or sibling changes are selected. The unchanged
+X11 failure is not retried; publisher and finite queue controller own progression.
 
 ## TM-001
 
@@ -77,8 +75,8 @@ cases; actual visual order remains unobserved.
 
 Consume ordered gameplay events in the shared private editor; selection acts
 immediately and each click/wheel uses its captured pointer. Press edits, middle
-samples empty too, and frames retain copied output. U7 separately resolves all
-invalidated semantic-neighbor results before publishing one terrain edit;
+samples empty too, and frames retain copied output. U7/U9 separately resolve all
+invalidated semantic-neighbor results before publishing an edit or bounded batch;
 failures preserve labels and tiles. Neither operation promises tick/frame
 rollback. This costs repeated resolution and private state. Engineering confidence
 is high; naming/controls remain reversible local choices, with low taste confidence.
@@ -123,3 +121,13 @@ and layer order as future integration seams rather than adopting another branch'
 format now. This permits immediate local implementation but postpones agreements
 needed for saves and streaming. Confidence is high because independence is an
 explicit task requirement; no shared backend or cross-feature merge is prerequisite.
+
+## TM-011
+
+Coalesce duplicates last-write-wins after full validation; derive the center/cardinal
+union from final semantics. Preserve first occurrence in request-center/N/E/S/W
+traversal. Require request/affected/work limits; duplicates/no-ops consume request
+units, cancellations invalidate nothing. Owned overlays/results precede publication,
+avoiding partial strokes without full-map copies. Ordered lookups cost logarithmic
+work beyond logical budget units. Engineering confidence is high; spelling/budget
+granularity has low taste confidence and public source/relink reversal cost.

@@ -6,7 +6,7 @@ cheryl_add_header_probes(tests-terrain-header Cheryl::Engine NEUTRAL
     HEADERS cheryl/maps/terrain-map.h)
 add_dependencies(tests-terrain-consumer tests-terrain-header)
 
-foreach(check IN ITEMS values errors refusal)
+foreach(check IN ITEMS values errors refusal batch)
     add_test(NAME tests-terrain-consumer.${check}
         COMMAND tests-terrain-consumer ${check})
 endforeach()

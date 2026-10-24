@@ -4,12 +4,12 @@ This branch implements U1's CPU values/ranges, U2's retained binding/packet
 adapter, U3's synthetic pass consumer, U4's private fixed demo display, and U5's
 checked CPU point picking/pick-paint-erase consumer. U6 adds shared private editor
 state and compiled demo event wiring. U7 proves a private cardinal terrain consumer;
-U8 promotes that same implementation into Engine. Graphical input/display
-acceptance stays open.
+U8 promotes that same implementation into Engine; U9 adds bounded atomic batches.
+Graphical input/display acceptance stays open.
 Executable acceptance and current verification limits are recorded in [next.md](next.md).
 The reader summary is [decisions.md](decisions.md); the next handoff is
 [next.md](next.md).
-Decision IDs TM-001 through TM-010 identify the same choices in both views.
+Decision IDs TM-001 through TM-011 identify the same choices in both views.
 
 The design inspected source baseline `3542f883391d4225329dab8d5d61a5987e69c8f0`;
 U1 starts at design checkpoint `2e74a09ccd56f55d6256699ed69668ba6dbd7c00` on
@@ -31,7 +31,9 @@ dependency pins remain unchanged. U6 is accepted at
 private unit consumers and internal records. U7 is accepted at
 `e97f6e84bf6a160261a89e22ccecb61eeaa4a5b9`; U8 starts there clean and promotes
 only that proven owner plus a normal Engine consumer and focused ownership
-verification. The publisher owns transport.
+verification. U9 starts clean at completed U8
+`79c02fbc7f903e7e87e5afc2dbf4b70fa1797032`, after inspecting its ready receipt
+and saved 64/64 checks. The publisher owns transport.
 
 ## Small U6 event caller and owner boundary
 
@@ -659,7 +661,10 @@ taste. Changing controls/state is private app/test migration only.
 U7 adds a different, single-terrain-edit transaction: resolve all center/cardinal
 results before publishing one semantic label and derived visual cells. This
 strong preservation rule does not change U6's ordered event semantics or add
-whole-tick/frame rollback. See TM-007 for private ownership and failure boundaries.
+whole-tick/frame rollback. U9 extends the owner with an atomic bounded batch
+(TM-011); an invalid later request/cap/derivation preserves every terrain value
+for that stroke, without rolling back unrelated events or whole frames. See
+TM-007 for Engine ownership and TM-011 for budgets and final-semantic derivation.
 
 ## TM-007
 
@@ -669,12 +674,14 @@ U7 established the private prototype; U8 promotes that same algorithm into
 `src/maps/terrain-map.cpp`. The test-owned producer/header are removed; all eight
 pure cases and both retained-frame callers import Engine instead. The public
 constructor, destructor, label/tiles queries and edit operation are out of line
-and exported through the normal shared library. No alternate archive or direct
+and exported through the normal shared library. U9 adds edit_batch under the
+same owner and exports, with its distinct transaction/budget contract in TM-011. No alternate archive or direct
 implementation source is linked into consumers. This makes the proven boundary
 reusable, at the cost of a public STL-bearing ABI and source/relink migration for
 later spelling changes. Engineering confidence is high; spelling is a delegated
 choice with low user-taste confidence, not a v3 preference inference. No demo
-compiled input, terrain controls, World, batch-edit operation or pin changes.
+compiled input, terrain controls, World or pin changes; batch behavior is selected
+only by the later U9 assignment.
 
 ```cpp
 #include <cheryl/maps/terrain-map.h> // first include; link Cheryl::Engine
@@ -934,6 +941,73 @@ Alternative shared cross-feature infrastructure would settle speculative contrac
 before a small consumer exists. Confidence: high from assignment and workspace
 policy. Surface overlaps to the coordinator through handoff; edit only this clone.
 
+## TM-011
+
+**Apply one bounded atomic batch against final semantic labels.** U9 adds public
+TerrainEdit, TerrainBatchLimits and TerrainMap::edit_batch in the existing CPU
+header/source. Last-write-wins coalesces duplicate points after complete signed
+bounds validation; every uint32 TerrainLabel remains valid, including zero empty
+and UINT32_MAX. No invalid-label sentinel or application policy is introduced.
+Missing masks/targets remain the existing bad_request boundary. Engine exports
+the new operation; its aggregates contain only owned scalar values.
+
+```cpp
+#include <cheryl/maps/terrain-map.h> // first include; normal Cheryl::Engine linkage
+const std::array stroke{
+    CE::Tilemaps::TerrainEdit{{0, 0}, {1}},
+    CE::Tilemaps::TerrainEdit{{1, 0}, {1}},
+    CE::Tilemaps::TerrainEdit{{0, 0}, {2}},
+};
+auto affected = terrain.edit_batch(
+    stroke, {.requests = 3, .affected_cells = 6, .work = 64});
+// On this serialized owner, prepare the existing tiles()/bindings/pass caller.
+```
+
+All input coordinates and request work are checked before constructing the owned
+proposal. Then coalesce final labels and remove centers whose final label equals
+the original. Keep first request occurrence of surviving centers, visiting center
+then N/E/S/W; append each in-bounds point only once, preserving first occurrence.
+No diagonals. Existing edit() keeps its center/N/E/S/W order unchanged. A center
+can appear as another center's earlier neighbor; it is still returned only once.
+Even a semantic change with equal visual IDs invalidates its full cardinal union.
+Samples read final proposed labels, never partially painted/cached visual IDs;
+only final masks need resolve. Intermediate labels may need absent masks without
+preventing a valid final batch.
+
+Limits are explicit maxima, not reservations. requests counts all provided records,
+including duplicates/no-ops/cancellations; exceeding it rejects before scanning.
+One work unit admits each request, visits each net changed center and all four
+cardinal candidates (even exterior/duplicate), resolves each unique affected cell
+(even empty), and invokes each selector sample (even exterior). For a successful
+call W = R + 5*C + A + k*F: input records R, net changed centers C, affected union A,
+nonempty final affected cells F, authored cardinal bit count k (1..4). A resolution
+unit includes selection when nonempty. The sampler debits before every call; a
+short budget can refuse after earlier candidates without publishing anything.
+Remaining counters only decrement, avoiding overflowing product/sum calculations.
+Empty input needs zero units/storage; same-label/cancelling input needs only R
+units, returns empty and performs no selection. Zero caps are valid maxima.
+
+Request count bounds coalescing storage; affected_cells bounds unique pending/output
+cells, including empty neighbors. Ordered map/set lookups make auxiliary time
+logarithmic in bounded request/affected sets. Logical work is not allocator bytes,
+comparison instructions or wall time. Scratch is O(R+A), allocated only for actual
+requests/union, never from the numeric caps; SIZE_MAX caps with tiny inputs stay
+tiny. No full-grid copy/rescan occurs. Caller spans remain stable for the call;
+owned proposals, pending visuals and output precede publication. Allocation failure
+or any bounds/rule/mapping/cap refusal preserves both complete domains. Commit
+assigns only prevalidated fixed storage with no remaining allocation/refusal.
+Serialize reads/edits/preparation as before; no retained samplers/spans, thread
+service, undo, frame transaction, Wang, storage, chunks or sibling import.
+
+Alternatives: sequential edit() calls can expose an incomplete stroke or reject
+an intermediate mask that final semantics do not need. Whole-grid copies would
+make tiny brushes scale with map area. Sorting output row-major would break the
+natural one-center order; first-occurrence traversal extends it deterministically.
+Engineering confidence is high in these boundaries; spelling, last-wins policy
+and logical budget granularity are delegated choices, not inferred user taste.
+Reversal requires public source/relink migration. Actual accumulated execution
+and separate ABI/leak/display limits are in next.md.
+
 ## Source evidence at the inspected baseline
 
 These are source observations, not executed acceptance. S1–S12 line spans refer
@@ -963,6 +1037,7 @@ S19 the U7 cardinal terrain prototype. Links resolve here.
 | S17 | U5's [CPU query/header](../projects/engine/include/cheryl/maps/tilemap.h), [shared geometry/search implementation](../projects/engine/src/maps/tilemap.cpp), [five point cases](../projects/engine/tests/unit/src/tilemap.cpp) and [three transformed consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Owned optional coordinates, computed-edge ownership, independent rectangle oracle, bounded maximum extents and local pick/paint/erase plus camera-derived pass preparation. |
 | S18 | U6 [private helper](../projects/apps/demo/src/tilemap-editor.cpp), [mode wiring](../projects/apps/demo/src/demo-game.cpp), [consumer cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp) and [private build requirements](../projects/engine/tests/unit/CMakeLists.txt). Existing input-record.h/tick-context.h provide captured pointers and copied sizes; game-runtime.cpp::select_window and both update paths publish sizes, native-glfw input-system.cpp::on_mouse_button/on_scroll captures logical pointers. No public producer change. |
 | S19 | U7-proven owner promoted by U8: [public header](../projects/engine/include/cheryl/maps/terrain-map.h), [Engine derivation/edit source](../projects/engine/src/maps/terrain-map.cpp), [literal/oracle cases](../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp) and [retained packet consumers](../projects/engine/tests/unit/src/tilemap-consumer.cpp). Reuses [Selection::select implementation](../projects/engine/src/assets/selection/tile-selection.cpp) and [BitmaskRule definitions](../projects/engine/include/cheryl/assets/definitions/tileset.h); selected targets are size_t ordinals, not semantic labels or logical tile IDs. |
+| S20 | U9 [batch declaration/contracts](../projects/engine/include/cheryl/maps/terrain-map.h), [shared derivation/batch staging](../projects/engine/src/maps/terrain-map.cpp), [six literal/oracle batch cases](../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp), [retained-frame batch consumers](../projects/engine/tests/unit/src/tilemap-consumer.cpp) and [normal Engine caller](../projects/engine/tests/terrain-consumer/main.cpp). Saved u9-* native logs prove execution/imports; these agent-authored APIs are compatibility evidence, not user taste. |
 
 The current [asset guide](../docs/site/assets/asset-values-and-playback.md),
 especially its application-map example at lines 162–237, and the
@@ -1003,8 +1078,8 @@ preference remains low and is never presented as a user decision.
 ## Implementation units and observable acceptance
 
 U1/U2/U3, U4's limited source/build checkpoint and U5 are coordinator-accepted.
-U6/U7 are accepted. TILEMAP-U8 promotes the proven cardinal terrain owner into
-Engine, independently of editor controls; only this milestone is active.
+U6/U7 are accepted; U8 is complete with public shared-Engine evidence. Only
+TILEMAP-U9 atomic terrain batches are active, independently of editor controls.
 Actual commands/limits are in next.md; real input/display remains unobserved.
 X11 access is not retried.
 
@@ -1018,6 +1093,7 @@ X11 access is not retried.
 | U6 — private editor source | Shared private CPU state for ordered events, independent logical/framebuffer scale conversion, selection/edit/pan/zoom and frame preparation; demo capture/update/cleanup wiring plus seven consumer cases. Execution is recorded below; real input/display remains unverified. |
 | U7 — private terrain source | Owned semantic labels and explicit target mapping, cardinal bitmask selection, complete initial derivation and transactional center/cardinal updates; eight pure cases and two retained-frame consumers. Public APIs/demo inputs/pins unchanged. |
 | U8 — public Engine owner | Same cardinal algorithm and single-edit result order; exported lifetime/operations and diagnostic RTTI, normal Engine consumer/header probe, no unit-owned producer or demo input changes. |
+| U9 — bounded atomic batches | Final semantic overlay, last-wins requests, stable center/cardinal union, explicit request/affected/work limits and complete-result publication; prior single-edit/public ownership contracts retained. |
 
 U1's 15 selected cases passed for CPU creation/edits, rejection, copies/moves and
 computed-edge visibility under ASan/UBSan with leak detection disabled. Exact
@@ -1106,7 +1182,7 @@ changed access and a bounded owned-window check. No Wang/diagonal model,
 persistence, assets/pins, sibling integration or recurring loop is activated.
 Publisher owns transport; the finite queue controller selects subsequent units.
 
-## U8 execution and next action
+## U8 execution and next action (historical)
 
 U8 starts clean at accepted e97f6e8 and promotes the proven implementation into
 normal shared Engine. Constructor/destructor/label/tiles/edit are exported out
@@ -1173,3 +1249,64 @@ CPU prerequisite. Next action is coordinator review, then controller selection
 of pinned U9 atomic terrain batches after this run drains. No batch API, demo
 terrain controls, sibling integration, new assets/pins, transport or recurring
 unit is started by this worker. Publisher owns transport; stop at this checkpoint.
+
+
+## U9 execution and next action
+
+U9 starts clean at completed 79c02fb after reading its public contract, ready
+receipt and saved 64/64 checks. It implements only bounded atomic semantic
+batches. Shared derivation is reused by constructor/edit/batch; single-edit
+result order, owned rule/mapping/labels and previous refusal contracts remain.
+The six-operation header-first caller links only normal Cheryl::Engine, with
+no macro patches, private implementation copy, new dependency/pin or app input.
+TerrainMap fields/layout are unchanged; new aggregates/method require a matching
+rebuilt Engine. All public diagnostic RTTI remains anchored by Engine.
+
+Initial format/build and the later duplicate/cancelling request-cap assertion
+build exit 0, without warnings/errors. The existing neutral header probe compiles.
+Ownership inspection exits 0: constructor/destructor/label/tiles/edit/edit_batch
+are Engine exports and consumer/unit imports, with only one Engine source
+producer. Normal compile/link requirements and DT_NEEDED libcheryl-engine.so.4
+are saved, preserving the previous diagnostic COPY-relocation interpretation.
+No static/SDK/Windows/other-toolchain or stable cross-STL ABI proof is inferred.
+
+Registration exits 0 and retains every U8 name: 20 consumer + 15 submission +
+14 terrain + 20 map unit cases, plus four public caller modes, total 73. One
+accumulated invocation passes 73/73, zero failed/skipped, 42.53s, exit 0. Exact
+name sets match U8/discovery/execution. Six new pure cases test last-wins overlap,
+first-occurrence order, final-state sparse masks, all uint32 labels, exact/one-short
+request/affected/work caps (including subset and exterior samples), all-empty/
+no-op/cancelling semantics, late mask/target/mapping/bounds refusals and 320
+independent full-grid oracle batches. No incremental helper/selector is used
+by the reference. Two retained-frame cases show 9-to-8 packets, input destruction,
+full sibling/layer isolation, old/new resource retention/release and seven
+initially valid failure fixtures. Native bind/draw/upload counters remain zero.
+The public caller adds a batch mode; all previous caller/header/export checks pass.
+
+After execution, final format validation exits 1 for an overlong newly added
+trailing comment; shortening it exposes adjacent-comment alignment (exit 1).
+A formatter-only correction then final dry-run exit 0 preserve every C++/assertion
+token and source line count, as independently checked in u9-comment-correction.log.
+Only comment wording/alignment changes after the 73-case invocation; no behavior
+change or additional runtime pass is claimed. Full diagnostics are preserved.
+
+All native commands use the shared wrapper, one job and preserved CPU Debug/shared/
+WARN/policy-3.5/optional-OFF output/configuration. Normal queue sessions are kept;
+no resource admission refusal, bypass or unchanged retry occurs. ASan/UBSan and
+halt_on_error remain enabled with no diagnostics; invocation-local detect_leaks=0
+is solely for the known LSan tracing limitation, leaving leaks unverified. Exact
+commands/exits, selected-name correspondence, ownership dumps/link line/results
+and full LastTest output live in ignored build/tilemap-u1-debug/u9-*; next.md lists
+the actual procedure and logs. U8/U7 evidence remains historical above, distinct
+from this single green invocation. No demo input changes or demo rebuild is needed.
+
+The U9 committed receipt names actual nonempty native logs and reports ready
+only after implementation/verification. It is execution evidence, not automatic
+coordinator acceptance. There is no unresolved CPU/build/link prerequisite.
+Graphical input/display, app decode/upload, capture, graphical teardown and leaks
+remain unverified. U4's X11 :1 exit255/error is unchanged and not retried; full
+API reference rendering, installed SDK/static/Release/other-platform ABI checks
+remain outside acceptance. Next is coordinator review and finite-controller
+selection of pinned U10 private demo terrain mode after this run drains. No U10
+implementation, renderer/editor wiring, undo, chunking, storage, sibling
+integration, transport or recurring work starts here. Publisher owns transport.

@@ -1172,3 +1172,112 @@ TEST(tilemap_consumer, terrain_rejection) {
         fixture.calls->expect_cpu();
     }
 }
+
+TEST(tilemap_consumer, terrain_batch_frames) {
+    const auto calls = std::make_shared<Calls>();
+    Render::Frame older, newer;
+    std::vector<Render::DrawPacket2D> prior, changed;
+    std::vector<Maps::Point> affected;
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    const std::array edited{
+        ExpectedDraw{0, 105, 191},
+        ExpectedDraw{8, 105, 179},
+        ExpectedDraw{0, 125, 179},
+        authored[3],
+        authored[4],
+        ExpectedDraw{0, 305, 191},
+        ExpectedDraw{0, 325, 179},
+        authored[7]
+    };
+    {
+        const Fixture fixture(calls);
+        geometry = fixture.geometry;
+        image = fixture.image;
+        const std::vector<TerrainLabel> west_labels{{1}, {1}, {0}, {1}, {1}, {0}};
+        const std::vector<TerrainLabel> east_labels{{2}, {0}, {0}, {0}, {2}, {0}};
+        TerrainMap west(fixture.west, ground, west_labels, terrain_rule(), terrain_ids);
+        const TerrainMap east(fixture.east, ground, east_labels, terrain_rule(), terrain_ids);
+        const auto sibling = cells(east.tiles());
+        const auto source = cells(fixture.west);
+        prepare_terrain(older, fixture, west, east);
+        prior = older.passes()[0].draws;
+        ASSERT_EQ(prior.size(), 9u);
+        {
+            std::vector<Maps::TerrainEdit> requests{{{1, 0}, {0}}, {{0, 0}, {2}}, {{1, 0}, {0}}};
+            affected = west.edit_batch(requests, {3, 5, 30}); // 3 requests + 10 visits + 5 resolutions + 12 samples.
+            requests.assign(3, {{2, 1}, {99}});
+        } // No request/temporary sampler lifetime survives the call.
+        EXPECT_EQ(affected, (std::vector<Maps::Point>{{1, 0}, {2, 0}, {1, 1}, {0, 0}, {0, 1}}));
+        EXPECT_EQ(terrain_labels(west), (std::vector<TerrainLabel>{{2}, {0}, {0}, {1}, {1}, {0}}));
+        EXPECT_EQ(cells(east.tiles()), sibling);
+        EXPECT_EQ(terrain_labels(east), east_labels);
+        EXPECT_EQ(cells(fixture.west), source);
+        EXPECT_EQ(west.tiles().get(detail, {0, 0}), fixture.west.get(detail, {0, 0}));
+        prepare_terrain(newer, fixture, west, east);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(newer, edited));
+        changed = newer.passes()[0].draws;
+        for (std::size_t i = 4; i < prior.size(); ++i)
+            expect_payload(changed[i - 1], prior[i]); // Old detail/sibling payloads keep their caller order.
+        expect_packets(older, prior);
+        calls->expect_cpu();
+    }
+    expect_packets(older, prior);
+    expect_draws(newer, edited);
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    older.recycle();
+    newer.recycle();
+    prior.clear();
+    EXPECT_FALSE(geometry.expired());
+    changed.clear();
+    EXPECT_TRUE(geometry.expired());
+    EXPECT_TRUE(image.expired());
+    EXPECT_EQ(affected.front(), (Maps::Point{1, 0})); // Owned output survives maps and all inputs.
+    calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, terrain_batch_rejection) {
+    const Fixture fixture;
+    const std::vector<TerrainLabel> initial(6, {1});
+    const TerrainMap east(fixture.east, ground, initial, terrain_rule(), terrain_ids);
+    const auto sibling = cells(east.tiles());
+    for (const auto failure : {0, 1, 2, 3, 4, 5, 6}) {
+        auto rule = terrain_rule();
+        std::vector<Maps::TileId> mapping(terrain_ids.begin(), terrain_ids.end());
+        if (failure == 4)
+            rule.cases.erase(2);
+        else if (failure == 5)
+            rule.cases[2] = std::numeric_limits<CE::Assets::Grids::CellIndex>::max();
+        else if (failure == 6) {
+            rule.cases[2] = mapping.size();
+            mapping.push_back({0});
+        }
+        // Initial masks all exist/map; only the later requested derivation needs case2.
+        TerrainMap west(fixture.west, ground, initial, rule, mapping);
+        const auto before = cells(west.tiles());
+        Render::Frame older, after;
+        prepare_terrain(older, fixture, west, east);
+        const auto packets = older.passes()[0].draws;
+        ASSERT_EQ(packets.size(), 15u);
+        std::array requests{Maps::TerrainEdit{{0, 0}, {0}}, Maps::TerrainEdit{{2, 1}, {0}}};
+        Maps::TerrainBatchLimits limits{2, 6, 34};
+        if (failure == 0)
+            limits.requests = 1;
+        else if (failure == 1)
+            limits.affected_cells = 5;
+        else if (failure == 2)
+            limits.work = 33;
+        else if (failure == 3)
+            requests[1].point = {std::numeric_limits<std::int64_t>::max(), -1};
+        EXPECT_THROW(static_cast<void>(west.edit_batch(requests, limits)), bad_request);
+        EXPECT_EQ(terrain_labels(west), initial);
+        EXPECT_EQ(cells(west.tiles()), before); // Every layer, not just the changed ground candidates.
+        EXPECT_EQ(cells(east.tiles()), sibling);
+        EXPECT_EQ(terrain_labels(east), initial);
+        prepare_terrain(after, fixture, west, east);
+        expect_packets(older, packets);
+        expect_packets(after, packets);
+        fixture.calls->expect_cpu();
+    }
+}

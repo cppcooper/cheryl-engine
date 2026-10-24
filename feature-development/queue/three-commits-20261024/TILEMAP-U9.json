@@ -1,0 +1,20 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "TILEMAP-U9",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/tilemap-u1-debug/u9-build.log",
+    "build/tilemap-u1-debug/u9-build-cap-check.log",
+    "build/tilemap-u1-debug/u9-ownership.log",
+    "build/tilemap-u1-debug/u9-registration.log",
+    "build/tilemap-u1-debug/u9-ctest.log"
+  ],
+  "limitations": [
+    "GNU/Linux source-tree Debug shared Engine only; installed SDK, static, Release, Windows and other-toolchain ABI remain unverified.",
+    "ASan/UBSan pass with command-local detect_leaks=0 for recorded LSan tracing limitation; leaks remain unverified.",
+    "Actual display/input, app asset decode/upload, capture and graphical teardown remain unverified; unchanged X11 :1 failure is not retried.",
+    "Work caps count logical request/candidate/resolution/sample units, not allocator bytes, comparison instructions or wall time; scratch is O(requests + affected cells).",
+    "After the single 73/73 run, only trailing comment wording/alignment changed; normalized C++/assertion tokens and line count remain identical."
+  ]
+}
