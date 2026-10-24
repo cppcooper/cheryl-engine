@@ -1096,3 +1096,254 @@ three matching records. Existing maze generation/search/configuration/tests/
 consumer code and old diagnostic messages remain unchanged. Full staged diff is
 saved locally as `logs/u4/staged-review.diff` under the preserved build; staged
 whitespace checks pass. No unrelated or sibling work is included.
+
+## U5 authority and proposed caller (PROCGEN-019–022)
+
+Accepted prerequisite: clean U4 `138f8e0d6b88736453643d58a93073fa936619fd`;
+inspected status/diffs/recent commits, next.md, cave source/records and existing
+target. Read workspace/clone rules, autonomy/memory policy, brief/workstream,
+generation-storage note, finite-queue.md and the checked-in
+`coordination/queues/three-commits-20261024/plan.json`. Worker-1 baseline matches.
+Only PROCGEN-U5 is active in this turn. The finite controller owns later task
+selection/admission after drain; this worker neither starts U6/U7 nor edits queue
+assignments. One coherent implementation/records/receipt commit is required.
+
+Proposed caller before dependent APIs (executables check Result failures):
+
+```cpp
+const ProcGen::CaveBudgets budget{4096, 256 * 1024, 2'000'000};
+auto cave = ProcGen::generate_cave(extents, key, config, budget).value();
+auto field = ProcGen::analyze_clearance(
+    {cave.domain(), cave.occupancy()}, 2, budget);
+const auto domain = ProcGen::Domain::checked(std::array<ProcGen::Index,2>{3,3}).value();
+const std::array<std::uint8_t,9> literal{0,0,0,0,0,0,0,0,0};
+auto tiny = ProcGen::analyze_clearance({domain, literal}, 2, budget);
+// Owned distances: [1,1,1,1,2,1,1,1,1]; only center is usable.
+```
+
+Engineering choice: binary occupancy view borrows only during analysis; domain
+copies into owned output, along with full u64 distances and byte usable mask.
+Distance means integer cardinal steps to nearest solid CELL or first outside
+cell, outside treated solid even when perimeter input is floor. Floor distances
+are positive; solids0. No Euclidean/circular-actor/physical collision claim.
+Threshold is nonnegative signed64 input (negative invalid), stored exactly as u64;
+zero/one include every floor; very large thresholds validly select none.
+
+Plan: multi-source FIFO with all solid0 sources before boundary-floor1 sources,
+then threshold summary and cardinal usable-region flood using reused bounded
+queue/mask flags. Check output/queue bytes and work before allocation; validate
+all input bytes before buffers; enforce runtime work and publish only a complete
+independent value. Verify literal/exhaustive Manhattan minima, boundary/threshold/
+unit/ownership/resource fixtures, then run accumulated nonempty focused CTest
+once through preserved Debug/UBSan wrapper. Save complete diagnostics/exits,
+reconcile matching records, write ready receipt only after passing, review staged
+work, commit and stop. This entry is proposed, not executed acceptance.
+
+Assumptions: this distance convention is useful for measuring usable point-cell
+regions (medium); exact Manhattan/exterior and threshold contracts are precise
+(high, tests pending). No unresolved blocker. PROCGEN-002 source provenance is
+historical taste evidence only; neither it nor U4 dictates this analysis API.
+
+### PROCGEN-019 — Implemented analysis convention
+
+Private owners: `projects/tests/procedural-generation/clearance.h/.cpp`,
+`OccupancyView`, `Clearance`, `ClearanceDescriptor`, `clearance_requirements`,
+`analyze_clearance`. Existing Cave, maze generation/search/configuration and
+replay bodies remain unchanged. The exact types/spelling are engineering choices;
+PROCGEN-002 retains reference provenance/counterevidence and does not settle an
+analysis API. This stage has no RNG, clock, mutable registry or source mutation.
+
+Input Domain must have exactly two positive u64 extents, width axis0 fastest and
+height axis1, index=x+width*y. Input bytes are exactly C entries,0=floor/1=solid.
+All other bytes and size mismatches reject before buffers. Caller keeps Domain
+and bytes alive and unchanged during the synchronous call; borrowed state ends
+when the call returns. Unlike generation, analysis permits perimeter floor cells.
+All coordinates outside the rectangle are solid. For a floor(x,y), define
+
+`d=min(x+1,width-x,y+1,height-y, min_solid(|x-xs|+|y-ys|))`.
+
+The minimum over an absent interior solid set is ignored. Solid cells have d0;
+floors have d>=1, with perimeter floors d1. Distances are cell-to-cell steps to
+first solid/outside cell, not distance to a continuous boundary surface. For
+example all-floor3x3 has distances[1,1,1,1,2,1,1,1,1]. This is the exact requested
+integer Manhattan/cardinal convention, not Euclidean radius, body clearance or
+collision guarantees for circular actors. No smoothing, carving or narrow-cell
+removal is performed; source classification remains unchanged.
+
+Minimum takes a signed64 integer to reject negative caller values explicitly;
+all nonnegative values through INT64_MAX are accepted, stored as u64. A usable
+cell is floor AND d>=minimum. Thus minimum0 still excludes solids,0/1 select every
+floor and larger thresholds may select none. Full distances and maximum remain
+independent of minimum. All-solid yields all d0/max0/usable0/regions0. A positive
+unit axis makes all floor cells perimeter, hence d1;1x1 floor is d1, while1x1
+solid is d0. Zero extents/empty domains are invalid under existing Domain, and
+empty occupancy for a positive Domain is invalid. Empty usable masks remain
+C-entry zero arrays, not malformed/partial results.
+
+### PROCGEN-020 — Implemented bounded BFS/storage/work
+
+Initialization fills C distance values with UINT64_MAX (unseen), C usable bytes
+with0, and C queue indexes with0. Seed solid sources at0 in a complete scan, then
+boundary floor sources at1 in a SECOND scan. A mixed scan could process distance1
+before a later distance0 source and mark a nonminimal value. Ordered source groups
+and FIFO preserve nondecreasing distances. Discover each unseen neighbor once,
+assigning checked predecessor distance+1 and appending one queue entry. Every
+finite cell is reached: either solid exists or nonempty rectangle boundary floors
+supply sources. No relaxation duplicates or recursive stack is required. Neighbor
+order is negativeX/positiveX/negativeY/positiveY, using validated Domain steps.
+
+Summarize full counts/maximum and set usable flags. Cardinal-4 flood only selected
+cells, reusing the same queue. Flags1 mean selected/unseen; flags3 mean selected/
+seen. Every selected cell enqueues/pops once; root scan counts components and
+largest region. A final full scan strips visited bits, so only binary0/1 masks
+publish. The input is never changed or silently filtered. Queue bounds have
+programming-invariant guards; failures publish no partial field.
+
+Reuse CaveBudgets{cells,storage_bytes,work}, with independent hard caps1,000,000
+cells/32MiB accounted bytes/100,000,000 work. No irrelevant graph edge budget or
+new generic budget service. Validate dimension/minimum, arithmetic/container
+capacity, span count and resource admission, then charge a complete binary input
+validation before owned allocation. For thresholds0/1 the exact selected count F
+is known during validation, so insufficient complete-work budgets refuse before
+buffers. For higher thresholds, minimum admission does not guarantee completion;
+runtime work charges all subsequent operations.
+
+Accounted peak is `4096+C*(2*sizeof(Index)+sizeof(u8)) =4096+17*C`: two result
+buffers (8C distances, C mask) and one8C queue, reused for both floods. Visited
+flags reuse the unpublished mask. Static assertion protects fixed descriptor/
+return/local metadata allowance. Excludes allocator over-allocation/bookkeeping,
+runtime/exception/sanitizer/OS overhead, borrowed input, earlier caller-owned
+copies/results and independent test/consumer oracle; no exact RSS promise.
+Planning arithmetic/capacity failures reject without enormous buffers or memory
+pressure. Domain metadata itself is allocation-free and may exceed admission caps.
+
+Charged work: C input validation,3C array initialization,2C source scans, C total
+distance enqueues+C pops+4C probes, C threshold/summary, C region-root scan,
+6U region enqueues/pops/probes, C mask normalization. Therefore complete work is
+exactly `15*C+6*U` in this deterministic operation model. Requirements return
+minimum15C/maximum21C, checked for overflow; for thresholds0/1 refine admission to
+15C+6F after validation. Every action/probe/enqueue is charged before it occurs.
+For threshold>=2, exhaustion can occur after admitted work and owned allocation;
+only a complete analysis returns. There is no RNG/rejection expectation or hidden
+unbounded loop. Complete complexity O(C), plus bounded O(D) preflight arithmetic.
+
+Return owned Domain/minimum/version1, distances/mask, floor/solid/max/usable/
+component/largest-region counts and actual work. Copies deep-copy both buffers;
+spans expire on owner destruction/move/assignment. Moved-from values only destroy/
+assign. Allocation, length and programming exceptions propagate; only local typed
+expected failures are caught. Existing owned output never serves as an output
+parameter and survives invalid input, early/runtime refusal and allocation failure.
+
+### PROCGEN-021 — Input identity/analysis semantics for retained layers
+
+Analysis family is `cardinal_manhattan_2d`, version1 in an owned descriptor with
+exact Domain/minimum. API offers this implementation only; no versioned input
+recipe parser is introduced. Old Cave/maze generator versions and golden replay
+fixtures stay unchanged; the analysis itself consumes no RNG or mutable state.
+Integer portability inherits existing8-bit bytes/exact u64/64-bit container sizes
+and fixed-metadata assumptions. Cross-platform execution remains unverified.
+
+Read generation-storage.md as coordination evidence without importing sibling
+headers/history or selecting storage formats. A retained field belongs to the
+exact ordered binary input and Domain used by that call. For generated input,
+caller may retain supported Cave replay/provenance AND its exact base identity;
+for literals, retain the source bytes/identity. Include analysis family/version,
+coordinate/exterior convention and minimum with a retained layer. The result
+has no automatic base-ID or mismatch-check service: equal seeds/dimensions do
+not validate changed occupancy. All distances0 identify original solid cells,
+but that observation is not a persisted witness format or migration policy.
+Source changes require explicit invalidation/reanalysis. No hash, saved recipe,
+cache service, world registry, physics or sibling integration is implemented.
+
+### PROCGEN-022 — Executed checks and finite-batch readiness
+
+New separate stdlib-only executable/consumer preserve prior runners. Independent
+`clearance-checks.cpp::inspect` computes each floor's exhaustive minima over all
+solid coordinates plus four outside distances, then floods selected cells using
+pairwise coordinate Manhattan-distance1 adjacency. It reuses no transform queue,
+neighbor helper or mask flags. Oracle limits C4096; the generated test/consumer
+is C187, exhaustive cases use all512 binary3x3 inputs at four thresholds. Literal
+fields include all-floor3x3, mixed zero/one sources5x5, diagonal distance2,
+unit axes, all-solid and usable-empty extremes. Narrow connected-room fixture
+selects two separate usable regions without modifying the19-cell input floor.
+
+Resource/ownership cases include C9 storage4249 bytes, min135/max189 work;
+all-solid135, all-floor threshold0=189, center-only threshold2=141. Check exact and
+one-short storage/cell/work admission, runtime140 refusal after admission at135,
+allocation exceptions and preserved prior output. Huge planning-only Domain
+values test storage/work overflow without fake huge spans or allocated fixtures.
+Negative thresholds/invalid dimensions/counts/bytes reject before buffers. Source
+and copy lifetimes, independent results and sufficient-budget repeatability are
+covered. Native acceptance below passes. The original formatting command waited
+normally on the shared queue and completed in the same retained tool session; no
+cancellation/relaunch, resource admission refusal or unchanged retry occurred.
+
+
+Executed source is this coherent U5 checkpoint based on accepted U4
+`138f8e0d6b88736453643d58a93073fa936619fd`. Preserve existing Linux/GNU16.2.1,
+C++23/Debug/Ninja/UBSan ON/no recovery and warnings-as-errors configuration in
+`builds/procedural-generation`. No dependency/pin/root/export change, Engine/
+asset build, protected/sibling mutation or model substitution. Every configure/
+build/native operation uses `/mnt/projects/cheryl-features/scripts/build --`,
+one job, monitor-owned adaptive limits/no swap/admission floor. Only header
+comment/record/receipt edits follow the successful checks; C++ behavior is final.
+
+Complete stdout/stderr and immediate exits, local/ignored under
+`builds/procedural-generation/logs/u5/`:
+
+| Wrapped command | Saved evidence and actual outcome |
+| --- | --- |
+| `clang-format -i` on owned C++ files | `format-1.log`, exit0 after normal shared queue wait |
+| `cmake --build builds/procedural-generation --parallel 1` | `build-1.log`, exit0; preserved standalone cache regenerated and compile/link passed |
+| `ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1` | `ctest-1.log`, exit0:52 passed/0 failed/0 skipped,49 cases/22276 assertions plus three consumer entries |
+| Immediate statuses | `exits.tsv`, all0; no failed diagnostics discarded |
+
+The accumulated suite ran once, nonempty. It retains all43 entries (41 cases/
+9479 assertions and original maze8/8 plus cave2/2 demonstrations), unchanged test
+registrations/sources. Eight clearance cases add12797 assertions: literal22,
+outside208, exhaustive12288, regions29, generated162, invalid30, limits38,
+ownership20. The new consumer passes2/2. Oracle per-cell checks also run but are
+not separately inflated into the harness assertion counts. No UBSan diagnostics.
+No redundant native rerun, full Engine/GUI build or unexecuted ASan claim.
+
+Hand-checked evidence includes the mixed5x5 center-solid field, where floor cells
+adjacent to the solid must be1 despite earlier perimeter-floor sources in index
+order. All512 binary3x3 inputs at thresholds0/1/2/3 match exhaustive integer
+minima and independent cardinal region counts. A5x5 diagonal solid is distance2
+from center; a3x3 diagonal pair of floors forms two regions. The9x5 narrow
+connection fixture keeps19 input floors at every threshold: minimum1 selects
+all19 in one region; minimum2 selects indexes[20,21,23,24] as two2-cell regions;
+INT64_MAX selects none while preserving maximum2/input classification. Literal
+input/copy lifetimes and subsequent calls leave old owned fields unchanged.
+
+New semantic consumer output (same `clearance-consumer.cpp` caller proposed before
+APIs) is in final CTest, no rendering/sprites/terrain selection:
+
+| Source/minimum | Floor/solid | Maximum | Usable/regions/largest | Charged work |
+| --- | --- | --- | --- | --- |
+| Cave17x11, seed42/stage0x63617665/stream7, fill4200/S3/B5678/S45678/retain, minimum2 |29/158 |3 |14/1/14 |2889 |
+| Literal all-floor3x3 with solid exterior, minimum2 |9/0 |2 |1/1/1 |141 |
+
+Descriptors print analysis family/version, exact coordinates/minimum and source
+Cave replay or literal identity. Source generation/replay and point-cell occupancy
+remain unchanged. No general claim of body/circular collision clearance,
+Euclidean radius, orientation or physical terrain quality follows from these
+integer fields.
+
+Required finite receipt is committed with this implementation at
+`feature-development/queue/three-commits-20261024/PROCGEN-U5.json`: exact batch/
+milestone, ready/checks_passed=true, nonempty relative build/CTest log paths and
+meaningful limitations. Native implementation/acceptance passes before ready is
+written. Receipt/log-path validation is lightweight JSON/filesystem inspection,
+not an additional native result or coordinator source review. The finite
+controller alone may admit preassigned U6 after this run drains with a clean
+new descendant checkpoint; this worker starts no next unit/background agent.
+One coherent implementation/records/receipt commit, with publisher-only transport.
+
+Confidence: high for the finite exact cardinal/threshold/ownership/budget contracts
+under GNU/Linux, medium for this small private API's eventual broader reuse. No
+unresolved source/resource blockers. Other compilers/OSes, ASan, large-domain
+performance and public Engine/SDK integration remain unverified. No persistent
+input-ID/recipe/cache format, physics, assets or sibling dependency is added.
+U6 connecting tunnels and U7 dungeon rooms/corridors remain pinned later units;
+U5 does not implement them or general maze endpoint/branch/loop controls.

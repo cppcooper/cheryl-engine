@@ -113,6 +113,12 @@ namespace ProcGen {
                 return "unsupported cave algorithm";
             case Reason::cave_version:
                 return "unsupported cave replay version";
+            case Reason::clearance_dimensions:
+                return "clearance requires exactly two axes: width, height";
+            case Reason::occupancy:
+                return "occupancy requires exactly one binary floor0/solid1 byte per cell";
+            case Reason::clearance_threshold:
+                return "minimum cardinal distance must be a nonnegative signed 64-bit integer";
         }
         return "unknown failure reason";
     }

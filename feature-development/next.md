@@ -1,39 +1,40 @@
 # Procedural-generation next action
 
-PROCGEN-U4 is implemented and verified from accepted U3
-`533fabba686653500dd6a247e46855c88bd79a0c` on `feat/procedural-generation`.
-This checkpoint adds private finite 2D cave occupancy, integer fill, synchronous
-Moore-8 smoothing, solid perimeter and retain-all/largest-floor component policies.
-Outputs own bytes, replay, exact requested/effective controls and measurements.
-Cardinal-4 connectivity distinguishes diagonal contacts, ties and empty outcomes.
-U1–U3 maze implementation, replay and documented fixed-endpoint limits are retained.
+PROCGEN-U5 is implemented and verified from accepted U4
+`138f8e0d6b88736453643d58a93073fa936619fd` on `feat/procedural-generation`.
+Private owned cardinal distance fields, exact threshold masks and usable-region
+counts work on generated Cave and literal binary2D inputs. Outside is solid,
+perimeter floors distance1, solids0; minimum0/1 includes every floor. No input
+smoothing/carving/filtering mutation or generator replay change.
 
-Executed through the one-job shared wrapper in preserved Debug/GNU16.2.1/UBSan:
-**10/10 cave CTest entries**, nine cases/844 assertions plus consumer2/2;
-**33/33 maze entries**,32 cases/8635 assertions plus consumer8/8. All43 entries
-passed after implementation, zero failures/skips/UBSan diagnostics. Final cave
-version/algorithm diagnostics additionally pass the targeted invalid-input case
-(36 assertions). Full logs, fixture calculations and immediate exits are in
-`builds/procedural-generation/logs/u4/`. Exact contracts/provenance/checks are in
-agent-notes PROCGEN-015–018, matching compact decisions in decisions.md.
+Preserved GNU/Linux Debug/C++23/UBSan build passed the accumulated nonempty CTest
+selection ONCE: **52 passed,0 failed,0 skipped**,49 cases/22276 assertions.
+Includes all43 prior entries (9479 assertions) and eight clearance cases (12797),
+plus maze8/8, cave2/2 and clearance2/2 consumer demonstrations. Complete logs and
+immediate exits: `builds/procedural-generation/logs/u5/`. PROCGEN-019–022 in both
+records retain exact definitions, storage/work accounting and source evidence.
+Normal queue wait completed in its original session; no admission refusal.
 
-Next concrete action: coordinator reviews this coherent committed U4 and its
-saved logs. Publisher owns assigned-branch transport. Stop here; no automatic
-next unit, sibling integration, presentation, save format or public extraction.
-No user reply needed. No unresolved source/resource blockers or admission refusal.
+Ready receipt is committed with this checkpoint:
+`feature-development/queue/three-commits-20261024/PROCGEN-U5.json`.
+It reports executed U5 checks, not automatic coordinator source acceptance.
+Next concrete action belongs to the finite controller: after this run drains,
+validate the clean descendant checkpoint/receipt/logs, then materialize and resume
+preassigned PROCGEN-U6 (bounded connecting tunnels). This worker stops here and
+starts no later milestone, sibling/background work or publication command.
+Assigned-branch checkpoint transport remains with the coordinator publisher.
 
-Assumptions/confidence: chosen cellular controls are a useful first stylized
-occupancy prototype (medium); bounded finite/simultaneous/cardinal contracts are
-independently verified (high). Fill is a probability on interior cells, not exact
-density. Largest mode can return empty with required=true/connected=false; it
-never invents floor. Work preflight conservatively reserves all possible floors,
-so realized solid-heavy caves may need less work than admission requires.
-Other platforms/compiler, ASan, performance, public Engine and physical/subjective
-quality remain unverified. Generation-storage guidance supplies replay/coordinate
-concerns; it selects no persisted recipe, exact-base edit integration or sibling import.
+Assumptions/confidence: exact point-cell Manhattan/exterior/threshold contracts
+are verified (high); private analysis API reuse is a reversible choice (medium).
+No unresolved blockers. Negative thresholds and malformed input reject; high
+thresholds validly select none; zero extents/empty occupancy are invalid per the
+positive Domain contract. Thresholding may split usable regions without removing
+source floors. Accounted payload peak4096+17*C is not exact RSS; complete work is
+15*C+6*usable. Other platforms/compiler, ASan, performance and public integration
+remain unverified. No Euclidean/circular-actor/physical collision guarantee.
 
-Next useful proposal, subject to coordinator selection: bounded cave clearance/
-distance measurements with independent tiny/empty fixtures. Tunnels, entrances,
-masks/depth and advanced maze endpoints/route/branch/loop controls remain backlog.
-Dungeons, geography, settlements and tectonic modification remain separate later
-outputs with explicit ownership/provenance and dependent-layer revalidation.
+For retained layers, keep exact source Domain/occupancy identity plus analysis
+family/version/minimum and coordinate/exterior convention. A changed source
+invalidates its field. generation-storage.md chooses no persisted recipe, exact-
+base witness format, save policy or sibling adapter here. U6/U7 remain queued;
+advanced maze controls, broader worlds, physics and AI remain outside this unit.

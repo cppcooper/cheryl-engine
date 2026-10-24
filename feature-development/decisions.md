@@ -178,3 +178,43 @@ the diagnostic follow-up; zero failures/skips. Generation-storage guidance adds
 replay concerns without selecting a format or sibling dependency. Stop for
 coordinator review; broader portability/ASan/performance/public integration remain
 unverified.
+
+## PROCGEN-019 — Cardinal distance and threshold meaning
+
+**User distance requirement; engineering boundary, high confidence in definition.**
+Analyze a borrowed binary 2D occupancy view into owned distances/mask/summary.
+Distance counts cardinal steps to a solid cell or the first outside cell; solids0,
+perimeter floors1. Minimum is nonnegative signed64; thresholds0/1 include all
+floors, high values can select none. Masking is a derived measurement and never
+changes input. This cell metric supplies neither Euclidean radius nor physical
+collision clearance.
+
+## PROCGEN-020 — Ordered sources and bounded region analysis
+
+**Engineering choice; implemented and verified, high confidence.** Use multi-source BFS,
+seeding all solid0 sources before boundary-floor1 sources. Every cell enters once;
+then reuse the queue for cardinal usable-region counts. Temporary visited flags
+live in the unpublished mask and normalize before return. Account17*C+4096 bytes,
+work15*C+6*usable, with checked preflight and runtime refusal. Reuse CaveBudgets
+because its cells/bytes/work contract fits; no recursion, RNG or generator changes.
+
+## PROCGEN-021 — Derived identity and retained layers
+
+**User coordination requirement; engineering choice, medium confidence.** Retain
+owned domain, exact minimum and analysis version1 with results; callers retain
+exact source occupancy identity and provenance. No source lifetime is retained.
+A changed occupancy invalidates its derived field even if seed/dimensions match.
+Generation-storage guidance supplies future retention concerns, not a recipe,
+cache/save policy or sibling import. Existing generator replay stays intact;
+physics/public extraction and universal identity services remain outside U5.
+
+## PROCGEN-022 — Focused evidence and finite-batch receipt
+
+**User requirement; executed GNU/Linux Debug/UBSan evidence.** Independent exhaustive
+Manhattan minima and cardinal floods verify literals, thresholds, regions and
+refusals. All52 accumulated CTest entries pass:49 cases/22276 assertions, including
+all43 prior entries and eight new cases/12797 assertions, plus three consumers.
+The committed ready receipt names complete native logs; it reports execution,
+not coordinator source acceptance. One coherent U5 checkpoint ends this run;
+finite controller owns later admission. Other platforms/ASan/performance/public
+integration remain unverified.

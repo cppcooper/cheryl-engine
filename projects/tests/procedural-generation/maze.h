@@ -48,7 +48,10 @@ namespace ProcGen {
         cave_rules,
         cave_connectivity,
         cave_algorithm,
-        cave_version
+        cave_version,
+        clearance_dimensions,
+        occupancy,
+        clearance_threshold
     };
 
     struct Failure {
