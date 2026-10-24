@@ -1,0 +1,131 @@
+{
+  "starting_head": "9826abc49194ab50ee838d5708244329258ed11c",
+  "initial_status": "clean feat/magic",
+  "receipt_ready": true,
+  "source_hashes_checked": 12,
+  "complete_logs_read": [
+    {
+      "path": "feature-development/magic/logs/M7/accumulated-01.log",
+      "sha256": "94a3ec2aab271e0ba40e1fc08730a8002fa41c1af5e14f44f1df652727a31f9a",
+      "exit": 0,
+      "bytes": 49826
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-01.log",
+      "sha256": "7956c002efe77ea62e88e7c29d2b8047e4d7e31e4800bd24afbe2bc5c8d786f8",
+      "exit": 0,
+      "bytes": 1299
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-02.log",
+      "sha256": "8c6fd3a5a36284514987722fd3e11d5fd3fa3746ef3a99400b9d00e6b85279a9",
+      "exit": 0,
+      "bytes": 808
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-03.log",
+      "sha256": "b717a9870497d6201ed55af6e9ec1af9687dd75e72b8769e69f1ba48bd00e5ec",
+      "exit": 0,
+      "bytes": 1039
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-04.log",
+      "sha256": "7956c002efe77ea62e88e7c29d2b8047e4d7e31e4800bd24afbe2bc5c8d786f8",
+      "exit": 0,
+      "bytes": 1299
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-05.log",
+      "sha256": "6438f64fed7652fac105bf662a830944fb4cad7e0b2c4e97cc715a24879a333f",
+      "exit": 0,
+      "bytes": 491
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-06.log",
+      "sha256": "810248126b6aa5e8a9c77ea6658dbe21f322e0c5909fa8d00607c364297027cd",
+      "exit": 0,
+      "bytes": 496
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-07.log",
+      "sha256": "3cc27bfb0c2abbed90677896879a3e8232a886670df87797a9931eebf7c1cddc",
+      "exit": 0,
+      "bytes": 1853
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-08.log",
+      "sha256": "bfdffcb14ff207483e2f6a7baa2a351603de2fd33b320d248c8f5a739cdbe163",
+      "exit": 0,
+      "bytes": 1571
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-09.log",
+      "sha256": "54058ea7721f036e526689c4557e6636b5fe5d69f7bab1d9ed06e5338c67858e",
+      "exit": 0,
+      "bytes": 2666
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-10.log",
+      "sha256": "ed400236d267c2edad78a0991fc8ce7b71616d96ad6aebd55c4215402145e5e9",
+      "exit": 0,
+      "bytes": 3572
+    },
+    {
+      "path": "feature-development/magic/logs/M7/build-11.log",
+      "sha256": "27b5067e592cd3c878ebf8a21125ac506bc482552b6c5e042a1fdd17463183b7",
+      "exit": 0,
+      "bytes": 496
+    },
+    {
+      "path": "feature-development/magic/logs/M7/configure-01.log",
+      "sha256": "7bc5562eb83eb395bf3c9079b55415018f72739ffbb1115e607f36cb7d60c452",
+      "exit": 0,
+      "bytes": 373
+    },
+    {
+      "path": "feature-development/magic/logs/M7/configure-02.log",
+      "sha256": "7bc5562eb83eb395bf3c9079b55415018f72739ffbb1115e607f36cb7d60c452",
+      "exit": 0,
+      "bytes": 373
+    },
+    {
+      "path": "feature-development/magic/logs/M7/core-01.log",
+      "sha256": "7ed636f252b2aceb3b0d5cc30e2ad9d122d5774003b80c59491aceba30879839",
+      "exit": 8,
+      "bytes": 2987
+    },
+    {
+      "path": "feature-development/magic/logs/M7/core-02.log",
+      "sha256": "8e5594b774a9cf6bf09153dee826ee613fa3d17e035171437f05b169f8b3a0cd",
+      "exit": 0,
+      "bytes": 3006
+    },
+    {
+      "path": "feature-development/magic/logs/M7/core-03.log",
+      "sha256": "4cbd9663be97f6fd5e941c1217815266fe6ce26ecbb192647c0d0d49aedccf35",
+      "exit": 8,
+      "bytes": 4348
+    },
+    {
+      "path": "feature-development/magic/logs/M7/core-04.log",
+      "sha256": "2ea91f3c4a99b07410ac7ffd60f9a3ef7abea7be6054d8f2a27fdd27fa17c7fb",
+      "exit": 0,
+      "bytes": 3153
+    },
+    {
+      "path": "feature-development/magic/logs/M7/stretch-01.log",
+      "sha256": "b413043697ce303f25df8510e554f06babb4be7e422cde656270930030d9c714",
+      "exit": 0,
+      "bytes": 10288
+    },
+    {
+      "path": "feature-development/magic/logs/M7/stretch-02.log",
+      "sha256": "c9d90d0379f717424d077d3337c3c4c26fae1be098fb8f6bca950fa593753c42",
+      "exit": 0,
+      "bytes": 6021
+    }
+  ],
+  "prior_campaign": "22/22,248 contract cases; initial failed logs preserved",
+  "review": "coordination/reviews/magic-m7-20261024.md inspected read-only",
+  "allocation": "new mutable storage inline fixed arrays; existing immutable handles shared; no allocation-service or Engine migration claim"
+}

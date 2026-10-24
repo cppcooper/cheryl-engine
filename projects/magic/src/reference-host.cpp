@@ -45,7 +45,8 @@ namespace Magic::Reference {
                    l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id && l.objects <= c.objects &&
                    l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance && l.wards <= c.wards &&
                    l.restrictions <= c.restrictions && l.transmutations <= c.transmutations && l.creations <= c.creations &&
-                   l.max_mechanic_instance <= c.max_mechanic_instance;
+                   l.max_mechanic_instance <= c.max_mechanic_instance && l.remains <= c.remains && l.servants <= c.servants &&
+                   l.max_servant_instance <= c.max_servant_instance;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -372,31 +373,41 @@ namespace Magic::Reference {
             static_cast<void>(actor(state_.world, id));
             auto next = state_;
             revision(next.world, limits_);
-            next.world.actors[id.slot].present = false;
-            next.world.actors[id.slot].data = {};
-            next.world.actors[id.slot].slow = {};
-            for (std::size_t i = 0; i < disguise_capacity; ++i) {
-                meter.spend();
-                auto& d = next.perception.disguises[i];
-                if (!d.instance)
-                    continue;
-                if (d.audience[id.slot] == id)
-                    d.audience[id.slot] = {};
-                bool any = false;
-                for (const auto& member : d.audience) {
-                    meter.spend();
-                    any |= member.generation != 0;
-                }
-                if (!any) {
-                    d = {};
-                    next.disguise_plans[i].reset();
-                }
-            }
-            forget_actor_mechanics(next, id, meter);
+            retire_actor(next, id, meter);
             state_ = std::move(next);
             return {};
         } catch (Failure failure) {
             return std::unexpected(failure);
+        }
+    }
+    void ReferenceHost::retire_actor(State& next, ActorId id, Meter& meter) const {
+        next.world.actors[id.slot].present = false;
+        next.world.actors[id.slot].data = {};
+        next.world.actors[id.slot].slow = {};
+        for (std::size_t i = 0; i < disguise_capacity; ++i) {
+            meter.spend();
+            auto& d = next.perception.disguises[i];
+            if (!d.instance)
+                continue;
+            if (d.audience[id.slot] == id)
+                d.audience[id.slot] = {};
+            bool any = false;
+            for (const auto& member : d.audience) {
+                meter.spend();
+                any |= member.generation != 0;
+            }
+            if (!any) {
+                d = {};
+                next.disguise_plans[i].reset();
+            }
+        }
+        forget_actor_mechanics(next, id, meter);
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend();
+            if (next.life.servants[i].instance && next.life.servants[i].actor == id) {
+                next.life.servants[i] = {};
+                next.servant_plans[i].reset();
+            }
         }
     }
     std::expected<void, Failure> ReferenceHost::replace_catalog(const Catalog& catalog) {
@@ -425,6 +436,12 @@ namespace Magic::Reference {
         if (meaning.entry.kind != EntryKind::Spoken || meaning.entry.mode != CastingMode::Release ||
             meaning.entry.trigger != Trigger::None || meaning.entry.charges != 0)
             meter.fail(Error::UnsupportedEntry);
+        if (meaning.delivery == Delivery::Remains || meaning.delivery == Delivery::Influence) {
+            validate_lifecycle(plan, request, state, meter, paying);
+            return;
+        }
+        if (request.remains || !request.influence.empty())
+            meter.fail(Error::UnsupportedBinding);
         if (meaning.delivery != Delivery::Contact && meaning.delivery != Delivery::Burst && meaning.delivery != Delivery::Subject)
             meter.fail(Error::UnsupportedDelivery);
         if (!catalog_.spoken || (meaning.delivery == Delivery::Contact && !catalog_.contact) ||
@@ -511,7 +528,8 @@ namespace Magic::Reference {
                 meter.fail(Error::UnsupportedComposition);
             if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict ||
                  effect.primitive == Primitive::Relocate || effect.primitive == Primitive::Shatter ||
-                 effect.primitive == Primitive::Transmute || effect.primitive == Primitive::Create) &&
+                 effect.primitive == Primitive::Transmute || effect.primitive == Primitive::Create ||
+                 effect.primitive == Primitive::Animate || effect.primitive == Primitive::Dispel) &&
                 meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
             bool supported = false;
@@ -523,7 +541,15 @@ namespace Magic::Reference {
                     const auto bound = static_cast<std::int32_t>(schema.max_coordinate_mm);
                     return point.x >= -bound && point.x <= bound && point.y >= -bound && point.y <= bound;
                 };
-                if (auto material = std::get_if<Transmutation>(&effect.payload)) {
+                if (auto animation = std::get_if<Animation>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Animate && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                animation->duration_ticks > 0 && animation->duration_ticks <= schema.max_duration_ticks &&
+                                meaning.delivery == Delivery::Remains;
+                } else if (auto dispel = std::get_if<Dispelling>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Dispel && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                (dispel->kind == InfluenceKind::Disguise || dispel->kind == InfluenceKind::AttackRestriction) &&
+                                meaning.delivery == Delivery::Influence;
+                } else if (auto material = std::get_if<Transmutation>(&effect.payload)) {
                     const auto form = static_cast<unsigned>(material->form);
                     supported = effect.primitive == Primitive::Transmute && material->subject == SubjectRole::CapturedObject &&
                                 effect.quantity == 0 && effect.duration_ticks == 0 && form < 2 && (schema.appearances & (1u << form)) &&
@@ -758,7 +784,10 @@ namespace Magic::Reference {
             const auto due = later(state_.world.tick, plan->meaning().onset_ticks, limits_);
             if (plan->meaning().onset_ticks == 0) {
                 auto scratch = state_;
-                apply(plan, request.contact, request.aim, request.subject, scratch, meter);
+                if (plan->meaning().delivery == Delivery::Remains || plan->meaning().delivery == Delivery::Influence)
+                    lifecycle(plan, request, scratch, meter);
+                else
+                    apply(plan, request.contact, request.aim, request.subject, scratch, meter);
             } // Delayed preview cannot promise future members/status capacity.
             return Preview{static_cast<std::uint32_t>(plan->meaning().effects.size() * 10), due, meter.usage};
         } catch (Failure failure) {
@@ -838,7 +867,9 @@ namespace Magic::Reference {
                                             input.request.subject};
                 next.plans[slot] = input.plan;
                 kind = EventKind::Queued;
-            } else
+            } else if (input.plan->meaning().delivery == Delivery::Remains || input.plan->meaning().delivery == Delivery::Influence)
+                lifecycle(input.plan, input.request, next, meter);
+            else
                 apply(input.plan, input.request.contact, input.request.aim, input.request.subject, next, meter);
             next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
             next.world.actions_issued = id;
@@ -1296,6 +1327,7 @@ namespace Magic::Reference {
             }
         }
         check_mechanics(state, meter);
+        check_life(state, meter);
     }
     std::expected<Checkpoint, Failure> ReferenceHost::checkpoint() const {
         try {
@@ -1315,7 +1347,7 @@ namespace Magic::Reference {
             if (!checkpoint.data_)
                 meter.fail(Error::InvalidCheckpoint);
             const auto& data = *checkpoint.data_;
-            // Catalog is bounded (five keys, at most64 bytes each); charge identity comparison before copying.
+            // Catalog is bounded (thirteen keys, at most64 bytes each); charge identity comparison before copying.
             meter.spend(220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0));
             if (data.limits != limits_ || !same_catalog(data.catalog, catalog_))
                 meter.fail(Error::IncompatibleCheckpoint);
@@ -1337,64 +1369,78 @@ namespace Magic::Reference {
     case Error::value:                                                                                                                     \
         return #value
         switch (error) {
-            MAGIC_ERROR(InvalidLimits);
-            MAGIC_ERROR(InvalidCatalog);
-            MAGIC_ERROR(InvalidActor);
-            MAGIC_ERROR(ActorLimit);
-            MAGIC_ERROR(MissingActor);
-            MAGIC_ERROR(GenerationLimit);
-            MAGIC_ERROR(RevisionLimit);
-            MAGIC_ERROR(NoPlan);
-            MAGIC_ERROR(PlanLimit);
-            MAGIC_ERROR(UnsupportedEntry);
-            MAGIC_ERROR(UnsupportedDelivery);
-            MAGIC_ERROR(UnsupportedBinding);
-            MAGIC_ERROR(SchemaMismatch);
-            MAGIC_ERROR(Permission);
-            MAGIC_ERROR(Contact);
-            MAGIC_ERROR(Resources);
-            MAGIC_ERROR(InvalidAim);
-            MAGIC_ERROR(EmptySelection);
-            MAGIC_ERROR(Overlap);
-            MAGIC_ERROR(ActiveSlow);
-            MAGIC_ERROR(StatusLimit);
-            MAGIC_ERROR(PendingLimit);
-            MAGIC_ERROR(SelectorLimit);
-            MAGIC_ERROR(TargetLimit);
-            MAGIC_ERROR(WorkLimit);
-            MAGIC_ERROR(TimeLimit);
-            MAGIC_ERROR(ActionLimit);
-            MAGIC_ERROR(TicketLimit);
-            MAGIC_ERROR(InvalidTicket);
-            MAGIC_ERROR(ForeignTicket);
-            MAGIC_ERROR(StaleTicket);
-            MAGIC_ERROR(ConsumedTicket);
-            MAGIC_ERROR(MissingAction);
-            MAGIC_ERROR(ItemLimit);
-            MAGIC_ERROR(MissingItem);
-            MAGIC_ERROR(DisabledItem);
-            MAGIC_ERROR(SpentItem);
-            MAGIC_ERROR(InvalidEvent);
-            MAGIC_ERROR(ForeignEvent);
-            MAGIC_ERROR(RepeatedEvent);
-            MAGIC_ERROR(DuplicateFact);
-            MAGIC_ERROR(MissingFact);
-            MAGIC_ERROR(EventLimit);
-            MAGIC_ERROR(NonceLimit);
-            MAGIC_ERROR(InvalidCheckpoint);
-            MAGIC_ERROR(IncompatibleCheckpoint);
-            MAGIC_ERROR(InvalidObject);
-            MAGIC_ERROR(ObjectLimit);
-            MAGIC_ERROR(MissingObject);
-            MAGIC_ERROR(InstanceLimit);
-            MAGIC_ERROR(WitnessLimit);
-            MAGIC_ERROR(NoDisguise);
-            MAGIC_ERROR(UnsupportedComposition);
-            MAGIC_ERROR(ActiveWard);
-            MAGIC_ERROR(RestrictedIntent);
-            MAGIC_ERROR(MechanicLimit);
-            MAGIC_ERROR(InvalidIntent);
-            MAGIC_ERROR(DestinationBlocked);
+            case Error::MissingRemains:
+                return "MissingRemains";
+            case Error::SpentRemains:
+                return "SpentRemains";
+            case Error::RemainsLimit:
+                return "RemainsLimit";
+            case Error::ServantLimit:
+                return "ServantLimit";
+            case Error::InvalidCapability:
+                return "InvalidCapability";
+            case Error::ForeignCapability:
+                return "ForeignCapability";
+            case Error::MissingInfluence:
+                return "MissingInfluence";
+                MAGIC_ERROR(InvalidLimits);
+                MAGIC_ERROR(InvalidCatalog);
+                MAGIC_ERROR(InvalidActor);
+                MAGIC_ERROR(ActorLimit);
+                MAGIC_ERROR(MissingActor);
+                MAGIC_ERROR(GenerationLimit);
+                MAGIC_ERROR(RevisionLimit);
+                MAGIC_ERROR(NoPlan);
+                MAGIC_ERROR(PlanLimit);
+                MAGIC_ERROR(UnsupportedEntry);
+                MAGIC_ERROR(UnsupportedDelivery);
+                MAGIC_ERROR(UnsupportedBinding);
+                MAGIC_ERROR(SchemaMismatch);
+                MAGIC_ERROR(Permission);
+                MAGIC_ERROR(Contact);
+                MAGIC_ERROR(Resources);
+                MAGIC_ERROR(InvalidAim);
+                MAGIC_ERROR(EmptySelection);
+                MAGIC_ERROR(Overlap);
+                MAGIC_ERROR(ActiveSlow);
+                MAGIC_ERROR(StatusLimit);
+                MAGIC_ERROR(PendingLimit);
+                MAGIC_ERROR(SelectorLimit);
+                MAGIC_ERROR(TargetLimit);
+                MAGIC_ERROR(WorkLimit);
+                MAGIC_ERROR(TimeLimit);
+                MAGIC_ERROR(ActionLimit);
+                MAGIC_ERROR(TicketLimit);
+                MAGIC_ERROR(InvalidTicket);
+                MAGIC_ERROR(ForeignTicket);
+                MAGIC_ERROR(StaleTicket);
+                MAGIC_ERROR(ConsumedTicket);
+                MAGIC_ERROR(MissingAction);
+                MAGIC_ERROR(ItemLimit);
+                MAGIC_ERROR(MissingItem);
+                MAGIC_ERROR(DisabledItem);
+                MAGIC_ERROR(SpentItem);
+                MAGIC_ERROR(InvalidEvent);
+                MAGIC_ERROR(ForeignEvent);
+                MAGIC_ERROR(RepeatedEvent);
+                MAGIC_ERROR(DuplicateFact);
+                MAGIC_ERROR(MissingFact);
+                MAGIC_ERROR(EventLimit);
+                MAGIC_ERROR(NonceLimit);
+                MAGIC_ERROR(InvalidCheckpoint);
+                MAGIC_ERROR(IncompatibleCheckpoint);
+                MAGIC_ERROR(InvalidObject);
+                MAGIC_ERROR(ObjectLimit);
+                MAGIC_ERROR(MissingObject);
+                MAGIC_ERROR(InstanceLimit);
+                MAGIC_ERROR(WitnessLimit);
+                MAGIC_ERROR(NoDisguise);
+                MAGIC_ERROR(UnsupportedComposition);
+                MAGIC_ERROR(ActiveWard);
+                MAGIC_ERROR(RestrictedIntent);
+                MAGIC_ERROR(MechanicLimit);
+                MAGIC_ERROR(InvalidIntent);
+                MAGIC_ERROR(DestinationBlocked);
         }
 #undef MAGIC_ERROR
         return "InvalidError";

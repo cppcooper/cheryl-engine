@@ -1428,3 +1428,61 @@ coordinator reviews the standalone receipt, source hashes and saved native evide
 publisher alone transports feat/magic. A concrete unselected next evidence is a
 human-readable presentation/prediction exercise for the two checked passage/ward
 scenes before any broader integration. No extra worker, controller or task starts.
+
+
+## MAGIC-M8 checkpoint1 — M8-035 / M8-036 / M8-037
+
+Gate: exact clean9826abc on feat/magic; committed M7 ready/true receipt with expected
+a01a5f7 starting head. All12 committed tested hashes and20 complete native logs are
+read/verified in logs/M8/predecessor-review.json. Coordinator M7 review is inspected;
+three prior commits/failure records stay unchanged. Worker wrapper records ultra.
+No personal taste inference: existing private APIs establish compatibility only.
+
+Proposed callers precede APIs in batches/M8-plan.json. M8-035 chooses four inline
+remains and servant rows, downward-only caps; a present unspent remains is eligible,
+within50mm of a living authorized caster. Its centre must be free of actors and
+opaque objects. The fresh servant has20/20hp,0mana,1000mm/s and no casting ability.
+The caster owns commands. Trusted fixture owner issues opaque command authority;
+caller-supplied owner IDs on command execution cannot replace it. It is reusable
+while that exact owner and servant are living/current. Death/loss makes it inert;
+expiry removes only the servant generation. Dismissal/removal leaves remains spent;
+active claims prevent administrative remains removal. Explicit later fixture removal
+and registration can create a fresh remains generation; no automatic farming exists.
+
+M8-036 chooses typed captured-remains / captured-influence roles and immediate
+standalone deliveries. Exact Common names both spell meanings. Dispel supports only
+Disguise and AttackRestriction; the closed host-owned ref contains domain, instance,
+target generation and incarnation. Inspection/ref binding grants no cast authority.
+Normal prepare/release rechecks symbolic key AND primitive/schema, live permission,
+resources and current ref before staged removal/payment. No range/occlusion rule
+for exact dispel is selected. Disguise removal removes that whole frozen audience
+instance, not other instances or historical observations. New engraving, delay,
+mixed composition, Slow dispelling and interruption explicitly refuse/not selected.
+
+M8-037 adds owned LifeSnapshot internally to checkpoint State with actual immutable
+plan handles. Observational Snapshot and LifeSnapshot remain non-restorable. Whole
+proposed continuation checks claims, actor/owner generations, plans/current schema,
+unique instance/actor/remains, caps and absolute expiry; fresh incarnation revokes
+all operational refs. Whole-world rewind is intentional, not durable exactly-once.
+Mutable new storage is inline fixed arrays; staging reuses bounded aggregate copies,
+plan handles share existing owners. Existing standard immutable/control-block cold
+allocation remains; no engine-service migration, custom allocator, copied service,
+new heap registry or allocation-free/RSS claim. Command and native attack share one
+Meter and one staged damage resolver. Exceptions allocate outcomes before adoption.
+
+Executed commands: configure-01/build-01 succeed; build-02 fails in new test code
+(missing aggregate fields; passing Knowledge instead of existing Learner and missing
+book title). build-03 fixes those API uses. core-01 passes31/32: exact-work test
+incorrectly assumes prepare cheaper than release. build-04/core-02 still fail that
+case because its full-state inspection helper itself costs448 > tested441 work.
+build-05/core-03 correct only the boundary assertion to available Snapshot/Life
+values:32/32 cases,1/1 CTest passes. Animation preview/release both442work,
+20 selector units and1 selected target in the thirteen-operation fixture. Logs
+retain complete commands, diagnostics and immediate exits. No accumulated pass yet.
+
+Empty three-schema checkpoint model changes632->652 (one-short651); historical
+case name remains unchanged. This is12 fixed copy +8 empty validation units, no
+raised quota. Existing scalar/annular/perceptual behavior awaits the planned single
+accumulated campaign. Connected caller and combined checkpoint/history evidence
+are next; no GUI/fun/AI/physics/Engine integration, leak/platform/allocator failure
+or disk/process/crash safety acceptance follows from these focused checks.

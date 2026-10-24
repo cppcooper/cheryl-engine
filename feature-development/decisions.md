@@ -104,3 +104,15 @@ M7 completes all four selected cores and both preselected stretches, documented 
 the standalone receipt and batch plan. This is six specific witnesses across six
 areas, not coverage of the whole open catalogue. No queued plan or follow-on unit
 is added; final worker state is idle for coordinator review.
+
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M8-035 | Register four generation-bound available/spent remains and four temporary servants in inline arrays. Immediate standalone spoken Animation claims, pays10, creates a fresh20hp actor and retains the actual plan in one adoption. Owner-issued incarnation-bound commands use the existing3dp/contact50 attack resolver, including wards/restrictions. Owner loss leaves an inert servant until absolute expiry; no refund/unspend/corpse generation. High confidence in checked lifecycle; medium in reversible fixture rules. |
+| M8-036 | Add exact standalone spoken Dispelling for Disguise and Attack restriction. A trusted owner binds a closed kind/instance/target-generation/incarnation input, then ordinary live casting authority/schema/payment is still required. Removal changes only that contribution; damage, payment and dated witnesses remain. Default/foreign/stale/wrong-kind/repeated references refuse. Slow and pending interruption remain unsupported. High confidence in authority separation, medium in private grammar spelling. |
+| M8-037 | Retain actual servant plans/claims/owners/lifetimes in the distinct checkpoint; restore revokes command/influence references as well as tickets/events. Fixed inline state adds12 copy units,4 expiry scans and8 empty continuation checks; existing quotas stay fixed. No data-heavy heap registry or Engine allocator migration is introduced. High confidence in bounded current-runtime ownership; no RSS/CPU, fault-injection or durability claim. |
+
+M8 checkpoint1 executes32 focused lifecycle cases (1/1 CTest entry). The connected
+ordinary caller, extended continuation checks and accumulated regression campaign
+remain in progress; no ready receipt is asserted here. Initial native build/test
+failures are preserved under magic/logs/M8.

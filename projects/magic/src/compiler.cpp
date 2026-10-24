@@ -51,6 +51,10 @@ namespace Magic {
                     return "shatter";
                 case Primitive::Transmute:
                     return "transmute";
+                case Primitive::Animate:
+                    return "animate";
+                case Primitive::Dispel:
+                    return "dispel";
                 case Primitive::Create:
                     return "create";
             }
@@ -58,6 +62,10 @@ namespace Magic {
         }
         std::string_view delivery_name(Delivery delivery) {
             switch (delivery) {
+                case Delivery::Remains:
+                    return "remains";
+                case Delivery::Influence:
+                    return "influence";
                 case Delivery::Contact:
                     return "contact";
                 case Delivery::Ray:
@@ -269,6 +277,10 @@ namespace Magic {
                 syntax.delivery = Delivery::Ray;
             else if (delivery.text == "burst")
                 syntax.delivery = Delivery::Burst;
+            else if (delivery.text == "remains")
+                syntax.delivery = Delivery::Remains;
+            else if (delivery.text == "influence")
+                syntax.delivery = Delivery::Influence;
             else if (delivery.text == "subject")
                 syntax.delivery = Delivery::Subject;
             else if (delivery.text == "item-event")
@@ -299,6 +311,11 @@ namespace Magic {
                         expect("at");
                         expect("activation");
                     }
+                } else if (query.text == "remains" || query.text == "influence") {
+                    binding.query = query.text == "remains" ? Query::CapturedRemains : Query::CapturedInfluence;
+                    expect("captured");
+                    expect("at");
+                    expect("release");
                 } else if (query.text == "object") {
                     binding.query = Query::CapturedObject;
                     expect("captured");
@@ -386,7 +403,22 @@ namespace Magic {
                 expect("{");
                 if (effect.language.text == "Common") {
                     const auto operation = take();
-                    if (operation.text == "heal")
+                    if (operation.text == "animate") {
+                        effect.primitive = Primitive::Animate;
+                        expect("bound");
+                        expect("remains");
+                        expect("for");
+                        effect.duration = quantity();
+                        expect("owned");
+                        expect("by");
+                        expect("caster");
+                    } else if (operation.text == "dispel") {
+                        effect.primitive = Primitive::Dispel;
+                        effect.appearance = take();
+                        expect("bound");
+                        expect("influence");
+                        expect("instant");
+                    } else if (operation.text == "heal")
                         effect.primitive = Primitive::Heal;
                     else if (operation.text == "fire") {
                         expect("damage");
@@ -473,7 +505,8 @@ namespace Magic {
                     if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
                         effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict &&
                         effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter &&
-                        effect.primitive != Primitive::Transmute && effect.primitive != Primitive::Create) {
+                        effect.primitive != Primitive::Transmute && effect.primitive != Primitive::Create &&
+                        effect.primitive != Primitive::Animate && effect.primitive != Primitive::Dispel) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -725,7 +758,10 @@ namespace Magic {
                 (meaning.delivery == Delivery::Contact && !catalog_.contact) || (meaning.delivery == Delivery::Ray && !catalog_.ray) ||
                 (meaning.delivery == Delivery::Burst && !catalog_.burst) ||
                 (meaning.delivery == Delivery::ItemEvent && !catalog_.item_event) ||
-                (meaning.delivery == Delivery::Subject && !catalog_.subject) || (syntax.effects.size() > 1 && !catalog_.together))
+                ((meaning.delivery == Delivery::Subject || meaning.delivery == Delivery::Remains ||
+                  meaning.delivery == Delivery::Influence) &&
+                 !catalog_.subject) ||
+                (syntax.effects.size() > 1 && !catalog_.together))
                 fail(Code::UnsupportedCombination, {}, "The host catalog disables this entry, delivery or multi-effect bundle capability.");
             if ((meaning.entry.kind == EntryKind::Engraved) != (meaning.delivery == Delivery::ItemEvent) ||
                 ((meaning.delivery == Delivery::Contact || meaning.delivery == Delivery::ItemEvent) && meaning.onset_ticks != 0))
@@ -750,7 +786,11 @@ namespace Magic {
                 Binding binding;
                 binding.name = copy(raw.name.text, raw.name.span);
                 binding.query = raw.query;
-                if (raw.query == Query::CapturedObject) {
+                if (raw.query == Query::CapturedRemains || raw.query == Query::CapturedInfluence) {
+                    retain(1);
+                    if (meaning.delivery != (raw.query == Query::CapturedRemains ? Delivery::Remains : Delivery::Influence))
+                        fail(Code::RoleMismatch, raw.span, "Use the matching captured remains/influence delivery.");
+                } else if (raw.query == Query::CapturedObject) {
                     retain(1); // owned empty frame terminator
                     if (meaning.delivery != Delivery::Subject)
                         fail(Code::RoleMismatch, raw.span, "An object binding requires subject delivery.");
@@ -817,13 +857,29 @@ namespace Magic {
                 if ((meaning.bindings[target].query == Query::CapturedObject) !=
                     (raw.primitive == Primitive::Shatter || raw.primitive == Primitive::Transmute))
                     fail(Code::RoleMismatch, raw.span, "This operation requires its exact actor/object target role.");
+                if ((meaning.bindings[target].query == Query::CapturedRemains) != (raw.primitive == Primitive::Animate) ||
+                    (meaning.bindings[target].query == Query::CapturedInfluence) != (raw.primitive == Primitive::Dispel))
+                    fail(Code::RoleMismatch, raw.span, "Operation needs its exact bound remains/influence role.");
                 const auto& operation = schema(raw.primitive, raw.span);
                 Effect effect;
                 effect.primitive = raw.primitive;
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (raw.primitive == Primitive::Transmute || raw.primitive == Primitive::Create) {
+                if (raw.primitive == Primitive::Animate || raw.primitive == Primitive::Dispel) {
+                    if (syntax.effects.size() != 1)
+                        fail(Code::UnsupportedComposition, raw.span, "Animation/dispelling are standalone operations.");
+                    if (meaning.entry.kind != EntryKind::Spoken || meaning.onset_ticks != 0 || meaning.bindings.size() != 1)
+                        fail(Code::UnsupportedCombination, raw.span, "Animation/dispelling require immediate standalone spoken release.");
+                    if (raw.primitive == Primitive::Animate)
+                        effect.payload = Animation{value(raw.duration, Dimension::Time, true, operation.max_duration_ticks)};
+                    else {
+                        if (raw.appearance.text != "disguise" && raw.appearance.text != "attack-restriction")
+                            fail(Code::UnknownPhrase, raw.appearance.span, "Only disguise and attack-restriction may be dispelled.");
+                        effect.payload =
+                            Dispelling{raw.appearance.text == "disguise" ? InfluenceKind::Disguise : InfluenceKind::AttackRestriction};
+                    }
+                } else if (raw.primitive == Primitive::Transmute || raw.primitive == Primitive::Create) {
                     if (syntax.effects.size() != 1)
                         fail(Code::UnsupportedComposition, raw.span, "Material and creation operations are standalone.");
                     if (meaning.entry.kind != EntryKind::Spoken)
@@ -922,17 +978,19 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Transmute  ? Rule::CommonTransmute
-                                          : raw.primitive == Primitive::Create   ? Rule::CommonCreate
-                                          : raw.primitive == Primitive::Relocate ? Rule::CommonRelocate
-                                          : raw.primitive == Primitive::Shatter  ? Rule::CommonShatter
-                                          : raw.primitive == Primitive::Ward     ? Rule::CommonWard
-                                          : raw.primitive == Primitive::Restrict ? Rule::CommonRestrict
-                                          : raw.primitive == Primitive::Disguise ? Rule::CommonDisguise
-                                          : raw.primitive == Primitive::Discern  ? Rule::CommonDiscern
-                                          : raw.primitive == Primitive::Heal     ? Rule::CommonHeal
-                                          : raw.primitive == Primitive::Fire     ? Rule::CommonFire
-                                                                                 : Rule::CommonSlow;
+                const auto concept_rule = raw.primitive == Primitive::Animate     ? Rule::CommonAnimate
+                                          : raw.primitive == Primitive::Dispel    ? Rule::CommonDispel
+                                          : raw.primitive == Primitive::Transmute ? Rule::CommonTransmute
+                                          : raw.primitive == Primitive::Create    ? Rule::CommonCreate
+                                          : raw.primitive == Primitive::Relocate  ? Rule::CommonRelocate
+                                          : raw.primitive == Primitive::Shatter   ? Rule::CommonShatter
+                                          : raw.primitive == Primitive::Ward      ? Rule::CommonWard
+                                          : raw.primitive == Primitive::Restrict  ? Rule::CommonRestrict
+                                          : raw.primitive == Primitive::Disguise  ? Rule::CommonDisguise
+                                          : raw.primitive == Primitive::Discern   ? Rule::CommonDiscern
+                                          : raw.primitive == Primitive::Heal      ? Rule::CommonHeal
+                                          : raw.primitive == Primitive::Fire      ? Rule::CommonFire
+                                                                                  : Rule::CommonSlow;
                 auto production = concept_rule;
                 if (raw.language.text == "Mend")
                     production = raw.primitive == Primitive::Heal ? Rule::MendHeal : Rule::MendSlow;
@@ -956,7 +1014,11 @@ namespace Magic {
                 append(output, "  bind ");
                 append(output, binding.name);
                 append(output, " = ");
-                if (binding.query == Query::CapturedObject)
+                if (binding.query == Query::CapturedRemains)
+                    append(output, "remains captured at release");
+                else if (binding.query == Query::CapturedInfluence)
+                    append(output, "influence captured at release");
+                else if (binding.query == Query::CapturedObject)
                     append(output, "object captured at release rechecked at activation");
                 else if (binding.query == Query::WillingTouchedActor)
                     append(output, "willing touched actor at release");
@@ -984,7 +1046,14 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (auto material = std::get_if<Transmutation>(&effect.payload)) {
+                if (auto animation = std::get_if<Animation>(&effect.payload)) {
+                    append(output, "animate bound remains for ");
+                    number(output, static_cast<std::uint64_t>(animation->duration_ticks) * 10);
+                    append(output, " ms owned by caster");
+                } else if (auto dispel = std::get_if<Dispelling>(&effect.payload)) {
+                    append(output, dispel->kind == InfluenceKind::Disguise ? "dispel disguise" : "dispel attack-restriction");
+                    append(output, " bound influence instant");
+                } else if (auto material = std::get_if<Transmutation>(&effect.payload)) {
                     append(output, "transmute object to ");
                     append(output, appearance_name(material->form));
                     append(output, " for ");
@@ -1177,6 +1246,10 @@ namespace Magic {
                 return "common.shatter@1";
             case Rule::CommonTransmute:
                 return "common.transmute@1";
+            case Rule::CommonAnimate:
+                return "common.animate@1";
+            case Rule::CommonDispel:
+                return "common.dispel@1";
             case Rule::CommonCreate:
                 return "common.create@1";
         }

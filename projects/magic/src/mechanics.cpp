@@ -189,34 +189,37 @@ namespace Magic::Reference {
     std::expected<AttackObserved, Failure> ReferenceHost::try_attack(ActorId attacker, ActorId target) {
         try {
             Meter meter(limits_);
-            const auto& a = live(state_.world, attacker);
-            const auto& t = live(state_.world, target);
-            if (!a.data.health || !t.data.health || attacker == target)
-                meter.fail(Error::Permission);
-            const auto dx = static_cast<std::int64_t>(a.data.position.x) - t.data.position.x;
-            const auto dy = static_cast<std::int64_t>(a.data.position.y) - t.data.position.y;
-            // Positions are bounded +/-1e6; each square<=4e12 and sum<=8e12 fits signed64.
-            meter.spend(3);
-            if (dx * dx + dy * dy > 2500)
-                meter.fail(Error::Contact);
-            for (const auto& r : state_.mechanics.restrictions) {
-                meter.spend();
-                if (r.instance && r.actor == attacker && r.intent == Intent::Attack)
-                    meter.fail(Error::RestrictedIntent);
-            }
-            meter.select();
-            auto next = state_;
-            revise(next.world, limits_);
-            auto resolution = damage(target, 3, next, meter);
-            meter.spend(16); // fixed snapshots and owned outcome
-            auto result = std::make_shared<const AttackObservation>(
-                AttackObservation{state_.world, next.world, state_.mechanics, next.mechanics, attacker, target, resolution}
-            );
-            state_ = std::move(next);
-            return result;
+            return attack(attacker, target, meter);
         } catch (Failure f) {
             return std::unexpected(f);
         }
+    }
+    AttackObserved ReferenceHost::attack(ActorId attacker, ActorId target, Meter& meter) {
+        const auto& a = live(state_.world, attacker);
+        const auto& t = live(state_.world, target);
+        if (!a.data.health || !t.data.health || attacker == target)
+            meter.fail(Error::Permission);
+        const auto dx = static_cast<std::int64_t>(a.data.position.x) - t.data.position.x;
+        const auto dy = static_cast<std::int64_t>(a.data.position.y) - t.data.position.y;
+        // Positions are bounded +/-1e6; each square<=4e12 and sum<=8e12 fits signed64.
+        meter.spend(3);
+        if (dx * dx + dy * dy > 2500)
+            meter.fail(Error::Contact);
+        for (const auto& r : state_.mechanics.restrictions) {
+            meter.spend();
+            if (r.instance && r.actor == attacker && r.intent == Intent::Attack)
+                meter.fail(Error::RestrictedIntent);
+        }
+        meter.select();
+        auto next = state_;
+        revise(next.world, limits_);
+        auto resolution = damage(target, 3, next, meter);
+        meter.spend(16); // fixed snapshots and owned outcome
+        auto result = std::make_shared<const AttackObservation>(
+            AttackObservation{state_.world, next.world, state_.mechanics, next.mechanics, attacker, target, resolution}
+        );
+        state_ = std::move(next);
+        return result;
     }
     void
     ReferenceHost::mechanical(const PlanHandle& plan, const std::array<bool, actor_capacity>& selected, State& state, Meter& meter) const {
@@ -268,6 +271,7 @@ namespace Magic::Reference {
                     due = r.until_tick;
             }
         };
+        visit(state.life.servants);
         visit(state.mechanics.wards);
         visit(state.mechanics.restrictions);
         visit(state.mechanics.transmutations);
@@ -275,6 +279,17 @@ namespace Magic::Reference {
         return due;
     }
     void ReferenceHost::expire_mechanics(State& state, std::uint64_t tick, Meter& meter) const {
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend();
+            const auto servant = state.life.servants[i];
+            if (servant.instance && servant.until_tick <= tick) {
+                if (state.world.actors[servant.actor.slot].present && state.world.actors[servant.actor.slot].id == servant.actor)
+                    retire_actor(state, servant.actor, meter);
+                state.life.servants[i] = {};
+                state.servant_plans[i].reset();
+            }
+        }
+
         for (std::size_t i = 0; i < 4; ++i) {
             meter.spend(2);
             if (state.mechanics.wards[i].instance && state.mechanics.wards[i].until_tick <= tick) {

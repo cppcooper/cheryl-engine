@@ -1,0 +1,105 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+[  4%] Built target magic_compiler
+[  9%] Built target magic_inspect
+[ 14%] Built target magic_checks
+[ 19%] Built target magic_caller_checks
+[ 21%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 23%] Building CXX object CMakeFiles/magic_reference_host.dir/src/mechanics.cpp.o
+[ 26%] Building CXX object CMakeFiles/magic_reference_host.dir/src/lifecycle.cpp.o
+[ 28%] Linking CXX static library libmagic_reference_host.a
+[ 28%] Built target magic_reference_host
+[ 30%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[ 33%] Linking CXX executable magic_host_checks
+[ 33%] Built target magic_host_checks
+[ 35%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[ 38%] Linking CXX executable magic_reference_demo
+[ 38%] Built target magic_reference_demo
+[ 40%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[ 42%] Linking CXX executable magic_engraving_checks
+[ 42%] Built target magic_engraving_checks
+[ 45%] Building CXX object CMakeFiles/magic_engraving_demo.dir/src/engraving-demo.cpp.o
+[ 47%] Linking CXX executable magic_engraving_demo
+[ 47%] Built target magic_engraving_demo
+[ 52%] Built target magic_learning
+[ 54%] Building CXX object CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o
+[ 57%] Linking CXX executable magic_learning_checks
+[ 57%] Built target magic_learning_checks
+[ 59%] Building CXX object CMakeFiles/magic_learning_demo.dir/src/learning-demo.cpp.o
+[ 61%] Linking CXX executable magic_learning_demo
+[ 61%] Built target magic_learning_demo
+[ 64%] Building CXX object CMakeFiles/magic_annular_checks.dir/tests/annular.cpp.o
+[ 66%] Linking CXX executable magic_annular_checks
+[ 66%] Built target magic_annular_checks
+[ 69%] Building CXX object CMakeFiles/magic_annular_demo.dir/src/annular-demo.cpp.o
+[ 71%] Linking CXX executable magic_annular_demo
+[ 71%] Built target magic_annular_demo
+[ 73%] Building CXX object CMakeFiles/magic_perception_checks.dir/tests/perception.cpp.o
+[ 76%] Linking CXX executable magic_perception_checks
+[ 76%] Built target magic_perception_checks
+[ 78%] Building CXX object CMakeFiles/magic_perception_demo.dir/src/perception-demo.cpp.o
+[ 80%] Linking CXX executable magic_perception_demo
+[ 80%] Built target magic_perception_demo
+[ 83%] Linking CXX executable magic_mechanics_checks
+[ 85%] Built target magic_mechanics_checks
+[ 88%] Linking CXX executable magic_mechanics_demo
+[ 90%] Built target magic_mechanics_demo
+[ 92%] Linking CXX executable magic_material_demo
+[ 95%] Built target magic_material_demo
+[ 97%] Building CXX object CMakeFiles/magic_lifecycle_checks.dir/tests/lifecycle.cpp.o
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:431:32: error: missing initializer for member ‘Magic::Reference::Request::contact’ [-Werror=missing-field-initializers]
+  431 |         refuses(f.host->prepare(plan(dispel()), {f.caster}), R::Error::InvalidCapability);
+      |                 ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:431:32: error: missing initializer for member ‘Magic::Reference::Request::aim’ [-Werror=missing-field-initializers]
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:549:21: error: no matching function for call to ‘Magic::Learning::Spellbook::add(const char [5])’
+  549 |         ok(book->add("life"));
+      |            ~~~~~~~~~^~~~~~~~
+  • there is 1 candidate
+In file included from /mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:1:
+    • candidate 1: ‘std::expected<void, Magic::Learning::Problem> Magic::Learning::Spellbook::add(std::string_view, std::string_view)’
+      /mnt/projects/cheryl-features/projects/magic/projects/magic/include/magic/learning.h:115:52:
+        115 |         [[nodiscard]] std::expected<void, Problem> add(std::string_view id, std::string_view title);
+            |                                                    ^~~
+      • candidate expects 2 arguments, 1 provided
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:552:97: error: cannot convert ‘Magic::Learning::Knowledge’ to ‘const Magic::Learning::Learner&’
+  552 |         auto unknown = take(book->edit("life", animate(), "Recognized but not learned", game(), learned));
+      |                                                                                                 ^~~~~~~
+      |                                                                                                 |
+      |                                                                                                 Magic::Learning::Knowledge
+/mnt/projects/cheryl-features/projects/magic/projects/magic/include/magic/learning.h:118:128: note: initializing argument 5 of ‘std::expected<std::shared_ptr<const Magic::Learning::Attempt>, Magic::Learning::Problem> Magic::Learning::Spellbook::edit(std::string_view, std::string_view, std::string_view, const Magic::Catalog&, const Magic::Learning::Learner&)’
+  118 |         edit(std::string_view id, std::string_view source, std::string_view annotation, const Catalog& catalog, const Learner& learner);
+      |                                                                                                                 ~~~~~~~~~~~~~~~^~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:555:95: error: cannot convert ‘Magic::Learning::Knowledge’ to ‘const Magic::Learning::Learner&’
+  555 |         auto accepted = take(book->edit("life", animate(), "Temporary owned servant", game(), learned))->accepted();
+      |                                                                                               ^~~~~~~
+      |                                                                                               |
+      |                                                                                               Magic::Learning::Knowledge
+/mnt/projects/cheryl-features/projects/magic/projects/magic/include/magic/learning.h:118:128: note: initializing argument 5 of ‘std::expected<std::shared_ptr<const Magic::Learning::Attempt>, Magic::Learning::Problem> Magic::Learning::Spellbook::edit(std::string_view, std::string_view, std::string_view, const Magic::Catalog&, const Magic::Learning::Learner&)’
+  118 |         edit(std::string_view id, std::string_view source, std::string_view annotation, const Catalog& catalog, const Learner& learner);
+      |                                                                                                                 ~~~~~~~~~~~~~~~^~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:557:96: error: cannot convert ‘Magic::Learning::Knowledge’ to ‘const Magic::Learning::Learner&’
+  557 |         auto failed_edit = take(book->edit("life", animate("1 ms"), "Repair duration", game(), learned));
+      |                                                                                                ^~~~~~~
+      |                                                                                                |
+      |                                                                                                Magic::Learning::Knowledge
+/mnt/projects/cheryl-features/projects/magic/projects/magic/include/magic/learning.h:118:128: note: initializing argument 5 of ‘std::expected<std::shared_ptr<const Magic::Learning::Attempt>, Magic::Learning::Problem> Magic::Learning::Spellbook::edit(std::string_view, std::string_view, std::string_view, const Magic::Catalog&, const Magic::Learning::Learner&)’
+  118 |         edit(std::string_view id, std::string_view source, std::string_view annotation, const Catalog& catalog, const Learner& learner);
+      |                                                                                                                 ~~~~~~~~~~~~~~~^~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/lifecycle.cpp:559:84: error: cannot convert ‘Magic::Learning::Knowledge’ to ‘const Magic::Learning::Learner&’
+  559 |         auto newer = take(book->edit("life", animate("3000 ms"), "Longer", game(), learned))->accepted();
+      |                                                                                    ^~~~~~~
+      |                                                                                    |
+      |                                                                                    Magic::Learning::Knowledge
+/mnt/projects/cheryl-features/projects/magic/projects/magic/include/magic/learning.h:118:128: note: initializing argument 5 of ‘std::expected<std::shared_ptr<const Magic::Learning::Attempt>, Magic::Learning::Problem> Magic::Learning::Spellbook::edit(std::string_view, std::string_view, std::string_view, const Magic::Catalog&, const Magic::Learning::Learner&)’
+  118 |         edit(std::string_view id, std::string_view source, std::string_view annotation, const Catalog& catalog, const Learner& learner);
+      |                                                                                                                 ~~~~~~~~~~~~~~~^~~~~~~
+cc1plus: all warnings being treated as errors
+make[2]: *** [CMakeFiles/magic_lifecycle_checks.dir/build.make:79: CMakeFiles/magic_lifecycle_checks.dir/tests/lifecycle.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:774: CMakeFiles/magic_lifecycle_checks.dir/all] Error 2
+make: *** [Makefile:101: all] Error 2
+
+exit_status=2

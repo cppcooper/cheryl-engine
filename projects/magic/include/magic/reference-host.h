@@ -92,7 +92,14 @@ namespace Magic::Reference {
         RestrictedIntent,
         MechanicLimit,
         InvalidIntent,
-        DestinationBlocked
+        DestinationBlocked,
+        MissingRemains,
+        SpentRemains,
+        RemainsLimit,
+        ServantLimit,
+        InvalidCapability,
+        ForeignCapability,
+        MissingInfluence
     };
     struct Failure {
         Error code;
@@ -152,11 +159,39 @@ namespace Magic::Reference {
         std::array<PendingView, pending_capacity> pending;
         bool operator==(const Snapshot&) const = default;
     };
+    struct RemainsId {
+        std::uint32_t slot = 0;
+        std::uint64_t generation = 0;
+        bool operator==(const RemainsId&) const = default;
+    };
+    class ReferenceHost;
+    // Trusted-owner bound inputs, not authority to cast; restore revokes their incarnation.
+    class InfluenceRef {
+        std::shared_ptr<const void> owner_;
+        InfluenceKind kind_ = InfluenceKind::Disguise;
+        std::uint64_t instance_ = 0;
+        ActorId actor_;
+        ObjectId object_;
+        friend class ReferenceHost;
+    public:
+        InfluenceRef() = default;
+        [[nodiscard]] bool empty() const noexcept { return !owner_; }
+    };
+    class ServantCommand {
+        std::shared_ptr<const void> incarnation_;
+        ActorId owner_, servant_;
+        std::uint64_t instance_ = 0;
+        friend class ReferenceHost;
+    public:
+        ServantCommand() = default;
+    };
     struct Request {
         ActorId caster;
         std::optional<ActorId> contact;
         std::optional<Point> aim;
         std::optional<ObjectId> subject = {};
+        std::optional<RemainsId> remains = {};
+        InfluenceRef influence = {};
     };
     struct HostLimits {
         // Only tighten these ceilings, including zero; metrics bound operations rather than CPU cycles/RSS.
@@ -180,6 +215,8 @@ namespace Magic::Reference {
         std::uint64_t max_instance = 1'000'000;
         std::size_t wards = 4, restrictions = 4, transmutations = 4, creations = 4;
         std::uint64_t max_mechanic_instance = 1'000'000;
+        std::size_t remains = 4, servants = 4;
+        std::uint64_t max_servant_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
     struct ItemId {
@@ -287,6 +324,26 @@ namespace Magic::Reference {
         std::uint64_t instances_issued = 0;
         bool operator==(const MechanicsSnapshot&) const = default;
     };
+    struct RemainsView {
+        RemainsId id;
+        bool present = false, spent = false;
+        Point position;
+        bool operator==(const RemainsView&) const = default;
+    };
+    struct ServantView {
+        std::uint64_t instance = 0, action = 0;
+        ActorId actor, owner;
+        RemainsId remains;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        bool operator==(const ServantView&) const = default;
+    };
+    struct LifeSnapshot {
+        std::uint32_t version = 1;
+        std::array<RemainsView, 4> remains;
+        std::array<ServantView, 4> servants;
+        std::uint64_t instances_issued = 0;
+        bool operator==(const LifeSnapshot&) const = default;
+    };
     struct DamageResolution {
         std::uint32_t requested_dp = 0, prevented_dp = 0, health_lost = 0;
         bool operator==(const DamageResolution&) const = default;
@@ -379,6 +436,8 @@ namespace Magic::Reference {
             std::array<PlanHandle, item_capacity> inscriptions;
             PerceptionSnapshot perception;
             MechanicsSnapshot mechanics;
+            LifeSnapshot life;
+            std::array<PlanHandle, 4> servant_plans;
             std::array<PlanHandle, 4> ward_plans, restriction_plans, transmutation_plans, creation_plans;
             std::array<PlanHandle, disguise_capacity> disguise_plans;
         };
@@ -397,6 +456,12 @@ namespace Magic::Reference {
         std::optional<Prepared> prepared_;
         ReferenceHost(Catalog catalog, HostLimits limits);
         struct Meter;
+        AttackObserved attack(ActorId attacker, ActorId target, Meter& meter);
+        const ServantView& command_live(ActorId owner, ActorId servant, Meter& meter) const;
+        void lifecycle(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const;
+        void validate_lifecycle(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
+        void check_life(const State& state, Meter& meter) const;
+        void retire_actor(State& state, ActorId actor, Meter& meter) const;
         void validate(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
         void payload_schema(const PlanHandle& plan, Meter& meter) const;
         void inscription(const PlanHandle& plan, Meter& meter) const;
@@ -445,6 +510,14 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<AttackObserved, Failure> try_attack(ActorId attacker, ActorId target);
         // Trusted native-owner control; only the exact living recorded owner may dismiss a created object.
         [[nodiscard]] std::expected<void, Failure> dismiss_created(ActorId owner, ObjectId object);
+        [[nodiscard]] std::expected<RemainsId, Failure> add_remains(Point position);
+        [[nodiscard]] std::expected<void, Failure> remove_remains(RemainsId remains);
+        [[nodiscard]] LifeSnapshot life() const noexcept { return state_.life; }
+        [[nodiscard]] std::expected<ServantCommand, Failure> command_authority(ActorId owner, ActorId servant) const;
+        [[nodiscard]] std::expected<AttackObserved, Failure> command_attack(const ServantCommand& command, ActorId target);
+        [[nodiscard]] std::expected<void, Failure> dismiss_servant(const ServantCommand& command);
+        [[nodiscard]] std::expected<InfluenceRef, Failure> bind_disguise(std::uint64_t instance, ObjectId subject) const;
+        [[nodiscard]] std::expected<InfluenceRef, Failure> bind_restriction(std::uint64_t instance, ActorId actor) const;
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

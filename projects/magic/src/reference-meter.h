@@ -10,7 +10,7 @@ namespace Magic::Reference {
         std::uint64_t tick = 0;
         explicit Meter(const HostLimits& value)
         : limits(value) {
-            spend(280); // M6 fixed244 +16 mechanic records/16 plan handles +4 coordinate slots.
+            spend(292); // Prior280 +4 remains/4 servants/4 retained plan handles (inline candidate copy).
         }
         [[noreturn]] void fail(Error code) const { throw Failure{code, action, tick}; }
         void spend(std::size_t count = 1) {

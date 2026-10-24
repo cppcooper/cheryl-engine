@@ -1,0 +1,45 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  2%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[  4%] Linking CXX static library libmagic_compiler.a
+[  4%] Built target magic_compiler
+[  7%] Linking CXX executable magic_inspect
+[  9%] Built target magic_inspect
+[ 11%] Linking CXX executable magic_checks
+[ 14%] Built target magic_checks
+[ 16%] Linking CXX executable magic_caller_checks
+[ 19%] Built target magic_caller_checks
+[ 21%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 23%] Linking CXX static library libmagic_reference_host.a
+[ 28%] Built target magic_reference_host
+[ 30%] Linking CXX executable magic_host_checks
+[ 33%] Built target magic_host_checks
+[ 35%] Linking CXX executable magic_reference_demo
+[ 38%] Built target magic_reference_demo
+[ 40%] Linking CXX executable magic_engraving_checks
+[ 42%] Built target magic_engraving_checks
+[ 45%] Linking CXX executable magic_engraving_demo
+[ 47%] Built target magic_engraving_demo
+[ 52%] Built target magic_learning
+[ 54%] Linking CXX executable magic_learning_checks
+[ 57%] Built target magic_learning_checks
+[ 59%] Linking CXX executable magic_learning_demo
+[ 61%] Built target magic_learning_demo
+[ 64%] Linking CXX executable magic_annular_checks
+[ 66%] Built target magic_annular_checks
+[ 69%] Linking CXX executable magic_annular_demo
+[ 71%] Built target magic_annular_demo
+[ 73%] Linking CXX executable magic_perception_checks
+[ 76%] Built target magic_perception_checks
+[ 78%] Linking CXX executable magic_perception_demo
+[ 80%] Built target magic_perception_demo
+[ 83%] Linking CXX executable magic_mechanics_checks
+[ 85%] Built target magic_mechanics_checks
+[ 88%] Linking CXX executable magic_mechanics_demo
+[ 90%] Built target magic_mechanics_demo
+[ 92%] Linking CXX executable magic_material_demo
+[ 95%] Built target magic_material_demo
+[ 97%] Building CXX object CMakeFiles/magic_lifecycle_checks.dir/tests/lifecycle.cpp.o
+[100%] Linking CXX executable magic_lifecycle_checks
+[100%] Built target magic_lifecycle_checks
+
+exit_status=0

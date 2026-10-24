@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "starting_head": "9826abc49194ab50ee838d5708244329258ed11c",
+  "cores": [
+    {
+      "id": "M8-ANIMATE",
+      "family": "life/death and owned animation",
+      "proposed_caller": "Compile animate bound remains for 2000 ms owned by caster; release pays10, marks remains spent and inserts servant hp20 at remains position; owner-bound command attacks3dp, respects restriction/ward; restore and expire exact generation.",
+      "bounds": "4 remains,4 servants,16 shared actors; downward limits, absolute expiry; owner loss leaves inert servant until expiry",
+      "support": "typed captured remains role, fixed inline records/retained plans, opaque incarnation-bound command, checkpoints",
+      "rough_effort_minutes": 20
+    },
+    {
+      "id": "M8-DISPEL",
+      "family": "countermagic",
+      "proposed_caller": "Book accepts dispel bound attack-restriction; release10 removes exact current restriction, enabling servant attack. Also dispel exact disguise retaining truth and historical witness. Restore revokes refs; bind fresh afterward.",
+      "bounds": "closed Disguise/AttackRestriction kinds, standalone immediate spoken only; no new registry",
+      "support": "typed influence binding/payload; opaque incarnation/domain/instance/generation reference; same normal prepare/release",
+      "rough_effort_minutes": 18
+    }
+  ],
+  "stretch": [
+    {
+      "id": "M8-INTERRUPT",
+      "selected": false,
+      "reason": "Optional only after two cores checked; no dependency scaffolding selected."
+    }
+  ],
+  "allocation": "New mutable records and staging use inline fixed arrays; immutable plan handles reuse existing owners. Existing cold strings/control blocks remain standalone standard allocation; no Engine migration claim.",
+  "confidence": "High in bounded ownership/lifecycle; medium in narrow private grammar/API spelling."
+}

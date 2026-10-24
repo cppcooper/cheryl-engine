@@ -1,0 +1,95 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_lifecycle_contracts$' --output-on-failure -V -j1
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 23
+    Start 23: magic_lifecycle_contracts
+
+23: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_lifecycle_checks
+23: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+23: Test timeout computed to be: 30
+23: PASS literal typed animation and exact Common roundtrip
+23: PASS literal two typed dispel kinds and exact Common
+23: PASS duration independent edit and owned diagnostic
+23: PASS negative inexact zero huge and wrong duration refuse
+23: PASS wrong roles unknown kinds delayed bundles engraved refuse
+23: PASS finite thirteen operation catalog validates duplicate and unknown
+23: PASS pure preview then atomic paid spawn exact literal state
+23: PASS exact resources and one-short preserves claim then valid action
+23: PASS normal tickets default foreign repeated and stale refuse
+23: PASS live permission symbolic key primitive duration and coordinate caps
+23: PASS actor capacity failure leaves remains resources and later spawn
+23: PASS remains capacity zero exact one generation removal and reuse
+23: PASS remains and actor generation horizons refuse without wrapping
+23: PASS servant downward zero and one record exhaustion
+23: PASS instance zero and exhausted one preserve spent and new claims
+23: PASS invalid placement contact and opaque object block atomic claim
+23: PASS time exact and one-short duration horizons
+23: PASS owner-bound command attacks actual health through ward
+23: PASS default foreign wrong owner and departed replacement owners refuse
+23: PASS owner health loss inert and servant death no automatic remains
+23: PASS dismiss remove reuse and old absolute cleanup protect replacements
+23: PASS active remains cannot be silently removed or reclaimed
+23: PASS exact dispel enables previously forbidden real servant attack
+23: PASS dispel default foreign wrong-kind expired refs preserve world
+23: PASS old ref cannot retarget new restriction or replaced actor
+23: PASS dispel current permission key primitive exact cost and no second debit
+23: PASS selective disguise dispel preserves facts witnesses other instance
+23: PASS checkpoint owns active servant spent claim and influence after owner destruction
+23: PASS checkpoint schema refusal preserves destination and usable old output
+23: PASS book knowledge edit revisions and failed draft grant no authority
+23: PASS exact selector and selected-target boundaries
+23: MEASURE animate release work=442
+23: FAIL exact measured release work and one-short preserve ticket: WorkLimit
+23: 31 lifecycle cases passed; 1 failed
+1/1 Test #23: magic_lifecycle_contracts ........***Failed    0.03 sec
+PASS literal typed animation and exact Common roundtrip
+PASS literal two typed dispel kinds and exact Common
+PASS duration independent edit and owned diagnostic
+PASS negative inexact zero huge and wrong duration refuse
+PASS wrong roles unknown kinds delayed bundles engraved refuse
+PASS finite thirteen operation catalog validates duplicate and unknown
+PASS pure preview then atomic paid spawn exact literal state
+PASS exact resources and one-short preserves claim then valid action
+PASS normal tickets default foreign repeated and stale refuse
+PASS live permission symbolic key primitive duration and coordinate caps
+PASS actor capacity failure leaves remains resources and later spawn
+PASS remains capacity zero exact one generation removal and reuse
+PASS remains and actor generation horizons refuse without wrapping
+PASS servant downward zero and one record exhaustion
+PASS instance zero and exhausted one preserve spent and new claims
+PASS invalid placement contact and opaque object block atomic claim
+PASS time exact and one-short duration horizons
+PASS owner-bound command attacks actual health through ward
+PASS default foreign wrong owner and departed replacement owners refuse
+PASS owner health loss inert and servant death no automatic remains
+PASS dismiss remove reuse and old absolute cleanup protect replacements
+PASS active remains cannot be silently removed or reclaimed
+PASS exact dispel enables previously forbidden real servant attack
+PASS dispel default foreign wrong-kind expired refs preserve world
+PASS old ref cannot retarget new restriction or replaced actor
+PASS dispel current permission key primitive exact cost and no second debit
+PASS selective disguise dispel preserves facts witnesses other instance
+PASS checkpoint owns active servant spent claim and influence after owner destruction
+PASS checkpoint schema refusal preserves destination and usable old output
+PASS book knowledge edit revisions and failed draft grant no authority
+PASS exact selector and selected-target boundaries
+MEASURE animate release work=442
+FAIL exact measured release work and one-short preserve ticket: WorkLimit
+31 lifecycle cases passed; 1 failed
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.03 sec
+
+The following tests FAILED:
+	 23 - magic_lifecycle_contracts (Failed)
+Errors while running CTest
+
+exit_status=8
