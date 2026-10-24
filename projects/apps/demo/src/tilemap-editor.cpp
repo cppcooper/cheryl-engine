@@ -54,13 +54,27 @@ DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::Terrain
     for (const auto id : palette.target_to_id)
         if (id.value != 0 && (id.value < 7 || id.value > 10))
             throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
-    const Maps::Map empty({3, 2}, 2);
-    const std::array<Maps::TerrainLabel, 6> labels{};
-    for (auto& instance : terrain_)
-        for (std::size_t layer = 0; layer < instance.size(); ++layer)
-            instance[layer] = std::make_unique<Maps::TerrainMap>(
-                empty, Maps::LayerIndex{static_cast<std::int64_t>(layer)}, labels, palette.rule, palette.target_to_id
-            );
+    // Numeric meaning IDs are deliberately unrelated to labels, drawable IDs
+    // 7..10 and atlas targets 0..3. Tables/rules are owned after construction.
+    const std::array meaning_ids{
+        WorldProof::KeyId{"terrain:one", {101}}, WorldProof::KeyId{"terrain:two", {203}}, WorldProof::KeyId{"terrain:three", {307}},
+        WorldProof::KeyId{"terrain:four", {409}}
+    };
+    const WorldProof::KeyTable meaning_keys(meaning_ids);
+    const std::array meanings{
+        WorldProof::SemanticKey{"terrain:one", {1}}, WorldProof::SemanticKey{"terrain:two", {2}},
+        WorldProof::SemanticKey{"terrain:three", {3}}, WorldProof::SemanticKey{"terrain:four", {4}}
+    };
+    for (std::size_t instance = 0; instance < terrain_.size(); ++instance) {
+        const CE::Maps::Snapshot source{
+            instance == 0 ? "terrain:west" : "terrain:east",
+            3,
+            2,
+            {{"ground", std::vector<std::optional<std::string>>(6)}, {"detail", std::vector<std::optional<std::string>>(6)}},
+            {{"entry", "ground", 0, 0}, {"marker", "detail", static_cast<std::uint32_t>(instance + 1), 0}}
+        };
+        terrain_[instance] = WorldProof::TerrainDocument::from(source, meaning_keys, meanings, palette.rule, palette.target_to_id);
+    }
     constexpr std::array<std::array<std::uint32_t, 6>, 4> ids{
         {{7, 8, 9, 10, 0, 7}, {0, 10, 0, 9, 0, 0}, {9, 7, 0, 8, 10, 9}, {10, 0, 10, 0, 7, 0}}
     };
@@ -81,25 +95,32 @@ DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::Terrain
 }
 
 void DemoTilemapEditor::document_action(const bool save) {
-    if (mode_ != Mode::Literal)
-        throw CE::Exceptions::bad_request(CE_HERE, "Literal document SAVE/LOAD is unavailable in terrain mode");
     if (document_dir_.empty())
-        throw CE::Exceptions::bad_request(CE_HERE, "Literal document SAVE/LOAD is disabled; set --tilemap-document-dir PATH");
+        throw CE::Exceptions::bad_request(CE_HERE, "Document SAVE/LOAD is disabled; set --tilemap-document-dir PATH");
     std::error_code error;
     if (!std::filesystem::is_directory(document_dir_, error))
         throw CE::Exceptions::bad_request(
             CE_HERE,
-            "Literal document directory is unavailable: " + document_dir_.string() + (error ? ": " + error.message() : " (not a directory)")
+            "Document directory is unavailable: " + document_dir_.string() + (error ? ": " + error.message() : " (not a directory)")
         );
-    const auto path = document_dir_ / (selected_map_ == 0 ? "west.json" : "east.json");
+    const bool semantic = mode_ == Mode::Terrain;
+    const auto path = document_dir_ / (semantic ? (selected_map_ == 0 ? "west-terrain.json" : "east-terrain.json")
+                                                : (selected_map_ == 0 ? "west.json" : "east.json"));
     if (save) {
-        CE::Maps::save(path, documents_[selected_map_]->snapshot());
+        CE::Maps::save(path, semantic ? terrain_[selected_map_]->snapshot() : documents_[selected_map_]->snapshot());
     } else {
         const auto source = CE::Maps::load(path);
         if (source.width != 3 || source.height != 2 || source.layers.size() != 2)
-            throw CE::Exceptions::bad_request(CE_HERE, "Literal document LOAD requires exactly 3x2 cells and two ordered layers");
-        auto candidate = WorldProof::LiteralOwner::from(source, document_keys_);
-        documents_[selected_map_].swap(candidate); // Complete owner precedes adoption; no remaining allocation.
+            throw CE::Exceptions::bad_request(CE_HERE, "Document LOAD requires exactly 3x2 cells and two ordered layers");
+        if (semantic) {
+            auto candidate = terrain_[selected_map_]->replacement(source);
+            terrain_[selected_map_].swap(candidate); // BOTH layers, metadata and rules precede adoption.
+        } else {
+            if (source.id.starts_with("terrain:"))
+                throw WorldProof::Error(WorldProof::Refusal::Table, "Terrain document cannot be loaded in literal mode");
+            auto candidate = WorldProof::LiteralOwner::from(source, document_keys_);
+            documents_[selected_map_].swap(candidate);
+        }
     }
 }
 
@@ -168,9 +189,7 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
     std::vector<Maps::TerrainEdit> pending;
     const auto flush = [&] {
         if (!pending.empty()) {
-            static_cast<void>(
-                terrain_[selected_map_][static_cast<std::size_t>(selected_layer_.value)]->edit_batch(pending, terrain_limits_)
-            );
+            static_cast<void>(terrain_[selected_map_]->edit_batch(selected_layer_, pending, terrain_limits_));
             pending.clear();
         }
     };
@@ -259,7 +278,7 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 if (mode_ == Mode::Terrain) {
                     if (button->mouse_button == Mouse::Middle) {
                         flush();
-                        terrain_brush_ = terrain_[selected_map_][static_cast<std::size_t>(selected_layer_.value)]->label(*cell);
+                        terrain_brush_ = terrain_[selected_map_]->terrain(selected_layer_).label(*cell);
                     } else if (button->mouse_button == Mouse::Left || button->mouse_button == Mouse::Right) {
                         if (pending.size() == terrain_limits_.requests)
                             throw CE::Exceptions::bad_request(CE_HERE, "Private terrain input run exceeds request cap");
@@ -315,8 +334,8 @@ void DemoTilemapEditor::write(
     overlay.alpha = 0.5f;
     // Explicit west ground/detail, east ground/detail, then each vector's row/column order.
     for (std::size_t i = 0; i < documents_.size(); ++i) {
-        const auto& ground = mode_ == Mode::Terrain ? terrain_[i][0]->tiles() : map(i);
-        const auto& detail = mode_ == Mode::Terrain ? terrain_[i][1]->tiles() : map(i);
+        const auto& ground = mode_ == Mode::Terrain ? terrain_[i]->terrain({0}).tiles() : map(i);
+        const auto& detail = mode_ == Mode::Terrain ? terrain_[i]->terrain({1}).tiles() : map(i);
         pass.add(Submit::resolve_tilemap_layer(ground, {0}, bindings, geometry_->maps[i], images, context));
         pass.add(Submit::resolve_tilemap_layer(detail, {1}, bindings, geometry_->maps[i], overlay, context));
     }

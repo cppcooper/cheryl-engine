@@ -1,128 +1,144 @@
-# WORLD-U2 literal editor document handoff
+# WORLD-U3 semantic editor document handoff
 
-Status: implemented, demo linked and focused CPU checks passed; coordinator review
-pending. Exact clean starting HEAD/parent on feat/tilemap is
-`e9289fcb992feddf85deb942a560562a54971f78`. WORLD-U1 was independently accepted
-and already promoted by the coordinator. No new merge/fetch/push or worker1 edit
-occurs. This assignment is outside the completed finite queue; stop after this
-checkpoint. The [receipt](integration/WORLD-U2.json) reports execution, not automatic
-source review, graphical acceptance or promotion.
+Status: implemented and verified; ready for coordinator source review. Exact clean
+starting HEAD/parent is `8522b2976013c10c23266b6413e3d46a408b1251` on feat/tilemap.
+Its WORLD-U2 receipt, nonempty saved logs and 97 passing XML entries were inspected
+before dependent work. No geography fetch/merge, protected/sibling work or automatic
+promotion occurs. This is the first map milestone of feature-round-20261024-0500;
+the controller alone selects a later exact task after the successful run drains.
+The [receipt](queue/feature-round-20261024-0500/WORLD-U3.json) reports execution,
+not coordinator source acceptance or proof of an unexecuted platform.
 
-WINT-007/008 extend the matching [compact](decisions.md) and [detailed](agent-notes.md)
-decisions. Existing archived feature records/provenance, WORLD-U1 receipt/logs,
-public CPU headers/sources, strict v1 schema and generator replay remain unchanged.
-Source preservation checks 375 production/header/archive/unchanged-suite paths;
-all previous unit consumer bodies remain an unchanged prefix. The relocated
-adapter header is byte-identical to WORLD-U1, and its source differs only in its
-include spelling. Standalone storage/procedural suites are unaffected and not rerun.
+WINT-009/010 in [compact](decisions.md) and [detailed](agent-notes.md) views match.
+WINT-008 now selects files by mode; its historical U2 terrain refusal is explicitly
+superseded. All historical archives/provenance, U1/U2 receipts and 375 inspected
+public Engine/production/replay/archive/unchanged-suite paths remain unchanged.
+Standalone storage/procedural suites are unaffected and not repeated.
 
 ## Small real caller and controls
 
 ```cpp
-#include "tilemap-editor.h" // private application code
-DemoTilemapEditor editor(document_dir); // default empty disables actions
-editor.consume(events, {{400,200},{800,600}}); // paint, F8 Press, change, F9 Press
+#include "tilemap-editor.h" // private application owner, SAME source in all callers
+DemoTilemapEditor editor(existing_directory);
+// press()/paint() are actual admitted-record factories in world-consumer/main.cpp.
+const std::array records{press(Key::B), press(Key::G), paint(40,128),
+                         press(Key::T), paint(72,144), press(Key::F8)};
+editor.consume(records, {{400,200},{800,600}});
+// A later update changes a cell, then F9 reconstructs BOTH saved layers.
 editor.write(frame, bindings, style);
 ```
 
-Real option flow is --tilemap-document-dir PATH -> DemoOptions -> main ->
-DemoGame/GameState/GameImpl -> DemoTilemaps -> this editor. Only --tilemap-display
-constructs the fixture. No startup load/save, auto-save, directory creation, file
-browser or public Engine/startup/input API is added. The supplied directory must
-already exist when an action runs; fixed names are west.json/east.json. Empty
-default, missing/not-directory path and terrain mode produce explicit diagnostic
-refusals. Relative paths require stable cwd; native component/symlink-ancestor
-meaning and the caller-controlled single-writer directory profile remain.
+F8 SAVE / F9 LOAD uses the selected mode and map, regardless of selected layer:
 
-Admitted keyboard Press F8 SAVE / F9 LOAD operates on the selected literal
-DOCUMENT in full, regardless of selected layer. Release/Repeat/unadmitted records
-and invalid/minimized dimensions ignore actions. Existing1/2 map, G/T layer,
-3–6 palette, captured per-event pointers, independent framebuffer scales, computed
-edges, pan/zoom/reset and B/V mode behavior stay compatible. Terrain actions refuse
-before file access and never serialize derived visuals. The existing keyboard
-barrier still flushes earlier semantic work; no whole-tick rollback is promised.
+| Mode | West / east files | Meaning |
+| --- | --- | --- |
+| V literal | west.json / east.json | Existing color keys -> numeric IDs 7..10 |
+| B semantic | west-terrain.json / east-terrain.json | terrain:one/two/three/four -> labels 1/2/3/4 -> numeric meaning IDs 101/203/307/409 |
 
-## Ownership, mapping and publication
+Zero/null is empty. Semantic IDs are separate from visual IDs 7..10 and atlas
+targets 0..3. Existing cardinal N/E/S/W bits 1/2/4/8 -> target mask%4 -> visual IDs
+remain diagnostic application policy. Distinct isolated labels 1 and 2 both render
+ID 7 but persist different keys. No rendered-ID reverse lookup reconstructs meaning.
 
-[world-document.h/cpp](../projects/apps/demo/src/world-document.h) is the actual
-WORLD-U1 bridge moved into private demo source. Its declarations/algorithms are
-unchanged. The SAME adapter and editor source compile into actual demo, unit cases
-and world consumer. No copied conversion, alternate Engine object archive or
-public promotion is used. WorldProof naming stays to avoid gratuitous renaming.
+Existing option --tilemap-document-dir PATH flows unchanged into the editor.
+The directory must already exist; empty disables both modes. No startup/automatic
+I/O, directory creation or path browsing. Only admitted keyboard Press acts;
+release/repeat, unadmitted events and minimized/invalid sizes ignore actions.
+Captured per-event pointers, independent framebuffer scales, computed edges,
+pan/positive zoom/reset, selected map/layer and separate brushes remain unchanged.
+Demo console and option help now describe both modes.
 
-Only two literal Map owners become unique_ptr LiteralOwner documents. map(index)
-retains the old read facade; a private mutable accessor feeds paint/erase. The
-new const document(index) view exposes owned snapshots/metadata. LOAD invalidates
-borrowed old document/Map references; owned copies and prepared frames remain
-independent. Four terrain owners, labels, brushes and batches stay separate.
+## Ownership, compatibility and failure boundaries
 
-Explicit diagnostic keys brown/black/grey/red in namespace tilemap map to logical
-IDs 7/8/9/10. Zero/null is empty; atlas targets remain 0/1/2/3, so nonzero7 draws
-original target 0. Original literal cells/rendering are retained. Seed documents
-have map IDs tilemap:west/east, ordered ground/detail layers and ordered entry/
-marker spawns. LOAD retains arbitrary valid map ID, ordered two layer names and
-all ordered spawns, rather than deriving them from Map or sorting them.
+Private TerrainDocument in world-document.* composes two existing TerrainOwners,
+each containing the actual public nonmovable Engine TerrainMap. It also copies
+reconstruction tables/rule/targets. Stage layer 0 AND layer 1, retained ID/ordered
+names/all ordered spawns and configuration before a single selected pointer swap.
+Late second-layer rule/target/conversion refusal destroys only the candidate.
+No first-layer or metadata adoption occurs. Export combines each selected semantic
+layer; complementary construction-time numeric layers inside each owner are not
+live sibling visuals. The existing terrain(index,layer) read facade stays useful.
+Literal owners/layouts/files remain separate, including while switching B/V.
 
-F9 first uses checked storage load, then requires exactly 3x2/two layers BEFORE
-numeric conversion. Malformed/unknown keys and other valid shapes refuse; complete
-candidate creation precedes noexcept pointer swap. Failed load preserves prior
-cells/metadata, sibling document, selection/mode/brush/view and held results/frames.
-F8 exports complete owned semantic keys and metadata via LiteralOwner::snapshot,
-then calls checked storage save. Unknown reverse IDs refuse without replacing
-file or prior result. Prior authored runtime edits remain; there is no combined
-runtime/file transaction. A final-symlink native refusal preserves predecessor
-bytes and the link. No fsync/power-loss, hostile-race, multiwriter or distributed
-transaction guarantee is added.
+Semantic table keys and labels must be nonzero/unambiguous and known in the
+reversible key/meaning-ID table; null is empty. Unknown labels reject before Engine
+batch publication, even if a later request overwrites them. Missing rule cases or
+unmapped targets may remain unused on empty geometry but reject when required.
+Both private table kinds are capped at256 entries. No references to borrowed
+snapshots, tables, event spans, samplers or rule/mapping inputs survive calls.
+Future reconstruction uses owned copies; input destruction is exercised.
 
-The real DemoTilemaps::update catches anticipated Maps::Error, WorldProof::Error
-and Engine bad_request, logs context, drops the rest of that tick and continues
-on later updates. Earlier successful events remain committed. Its catch branches
-are exercised with synthetic CPU records WITHOUT atlas loading/startup; actual
-graphical input is still unverified. Allocation/programming/unexpected exceptions
-propagate through existing runtime handling; no blanket exception conversion.
+Semantic documents require a terrain: map-ID prefix and exactly 3x2/two ordered
+layers. Literal editor loads reject that prefix; semantic loads reject absent
+prefix or unknown keys. This PRIVATE ID convention distinguishes all-null kinds
+without changing strict v1 bytes/properties. It narrows formerly arbitrary literal
+editor IDs only for that reserved prefix; public storage/LiteralOwner contracts
+stay unchanged. Rule/mapping is not serialized: caller semantic-table consistency
+across sessions is required; an active visual palette can rederive appearances.
+No recipe, fingerprint, migration or public World API is added. Names/prefix/keys
+are reversible engineering choices, not evidence of personal API taste.
 
-LOAD can temporarily own a full storage-bounded input before geometry refusal
-(8 MiB document,262144 cells/16 layers/256 spawns/128-byte keys). Adopted documents
-have 12 cells plus bounded metadata; bridge admission/export validation remains.
-These are logical bounds, not exact allocator/RSS quotas; no OOM probes occur.
-I/O is synchronous on the serialized simulation update owner and may stall it.
-Platform constructs/loads assets/captures before simulation and destroys state
-after frames complete. No borrowed event spans, platform reads, camera service,
-async file queue or retained temporary mappings are introduced.
+F8 exports complete owned semantic keys/metadata and calls actual checked save.
+F9 owns the full checked load before fixed-shape/kind/conversion checks, builds a
+complete candidate, then swaps. Failed load preserves prior full semantic/visual
+cells/metadata, sibling and literal documents, selection/mode/view/brushes, held
+results and old frames. Borrowed document/terrain views expire on replacement;
+owned values and prepared packets retain copied matrices/ranges/resources.
 
-## Focused executed evidence
+The existing keyboard barrier flushes earlier terrain edits before a file action.
+Anticipated bad_request/storage/conversion failures are logged by the actual
+DemoTilemaps::update and drop the rest of that tick; later updates continue.
+Earlier completed edits stay authored. A failed save preserves the predecessor
+under the native profile but does not roll back runtime edits. Runtime adoption
+and file rename publication are separate boundaries; no whole-tick/file transaction.
 
-Six new tilemap_consumer cases exercise the exact app helper:
+I/O is synchronous on serialized simulation update/preparation and may stall it.
+Platform constructs state before simulation and destroys it after completed frames;
+concurrent writing/preparation/recycling is excluded. Logical storage bounds remain
+8 MiB, 262144 cells/16 layers/256 spawns/128-byte keys; adapter patch bound 65536 cells.
+Fixed adopted documents have 12 cells, copied metadata/tables and two Maps/labels.
+LOAD can temporarily own full storage input plus old/new candidates; composition
+adds configuration/metadata copies. Actual editor has four targets/16 mask cases;
+underlying private callers size their supplied vectors. Batch caps remain 32
+requests/6 affected/256 work. These are logical bounds, not exact allocator/RSS
+quotas. Allocation/programming exceptions propagate; no OOM probing occurs.
 
-- editor_documents: custom ID/layer names/spawns, selected layer paint, full
-  edit/save/change/load, selected west/east independence, old frames and metadata.
-- editor_document_filters: Press-only, gameplay admission, minimized suspension,
-  default-disabled/missing directory and terrain mode refusals; no automatic I/O.
-- editor_document_load_failures: valid prior setup, missing/malformed/unknown key,
-  two different incompatible valid shapes; pointer/full values/selection/old
-  prepared frame stay intact. No truncation/resizing occurs.
-- editor_document_save_failures: deliberately inject an arbitrary unsupported ID
-  into the actually mutable Map through its read facade (negative fixture only),
-  then prove reverse refusal preserves predecessor and current runtime. Separate
-  native final-symlink refusal leaves exact regular predecessor/link intact.
-- editor_document_frames: replacement and owner/provider destruction preserve
-  copied matrices/ranges/resources; weak handles expire at last frame/vector.
-- editor_document_diagnostics: execute real update catches for storage/conversion/
-  mode errors; remaining-tick selection/save is dropped, earlier paint persists
-  and a later update saves successfully. No atlas/native startup is invoked.
+## Executed checks and saved evidence
 
-Synthetic bind/draw/upload counters remain zero where resources are used.
-world.editor_documents adds an actual editor author and FRESH verifier process.
-Both west/east complete expected snapshots are independent literals; verifier
-checks every metadata/key field and 24 numeric cells through actual F9. Exact file
-bytes remain unchanged by verification. The existing world scenarios remain.
+One accumulated shared selection passed **104/104**, zero failed/skipped, 54.78s,
+retaining every one of the 97 prior names plus six unit cases and one process case:
 
-## Actual commands, logs and outcomes
+- semantic_documents: custom ordered metadata, aliased labels, two-layer edits /
+  SAVE/change/LOAD, separate east/west and literal files, full cardinal oracle.
+- semantic_load_refusals: missing/malformed/unknown/wrong-key/kind/shape/layer-count
+  inputs, including null-only cross-mode files, preserve full owner/state/frames.
+- semantic_atomic_layers: establish valid first-owner reconstruction, then fail
+  ONLY second-owner missing rule/out-of-range/zero target; no partial adoption.
+- semantic_tables: unknown/empty/duplicate/zero mappings and overwritten unknown
+  labels, invalid layer, full owned results and borrowed-input destruction.
+- semantic_actions: actual Press/admission/minimized policy, disabled/no-directory,
+  failed-save regular predecessor/final-symlink preservation, actual update catch
+  and rest-of-tick drop with a later successful SAVE of the preceding terrain edit.
+- semantic_document_frames: resources, matrices/ranges/order survive complete
+  document replacement and owner destruction, then weak handles release with the
+  last frame/vector. Synthetic bind/draw/upload counters remain zero.
+- world.semantic_documents: actual event author paints both layers of two documents,
+  saves/changes/loads, then FRESH verifier checks complete literal snapshot fields,
+  all 24 labels, all 24 numeric meaning IDs and all 24 derived visuals against literal
+  arrays/an independent cardinal oracle. Literal-file bytes and both semantic
+  files stay unchanged by verification.
 
-All configure/build/native/format/symbol checks use the shared scripts/build
-wrapper, one job and existing adaptive/no-swap/admission policy. No resource
-refusal, unchanged retry, installs/downloads/pin changes, sibling/cache access or
-protected work occurs. Preserve both existing Debug configurations and outputs.
+All five world scenarios execute ten successful child invocations (including two
+new semantic children). Their exact commands/stdout/stderr/immediate exits and
+owned fixture paths are indexed/copied under build/world-u3-logs/world-processes.json.
+No CPU case failed or reran. U2's accepted names editor_document_filters and
+editor_document_diagnostics remain registered; their old terrain-refusal assertions
+now check separate semantic I/O and missing-file diagnostics.
+
+All configure/build/native/format/symbol commands use the shared wrapper, one job,
+existing Debug/shared configurations and adaptive/no-swap/admission policy. No new
+configuration/dependency, download/install, pin/global flag change or resource
+refusal occurred. Actual commands and immediate exits are in commands.jsonl:
 
 ```sh
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
@@ -130,62 +146,52 @@ ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   --target tests-engine tests-terrain-consumer map_storage_consumer map_storage_header_probes tests-world-consumer --parallel 1
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u2-logs/check-ownership.py
-ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
-  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug --show-only=json-v1 \
-  -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.|map_storage\.consumer\.|world\.)'
+# discover.py saves exact ctest --show-only=json-v1 output and checks prior names.
+/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u3-logs/discover.py
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug \
   --output-on-failure --no-tests=error --verbose --parallel 1 \
-  --output-junit /mnt/projects/cheryl-features/projects/tilemap/build/world-u2-logs/results.xml \
+  --output-junit /mnt/projects/cheryl-features/projects/tilemap/build/world-u3-logs/results.xml \
   -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.|map_storage\.consumer\.|world\.)'
+/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u3-logs/check-ownership.py
+/mnt/projects/cheryl-features/scripts/build -- python3 build/world-u3-logs/check-final.py
 ```
 
 | Operation | Immediate exit / actual result |
 | --- | --- |
-| Initial shared build |1: new editor header expansion exposed pinned GLM sign-conversion diagnostics under the stricter world caller |
-| Corrected shared build |0: links; only existing GLM headers are SYSTEM in that private target, app Werror/conversion flags and Engine requirements stay intact |
-| Demo incremental build |0: actual option/game/editor/document wiring compiled/linked; no warning |
-| Ownership/source inspection |0: same private source in three callers; single actual shared Engine; public/header probes built |
-| Discovery |0:97 unique names, exactly all 90 old names plus seven new checks |
-| Accumulated execution ONCE |0:97/97 passed, zero failures/skips,52.83s |
-| Format and final dry-run |0 each; final GameImpl changed ranges also pass after unrelated formatting is restored |
-| Final scoped demo rebuild |0: unrelated GameImpl formatting restored; tested helper/adapter source unchanged |
+| Initial shared build |0; one new test range-loop copy warning; corrected to const reference before execution |
+| Final shared build |0; no warnings, empty-table negative coverage added before sole accumulated run |
+| Initial demo build |0; actual adapter/editor/demo wiring compiles and links |
+| Discovery |0; 104 unique entries, exactly all 97 old plus seven new |
+| Accumulated tests ONCE |0; 104 passed, 0 failed/skipped, 54.78s |
+| Ownership |0; same actual adapter/editor bytes compiled in demo/unit/world; normal shared Engine producer/imports/loader |
+| Scoped format checks |0; all touched C++ files conform |
+| Final demo build/checks |0; mode-specific option-help text corrected after review; relink + final loader/format pass, tested helper bytes unchanged |
 
-Full commands, immediate .exit files, logs/XML/LastTest, discovery correspondence,
-private source hashes/compile inputs, nm/readelf/ldd/link outputs and source
-preservation are saved under ignored build/world-u2-logs/. commands.json/sh records
-every actual wrapped operation, including failed/corrected compilation. World
-process paths/argv/stdout/exits are indexed by world-processes.json: eight child
-invocations exit 0, including the two new editor author/fresh-verifier children.
-Unit scratch files live only under this clone's build/world-u2-checks and are kept
-as evidence. No CPU test failed or reran. Final staged review restores unrelated GameImpl
-formatting only; demo rebuild and changed-range format check both exit 0. No
-behavior change follows the green run, and tested helper/adapter bytes match.
-
-Actual symbol/load checks find all 14 prior Engine export/import operations, normal
-consumer imports without static/producer macro patches, one Engine storage producer
-per source, and exactly one clone-local Engine DSO in each demo/unit/world binary.
-Both source databases compile the same adapter/editor bytes; the world link has
-only a generator-specific archive, no alternate Engine implementation archive.
-Header-first probes remain normal Engine usage. Source-tree GNU/Linux Debug/shared
-is the tested ABI boundary; SDK/static/Release/other platforms remain unverified.
-
-ASan/UBSan and halt_on_error remain enabled without diagnostics. Invocation-local
-detect_leaks=0 is solely for the recorded tracing limitation; no global flags or
-build selections change. Leaks remain unverified. Standalone storage/procedural
-suites are unchanged and deliberately not repeated in this unit.
+Source/compile/symbol/loader inspection establishes the SAME world-document.cpp and
+tilemap-editor.cpp in all three callers, private TerrainDocument symbols in each,
+14 prior Engine export/import operations, exactly one normal Engine storage producer
+per source and exactly one clone-local Engine DSO per binary. World link retains
+only actual private cave sources in its generator archive, no alternate Engine
+implementation archive. Existing Engine-linked public header probes compile.
+Final help-only change needs no CPU rerun; adapter/editor bytes match tested hashes.
+Full logs/XML/LastTest, discovery correspondence, source hashes, commands and exits
+remain under ignored build/world-u3-logs/. Scratch files are clone-local only and
+preserved. ASan/UBSan/halt_on_error remain enabled without diagnostics; only
+command-local detect_leaks=0 accommodates the recorded tracing limitation.
 
 ## Limits and next action
 
-No unresolved U2 CPU/build prerequisite remains. Ready receipt covers these
-executed checks only. Real display/input, atlas decode/upload, capture, graphical
-teardown, visual correctness/fun and leaks remain open; X11 :1 is not retried.
-No new broad editor/scene framework, semantic persistence, compact retention,
-file recipe/schema, storage migration, undo, resize/chunks or public API is selected.
-Native filesystem durability/race/multiwriter limits and wider ABI gaps remain.
+No unresolved U3 CPU/build prerequisite remains. Ready is an execution report.
+Real display/input, atlas decoding/upload, capture, graphical teardown, visual
+correctness/fun and leaks remain unverified. No unchanged X11 :1 retry. GNU/Linux
+Debug/shared source-tree linking is checked; installed SDK/static/Release/other
+platform/toolchain ABI and native file durability remain open. Controlled single
+writer/cwd/directory assumptions, no-fsync/power-loss/hostile-race/multiwriter and
+synchronous allocation/latency limits remain. No history/undo, variable geometry,
+new schema, procedural work or public API promotion is included.
 
-Next action: coordinator reviews this exact checkpoint/receipt/logs and publisher
-backup after the run drains, then chooses any future merge with worker1 geography.
-Worker2 remains idle. No automatic promotion, sibling integration or later unit
-starts; the publisher alone transports assigned feat/tilemap checkpoints.
+Next action: coordinator reviews this exact checkpoint and passing batch receipt /
+saved logs after the run drains. The finite controller may then select the next
+exact assigned milestone under its own gates. Worker2 stays idle; no later unit,
+background scheduling, sibling integration or branch transport starts here.

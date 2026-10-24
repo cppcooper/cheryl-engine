@@ -65,7 +65,8 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
                      "Terrain click runs publish atomically (32 requests, 6 affected cells, 256 work units); no held brush\n"
                      "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
                      "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
-                     "Literal only: F8 SAVE / F9 LOAD selected document; --tilemap-document-dir PATH enables west.json/east.json\n"
+                     "F8 SAVE / F9 LOAD selected mode/document; --tilemap-document-dir PATH enables existing directory\n"
+                     "V files: west.json/east.json; B files: west-terrain.json/east-terrain.json (semantic keys, both layers)\n"
                   << std::flush;
     } catch (const std::exception& error) {
         throw std::runtime_error("Required tilemap display atlas 'tileset:tileset' (" + source.string() + "): " + error.what());

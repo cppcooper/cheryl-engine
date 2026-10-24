@@ -43,7 +43,7 @@ private:
     WorldProof::KeyTable document_keys_;
     std::array<std::unique_ptr<WorldProof::LiteralOwner>, 2> documents_;
     std::filesystem::path document_dir_;
-    std::array<std::array<std::unique_ptr<CE::Tilemaps::TerrainMap>, 2>, 2> terrain_;
+    std::array<std::unique_ptr<WorldProof::TerrainDocument>, 2> terrain_;
     CE::Tilemaps::TerrainBatchLimits terrain_limits_;
     Mode mode_ = Mode::Literal;
     CE::Tilemaps::TerrainLabel terrain_brush_{1};
@@ -92,8 +92,9 @@ public:
     [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return documents_.at(index)->map(); }
     [[nodiscard]] const WorldProof::LiteralOwner& document(std::size_t index) const { return *documents_.at(index); }
     [[nodiscard]] const CE::Tilemaps::TerrainMap& terrain(std::size_t index, CE::Tilemaps::LayerIndex layer) const {
-        return *terrain_.at(index).at(static_cast<std::size_t>(layer.value));
+        return terrain_.at(index)->terrain(layer);
     }
+    [[nodiscard]] const WorldProof::TerrainDocument& terrain_document(std::size_t index) const { return *terrain_.at(index); }
     [[nodiscard]] Mode mode() const { return mode_; }
     [[nodiscard]] CE::Tilemaps::TerrainLabel terrain_brush() const { return terrain_brush_; }
     [[nodiscard]] std::size_t selected_map() const { return selected_map_; }

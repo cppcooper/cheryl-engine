@@ -368,6 +368,116 @@ namespace {
         std::cout << "FRESH process: full west/east literal fields +24 independent numeric cells through F9 PASS\n";
     }
 
+    Storage::Snapshot semantic_expected(const bool east) {
+        // Full independent literals: no conversion/authoring helper produces these.
+        if (east)
+            return {
+                "terrain:east-authored",
+                3,
+                2,
+                {{"soil", {"terrain:four", std::nullopt, "terrain:one", "terrain:one", "terrain:two", std::nullopt}},
+                 {"accent", {std::nullopt, "terrain:three", std::nullopt, "terrain:three", std::nullopt, "terrain:two"}}},
+                {{"arrival", "soil", 2, 0}, {"scenery", "accent", 1, 1}, {"exit", "soil", 0, 1}}
+            };
+        return {
+            "terrain:west-authored",
+            3,
+            2,
+            {{"soil", {"terrain:one", "terrain:one", "terrain:two", std::nullopt, "terrain:three", "terrain:three"}},
+             {"accent", {"terrain:two", std::nullopt, "terrain:two", "terrain:four", std::nullopt, std::nullopt}}},
+            {{"arrival", "soil", 1, 0}, {"scenery", "accent", 0, 1}, {"exit", "soil", 2, 1}}
+        };
+    }
+    constexpr std::array<std::array<std::uint32_t, 12>, 2> semantic_label_values{
+        {{1, 1, 2, 0, 3, 3, 2, 0, 2, 4, 0, 0}, {4, 0, 1, 1, 2, 0, 0, 3, 0, 3, 0, 2}}
+    };
+    constexpr std::array<std::array<std::uint32_t, 12>, 2> semantic_meaning_values{
+        {{101, 101, 203, 0, 307, 307, 203, 0, 203, 409, 0, 0}, {409, 0, 101, 101, 203, 0, 0, 307, 0, 307, 0, 203}}
+    };
+    void check_semantic_editor(const DemoTilemapEditor& editor) {
+        const std::array entries{
+            KeyId{"terrain:one", {101}}, KeyId{"terrain:two", {203}}, KeyId{"terrain:three", {307}}, KeyId{"terrain:four", {409}}
+        };
+        const KeyTable meaning(entries);
+        for (std::size_t instance = 0; instance < 2; ++instance) {
+            const auto snapshot = editor.terrain_document(instance).snapshot();
+            require(snapshot == semantic_expected(instance == 1), "Complete semantic cells/metadata differ from literal");
+            const auto numeric = LiteralOwner::from(snapshot, meaning);
+            check_map(numeric->map(), {3, 2}, semantic_meaning_values[instance]);
+            for (std::int64_t layer = 0; layer < 2; ++layer)
+                for (std::int64_t y = 0; y < 2; ++y)
+                    for (std::int64_t x = 0; x < 3; ++x) {
+                        const auto offset = static_cast<std::size_t>(layer * 6 + y * 3 + x);
+                        const auto label = semantic_label_values[instance][offset];
+                        const auto& terrain = editor.terrain(instance, {layer});
+                        require(terrain.label({x, y}).value == label, "Rebuilt opaque semantic label differs");
+                        // Independent cardinal oracle; never calls selection/batch or cached visuals.
+                        const auto same = [&](const std::int64_t nx, const std::int64_t ny) {
+                            return nx >= 0 && nx < 3 && ny >= 0 && ny < 2 &&
+                                   semantic_label_values[instance][static_cast<std::size_t>(layer * 6 + ny * 3 + nx)] == label;
+                        };
+                        const unsigned mask = (same(x, y - 1) ? 1u : 0u) | (same(x + 1, y) ? 2u : 0u) | (same(x, y + 1) ? 4u : 0u) |
+                                              (same(x - 1, y) ? 8u : 0u);
+                        const auto visual = label ? 7 + mask % 4 : 0;
+                        require(terrain.tiles().get({layer}, {x, y}).value == visual, "Rebuilt visual differs from independent oracle");
+                    }
+        }
+    }
+    void semantic_author(const std::filesystem::path& directory) {
+        // Seed only metadata with empty cells; all final semantic cells are painted
+        // through actual admitted per-event editor records, not adapter mutation.
+        for (const bool east : {false, true}) {
+            auto seed = semantic_expected(east);
+            for (auto& layer : seed.layers)
+                for (auto& cell : layer.cells)
+                    cell.reset();
+            Storage::save(directory / (east ? "east-terrain.json" : "west-terrain.json"), seed);
+        }
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::F8)}); // Independent literal file must survive all semantic actions.
+        const auto literal = bytes(directory / "west.json");
+        editor_events(editor, {press(Key::B)});
+        for (const bool east : {false, true}) {
+            editor_events(editor, {press(east ? Key::Digit2 : Key::Digit1), press(Key::F9)});
+            if (east) {
+                editor_events(
+                    editor, {press(Key::G), press(Key::Digit6), paint(180, 140), press(Key::Digit3), paint(244, 140), paint(180, 156),
+                             press(Key::Digit4), paint(212, 156), press(Key::T), press(Key::Digit5), paint(212, 140), paint(180, 156),
+                             press(Key::Digit4), paint(244, 156), press(Key::F8)}
+                );
+                editor_events(editor, {paint(212, 156), press(Key::F9)});
+            } else {
+                editor_events(
+                    editor, {press(Key::G), press(Key::Digit3), paint(40, 128), paint(72, 128), press(Key::Digit4), paint(104, 128),
+                             press(Key::Digit5), paint(72, 144), paint(104, 144), press(Key::T), press(Key::Digit4), paint(40, 128),
+                             paint(104, 128), press(Key::Digit6), paint(40, 144), press(Key::F8)}
+                );
+                editor_events(editor, {paint(72, 144), press(Key::F9)});
+            }
+            require(
+                Storage::load(directory / (east ? "east-terrain.json" : "west-terrain.json")) == semantic_expected(east),
+                "Paint/save/change/load differs from independent semantic literal"
+            );
+        }
+        check_semantic_editor(editor);
+        require(
+            bytes(directory / "west.json") == literal && !std::filesystem::exists(directory / "east.json"),
+            "Semantic action changed literal files"
+        );
+        std::cout << "Actual editor semantic paint both layers/F8/change/F9, distinct aliased labels, independent modes/docs PASS\n";
+    }
+    void semantic_verify(const std::filesystem::path& directory) {
+        for (const bool east : {false, true})
+            require(
+                Storage::load(directory / (east ? "east-terrain.json" : "west-terrain.json")) == semantic_expected(east),
+                "Fresh full semantic snapshot fields differ"
+            );
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::B), press(Key::F9), press(Key::Digit2), press(Key::F9)});
+        check_semantic_editor(editor);
+        std::cout << "FRESH process F9: all24 labels/numeric meaning IDs/derived visuals and every ordered metadata field PASS\n";
+    }
+
     void refusals(const std::filesystem::path& path) {
         const KeyTable table(keys);
         auto live = LiteralOwner::from(literal_base(), table);
@@ -570,6 +680,10 @@ int main(const int argc, char** argv) {
             editor_author(path);
         else if (mode == "editor-verify")
             editor_verify(path);
+        else if (mode == "semantic-author")
+            semantic_author(path);
+        else if (mode == "semantic-verify")
+            semantic_verify(path);
         else
             throw std::runtime_error("Unknown world mode");
         return 0;

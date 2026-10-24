@@ -179,4 +179,68 @@ namespace WorldProof {
         admit(result);
         return result; // Semantic keys, NEVER selected/animated visual IDs.
     }
+    TerrainDocument::TerrainDocument(
+        KeyTable keys,
+        std::vector<SemanticKey> semantics,
+        CE::Assets::Tilesets::Rule rule,
+        std::vector<Tiles::TileId> targets,
+        std::array<std::unique_ptr<TerrainOwner>, 2> layers
+    )
+    : keys_(std::move(keys)),
+      semantics_(std::move(semantics)),
+      rule_(std::move(rule)),
+      targets_(std::move(targets)),
+      layers_(std::move(layers)) {}
+
+    std::unique_ptr<TerrainDocument> TerrainDocument::from(
+        const Storage::Snapshot& snapshot,
+        const KeyTable& keys,
+        const std::span<const SemanticKey> semantics,
+        const CE::Assets::Tilesets::Rule& rule,
+        const std::span<const Tiles::TileId> targets
+    ) {
+        admit(snapshot);
+        // Private editor kind convention, also meaningful for an all-null file.
+        // This is NOT a new storage property: v1 still treats map ID as opaque.
+        if (!snapshot.id.starts_with("terrain:") || snapshot.width != 3 || snapshot.height != 2 || snapshot.layers.size() != 2)
+            throw Error(Refusal::Table, "Terrain document requires terrain: map ID, 3x2 cells and two ordered layers");
+        std::array<std::unique_ptr<TerrainOwner>, 2> layers;
+        for (std::int64_t layer = 0; layer < 2; ++layer)
+            layers[static_cast<std::size_t>(layer)] = TerrainOwner::from(snapshot, keys, {layer}, semantics, rule, targets);
+        return std::unique_ptr<TerrainDocument>(
+            new TerrainDocument(keys, {semantics.begin(), semantics.end()}, rule, {targets.begin(), targets.end()}, std::move(layers))
+        );
+    }
+    std::unique_ptr<TerrainDocument> TerrainDocument::replacement(const Storage::Snapshot& snapshot) const {
+        return from(snapshot, keys_, semantics_, rule_, targets_);
+    }
+    TerrainOwner& TerrainDocument::owner(const Tiles::LayerIndex layer) {
+        if (layer.value < 0 || layer.value >= 2)
+            throw Error(Refusal::Table, "Invalid terrain document layer");
+        return *layers_[static_cast<std::size_t>(layer.value)];
+    }
+    const TerrainOwner& TerrainDocument::owner(const Tiles::LayerIndex layer) const {
+        if (layer.value < 0 || layer.value >= 2)
+            throw Error(Refusal::Table, "Invalid terrain document layer");
+        return *layers_[static_cast<std::size_t>(layer.value)];
+    }
+    const Tiles::TerrainMap& TerrainDocument::terrain(const Tiles::LayerIndex layer) const {
+        return owner(layer).terrain();
+    }
+    std::vector<Tiles::Point> TerrainDocument::edit_batch(
+        const Tiles::LayerIndex layer,
+        const std::span<const Tiles::TerrainEdit> edits,
+        const Tiles::TerrainBatchLimits limits
+    ) {
+        return owner(layer).edit_batch(edits, limits);
+    }
+    Storage::Snapshot TerrainDocument::snapshot() const {
+        auto result = layers_[0]->snapshot();
+        // Complementary numeric layers inside each owner are construction-time
+        // meaning, not live visuals. Export only each owner's semantic layer.
+        auto second = layers_[1]->snapshot();
+        result.layers[1] = std::move(second.layers[1]);
+        admit(result);
+        return result;
+    }
 }

@@ -1753,7 +1753,7 @@ TEST(tilemap_consumer, editor_document_filters) {
     const auto labels = editor_terrain_labels(editor);
     const auto literal = editor.document(0).snapshot();
     for (const auto action : {Key::F8, Key::F9}) {
-        EXPECT_THROW(edit(editor, {key(action)}), bad_request);
+        EXPECT_NO_THROW(edit(editor, {key(action)}));
         EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Terrain);
         EXPECT_EQ(editor_terrain_labels(editor), labels);
         EXPECT_EQ(editor.document(0).snapshot(), literal);
@@ -1910,9 +1910,361 @@ TEST(tilemap_consumer, editor_document_diagnostics) {
     demo.update(load, editor_sizes);
     const auto conversion = testing::internal::GetCapturedStderr();
     EXPECT_NE(conversion.find("document conversion rejected"), std::string::npos);
-    const std::array terrain{key(Key::B), key(Key::F8)};
+    const std::array terrain{key(Key::B), key(Key::F9)};
     testing::internal::CaptureStderr();
     demo.update(terrain, editor_sizes);
     const auto mode = testing::internal::GetCapturedStderr();
-    EXPECT_NE(mode.find("unavailable in terrain mode"), std::string::npos);
+    EXPECT_NE(mode.find("document storage rejected"), std::string::npos);
+}
+
+namespace {
+    Documents::Snapshot semantic_document() {
+        return {
+            "terrain:authored",
+            3,
+            2,
+            {{"soil", {"terrain:one", "terrain:one", "terrain:two", std::nullopt, "terrain:three", "terrain:three"}},
+             {"accent", {"terrain:two", std::nullopt, "terrain:two", "terrain:four", std::nullopt, std::nullopt}}},
+            {{"arrival", "soil", 1, 0}, {"scenery", "accent", 0, 1}, {"exit", "soil", 2, 1}}
+        };
+    }
+    const std::array semantic_keys{
+        WorldProof::KeyId{"terrain:one", {101}}, WorldProof::KeyId{"terrain:two", {203}}, WorldProof::KeyId{"terrain:three", {307}},
+        WorldProof::KeyId{"terrain:four", {409}}
+    };
+    const std::array semantic_labels{
+        WorldProof::SemanticKey{"terrain:one", {1}}, WorldProof::SemanticKey{"terrain:two", {2}},
+        WorldProof::SemanticKey{"terrain:three", {3}}, WorldProof::SemanticKey{"terrain:four", {4}}
+    };
+    std::vector<TerrainLabel> semantic_expected() {
+        std::vector<TerrainLabel> result(24);
+        const std::array<unsigned, 12> west{1, 1, 2, 0, 3, 3, 2, 0, 2, 4, 0, 0};
+        for (std::size_t i = 0; i < west.size(); ++i)
+            result[i] = {west[i]};
+        return result;
+    }
+}
+
+TEST(tilemap_consumer, semantic_documents) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    Documents::save(files.directory / "west-terrain.json", semantic_document());
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::B), key(Key::T), key(Key::F9)});
+    const auto literal = editor.document(0).snapshot();
+    const auto east = editor.terrain_document(1).snapshot();
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), semantic_document());
+    EXPECT_EQ(editor_terrain_labels(editor), semantic_expected());
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(semantic_expected()));
+    // Labels 1 and 2 at ground (1,0)/(2,0) both select ID7, yet keys remain distinct.
+    EXPECT_EQ(editor.terrain(0, ground).tiles().get(ground, {1, 0}), (Maps::TileId{7}));
+    EXPECT_EQ(editor.terrain(0, ground).tiles().get(ground, {2, 0}), (Maps::TileId{7}));
+    Render::Frame older, restored;
+    prepare_editor(older, editor, fixture);
+    const auto packets = older.passes()[0].draws;
+    edit(
+        editor,
+        {key(Key::Digit4), click(Mouse::Left, {72, 144}), key(Key::G), key(Key::Digit6), click(Mouse::Left, {40, 144}), key(Key::F8)}
+    );
+    auto saved = semantic_document();
+    saved.layers[1].cells[4] = "terrain:two";
+    saved.layers[0].cells[3] = "terrain:four";
+    EXPECT_EQ(Documents::load(files.directory / "west-terrain.json"), saved);
+    edit(editor, {click(Mouse::Right, {40, 144}), key(Key::T), click(Mouse::Right, {72, 144}), key(Key::F9)});
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), saved);
+    EXPECT_EQ(editor.selected_layer(), detail);
+    EXPECT_EQ(editor.document(0).snapshot(), literal);
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east);
+    prepare_editor(restored, editor, fixture);
+    expect_packets(older, packets);
+    auto expected = semantic_expected();
+    expected[3] = {4};
+    expected[10] = {2};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    const auto west_bytes = document_bytes(files.directory / "west-terrain.json");
+    edit(
+        editor, {key(Key::Digit2), key(Key::G), click(Mouse::Left, {180, 140}), key(Key::T), click(Mouse::Left, {212, 156}), key(Key::F8)}
+    );
+    const auto east_saved = editor.terrain_document(1).snapshot();
+    EXPECT_EQ(east_saved.layers[0].cells[0], "terrain:four");
+    EXPECT_EQ(east_saved.layers[1].cells[4], "terrain:four");
+    edit(editor, {click(Mouse::Right, {212, 156}), key(Key::F9)});
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east_saved);
+    EXPECT_EQ(document_bytes(files.directory / "west-terrain.json"), west_bytes);
+    edit(editor, {key(Key::V), key(Key::F8)});
+    EXPECT_EQ(Documents::load(files.directory / "east.json"), editor.document(1).snapshot());
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east_saved);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, semantic_load_refusals) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::B), click(Mouse::Left, {40, 128}), key(Key::T), click(Mouse::Left, {72, 144})});
+    const auto original = editor.terrain_document(0).snapshot();
+    const auto east = editor.terrain_document(1).snapshot();
+    const auto literal = editor.document(0).snapshot();
+    const auto* identity = &editor.terrain_document(0);
+    const auto visuals = editor_terrain_tiles(editor);
+    Render::Frame older;
+    prepare_editor(older, editor, fixture);
+    const auto packets = older.passes()[0].draws;
+    const auto preserved = [&] {
+        EXPECT_EQ(&editor.terrain_document(0), identity);
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), original);
+        EXPECT_EQ(editor.terrain_document(1).snapshot(), east);
+        EXPECT_EQ(editor.document(0).snapshot(), literal);
+        EXPECT_EQ(editor_terrain_tiles(editor), visuals);
+        EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Terrain);
+        EXPECT_EQ(editor.selected_map(), 0u);
+        EXPECT_EQ(editor.selected_layer(), detail);
+        expect_packets(older, packets);
+    };
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+    preserved();
+    raw_document(files.directory / "west-terrain.json", "{");
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+    preserved();
+    for (const auto failure : {0, 1, 2, 3, 4}) {
+        auto source = semantic_document();
+        if (failure == 0)
+            source.layers[1].cells[5] = "terrain:unknown";
+        if (failure == 1)
+            source.layers[1].cells[5] = "tilemap:red";
+        if (failure == 2)
+            source.id = "tilemap:west"; // Including all-null wrong-kind files.
+        if (failure == 3) {
+            source.width = 2;
+            source.height = 3;
+            source.spawns.clear();
+        }
+        if (failure == 4) {
+            source.layers.resize(1);
+            source.spawns.clear();
+        }
+        Documents::save(files.directory / "west-terrain.json", source);
+        if (failure >= 3)
+            EXPECT_THROW(edit(editor, {key(Key::F9)}), bad_request);
+        else
+            EXPECT_THROW(edit(editor, {key(Key::F9)}), WorldProof::Error);
+        preserved();
+    }
+    auto nulls = semantic_document();
+    for (auto& layer : nulls.layers)
+        for (auto& cell : layer.cells)
+            cell.reset();
+    Documents::save(files.directory / "west.json", nulls);
+    edit(editor, {key(Key::V)});
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), WorldProof::Error);
+    EXPECT_EQ(editor.document(0).snapshot(), literal);
+    nulls.id = "tilemap:west";
+    Documents::save(files.directory / "west-terrain.json", nulls);
+    edit(editor, {key(Key::B)});
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), WorldProof::Error);
+    preserved();
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, semantic_atomic_layers) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    for (const auto failure : {0, 1, 2}) {
+        auto palette = DemoTilemapEditor::diagnostic_terrain();
+        if (failure == 0)
+            palette.rule.cases.erase(2);
+        if (failure == 1)
+            palette.rule.cases[2] = 100;
+        if (failure == 2) {
+            palette.rule.cases[2] = 4;
+            palette.target_to_id.push_back({0});
+        }
+        DemoTilemapEditor editor(palette, {32, 6, 256}, files.directory);
+        edit(editor, {key(Key::B), key(Key::Digit4), click(Mouse::Left, {104, 144})});
+        const auto original = editor.terrain_document(0).snapshot();
+        const auto labels = editor_terrain_labels(editor);
+        const auto visual = editor_terrain_tiles(editor);
+        const auto* identity = &editor.terrain_document(0);
+        auto source = semantic_document();
+        source.layers[0].cells = {"terrain:four", std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+        source.layers[1].cells = {"terrain:one", "terrain:one", std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+        const WorldProof::KeyTable keys(semantic_keys);
+        // Prove first replacement owner succeeds, but second requires missing/unmapped mask2.
+        const auto first = WorldProof::TerrainOwner::from(source, keys, ground, semantic_labels, palette.rule, palette.target_to_id);
+        ASSERT_EQ(first->terrain().label({0, 0}), (TerrainLabel{4}));
+        Documents::save(files.directory / "west-terrain.json", source);
+        Render::Frame older, after;
+        prepare_editor(older, editor, fixture);
+        const auto packets = older.passes()[0].draws;
+        try {
+            edit(editor, {key(Key::F9)});
+            ADD_FAILURE() << "Expected second-layer failure";
+        } catch (const bad_request& error) {
+            EXPECT_NE(std::string(error.what()).find("(0,0)"), std::string::npos);
+        }
+        EXPECT_EQ(&editor.terrain_document(0), identity);
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), original);
+        EXPECT_EQ(editor_terrain_labels(editor), labels);
+        EXPECT_EQ(editor_terrain_tiles(editor), visual);
+        prepare_editor(after, editor, fixture);
+        expect_packets(after, packets);
+        expect_packets(older, packets);
+    }
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, semantic_tables) {
+    const WorldProof::KeyTable keys(semantic_keys);
+    auto palette = DemoTilemapEditor::diagnostic_terrain();
+    auto live = WorldProof::TerrainDocument::from(semantic_document(), keys, semantic_labels, palette.rule, palette.target_to_id);
+    const auto* identity = live.get();
+    const auto original = live->snapshot();
+    for (const auto failure : {0, 1, 2, 3, 4, 5}) {
+        auto table = std::vector<WorldProof::SemanticKey>(semantic_labels.begin(), semantic_labels.end());
+        if (failure == 0)
+            table[3].key = "terrain:unknown";
+        if (failure == 1)
+            table[3].key = table[0].key;
+        if (failure == 2)
+            table[3].label = table[0].label;
+        if (failure == 3)
+            table[3].label = {0};
+        if (failure == 4)
+            table.pop_back(); // Known numeric key, absent semantic mapping in SECOND layer.
+        if (failure == 5)
+            table.clear();
+        EXPECT_THROW(
+            live = WorldProof::TerrainDocument::from(semantic_document(), keys, table, palette.rule, palette.target_to_id),
+            WorldProof::Error
+        );
+        EXPECT_EQ(live.get(), identity);
+        EXPECT_EQ(live->snapshot(), original);
+    }
+    for (const auto& table :
+         {std::vector<WorldProof::KeyId>{{"terrain:one", {0}}},
+          {{"terrain:one", {101}}, {"terrain:one", {203}}},
+          {{"terrain:one", {101}}, {"terrain:two", {101}}}}) {
+        EXPECT_THROW(static_cast<void>(WorldProof::KeyTable(table)), WorldProof::Error);
+    }
+    auto held = original;
+    const std::array unknown{Maps::TerrainEdit{{0, 0}, {99}}, Maps::TerrainEdit{{0, 0}, {1}}};
+    EXPECT_THROW(static_cast<void>(live->edit_batch(ground, unknown, {2, 5, 100})), WorldProof::Error);
+    EXPECT_THROW(static_cast<void>(live->terrain({-1})), WorldProof::Error);
+    EXPECT_THROW(static_cast<void>(live->edit_batch({2}, {}, {0, 0, 0})), WorldProof::Error);
+    EXPECT_EQ(live->snapshot(), held);
+    // No retained temporary snapshot/table/rule/target storage, even for future replacements.
+    {
+        auto input = semantic_document();
+        auto meanings = std::vector<WorldProof::SemanticKey>(semantic_labels.begin(), semantic_labels.end());
+        auto ids = std::vector<WorldProof::KeyId>(semantic_keys.begin(), semantic_keys.end());
+        const WorldProof::KeyTable local(ids);
+        live = WorldProof::TerrainDocument::from(input, local, meanings, palette.rule, palette.target_to_id);
+        input.layers.clear();
+        ids.clear();
+        meanings.clear();
+        palette.rule.cases.clear();
+        palette.target_to_id.clear();
+    }
+    auto replacement = live->replacement(semantic_document());
+    EXPECT_EQ(replacement->snapshot(), held);
+    const std::array edit_one{Maps::TerrainEdit{{2, 1}, {4}}};
+    static_cast<void>(replacement->edit_batch(detail, edit_one, {1, 5, 100}));
+    held.layers[1].cells[5] = "terrain:four";
+    EXPECT_EQ(replacement->snapshot(), held);
+    EXPECT_EQ(live->snapshot(), original);
+}
+
+TEST(tilemap_consumer, semantic_actions) {
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::B)});
+    auto unadmitted = key(Key::F8);
+    unadmitted.to_gameplay = false;
+    const std::array ignored{key(Key::F8, Events::ButtonPhase::Release), key(Key::F9, Events::ButtonPhase::Repeat), unadmitted};
+    editor.consume(ignored, editor_sizes);
+    const std::array save{key(Key::F8)};
+    editor.consume(save, {{400, 200}, {0, 600}});
+    EXPECT_TRUE(std::filesystem::is_empty(files.directory));
+    edit(editor, {click(Mouse::Left, {40, 128}), key(Key::F8)});
+    const auto path = files.directory / "west-terrain.json";
+    const auto original = editor.terrain_document(0).snapshot();
+    const auto before = document_bytes(path);
+    std::filesystem::rename(path, files.directory / "predecessor.json");
+    std::filesystem::create_symlink(files.directory / "predecessor.json", path);
+    edit(editor, {key(Key::T), key(Key::Digit4), click(Mouse::Left, {72, 144})});
+    const auto authored = editor.terrain_document(0).snapshot();
+    EXPECT_THROW(edit(editor, {key(Key::F8)}), Documents::Error);
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), authored);
+    EXPECT_EQ(document_bytes(files.directory / "predecessor.json"), before);
+    EXPECT_EQ(Documents::load(files.directory / "predecessor.json"), original);
+    EXPECT_TRUE(std::filesystem::is_symlink(path));
+    DemoTilemapEditor disabled;
+    edit(disabled, {key(Key::B)});
+    EXPECT_THROW(edit(disabled, {key(Key::F8)}), bad_request);
+    EXPECT_THROW(edit(disabled, {key(Key::F9)}), bad_request);
+    DemoTilemapEditor missing(files.directory / "not-created");
+    edit(missing, {key(Key::B)});
+    EXPECT_THROW(edit(missing, {key(Key::F8)}), bad_request);
+    EXPECT_FALSE(std::filesystem::exists(files.directory / "not-created"));
+    // Exercise the SAME update diagnostics/drop policy actually used by demo.
+    DemoTilemaps demo(files.directory);
+    auto bad = semantic_document();
+    bad.layers[1].cells[5] = "terrain:unknown";
+    Documents::save(files.directory / "east-terrain.json", bad);
+    const std::array tick{key(Key::B),  key(Key::Digit2), key(Key::T), key(Key::Digit5), click(Mouse::Left, {212, 156}),
+                          key(Key::F9), key(Key::Digit1), key(Key::F8)};
+    testing::internal::CaptureStderr();
+    demo.update(tick, editor_sizes);
+    const auto diagnostic = testing::internal::GetCapturedStderr();
+    EXPECT_NE(diagnostic.find("document conversion rejected"), std::string::npos);
+    EXPECT_NE(diagnostic.find("remaining tick records dropped"), std::string::npos);
+    demo.update(save, editor_sizes); // Later update persists earlier semantic edit, still selected east/detail.
+    const auto saved = Documents::load(files.directory / "east-terrain.json");
+    EXPECT_EQ(saved.id, "terrain:east");
+    EXPECT_EQ(saved.layers[1].cells[4], "terrain:three");
+    EXPECT_EQ(document_bytes(files.directory / "predecessor.json"), before);
+}
+
+TEST(tilemap_consumer, semantic_document_frames) {
+    const auto calls = std::make_shared<Calls>();
+    const DocumentFiles files;
+    Render::Frame older, replaced;
+    std::vector<Render::DrawPacket2D> before, after;
+    std::weak_ptr<Image> image;
+    std::weak_ptr<Geometry> geometry;
+    {
+        const Fixture fixture(calls);
+        image = fixture.image;
+        geometry = fixture.geometry;
+        DemoTilemapEditor editor(files.directory);
+        edit(editor, {key(Key::B), click(Mouse::Left, {40, 128}), key(Key::T), click(Mouse::Left, {72, 144}), key(Key::F8)});
+        prepare_editor(older, editor, fixture);
+        before = older.passes()[0].draws;
+        ASSERT_EQ(before.size(), 2u);
+        const auto held = editor.terrain_document(0).snapshot();
+        Documents::save(files.directory / "west-terrain.json", semantic_document());
+        edit(editor, {key(Key::F9)});
+        EXPECT_NE(editor.terrain_document(0).snapshot(), held);
+        prepare_editor(replaced, editor, fixture);
+        after = replaced.passes()[0].draws;
+        ASSERT_EQ(after.size(), 8u);
+        EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(semantic_expected()));
+        expect_packets(older, before);
+        for (std::size_t i = 0; i < after.size(); ++i)
+            EXPECT_EQ(after[i].authored_order, i);
+        calls->expect_cpu();
+    }
+    expect_packets(older, before);
+    expect_packets(replaced, after);
+    EXPECT_FALSE(image.expired());
+    EXPECT_FALSE(geometry.expired());
+    older.recycle();
+    replaced.recycle();
+    before.clear();
+    EXPECT_FALSE(image.expired());
+    after.clear();
+    EXPECT_TRUE(image.expired());
+    EXPECT_TRUE(geometry.expired());
+    calls->expect_cpu();
 }

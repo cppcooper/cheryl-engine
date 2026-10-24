@@ -3,6 +3,7 @@
 #include <cheryl/core/resources/map-storage/file-storage.h>
 #include <cheryl/maps/terrain-map.h>
 
+#include <array>
 #include <memory>
 #include <span>
 
@@ -79,6 +80,40 @@ namespace WorldProof {
         );
         [[nodiscard]] const Tiles::TerrainMap& terrain() const { return *terrain_; }
         [[nodiscard]] std::vector<Tiles::Point> edit_batch(std::span<const Tiles::TerrainEdit> edits, Tiles::TerrainBatchLimits limits);
+        [[nodiscard]] Storage::Snapshot snapshot() const;
+    };
+    // Private two-layer semantic document. Each TerrainOwner owns its copied
+    // rule/mapping; rebuilding BOTH precedes outer pointer adoption. Borrowed
+    // layer views expire on document replacement. No visual-ID reverse lookup.
+    class TerrainDocument {
+        KeyTable keys_;
+        std::vector<SemanticKey> semantics_;
+        CE::Assets::Tilesets::Rule rule_;
+        std::vector<Tiles::TileId> targets_;
+        std::array<std::unique_ptr<TerrainOwner>, 2> layers_;
+
+        TerrainDocument(
+            KeyTable keys,
+            std::vector<SemanticKey> semantics,
+            CE::Assets::Tilesets::Rule rule,
+            std::vector<Tiles::TileId> targets,
+            std::array<std::unique_ptr<TerrainOwner>, 2> layers
+        );
+        [[nodiscard]] TerrainOwner& owner(Tiles::LayerIndex layer);
+        [[nodiscard]] const TerrainOwner& owner(Tiles::LayerIndex layer) const;
+
+    public:
+        [[nodiscard]] static std::unique_ptr<TerrainDocument> from(
+            const Storage::Snapshot& snapshot,
+            const KeyTable& keys,
+            std::span<const SemanticKey> semantics,
+            const CE::Assets::Tilesets::Rule& rule,
+            std::span<const Tiles::TileId> targets
+        );
+        [[nodiscard]] std::unique_ptr<TerrainDocument> replacement(const Storage::Snapshot& snapshot) const;
+        [[nodiscard]] const Tiles::TerrainMap& terrain(Tiles::LayerIndex layer) const;
+        [[nodiscard]] std::vector<Tiles::Point>
+        edit_batch(Tiles::LayerIndex layer, std::span<const Tiles::TerrainEdit> edits, Tiles::TerrainBatchLimits limits);
         [[nodiscard]] Storage::Snapshot snapshot() const;
     };
 }

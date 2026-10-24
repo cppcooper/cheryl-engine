@@ -1,9 +1,13 @@
 # World integration decisions
 
-Current unit: WORLD-U2 literal-document actions in the real private editor,
-starting at accepted e9289fc. One accumulated Debug ASan/UBSan invocation passes
-97/97 entries, zero failed/skipped; demo compiles/links and same-source checks pass. The coordinator already promoted U1; no new merge
-or transport is performed here. WINT-007/008 extend the preserved U1 decisions.
+Current unit: WORLD-U3 semantic-document persistence in the same private editor,
+starting at reviewed `8522b2976013c10c23266b6413e3d46a408b1251`. WINT-009/010 extend
+the matching detailed view. WORLD-U2's saved 97/97 acceptance and its receipt stay
+preserved. Current execution/results belong in next.md and the batch receipt;
+no worker1 geography integration or unchanged display retry is selected. One
+accumulated Debug ASan/UBSan run passes 104/104, zero failed/skipped, retaining all
+97 prior names; ten child exits are zero. Demo link and same-source/Engine checks
+pass; graphics/input/leaks remain unverified.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -92,10 +96,30 @@ key changes requiring a mapping decision.
 
 ## WINT-008 — Make file actions explicit and serialized
 
-Use admitted F8/F9 Press for selected literal-document SAVE/LOAD in an explicit
-existing directory; empty disables. Terrain mode refuses, and no startup I/O or
-auto-creation occurs. Anticipated errors log and drop remaining tick records,
+Use admitted F8/F9 Press for selected mode/document SAVE/LOAD in an explicit
+existing directory; empty disables. U3 adds separate semantic filenames after
+U2's literal-only refusal; no startup I/O or auto-creation occurs. Anticipated
+errors log and drop remaining tick records,
 allowing later updates while preserving earlier edits and file predecessors.
 Synchronous I/O trades possible simulation stalls for simple ownership. Engineering
 confidence is high; hotkeys/path UI are reversible private choices. Native durability,
 graphics, leaks and broader platforms remain unverified.
+
+## WINT-009 — Own both semantic layers as one private document
+
+Compose two proven TerrainOwners behind one TerrainDocument pointer. Copy keys,
+labels, rule and targets; retain full ordered metadata. Export each owner's labels,
+never its derived visuals or stale complementary numeric layer. Rebuild both
+before one pointer swap, preserving old frames and every prior field on refusal.
+Extra bounded copies avoid a broad Engine refactor. Engineering confidence is
+high; naming taste is unproven. Reversal changes private ownership, not public ABI.
+
+## WINT-010 — Persist explicit meaning in mode-specific files
+
+Reserve terrain: map IDs and keys one/two/three/four for labels 1–4 and numeric
+meaning IDs 101/203/307/409; visual IDs 7–10 and atlas targets 0–3 remain separate.
+F8/F9 select west-terrain.json/east-terrain.json in B, existing literal files in V. Reject
+wrong kind, shape, unknown/ambiguous meanings and needed rule/mapping failures.
+This private convention distinguishes even all-null documents without schema growth.
+Confidence is high in CPU isolation, low as taste evidence; changing persisted
+meanings requires explicit conversion.

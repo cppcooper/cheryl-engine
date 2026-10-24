@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "WORLD-U3",
+  "status": "ready",
+  "checks_passed": true,
+  "current_parent_sha": "8522b2976013c10c23266b6413e3d46a408b1251",
+  "source_checkpoint": "8522b2976013c10c23266b6413e3d46a408b1251",
+  "evidence": [
+    "build/world-u3-logs/shared-build-final.log",
+    "build/world-u3-logs/demo-build.log",
+    "build/world-u3-logs/discovery.log",
+    "build/world-u3-logs/tests.log",
+    "build/world-u3-logs/semantic_documents-semantic-author.log",
+    "build/world-u3-logs/semantic_documents-fresh-semantic-verify.log",
+    "build/world-u3-logs/ownership.log",
+    "build/world-u3-logs/demo-build-final.log",
+    "build/world-u3-logs/final-checks.log"
+  ],
+  "implemented_contracts": [
+    "Same actual private adapter/editor sources compile into demo, unit suite and world consumer; one normal shared Engine retains storage/tilemap operations and public header/import/export/loader evidence.",
+    "Private TerrainDocument owns both nonmovable TerrainMap layer owners, copied reconstruction tables/rule/targets and ordered metadata. Complete candidate precedes one pointer adoption; tested late second-owner failures preserve every prior layer/metadata/state/frame.",
+    "B uses west-terrain.json/east-terrain.json; V preserves literal files/layout/keys. Admitted keyboard Press F8/F9 selects mode/document in explicit existing directory; empty disables, no startup I/O or directory creation. Actual update catches/drop policy executes synthetically.",
+    "Reversible terrain:one/two/three/four keys represent labels1..4 and numeric meaning IDs101/203/307/409, separate from derived visual IDs7..10 and atlas targets0..3. Aliased visuals do not collapse distinct meanings; null alone is empty.",
+    "Private terrain: map-ID prefix distinguishes null-only kinds without v1 schema changes; literal editor reserves/rejects that prefix, semantic loads require it and fixed3x2/two layers. Unknown/duplicate/empty mappings, bad labels, needed missing cases/targets, wrong kind/shape and malformed/missing loads refuse coherently.",
+    "One accumulated invocation passes104/104,0 failed/skipped,54.78s, retaining all97 names plus6 unit cases/1 fresh-process scenario. All10 world children exit0; fresh semantic process independently checks all24 labels/meaning IDs/visuals and full literal metadata expectations.",
+    "Failed-save predecessor preservation, semantic/literal/sibling isolation, borrowed-input destruction, old prepared-frame/resource retention and final weak release are exercised. Synthetic native bind/draw/upload counters remain zero.",
+    "375 Engine/public/replay/archive/unchanged-suite paths and old receipts preserved; standalone unchanged storage/procedural suites not repeated. Actual demo links; final option-help-only correction relinks with tested adapter/editor hashes unchanged."
+  ],
+  "limitations": [
+    "Real input/display, atlas decode/upload, capture, graphical teardown, visual correctness/fun and leaks unverified; unchanged X11 :1 failure not retried. Synthetic update execution and demo link do not prove graphics.",
+    "Debug ASan/UBSan/halt_on_error retained; only command-local detect_leaks=0 for recorded tracing limitation. GNU/Linux source-tree shared linkage checked; installed SDK/static/Release/other-platform/toolchain ABI unverified.",
+    "Synchronous I/O may stall simulation. Serialized owner/preparation, stable cwd and controlled existing single-writer directory required. Native checked rename publication remains separate from runtime edits/adoption; no fsync/power-loss, hostile-race, multiwriter or distributed transaction promise.",
+    "Fixed3x2/two-layer private geometry. Storage/table/batch logical bounds do not promise allocator/RSS quotas; old/new candidate/configuration/metadata copies coexist. Allocation/programming exceptions propagate; private callers size target vectors.",
+    "Rules/palette are copied active configuration, not serialized/fingerprinted. Persistent semantic-table consistency is caller policy; changing keys requires explicit conversion. Reserved terrain: prefix narrows private literal editor map IDs; public v1/storage/LiteralOwner remain unchanged.",
+    "Initial shared build passed with a new test range-loop copy warning; corrected and rebuilt clean before the sole accumulated run. No CPU failure/rerun. Help-only review correction rebuilt demo after tests; helper/adapter source unchanged."
+  ],
+  "next_action": "Coordinator reviews exact checkpoint/receipt/logs after this run drains; finite controller alone selects a later exact task after its gates. Worker2 remains idle, publisher owns assigned-branch backup; no sibling integration or later unit starts here."
+}

@@ -1,10 +1,14 @@
 # World integration contracts and provenance
 
-WORLD-U2 starts clean on feat/tilemap at accepted WORLD-U1
-`e9289fcb992feddf85deb942a560562a54971f78`. The coordinator has promoted that
-exact source into worker1; this worker performs no further merge/publication.
-Current private literal-document actions are WINT-007/008 below. WORLD-U1 history
-and its execution report remain preserved; final U2 evidence belongs in next.md.
+WORLD-U3 starts clean on feat/tilemap at reviewed literal-editor checkpoint
+`8522b2976013c10c23266b6413e3d46a408b1251`. Its committed WORLD-U2 receipt, nonempty
+saved native logs and 97/97 XML entries were inspected before dependent work.
+WINT-009/010 add semantic persistence while WINT-007/008 retain literal/event
+compatibility. Historical U1/U2 evidence and source archives remain unchanged;
+current exact execution and limits belong in next.md and the batch receipt.
+One accumulated Debug ASan/UBSan run passes 104/104, zero failed/skipped, 54.78s,
+retaining all 97 prior names. Ten process children exit zero; actual demo link,
+same-source and normal shared-Engine checks pass. No graphical/leak acceptance.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -19,7 +23,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–008 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–010 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records
@@ -260,7 +264,7 @@ existing owner and focused checks; exact names and storage UI have low taste
 confidence. Reversal is private source/caller wiring; changing persisted key
 meanings later would need an explicit mapping/migration choice.
 
-## WINT-008 — Explicit ordered literal SAVE/LOAD actions
+## WINT-008 — Explicit ordered SAVE/LOAD actions
 
 Small proposed-before-implementation caller, now implemented privately:
 
@@ -288,10 +292,11 @@ always processes the WHOLE selected literal document (both named layers/spawns).
 Each preceding event still uses its own captured pointer; no final-axis/history
 substitution is added. Selection, view, brushes and order contracts remain.
 
-Terrain mode explicitly rejects both actions BEFORE file access/export. The normal
+WORLD-U2 explicitly rejected terrain actions before file access. WORLD-U3 replaces
+that refusal with WINT-009/010's separate semantic documents/files. The normal
 keyboard barrier still flushes an earlier terrain run; no whole-tick rollback is
-promised. It never serializes derived visual IDs as terrain meaning. B/V and all
-four semantic owners/brushes remain independent of literal document replacement.
+promised. No derived visual IDs are serialized as meaning. B/V storage and brushes
+remain independent, including literal document replacement.
 
 F8 exports complete owned keys/metadata through LiteralOwner::snapshot and checked
 CE::Maps::save. Unknown reverse IDs refuse before publication, preserving previous
@@ -338,3 +343,136 @@ changed constructor ranges pass the format check. Tested helper/adapter bytes st
 identical; no behavior change follows CPU acceptance. Actual demo update catches execute synthetically, without
 atlas loading or runtime startup. Display/input/upload/graphical teardown/fun,
 leaks and broader ABI/durability remain open. next.md holds commands and handoff.
+
+## WINT-009 — Two-layer semantic ownership and atomic adoption
+
+Proposed-before-implementation caller, implemented in the same private sources:
+
+```cpp
+#include "tilemap-editor.h"
+DemoTilemapEditor editor(existing_directory);
+// press()/paint() construct actual admitted records in world-consumer/main.cpp.
+const std::array records{press(Key::B), press(Key::G), paint(40,128),
+                         press(Key::T), paint(72,144), press(Key::F8)};
+editor.consume(records, {{400,200},{800,600}});
+// Later: erase, F9 Press; both semantic layers and all metadata are restored.
+editor.write(frame, bindings, style);
+```
+
+The actual WORLD-U1/U2 adapter world-document.h/cpp adds only a private
+TerrainDocument composition. It owns two TerrainOwner pointers (each containing
+the SAME public nonmovable Engine TerrainMap) plus copied key/semantic tables,
+rule and target vector used for future reconstruction. Existing single-layer
+TerrainOwner/LiteralOwner algorithms stay unchanged. Two editor semantic-document
+pointers replace only the four raw terrain owner pointers; terrain(index,layer)
+remains the selected-layer read facade. Literal document owners, terrain brushes,
+ordered event barriers, geometry/picking and pass submission policy remain.
+
+Each document retains map ID, 3x2 extent, two ordered arbitrary valid layer names
+and every ordered spawn. from()/replacement() validate the storage snapshot and
+fixed shape, build layer 0 then layer 1 in a LOCAL owned array, copy reconstruction
+configuration, and return a complete candidate. Editor F9 swaps exactly one pointer
+only after all of this succeeds. A missing rule/target reached solely in layer 1
+cannot publish layer 0 or metadata. Candidate allocation/derivation/validation
+exceptions destroy only local candidates. Allocation/programming exceptions still
+propagate; no exact allocator/RSS quota or no-throw promise is made.
+
+snapshot() exports both selected semantic layers, combining layer 0 from the first
+owner with layer 1 from the second, then validates the complete result. A TerrainMap
+inside one owner has a construction-time complementary numeric-meaning layer;
+that layer is neither live sibling terrain nor a combined render map. Do not
+export/resolve it as such. The editor resolves only each owner's selected layer.
+This small composition intentionally repeats bounded metadata/maps/configuration
+instead of refactoring the proven Engine or single-layer integration adapter.
+Old borrowed document/terrain views expire on replacement; full owned snapshots,
+packet ranges/matrices and retained resources remain independent. Engine edit_batch
+continues to validate every request, coalesce last-wins and publish only its chosen
+layer. Invalid/unmapped labels reject even when overwritten later in a run.
+
+Construction and reconstruction borrow source snapshots/tables/rules/targets only
+for the call. Future replacement uses OWNED copies, proven after original inputs
+are destroyed/cleared. Neither event spans nor sampler closures survive. Platform
+constructs state before simulation; simulation update/preparation serializes
+access; cleanup follows completed frames. Concurrent editing/preparation/recycling
+is excluded. High engineering confidence from owner source and checks, low as
+personal naming/API taste. Reversal is private source wiring; no public header,
+Engine ABI, strict-v1 byte/schema or replay change.
+
+## WINT-010 — Semantic identity, kind compatibility and file actions
+
+The actual editor owns an explicit reversible table:
+
+| Qualified key | Opaque label | Numeric meaning ID | Visual/atlas policy |
+| --- | --- | --- | --- |
+| null |0 |0 | empty, no packet |
+| terrain:one |1 |101 | cardinal mask selects target; no reverse inference |
+| terrain:two |2 |203 | same policy, still a DIFFERENT meaning |
+| terrain:three |3 |307 | same policy |
+| terrain:four |4 |409 | same policy |
+
+Existing N/E/S/W mask bits 1/2/4/8 select target mask%4 and visual IDs 7/8/9/10;
+bindings still select atlas targets 0/1/2/3. Different isolated labels (and masks
+with the same remainder) can render identically without sharing semantic keys.
+The document does not contain derived visuals, rule metadata or a recipe/version.
+Reconstruction uses the document owner's copied active cardinal rule/target table;
+the caller must keep this semantic-key meaning consistent across sessions. Visual
+palette changes may rederive different appearances while preserving meaning. No
+rule fingerprint, asset identity or automatic migration is promised.
+
+Semantic map IDs must begin terrain:; seed IDs are terrain:west/east. This is a
+PRIVATE kind convention in the existing opaque v1 ID, not a schema property.
+Literal editor loads reject that reserved prefix; semantic loads require it.
+Disjoint qualified cell tables reject cross-mode nonempty files; the ID convention
+also distinguishes all-null files. Literal keys/colors/layouts and normal metadata
+stay compatible; the new reserved prefix narrows previously arbitrary literal
+editor IDs. The standalone LiteralOwner/storage API still accepts valid IDs
+unchanged. This reversible private restriction is preferable to guessing empty
+file kind or introducing public format changes.
+
+Key tables require 1..256 unique keys and nonzero numeric IDs. Semantic tables
+require 1..256 unique known keys and nonzero unique labels. Each loaded nonnull
+cell must map in both directions; empty/unknown/duplicate tables and unknown labels
+refuse. The editor supplies exactly four entries above; private composition can
+use other reversible tables. Rules remain finite cardinal-only with supported
+bit order. Missing mask cases or missing/zero/out-of-range targets are permitted
+until needed, including initially empty layers; required failures reject whole
+candidate reconstruction or the current Engine batch. No equality is inferred
+from visual IDs; null is the ONLY empty semantic meaning.
+
+Only admitted keyboard Press F8/F9 performs synchronous SAVE/LOAD. B selects
+west-terrain.json/east-terrain.json, V retains west.json/east.json. Selected layer
+controls paint but each file action covers BOTH named layers/all spawns. Empty
+directory default disables both modes; an explicit existing caller-controlled
+single-writer directory is required. No startup/automatic I/O, directory creation,
+held input or cross-mode fallback. Release/Repeat/unadmitted and invalid/minimized
+sizes remain ignored; each pointer comes from its own event, with unchanged
+independent framebuffer scales, half-open computed edges, pan and zoom.
+
+An earlier terrain run flushes at the keyboard barrier before I/O. F8 builds a
+complete semantic Snapshot then uses unchanged checked save; a failed save retains
+runtime edits and predecessor bytes under the native controlled-directory profile.
+F9 owns full parsed input before shape/kind/conversion refusal, and stages both
+owners before adoption. Missing/malformed/wrong-kind/wrong-shape/unknown meaning
+failures preserve document pointer, all semantic/visual values/metadata, sibling
+and literal documents, state and old frames. Current demo update catches anticipated
+bad_request/storage/conversion errors, logs and drops the rest of the tick;
+earlier completed runs stay applied and later updates continue. CPU tests execute
+that SAME update catch without starting a renderer or loading the atlas.
+
+Storage retains 8 MiB input/encoding,262144 cells/16 layers/256 spawns/128-byte keys;
+bridge patch admission retains 65536 cells. Adopted geometry is exactly 12 cells per
+document; reconstruction temporarily owns old/new snapshots, two complete Maps,
+labels and several configuration/metadata copies. Semantic tables are capped 256;
+the real editor uses four target entries and 16 mask cases. Private callers of the
+underlying owner remain responsible for sizing supplied target vectors; these are
+logical operation bounds, not allocation-byte budgets. Batch input caps remain
+32 requests/6 affected cells/256 work per run. No giant/OOM probes occur.
+
+Tradeoff: synchronous I/O can stall simulation, but avoids asynchronous ownership
+policy. Rename file publication is SEPARATE from authored edits/runtime adoption:
+no distributed transaction, fsync/power-loss, hostile-race or multiwriter guarantee.
+Private keys/prefix/hotkeys are engineering choices under delegation, not inferred
+user preference; compatibility and successful CPU checks support high engineering
+confidence. Changing persisted keys requires explicit conversion; other reversal
+cost is private only. Exact executed counts, ownership inspections and remaining
+visual/input/upload/teardown/fun/leak/platform gaps are in next.md and the receipt.

@@ -26,7 +26,7 @@ void DemoOptions::register_with(CE::Application::Startup& startup) {
         options
             .add_option_function<std::string>(
                 "--tilemap-document-dir", [this](const std::string& path) { tilemap_document_dir = std::filesystem::path(path); },
-                "Existing directory for literal editor F8 SAVE / F9 LOAD (west.json/east.json); empty disables"
+                "Existing directory for editor F8 SAVE / F9 LOAD (literal *.json or semantic *-terrain.json); empty disables"
             )
             ->type_name("PATH")
             ->trigger_on_parse();
