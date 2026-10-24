@@ -1,0 +1,15 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_lifecycle_checks magic_interruption_checks --parallel 1
+[ 20%] Built target magic_compiler
+[ 60%] Built target magic_reference_host
+[ 80%] Built target magic_learning
+[ 90%] Building CXX object CMakeFiles/magic_lifecycle_checks.dir/tests/lifecycle.cpp.o
+[100%] Linking CXX executable magic_lifecycle_checks
+[100%] Built target magic_lifecycle_checks
+[ 20%] Built target magic_compiler
+[ 60%] Built target magic_reference_host
+[ 80%] Built target magic_learning
+[ 90%] Building CXX object CMakeFiles/magic_interruption_checks.dir/tests/interruption.cpp.o
+[100%] Linking CXX executable magic_interruption_checks
+[100%] Built target magic_interruption_checks
+
+exit_status=0

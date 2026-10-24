@@ -1,0 +1,331 @@
+{
+  "version": 1,
+  "milestone_id": "MAGIC-M8",
+  "starting_head": "9826abc49194ab50ee838d5708244329258ed11c",
+  "status": "ready",
+  "checks_passed": true,
+  "selected_core_ids": [
+    "M8-ANIMATE",
+    "M8-DISPEL"
+  ],
+  "completed_core_ids": [
+    "M8-ANIMATE",
+    "M8-DISPEL"
+  ],
+  "unfinished_core_ids": [],
+  "selected_stretch_ids": [
+    "M8-INTERRUPT"
+  ],
+  "completed_stretch_ids": [
+    "M8-INTERRUPT"
+  ],
+  "unfinished_stretch_ids": [],
+  "families": {
+    "M8-ANIMATE": "life/death and owned animation",
+    "M8-DISPEL": "countermagic: active influences",
+    "M8-INTERRUPT": "countermagic: exact pending action"
+  },
+  "implemented_contracts": [
+    "Typed owned Animation/Dispelling/Interruption, exact Common, distinct bound roles and exact registered requirement bits; deliberately finite14-operation/20-rule catalog. No source words or book acceptance grant host authority.",
+    "Animation stages claim,10mana, fresh actor generation, owned plan/provenance and absolute lifetime together. Available/spent registered remains are distinct from actor health or fixture objects; failed admission leaves the claim/resources/actor world intact.",
+    "Opaque reusable incarnation-bound servant commands check exact living owner and servant generations, then share one metered staged3dp/contact50 attack resolver with existing wards and Attack restrictions. Dismissal/removal/expiry cannot retarget a replacement or unspend remains.",
+    "Opaque InfluenceRef binds domain/instance and actor/object generation to the current incarnation. Normal live prepare/release rechecks key+primitive/schema, permission, cost and current contribution; repeated/stale/default/foreign/wrong-kind inputs refuse. Dispel removes only one Disguise or Attack restriction, preserving injury/payments/truth/history/other effects.",
+    "Owned Checkpoint retains actual servant/pending/attachment/influence plans, spent claims, owners, clocks and identities alongside prior items/events/perception. Whole proposed restore validates first, preserves destination on refusal and issues fresh incarnation; old command/influence/pending/ticket/event authority never revives.",
+    "Independent connected M4 book/revision caller destroys authoring inputs and original host, restores combined servant/restriction/disguise/witness/rune/paid-annulus state, then demonstrates real command injury, perception change, one-charge healing, exact onset/slow/servant expiry and replacement safety.",
+    "Optional exact pending interruption uses a distinct opaque incarnation/action/caster-generation input and normal paid spell, not administrative cancel. It removes only the named still-pending action, retains paid costs/completed history, owns the interrupted-action report, and cannot retarget reused queue slots. Checkpoint rewind is explicit."
+  ],
+  "bounds": {
+    "compiler_effects": 4,
+    "compiler_clauses": 4,
+    "compiler_bindings": 8,
+    "source_bytes": 8192,
+    "tokens": 512,
+    "nesting": 8,
+    "compiler_work": 65536,
+    "compiler_retained_bytes": 32768,
+    "registered_operations": 14,
+    "registered_rules": 20,
+    "actors": 16,
+    "pending": 8,
+    "items": 8,
+    "objects": 4,
+    "disguises": 8,
+    "witnesses": 16,
+    "remains": 4,
+    "servants": 4,
+    "wards": 4,
+    "attack_restrictions": 4,
+    "transmutations": 4,
+    "creations": 4,
+    "selected_targets": 128,
+    "selector_work": 1024,
+    "host_work": 16384,
+    "retained_plan_bytes": 32768,
+    "generation_horizon": 1000000,
+    "servant_instance_horizon": 1000000,
+    "action_horizon": 1000000,
+    "ticket_horizon": 1000000,
+    "simulation_tick_horizon": 1000000000,
+    "revision_horizon": 1000000000,
+    "mana_per_new_effect": 10,
+    "servant_health": 20,
+    "attack_damage_dp": 3,
+    "contact_radius_mm": 50,
+    "configuration": "downward only; prior quotas unchanged"
+  },
+  "measured_work": {
+    "fixed_candidate_copy_base": 292,
+    "prior_base": 280,
+    "empty_three_schema_checkpoint": 652,
+    "empty_checkpoint_one_short": 651,
+    "life_projection": 300,
+    "life_projection_one_short": 299,
+    "animation_thirteen_schema_fixture": {
+      "preview": 442,
+      "release": 442,
+      "selector": 20,
+      "selected": 1,
+      "one_short": 441
+    },
+    "fourth_servant_command_minimal_one_schema_fixture": {
+      "exact": 326,
+      "one_short": 325
+    },
+    "dispel_thirteen_schema_64byte_key_fixture": {
+      "exact": 1148,
+      "one_short": 1147
+    },
+    "interrupt_three_schema_fixture": {
+      "preview": 339,
+      "release": 340,
+      "one_short_release": 339,
+      "selected": 1,
+      "selector": 0
+    },
+    "model": "fixed slot/copy/validation groups, bounded scans, tuple identity comparisons, key comparisons, retained handle slots and owned results; not CPU instructions or RSS"
+  },
+  "checks": {
+    "accumulated_ctest_entries": 26,
+    "retained_predecessor_entries": 22,
+    "contract_cases": 316,
+    "retained_contract_cases": 248,
+    "new_lifecycle_cases": 52,
+    "new_interruption_cases": 16,
+    "new_ordinary_callers": 2,
+    "file_fixtures": 6,
+    "retained_cli_scenarios": 9,
+    "ctest_names": [
+      "magic_contracts",
+      "magic_callers",
+      "magic_inspect_S1",
+      "magic_inspect_S2",
+      "magic_inspect_S3",
+      "magic_inspect_S4",
+      "magic_inspect_S5",
+      "magic_inspect_mixed-schools",
+      "magic_cli",
+      "magic_host_contracts",
+      "magic_reference_caller",
+      "magic_engraving_contracts",
+      "magic_engraving_caller",
+      "magic_learning_contracts",
+      "magic_learning_caller",
+      "magic_annular_contracts",
+      "magic_annular_caller",
+      "magic_perception_contracts",
+      "magic_perception_caller",
+      "magic_mechanics_contracts",
+      "magic_mechanics_caller",
+      "magic_material_caller",
+      "magic_lifecycle_contracts",
+      "magic_lifecycle_caller",
+      "magic_interruption_contracts",
+      "magic_interruption_caller"
+    ],
+    "native_command_count": 20,
+    "full_campaign_runs": 1,
+    "history": "Initial build/test failures retained: build-02 incorrect test API uses; core-01/core-02 resource-test assumptions; stretch-01 two test assumptions. Corrected focused runs precede the one26/26 final campaign. No runtime assertion is weakened and all248 prior case names stay in original order."
+  },
+  "evidence": [
+    "feature-development/magic/logs/M8/accumulated-01.log",
+    "feature-development/magic/logs/M8/build-01.log",
+    "feature-development/magic/logs/M8/build-02.log",
+    "feature-development/magic/logs/M8/build-03.log",
+    "feature-development/magic/logs/M8/build-04.log",
+    "feature-development/magic/logs/M8/build-05.log",
+    "feature-development/magic/logs/M8/build-06.log",
+    "feature-development/magic/logs/M8/build-07.log",
+    "feature-development/magic/logs/M8/build-08.log",
+    "feature-development/magic/logs/M8/build-09.log",
+    "feature-development/magic/logs/M8/build-10.log",
+    "feature-development/magic/logs/M8/build-11.log",
+    "feature-development/magic/logs/M8/configure-01.log",
+    "feature-development/magic/logs/M8/connected-01.log",
+    "feature-development/magic/logs/M8/core-01.log",
+    "feature-development/magic/logs/M8/core-02.log",
+    "feature-development/magic/logs/M8/core-03.log",
+    "feature-development/magic/logs/M8/discovery-01.log",
+    "feature-development/magic/logs/M8/stretch-01.log",
+    "feature-development/magic/logs/M8/stretch-02.log"
+  ],
+  "acceptance_evidence": [
+    "feature-development/magic/logs/M8/accumulated-01.log",
+    "feature-development/magic/logs/M8/discovery-01.log"
+  ],
+  "commands": [
+    {
+      "log": "feature-development/magic/logs/M8/accumulated-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --output-on-failure -V -j1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-02.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 2
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-03.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-04.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_lifecycle_checks --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-05.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_lifecycle_checks --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-06.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-07.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_lifecycle_checks magic_lifecycle_demo --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-08.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-09.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-10.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_lifecycle_checks magic_interruption_checks --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/build-11.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/configure-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug -DMAGIC_SANITIZERS=ON",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/connected-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_lifecycle_(contracts|caller)$' --output-on-failure -V -j1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/core-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_lifecycle_contracts$' --output-on-failure -V -j1",
+      "exit_status": 8
+    },
+    {
+      "log": "feature-development/magic/logs/M8/core-02.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_lifecycle_contracts$' --output-on-failure -V -j1",
+      "exit_status": 8
+    },
+    {
+      "log": "feature-development/magic/logs/M8/core-03.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_lifecycle_contracts$' --output-on-failure -V -j1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/discovery-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --show-only=json-v1 -j1",
+      "exit_status": 0
+    },
+    {
+      "log": "feature-development/magic/logs/M8/stretch-01.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_(lifecycle|interruption)_(contracts|caller)$' --output-on-failure -V -j1",
+      "exit_status": 8
+    },
+    {
+      "log": "feature-development/magic/logs/M8/stretch-02.log",
+      "command": "ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_(lifecycle|interruption)_contracts$' --output-on-failure -V -j1",
+      "exit_status": 0
+    }
+  ],
+  "source_witness": "feature-development/magic/logs/M8/tested-source-hashes.json",
+  "tested_source_sha256": {
+    "projects/magic/CMakeLists.txt": "a313767be2e133b21dd81b0831172b302838b0042b9abda37093f76fb6f59e44",
+    "projects/magic/fixtures/S1.verse": "25ea83612a6b9659b5ae7841563ada97a5d29d9ae36b8d7b2f146e35414ecbd5",
+    "projects/magic/fixtures/S2.verse": "eb2dac8592471082081f876ee8d43b3d237cd1039eebea56071ae97197759da4",
+    "projects/magic/fixtures/S3.verse": "028dfe4580eb34ade5e448f0964c5fdb0e2d85c6162c0791b751a6dbadba84ec",
+    "projects/magic/fixtures/S4.verse": "d15fcab7f5e38d203707cd60f4c94f4d89cb524ab413d077ca1a085adc513fed",
+    "projects/magic/fixtures/S5.verse": "593aa5ef21031d5d46280c972d4d0b8be6d0b44e53d8d20a62c036c45ecef176",
+    "projects/magic/fixtures/mixed-schools.verse": "e15c6f666a60a0e4ccf50b50e2f135559bccd0169c7b6a6acba8cb10ee6a62c8",
+    "projects/magic/include/magic/compiler.h": "2250919129c18be01a2c791aab33fafcdcbd718ab763d3e52707189a91963fab",
+    "projects/magic/include/magic/learning.h": "f630a942f277a1c2ee4d47f0087121f71647e87f955c36e80e1b1d54bdff30af",
+    "projects/magic/include/magic/reference-host.h": "885d421cb4fd81f3750287caa2fb2fb7a813576665bdeaeda1c52d9b0083f480",
+    "projects/magic/src/annular-demo.cpp": "b2affd00dea9206a81c474b5dfa337cc08f3ecfb4b0bc5ceb403c9ded4171008",
+    "projects/magic/src/compiler.cpp": "9027115231eafe4b24ed392e7d22bbc9f4cfd6ebfa7e00ea19223fa9199b7a45",
+    "projects/magic/src/engraving-demo.cpp": "ea8a5053e370eb6ed375f1c7fbc8b763f2449ec7caaae24736210279fde08a1a",
+    "projects/magic/src/interruption-demo.cpp": "fb517824f3d0206ea3e8b03723baf9574b84559b00f8ec9e4fa321ebb65d03af",
+    "projects/magic/src/learning-demo.cpp": "1d061ae0134ee695f27c16d79aca2a47e5e38ddf9f0c0179fb5f68ca13a1a3a1",
+    "projects/magic/src/learning.cpp": "8415d71fa535a6d9adbe7f7756b8759b4d5c0576993e6d9cb6382947d548e993",
+    "projects/magic/src/lifecycle-demo.cpp": "8ba2f312920c54670d95fa8c82fa9f1a7283facf8c25f3019055aa3efc65a2b6",
+    "projects/magic/src/lifecycle.cpp": "6269bc7db93960faa7359d443e39a58b13083a9e87699979b7919fcf90f6b1c1",
+    "projects/magic/src/main.cpp": "f1581fcff055351ceefdc3429ef2e25d1290826a59150fbf81866f594f90061d",
+    "projects/magic/src/material-demo.cpp": "79b9650fc2597b270e5bbd4bd9aabdeb9a65a1b9c6553c06535f0e548763e0c9",
+    "projects/magic/src/mechanics-demo.cpp": "c68b8afe6af88a3574f48f44aad40b32ac4e57698d8374390e10ddd9b1008b51",
+    "projects/magic/src/mechanics.cpp": "7083cadc4d21bf3a0e6093adaa6d7545e25d59d6ad309700f5f07693e4defae9",
+    "projects/magic/src/perception-demo.cpp": "376b5980fa826ce5689cebac0bb68c9977df013de09f68750f54139c626d23b3",
+    "projects/magic/src/reference-demo.cpp": "5cd172e36c92d6d07f13e9aac8ec003480ce9f5f9807472ac55c3f2d369b51f0",
+    "projects/magic/src/reference-host.cpp": "0f331cdd5c2fa9a129c57ee3de4a3d01db2494c9fad39f04abc503986dcfc2f0",
+    "projects/magic/src/reference-meter.h": "3f7c590e93f054a350bf019809f632fd2ba8804b0e0c78fd771dd3b26f18e3cb",
+    "projects/magic/tests/annular.cpp": "a0b419e9731c96ea17b0adbb28329f01dd0805cad9bbf22975163c573b603205",
+    "projects/magic/tests/caller.cpp": "d9c9724b42d1e30fc2fd9d0a11598ef652e61ec279946ef442c2dd789f592ee2",
+    "projects/magic/tests/cli.py": "df6c0aa533e5cb5a280c04002d28a812a3c8edae15c69ad97ee9e4228a94f679",
+    "projects/magic/tests/compiler.cpp": "fc9dac70b1a186eb731df6e70584fd983d648f53fbd07495bcf9e6eed13ba2a7",
+    "projects/magic/tests/engraving.cpp": "558a83c24f9f80163418d5239c33889ff7943f217f097a83fa58c52147d31d66",
+    "projects/magic/tests/interruption.cpp": "941b0d2d392188108547a85dca4b934e64e35ae9d3e78c613fcb6858ae8cd75e",
+    "projects/magic/tests/learning.cpp": "f8cd06dec637d181812844b572452bbb5f63c2a3c9e6179e3c80f42a3505deb3",
+    "projects/magic/tests/lifecycle.cpp": "d43eb1bb40871cc075a824f69a1b9a183ad1645189395acf1ee0d1e8623e3bf0",
+    "projects/magic/tests/mechanics.cpp": "5274a6ed8ada1aa9b0317aec4568ba5d756bbbef8420626e44cbd2ee7b5f0a68",
+    "projects/magic/tests/perception.cpp": "3e85d2db228ad199fcfed9645cdb3399c51909e90f7f08bc8c683d46aecb3664",
+    "projects/magic/tests/reference-host.cpp": "0e08be163f72734ef8b017ec44833babc50563edff60d512b7c762293f0fd6b0"
+  },
+  "implementation_checkpoints_before_final": [
+    "c02be2e",
+    "37aea30"
+  ],
+  "limitations": [
+    "Private trusted native-owner fixture, not network authentication/security or public Engine/AI/physics/graphics integration; owner admission/binding is trusted.",
+    "Animation creates one registered20hp actor at the remains centre with caster ownership and50mm release contact. Owner loss/death leaves it inert until absolute expiry; no resurrection, inventory/soul transfer, automatic remains or refund.",
+    "Animation, Dispel and Interrupt are standalone immediate spoken operations; new delayed/mixed/engraved forms refuse. Dispel covers only exact Disguise and Attack restriction, without range/occlusion; Slow/Ward/all-family dispelling is unsupported.",
+    "Checkpoints are distinct owned current-runtime in-memory continuations with exact catalog/limits and fresh authority. Whole-world rewind intentionally restores prior logical claims/paid work in a new timeline; no disk/process/crash durability, cross-version ABI migration or external exactly-once claim.",
+    "New mutable storage uses fixed inline arrays and shared immutable plan owners. Existing cold strings/control blocks/outcomes use the standalone allocation model, not an Engine allocator migration. Logical work/storage is not heap/RSS/CPU; caller-retained outputs/checkpoints have caller-owned lifetime.",
+    "GNU16.2.1/Linux C++23 Debug ASan+UBSan only, command-local detect_leaks=0 tracing accommodation preserved; no leak/platform/allocator-failure/fault-injection campaign.",
+    "No human fun/learning, balance, D&D edition, broad combat/sensory or production persistence acceptance."
+  ],
+  "next_action": "Remain idle for coordinator source/log review of the three M8 checkpoints and this receipt. Exact Slow provenance/removal is a concrete unselected next proof; no automatic follow-on work."
+}

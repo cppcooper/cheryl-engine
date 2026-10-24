@@ -436,11 +436,11 @@ namespace Magic::Reference {
         if (meaning.entry.kind != EntryKind::Spoken || meaning.entry.mode != CastingMode::Release ||
             meaning.entry.trigger != Trigger::None || meaning.entry.charges != 0)
             meter.fail(Error::UnsupportedEntry);
-        if (meaning.delivery == Delivery::Remains || meaning.delivery == Delivery::Influence) {
+        if (meaning.delivery == Delivery::Remains || meaning.delivery == Delivery::Influence || meaning.delivery == Delivery::Pending) {
             validate_lifecycle(plan, request, state, meter, paying);
             return;
         }
-        if (request.remains || !request.influence.empty())
+        if (request.remains || !request.influence.empty() || !request.pending.empty())
             meter.fail(Error::UnsupportedBinding);
         if (meaning.delivery != Delivery::Contact && meaning.delivery != Delivery::Burst && meaning.delivery != Delivery::Subject)
             meter.fail(Error::UnsupportedDelivery);
@@ -529,7 +529,8 @@ namespace Magic::Reference {
             if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict ||
                  effect.primitive == Primitive::Relocate || effect.primitive == Primitive::Shatter ||
                  effect.primitive == Primitive::Transmute || effect.primitive == Primitive::Create ||
-                 effect.primitive == Primitive::Animate || effect.primitive == Primitive::Dispel) &&
+                 effect.primitive == Primitive::Animate || effect.primitive == Primitive::Dispel ||
+                 effect.primitive == Primitive::Interrupt) &&
                 meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
             bool supported = false;
@@ -541,7 +542,10 @@ namespace Magic::Reference {
                     const auto bound = static_cast<std::int32_t>(schema.max_coordinate_mm);
                     return point.x >= -bound && point.x <= bound && point.y >= -bound && point.y <= bound;
                 };
-                if (auto animation = std::get_if<Animation>(&effect.payload)) {
+                if (std::holds_alternative<Interruption>(effect.payload)) {
+                    supported = effect.primitive == Primitive::Interrupt && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                meaning.delivery == Delivery::Pending;
+                } else if (auto animation = std::get_if<Animation>(&effect.payload)) {
                     supported = effect.primitive == Primitive::Animate && effect.quantity == 0 && effect.duration_ticks == 0 &&
                                 animation->duration_ticks > 0 && animation->duration_ticks <= schema.max_duration_ticks &&
                                 meaning.delivery == Delivery::Remains;
@@ -784,7 +788,8 @@ namespace Magic::Reference {
             const auto due = later(state_.world.tick, plan->meaning().onset_ticks, limits_);
             if (plan->meaning().onset_ticks == 0) {
                 auto scratch = state_;
-                if (plan->meaning().delivery == Delivery::Remains || plan->meaning().delivery == Delivery::Influence)
+                if (plan->meaning().delivery == Delivery::Remains || plan->meaning().delivery == Delivery::Influence ||
+                    plan->meaning().delivery == Delivery::Pending)
                     lifecycle(plan, request, scratch, meter);
                 else
                     apply(plan, request.contact, request.aim, request.subject, scratch, meter);
@@ -867,13 +872,21 @@ namespace Magic::Reference {
                                             input.request.subject};
                 next.plans[slot] = input.plan;
                 kind = EventKind::Queued;
-            } else if (input.plan->meaning().delivery == Delivery::Remains || input.plan->meaning().delivery == Delivery::Influence)
+            } else if (
+                input.plan->meaning().delivery == Delivery::Remains || input.plan->meaning().delivery == Delivery::Influence ||
+                input.plan->meaning().delivery == Delivery::Pending
+            )
                 lifecycle(input.plan, input.request, next, meter);
             else
                 apply(input.plan, input.request.contact, input.request.aim, input.request.subject, next, meter);
             next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
             next.world.actions_issued = id;
+            const bool interrupt = input.plan->meaning().delivery == Delivery::Pending;
+            if (interrupt)
+                meter.spend(); // owned exact interrupted-action result
             Observation observation{state_.world, next.world, {}, 1, meter.usage};
+            if (interrupt)
+                observation.interrupted_action = input.request.pending.action_;
             observation.events[0] = {kind, id, next.world.tick};
             auto result = adopt(std::move(next), std::move(observation));
             prepared_.reset();
@@ -1347,7 +1360,7 @@ namespace Magic::Reference {
             if (!checkpoint.data_)
                 meter.fail(Error::InvalidCheckpoint);
             const auto& data = *checkpoint.data_;
-            // Catalog is bounded (thirteen keys, at most64 bytes each); charge identity comparison before copying.
+            // Catalog is bounded (fourteen keys, at most64 bytes each); charge identity comparison before copying.
             meter.spend(220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0));
             if (data.limits != limits_ || !same_catalog(data.catalog, catalog_))
                 meter.fail(Error::IncompatibleCheckpoint);

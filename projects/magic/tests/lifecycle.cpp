@@ -169,7 +169,7 @@ int main() {
         c.operations.push_back(c.operations.back());
         refuses(R::ReferenceHost::create(c), R::Error::InvalidCatalog);
         c = game();
-        c.operations.back().primitive = static_cast<Primitive>(13);
+        c.operations.back().primitive = static_cast<Primitive>(14);
         refuses(R::ReferenceHost::create(c), R::Error::InvalidCatalog);
         check(!compile(animate(), c));
     });
@@ -900,6 +900,59 @@ int main() {
         take(host->advance_to(200));
         check(
             !host->snapshot().actors[servant.slot].present && take(host->life()).remains[0].spent && original.servants[0].actor == servant
+        );
+    });
+    test("prepared animation rechecks current permission without consuming authority", [] {
+        Fixture f;
+        auto p = plan(animate());
+        auto ticket = take(f.host->prepare(p, f.animation()));
+        auto caster = f.host->snapshot().actors[0].data;
+        caster.can_cast = false;
+        ok(f.host->update_actor(f.caster, caster));
+        f.unchanged([&] { refuses(f.host->release(ticket), R::Error::Permission); });
+        ok(f.host->discard(ticket));
+        caster.can_cast = true;
+        ok(f.host->update_actor(f.caster, caster));
+        f.spawn();
+    });
+    test("prepared animation rechecks replaced remains and preserves fresh claim", [] {
+        Fixture f;
+        auto ticket = take(f.host->prepare(plan(animate()), f.animation()));
+        ok(f.host->remove_remains(f.remains));
+        auto fresh = take(f.host->add_remains({10, 0}));
+        f.unchanged([&] { refuses(f.host->release(ticket), R::Error::MissingRemains); });
+        ok(f.host->discard(ticket));
+        f.remains = fresh;
+        f.spawn();
+        check(take(f.host->life()).remains[0].id == R::RemainsId{0, 2});
+    });
+    test("prepared exact dispel rechecks expiry and cannot remove a later instance", [] {
+        Fixture f;
+        auto ref = f.restrict_actor(f.target);
+        auto ticket = take(f.host->prepare(plan(dispel()), {f.caster, {}, {}, {}, {}, ref}));
+        take(f.host->advance_to(300));
+        f.unchanged([&] { refuses(f.host->release(ticket), R::Error::MissingInfluence); });
+        ok(f.host->discard(ticket));
+        auto later = f.restrict_actor(f.target);
+        f.unchanged([&] { refuses(f.host->prepare(plan(dispel()), {f.caster, {}, {}, {}, {}, ref}), R::Error::MissingInfluence); });
+        f.cast(plan(dispel()), {f.caster, {}, {}, {}, {}, later});
+        check(f.host->snapshot().actors[0].data.mana == 70);
+    });
+    test("incompatible restore preserves current servant command and prior checkpoint", [] {
+        Fixture source;
+        source.spawn();
+        auto cp = take(source.host->checkpoint());
+        R::HostLimits l;
+        l.servants = 3;
+        Fixture destination(l);
+        auto servant = destination.spawn();
+        auto command = take(destination.host->command_authority(destination.caster, servant));
+        destination.unchanged([&] { refuses(destination.host->restore(cp), R::Error::IncompatibleCheckpoint); });
+        check(take(destination.host->command_attack(command, destination.target))->damage.health_lost == 3);
+        auto restore = take(R::ReferenceHost::create(game()));
+        ok(restore->restore(cp));
+        check(
+            restore->snapshot().actors[source.target.slot].data.health == 50 && take(restore->life()).servants[0].actor == R::ActorId{2, 1}
         );
     });
     std::cout << passed << " lifecycle cases passed; " << failed << " failed\n";

@@ -1,0 +1,764 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --show-only=json-v1 -j1
+{
+  "backtraceGraph" : 
+  {
+    "commands" : 
+    [
+      "add_test"
+    ],
+    "files" : 
+    [
+      "/mnt/projects/cheryl-features/projects/magic/projects/magic/CMakeLists.txt"
+    ],
+    "nodes" : 
+    [
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 24,
+        "parent" : 0
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 25,
+        "parent" : 2
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 4
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 6
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 8
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 10
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 12
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 28,
+        "parent" : 14
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 31,
+        "parent" : 16
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 48,
+        "parent" : 18
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 49,
+        "parent" : 20
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 58,
+        "parent" : 22
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 59,
+        "parent" : 24
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 72,
+        "parent" : 26
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 73,
+        "parent" : 28
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 83,
+        "parent" : 30
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 84,
+        "parent" : 32
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 95,
+        "parent" : 34
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 96,
+        "parent" : 36
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 104,
+        "parent" : 38
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 105,
+        "parent" : 40
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 110,
+        "parent" : 42
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 116,
+        "parent" : 44
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 121,
+        "parent" : 46
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 129,
+        "parent" : 48
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 130,
+        "parent" : 50
+      }
+    ]
+  },
+  "kind" : "ctestInfo",
+  "tests" : 
+  [
+    {
+      "backtrace" : 1,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_checks"
+      ],
+      "name" : "magic_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 3,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_caller_checks"
+      ],
+      "name" : "magic_callers",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 5,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S1.verse"
+      ],
+      "name" : "magic_inspect_S1",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 7,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S2.verse"
+      ],
+      "name" : "magic_inspect_S2",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 9,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S3.verse"
+      ],
+      "name" : "magic_inspect_S3",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 11,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S4.verse"
+      ],
+      "name" : "magic_inspect_S4",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 13,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/S5.verse"
+      ],
+      "name" : "magic_inspect_S5",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 15,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures/mixed-schools.verse"
+      ],
+      "name" : "magic_inspect_mixed-schools",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 10.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 17,
+      "command" : 
+      [
+        "/usr/bin/python3.14",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/cli.py",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_inspect",
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/fixtures"
+      ],
+      "name" : "magic_cli",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 19,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_host_checks"
+      ],
+      "name" : "magic_host_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 21,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_reference_demo"
+      ],
+      "name" : "magic_reference_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 23,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_checks"
+      ],
+      "name" : "magic_engraving_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 25,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_demo"
+      ],
+      "name" : "magic_engraving_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 27,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_learning_checks"
+      ],
+      "name" : "magic_learning_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 29,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_learning_demo"
+      ],
+      "name" : "magic_learning_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 31,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_annular_checks"
+      ],
+      "name" : "magic_annular_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 33,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_annular_demo"
+      ],
+      "name" : "magic_annular_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 35,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_perception_checks"
+      ],
+      "name" : "magic_perception_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 37,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_perception_demo"
+      ],
+      "name" : "magic_perception_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 39,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_checks"
+      ],
+      "name" : "magic_mechanics_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 41,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_demo"
+      ],
+      "name" : "magic_mechanics_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 43,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_material_demo"
+      ],
+      "name" : "magic_material_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 45,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_lifecycle_checks"
+      ],
+      "name" : "magic_lifecycle_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 47,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_lifecycle_demo"
+      ],
+      "name" : "magic_lifecycle_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 49,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_interruption_checks"
+      ],
+      "name" : "magic_interruption_contracts",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 51,
+      "command" : 
+      [
+        "/mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_interruption_demo"
+      ],
+      "name" : "magic_interruption_caller",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/mnt/projects/cheryl-features/projects/magic/projects/magic/build"
+        }
+      ]
+    }
+  ],
+  "version" : 
+  {
+    "major" : 1,
+    "minor" : 0
+  }
+}
+exit_status=0

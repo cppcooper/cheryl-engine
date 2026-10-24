@@ -8,7 +8,10 @@
       "proposed_caller": "Compile animate bound remains for 2000 ms owned by caster; release pays10, marks remains spent and inserts servant hp20 at remains position; owner-bound command attacks3dp, respects restriction/ward; restore and expire exact generation.",
       "bounds": "4 remains,4 servants,16 shared actors; downward limits, absolute expiry; owner loss leaves inert servant until expiry",
       "support": "typed captured remains role, fixed inline records/retained plans, opaque incarnation-bound command, checkpoints",
-      "rough_effort_minutes": 20
+      "rough_effort_minutes": 20,
+      "status": "checked",
+      "evidence": "feature-development/magic/logs/M8/accumulated-01.log",
+      "actual_caller": "M4 book revisions1/2 and failed draft; cast retained revision1, checkpoint/destroy/restore, servant command obeys restriction/ward and expiry; combined old rune/perception/annulus continues."
     },
     {
       "id": "M8-DISPEL",
@@ -16,7 +19,10 @@
       "proposed_caller": "Book accepts dispel bound attack-restriction; release10 removes exact current restriction, enabling servant attack. Also dispel exact disguise retaining truth and historical witness. Restore revokes refs; bind fresh afterward.",
       "bounds": "closed Disguise/AttackRestriction kinds, standalone immediate spoken only; no new registry",
       "support": "typed influence binding/payload; opaque incarnation/domain/instance/generation reference; same normal prepare/release",
-      "rough_effort_minutes": 18
+      "rough_effort_minutes": 18,
+      "status": "checked",
+      "evidence": "feature-development/magic/logs/M8/accumulated-01.log",
+      "actual_caller": "Ordinary compiled Common dispels exact restriction and disguise with normal live payment, enabling servant injury and changing unrevealed observer perception while truth/witnesses remain."
     }
   ],
   "stretch": [
@@ -26,9 +32,17 @@
       "reason": "Both cores and ordinary connected continuation checked in connected-01.log (48 cases+caller); about18 minutes elapsed, sufficient bounded time remains.",
       "proposed_caller": "Queue a paid fire burst due100, bind opaque exact pending action, checkpoint/destroy/restore, reject old ref, freshly bind and cast Interrupt paying10; at100 no injury occurs and prior paid release observation remains unchanged.",
       "bounds": "Immediate standalone spoken; exact incarnation/action/caster-generation role; reuses8 pending slots, no new mutable registry; no refund.",
-      "rough_effort_minutes": 10
+      "rough_effort_minutes": 10,
+      "status": "checked",
+      "evidence": "feature-development/magic/logs/M8/accumulated-01.log"
     }
   ],
   "allocation": "New mutable records and staging use inline fixed arrays; immutable plan handles reuse existing owners. Existing cold strings/control blocks remain standalone standard allocation; no Engine migration claim.",
-  "confidence": "High in bounded ownership/lifecycle; medium in narrow private grammar/API spelling."
+  "confidence": "High in bounded ownership/lifecycle; medium in narrow private grammar/API spelling.",
+  "selection_history": [
+    "Before dependent APIs: two cores selected; optional interruption deferred.",
+    "After connected-01 passes both cores/48 cases+caller: optional exact pending interruption selected with a caller recorded before its APIs.",
+    "All selected work checked; no substitution or further task scheduled.",
+    "Caller book detail moves from proposed Dispel to Animation to demonstrate old duration-revision retention; both core capabilities remain unchanged."
+  ]
 }

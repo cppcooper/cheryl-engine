@@ -51,6 +51,8 @@ namespace Magic {
                     return "shatter";
                 case Primitive::Transmute:
                     return "transmute";
+                case Primitive::Interrupt:
+                    return "interrupt";
                 case Primitive::Animate:
                     return "animate";
                 case Primitive::Dispel:
@@ -62,6 +64,8 @@ namespace Magic {
         }
         std::string_view delivery_name(Delivery delivery) {
             switch (delivery) {
+                case Delivery::Pending:
+                    return "pending";
                 case Delivery::Remains:
                     return "remains";
                 case Delivery::Influence:
@@ -277,6 +281,8 @@ namespace Magic {
                 syntax.delivery = Delivery::Ray;
             else if (delivery.text == "burst")
                 syntax.delivery = Delivery::Burst;
+            else if (delivery.text == "pending")
+                syntax.delivery = Delivery::Pending;
             else if (delivery.text == "remains")
                 syntax.delivery = Delivery::Remains;
             else if (delivery.text == "influence")
@@ -286,7 +292,10 @@ namespace Magic {
             else if (delivery.text == "item-event")
                 syntax.delivery = Delivery::ItemEvent;
             else
-                fail(Code::UnsupportedCombination, delivery.span, "Supported deliveries are contact, ray, burst, item-event and subject.");
+                fail(
+                    Code::UnsupportedCombination, delivery.span,
+                    "Supported deliveries are contact, ray, burst, item-event, subject, remains, influence and pending."
+                );
             expect("after");
             syntax.onset = quantity();
             expect("{");
@@ -311,6 +320,12 @@ namespace Magic {
                         expect("at");
                         expect("activation");
                     }
+                } else if (query.text == "pending") {
+                    binding.query = Query::CapturedPending;
+                    expect("action");
+                    expect("captured");
+                    expect("at");
+                    expect("release");
                 } else if (query.text == "remains" || query.text == "influence") {
                     binding.query = query.text == "remains" ? Query::CapturedRemains : Query::CapturedInfluence;
                     expect("captured");
@@ -370,8 +385,7 @@ namespace Magic {
                         );
                 } else {
                     fail(
-                        Code::RoleMismatch, query.span,
-                        "An effect needs an actor binding: willing touched actor, eligible disk actors or willing event toucher."
+                        Code::RoleMismatch, query.span, "Declare an actor query or a captured object, remains, influence or pending action."
                     );
                 }
                 const auto end = expect(";");
@@ -403,7 +417,13 @@ namespace Magic {
                 expect("{");
                 if (effect.language.text == "Common") {
                     const auto operation = take();
-                    if (operation.text == "animate") {
+                    if (operation.text == "interrupt") {
+                        effect.primitive = Primitive::Interrupt;
+                        expect("bound");
+                        expect("pending");
+                        expect("action");
+                        expect("instant");
+                    } else if (operation.text == "animate") {
                         effect.primitive = Primitive::Animate;
                         expect("bound");
                         expect("remains");
@@ -500,13 +520,14 @@ namespace Magic {
                     } else
                         fail(
                             Code::UnknownPhrase, operation.span,
-                            "Unknown Common operation; use heal, fire damage, multiply speed by, show, discern, ward absorb, forbid attack, relocate, shatter, transmute or create."
+                            "Unknown Common operation; use heal, fire damage, multiply speed by, show, discern, ward absorb, forbid attack, relocate, shatter, transmute, create, animate, dispel or interrupt."
                         );
                     if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
                         effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict &&
                         effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter &&
                         effect.primitive != Primitive::Transmute && effect.primitive != Primitive::Create &&
-                        effect.primitive != Primitive::Animate && effect.primitive != Primitive::Dispel) {
+                        effect.primitive != Primitive::Animate && effect.primitive != Primitive::Dispel &&
+                        effect.primitive != Primitive::Interrupt) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -759,7 +780,7 @@ namespace Magic {
                 (meaning.delivery == Delivery::Burst && !catalog_.burst) ||
                 (meaning.delivery == Delivery::ItemEvent && !catalog_.item_event) ||
                 ((meaning.delivery == Delivery::Subject || meaning.delivery == Delivery::Remains ||
-                  meaning.delivery == Delivery::Influence) &&
+                  meaning.delivery == Delivery::Influence || meaning.delivery == Delivery::Pending) &&
                  !catalog_.subject) ||
                 (syntax.effects.size() > 1 && !catalog_.together))
                 fail(Code::UnsupportedCombination, {}, "The host catalog disables this entry, delivery or multi-effect bundle capability.");
@@ -786,7 +807,11 @@ namespace Magic {
                 Binding binding;
                 binding.name = copy(raw.name.text, raw.name.span);
                 binding.query = raw.query;
-                if (raw.query == Query::CapturedRemains || raw.query == Query::CapturedInfluence) {
+                if (raw.query == Query::CapturedPending) {
+                    retain(1);
+                    if (meaning.delivery != Delivery::Pending)
+                        fail(Code::RoleMismatch, raw.span, "Pending binding requires pending delivery.");
+                } else if (raw.query == Query::CapturedRemains || raw.query == Query::CapturedInfluence) {
                     retain(1);
                     if (meaning.delivery != (raw.query == Query::CapturedRemains ? Delivery::Remains : Delivery::Influence))
                         fail(Code::RoleMismatch, raw.span, "Use the matching captured remains/influence delivery.");
@@ -858,20 +883,26 @@ namespace Magic {
                     (raw.primitive == Primitive::Shatter || raw.primitive == Primitive::Transmute))
                     fail(Code::RoleMismatch, raw.span, "This operation requires its exact actor/object target role.");
                 if ((meaning.bindings[target].query == Query::CapturedRemains) != (raw.primitive == Primitive::Animate) ||
-                    (meaning.bindings[target].query == Query::CapturedInfluence) != (raw.primitive == Primitive::Dispel))
-                    fail(Code::RoleMismatch, raw.span, "Operation needs its exact bound remains/influence role.");
+                    (meaning.bindings[target].query == Query::CapturedInfluence) != (raw.primitive == Primitive::Dispel) ||
+                    (meaning.bindings[target].query == Query::CapturedPending) != (raw.primitive == Primitive::Interrupt))
+                    fail(Code::RoleMismatch, raw.span, "Operation needs its exact bound remains/influence/pending role.");
                 const auto& operation = schema(raw.primitive, raw.span);
                 Effect effect;
                 effect.primitive = raw.primitive;
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (raw.primitive == Primitive::Animate || raw.primitive == Primitive::Dispel) {
+                if (raw.primitive == Primitive::Animate || raw.primitive == Primitive::Dispel || raw.primitive == Primitive::Interrupt) {
                     if (syntax.effects.size() != 1)
-                        fail(Code::UnsupportedComposition, raw.span, "Animation/dispelling are standalone operations.");
+                        fail(Code::UnsupportedComposition, raw.span, "Animation, dispelling and interruption are standalone operations.");
                     if (meaning.entry.kind != EntryKind::Spoken || meaning.onset_ticks != 0 || meaning.bindings.size() != 1)
-                        fail(Code::UnsupportedCombination, raw.span, "Animation/dispelling require immediate standalone spoken release.");
-                    if (raw.primitive == Primitive::Animate)
+                        fail(
+                            Code::UnsupportedCombination, raw.span,
+                            "Animation, dispelling and interruption require immediate standalone spoken release."
+                        );
+                    if (raw.primitive == Primitive::Interrupt)
+                        effect.payload = Interruption{};
+                    else if (raw.primitive == Primitive::Animate)
                         effect.payload = Animation{value(raw.duration, Dimension::Time, true, operation.max_duration_ticks)};
                     else {
                         if (raw.appearance.text != "disguise" && raw.appearance.text != "attack-restriction")
@@ -978,7 +1009,8 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Animate     ? Rule::CommonAnimate
+                const auto concept_rule = raw.primitive == Primitive::Interrupt   ? Rule::CommonInterrupt
+                                          : raw.primitive == Primitive::Animate   ? Rule::CommonAnimate
                                           : raw.primitive == Primitive::Dispel    ? Rule::CommonDispel
                                           : raw.primitive == Primitive::Transmute ? Rule::CommonTransmute
                                           : raw.primitive == Primitive::Create    ? Rule::CommonCreate
@@ -1014,7 +1046,9 @@ namespace Magic {
                 append(output, "  bind ");
                 append(output, binding.name);
                 append(output, " = ");
-                if (binding.query == Query::CapturedRemains)
+                if (binding.query == Query::CapturedPending)
+                    append(output, "pending action captured at release");
+                else if (binding.query == Query::CapturedRemains)
                     append(output, "remains captured at release");
                 else if (binding.query == Query::CapturedInfluence)
                     append(output, "influence captured at release");
@@ -1046,7 +1080,9 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (auto animation = std::get_if<Animation>(&effect.payload)) {
+                if (std::holds_alternative<Interruption>(effect.payload)) {
+                    append(output, "interrupt bound pending action instant");
+                } else if (auto animation = std::get_if<Animation>(&effect.payload)) {
                     append(output, "animate bound remains for ");
                     number(output, static_cast<std::uint64_t>(animation->duration_ticks) * 10);
                     append(output, " ms owned by caster");
@@ -1246,6 +1282,8 @@ namespace Magic {
                 return "common.shatter@1";
             case Rule::CommonTransmute:
                 return "common.transmute@1";
+            case Rule::CommonInterrupt:
+                return "common.interrupt@1";
             case Rule::CommonAnimate:
                 return "common.animate@1";
             case Rule::CommonDispel:

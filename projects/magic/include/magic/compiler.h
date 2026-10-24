@@ -61,8 +61,23 @@ namespace Magic {
         WorldPoint destination;
         bool operator==(const Relocation&) const = default;
     };
-    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict, Relocate, Shatter, Transmute, Create, Animate, Dispel };
-    inline constexpr std::size_t primitive_count = 13;
+    enum class Primitive {
+        Heal,
+        Fire,
+        Slow,
+        Disguise,
+        Discern,
+        Ward,
+        Restrict,
+        Relocate,
+        Shatter,
+        Transmute,
+        Create,
+        Animate,
+        Dispel,
+        Interrupt
+    };
+    inline constexpr std::size_t primitive_count = 14;
     enum class Intent { Attack };
     struct Absorption {
         std::uint32_t capacity_dp = 0, duration_ticks = 0;
@@ -112,6 +127,9 @@ namespace Magic {
         InfluenceKind kind = InfluenceKind::Disguise;
         bool operator==(const Dispelling&) const = default;
     };
+    struct Interruption {
+        bool operator==(const Interruption&) const = default;
+    };
     using Payload = std::variant<
         std::monostate,
         VisualDisguise,
@@ -123,12 +141,13 @@ namespace Magic {
         Transmutation,
         Creation,
         Animation,
-        Dispelling>;
+        Dispelling,
+        Interruption>;
     [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
     enum class Trigger { None, ItemTouch };
-    enum class Delivery { Contact, Ray, Burst, ItemEvent, Subject, Remains, Influence };
+    enum class Delivery { Contact, Ray, Burst, ItemEvent, Subject, Remains, Influence, Pending };
     enum class Query {
         WillingTouchedActor,
         EligibleDisk,
@@ -136,7 +155,8 @@ namespace Magic {
         EligibleAnnulus,
         CapturedObject,
         CapturedRemains,
-        CapturedInfluence
+        CapturedInfluence,
+        CapturedPending
     };
     enum class BindingTime { Release, Activation };
 
@@ -210,13 +230,14 @@ namespace Magic {
         CommonTransmute,
         CommonCreate,
         CommonAnimate,
-        CommonDispel
+        CommonDispel,
+        CommonInterrupt
     };
     using RuleMask = std::uint32_t;
-    inline constexpr RuleMask all_rules = 524287;
+    inline constexpr RuleMask all_rules = 1048575;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 19 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 20 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {

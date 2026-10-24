@@ -177,6 +177,15 @@ namespace Magic::Reference {
         InfluenceRef() = default;
         [[nodiscard]] bool empty() const noexcept { return !owner_; }
     };
+    class PendingRef {
+        std::shared_ptr<const void> owner_;
+        std::uint64_t action_ = 0;
+        ActorId caster_;
+        friend class ReferenceHost;
+    public:
+        PendingRef() = default;
+        [[nodiscard]] bool empty() const noexcept { return !owner_; }
+    };
     class ServantCommand {
         std::shared_ptr<const void> incarnation_;
         ActorId owner_, servant_;
@@ -192,6 +201,7 @@ namespace Magic::Reference {
         std::optional<ObjectId> subject = {};
         std::optional<RemainsId> remains = {};
         InfluenceRef influence = {};
+        PendingRef pending = {};
     };
     struct HostLimits {
         // Only tighten these ceilings, including zero; metrics bound operations rather than CPU cycles/RSS.
@@ -377,6 +387,7 @@ namespace Magic::Reference {
         std::array<Event, pending_capacity> events;
         std::size_t event_count = 0;
         Usage usage;
+        std::optional<std::uint64_t> interrupted_action = {}; // Owned report only; never operational authority.
     };
     using Observed = std::shared_ptr<const Observation>;
     using StepResult = std::expected<Observed, Failure>;
@@ -513,9 +524,12 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<RemainsId, Failure> add_remains(Point position);
         [[nodiscard]] std::expected<void, Failure> remove_remains(RemainsId remains);
         [[nodiscard]] std::expected<LifeSnapshot, Failure> life() const;
+        // Trusted fixture owner issues reusable control of these exact living generations.
         [[nodiscard]] std::expected<ServantCommand, Failure> command_authority(ActorId owner, ActorId servant) const;
         [[nodiscard]] std::expected<AttackObserved, Failure> command_attack(const ServantCommand& command, ActorId target);
         [[nodiscard]] std::expected<void, Failure> dismiss_servant(const ServantCommand& command);
+        // Binding inspects current records; it never grants spell-release authority.
+        [[nodiscard]] std::expected<PendingRef, Failure> bind_pending(std::uint64_t action) const;
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_disguise(std::uint64_t instance, ObjectId subject) const;
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_restriction(std::uint64_t instance, ActorId actor) const;
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }

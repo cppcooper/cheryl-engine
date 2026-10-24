@@ -109,17 +109,17 @@ is added; final worker state is idle for coordinator review.
 | ID | Choice, reason, tradeoff and confidence |
 | --- | --- |
 | M8-035 | Register four generation-bound available/spent remains and four temporary servants in inline arrays. Immediate standalone spoken Animation claims, pays10, creates a fresh20hp actor and retains the actual plan in one adoption. Owner-issued incarnation-bound commands use the existing3dp/contact50 attack resolver, including wards/restrictions. Owner loss leaves an inert servant until absolute expiry; no refund/unspend/corpse generation. High confidence in checked lifecycle; medium in reversible fixture rules. |
-| M8-036 | Add exact standalone spoken Dispelling for Disguise and Attack restriction. A trusted owner binds a closed kind/instance/target-generation/incarnation input, then ordinary live casting authority/schema/payment is still required. Removal changes only that contribution; damage, payment and dated witnesses remain. Default/foreign/stale/wrong-kind/repeated references refuse. Slow and pending interruption remain unsupported. High confidence in authority separation, medium in private grammar spelling. |
+| M8-036 | Add exact standalone spoken Dispelling for Disguise and Attack restriction. A trusted owner binds a closed kind/instance/target-generation/incarnation input, then ordinary live casting authority/schema/payment is still required. Removal changes only that contribution; damage, payment and dated witnesses remain. Default/foreign/stale/wrong-kind/repeated references refuse. Slow dispelling remains unsupported; optional pending interruption has a separate checked path (M8-038). High confidence in authority separation, medium in private grammar spelling. |
 | M8-037 | Retain actual servant plans/claims/owners/lifetimes in the distinct checkpoint; restore revokes command/influence references as well as tickets/events. Fixed inline state adds12 copy units,4 expiry scans and8 empty continuation checks; existing quotas stay fixed. No data-heavy heap registry or Engine allocator migration is introduced. High confidence in bounded current-runtime ownership; no RSS/CPU, fault-injection or durability claim. |
 
-M8 checkpoint1 executes32 focused lifecycle cases (1/1 CTest entry). The connected
-ordinary caller, extended continuation checks and accumulated regression campaign
-remain in progress; no ready receipt is asserted here. Initial native build/test
-failures are preserved under magic/logs/M8.
+| M8-038 | Add one typed immediate standalone pending-action interruption after both cores pass. Opaque incarnation/action/caster-generation binding is inspected separately from live spell authority. Release stages10mana, exact queue removal and an owned interrupted-action report; prior payment, injury/history and other entries remain. No new registry, refunds or general counterspell. High confidence in checked authority/continuation; medium in private role spelling. |
 
-
-M8 connected continuation now passes48 cases plus one ordinary caller (2/2 focused
-entries). M8-037 additionally meters the owned life projection at300/299 work and
-shares one meter for command+attack (326/325 minimal fixture). Both cores are
-checked. The optional exact pending-interruption slice is selected next in the
-owned M8 plan; accumulated regressions/final receipt remain pending.
+M8 completes both cores and the selected optional stretch. One accumulated26/26
+campaign retains all22 predecessor names and248 cases, adding52 lifecycle and16
+interruption cases (316 total); two new ordinary callers remain separate. The
+three substantive local checkpoints preserve all prior receipts and initial
+failure logs. Fixed inline state and owned current-runtime continuation remain
+private prototype evidence. No human fun, Engine/physics/AI/graphics, security,
+leak/platform/fault-injection or durable-save acceptance is claimed. Idle handoff
+is coordinator source/log review, with exact Slow provenance an unselected next
+proof. See the standalone receipt and detailed notes for commands/costs/gaps.

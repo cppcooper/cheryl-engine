@@ -1,0 +1,48 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  2%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[  4%] Linking CXX static library libmagic_compiler.a
+[  4%] Built target magic_compiler
+[  6%] Linking CXX executable magic_inspect
+[  8%] Built target magic_inspect
+[ 10%] Linking CXX executable magic_checks
+[ 12%] Built target magic_checks
+[ 14%] Linking CXX executable magic_caller_checks
+[ 16%] Built target magic_caller_checks
+[ 25%] Built target magic_reference_host
+[ 27%] Linking CXX executable magic_host_checks
+[ 29%] Built target magic_host_checks
+[ 31%] Linking CXX executable magic_reference_demo
+[ 33%] Built target magic_reference_demo
+[ 35%] Linking CXX executable magic_engraving_checks
+[ 37%] Built target magic_engraving_checks
+[ 39%] Linking CXX executable magic_engraving_demo
+[ 41%] Built target magic_engraving_demo
+[ 45%] Built target magic_learning
+[ 47%] Linking CXX executable magic_learning_checks
+[ 50%] Built target magic_learning_checks
+[ 52%] Linking CXX executable magic_learning_demo
+[ 54%] Built target magic_learning_demo
+[ 56%] Linking CXX executable magic_annular_checks
+[ 58%] Built target magic_annular_checks
+[ 60%] Linking CXX executable magic_annular_demo
+[ 62%] Built target magic_annular_demo
+[ 64%] Linking CXX executable magic_perception_checks
+[ 66%] Built target magic_perception_checks
+[ 68%] Linking CXX executable magic_perception_demo
+[ 70%] Built target magic_perception_demo
+[ 72%] Linking CXX executable magic_mechanics_checks
+[ 75%] Built target magic_mechanics_checks
+[ 77%] Linking CXX executable magic_mechanics_demo
+[ 79%] Built target magic_mechanics_demo
+[ 81%] Linking CXX executable magic_material_demo
+[ 83%] Built target magic_material_demo
+[ 85%] Linking CXX executable magic_lifecycle_checks
+[ 87%] Built target magic_lifecycle_checks
+[ 89%] Linking CXX executable magic_lifecycle_demo
+[ 91%] Built target magic_lifecycle_demo
+[ 93%] Linking CXX executable magic_interruption_checks
+[ 95%] Built target magic_interruption_checks
+[ 97%] Linking CXX executable magic_interruption_demo
+[100%] Built target magic_interruption_demo
+
+exit_status=0

@@ -1,0 +1,104 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build -R '^magic_(lifecycle|interruption)_contracts$' --output-on-failure -V -j1
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 23
+    Start 23: magic_lifecycle_contracts
+
+23: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_lifecycle_checks
+23: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+23: Test timeout computed to be: 30
+23: PASS literal typed animation and exact Common roundtrip
+23: PASS literal two typed dispel kinds and exact Common
+23: PASS duration independent edit and owned diagnostic
+23: PASS negative inexact zero huge and wrong duration refuse
+23: PASS wrong roles unknown kinds delayed bundles engraved refuse
+23: PASS finite thirteen operation catalog validates duplicate and unknown
+23: PASS pure preview then atomic paid spawn exact literal state
+23: PASS exact resources and one-short preserves claim then valid action
+23: PASS normal tickets default foreign repeated and stale refuse
+23: PASS live permission symbolic key primitive duration and coordinate caps
+23: PASS actor capacity failure leaves remains resources and later spawn
+23: PASS remains capacity zero exact one generation removal and reuse
+23: PASS remains and actor generation horizons refuse without wrapping
+23: PASS servant downward zero and one record exhaustion
+23: PASS instance zero and exhausted one preserve spent and new claims
+23: PASS invalid placement contact and opaque object block atomic claim
+23: PASS time exact and one-short duration horizons
+23: PASS owner-bound command attacks actual health through ward
+23: PASS default foreign wrong owner and departed replacement owners refuse
+23: PASS owner health loss inert and servant death no automatic remains
+23: PASS dismiss remove reuse and old absolute cleanup protect replacements
+23: PASS active remains cannot be silently removed or reclaimed
+23: PASS exact dispel enables previously forbidden real servant attack
+23: PASS dispel default foreign wrong-kind expired refs preserve world
+23: PASS old ref cannot retarget new restriction or replaced actor
+23: PASS dispel current permission key primitive exact cost and no second debit
+23: PASS selective disguise dispel preserves facts witnesses other instance
+23: PASS checkpoint owns active servant spent claim and influence after owner destruction
+23: PASS checkpoint schema refusal preserves destination and usable old output
+23: PASS book knowledge edit revisions and failed draft grant no authority
+23: PASS exact selector and selected-target boundaries
+23: MEASURE animate release work=442
+23: PASS exact measured release work and one-short preserve ticket
+23: PASS four exact remains and servants retain distinct claims and generations
+23: PASS sixteen actor exact capacity then one-short claim is preserved
+23: PASS owned life projection exact300 work and one-short299
+23: PASS complete command exact326 work and one-short325 with actual wardless injury
+23: PASS dispel exact1148 work and one-short1147 preserves instance payment
+23: PASS new host ceilings reject upward knobs and support downward zero
+23: PASS action ticket revision exhaustion preserves claims and unrelated valid actions
+23: PASS new compiler source token storage work exact and one-short
+23: PASS retained plan runtime bytes exact and one-short refusal
+23: PASS extraneous actor aim object remains and influence roles refuse
+23: PASS dispel live primitive mismatch permission and subject capability refuse
+23: PASS new unsupported combinations retain precise old capability boundaries
+23: PASS disguise exact ref cannot target reused object or later instance
+23: PASS disguise removal visibly changes unrevealed observer and retains dated knowledge
+23: PASS late failed advance rolls back servant cleanup slow expiry and paid queue
+23: PASS checkpoint with departed owner restores inert servant and absolute expiry
+23: PASS prepared animation rechecks current permission without consuming authority
+23: PASS prepared animation rechecks replaced remains and preserves fresh claim
+23: PASS prepared exact dispel rechecks expiry and cannot remove a later instance
+23: PASS incompatible restore preserves current servant command and prior checkpoint
+23: 52 lifecycle cases passed; 0 failed
+1/2 Test #23: magic_lifecycle_contracts ........   Passed    0.04 sec
+test 25
+    Start 25: magic_interruption_contracts
+
+25: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_interruption_checks
+25: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+25: Test timeout computed to be: 30
+25: PASS literal typed pending role and exact Common requirement roundtrip
+25: PASS authorized interrupt removes exactly paid pending action with owned result
+25: PASS default foreign missing and repeated refs grant no second debit
+25: PASS completed and administrative cancelled refs cannot retarget replacement slot
+25: PASS schema key primitive subject and live permission refuse before payment
+25: PASS exact remaining mana10 and one-short9 preserve prior paid queue
+25: PASS release exact340 work one-short339 preserves usable ticket and queue
+25: PASS exact selected target1 and zero refuse without lost queue
+25: PASS eight admitted queue entries remove one exact slot preserve other seven
+25: PASS restore revokes refs tickets retains owned plan and intentional timeline rewind
+25: PASS interruption can explicitly unblock a failed paid activation
+25: PASS generation-bound former caster cannot alias a newer action
+25: PASS new pending form refuses delay engraving mixed or extraneous roles
+25: PASS book recognition knowledge and accepted plan still need live authority
+25: PASS fourteen registered typed operations exact catalog ceiling
+25: PASS prepared interruption live schema and pending completion preserve payment
+25: 16 interruption cases passed; 0 failed
+2/2 Test #25: magic_interruption_contracts .....   Passed    0.02 sec
+
+The following tests passed:
+	magic_lifecycle_contracts
+	magic_interruption_contracts
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.06 sec
+
+exit_status=0

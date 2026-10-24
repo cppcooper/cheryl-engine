@@ -1,0 +1,9 @@
+STATIC REVIEW (no native project execution)
+Exact M7 base/ready receipt: predecessor-review.json,12 committed hashes and20 complete predecessor logs verified.
+All7 earlier milestone receipts byte-identical to M7 base; no older log or provenance archive changed.
+All248 predecessor contract names retain exact original order; all22 predecessor CTest names retained.
+Final native discovery/campaign:26 unique entries,26 pass;316 cases=248 retained+52 lifecycle+16 interruption; two new ordinary callers separate.
+20 complete native logs:16 exit0, build-02 exit2, core-01/core-02/stretch-01 exit8, all initial failures preserved.
+37 final source/fixture hashes checked after campaign; source unchanged since hashing.
+Only standalone magic code/tests and clone-local development records edited; no Engine/public runtime/dependency or sibling/ref changes.
+GNU16.2.1 C++23 Debug ASan+UBSan, one job, wrapper and command-local leak accommodation retained.

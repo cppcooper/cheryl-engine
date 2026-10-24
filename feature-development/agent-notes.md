@@ -1515,3 +1515,107 @@ records and introduces only a typed immediate standalone spell and opaque bound
 pending input. No new queue, callback registry, refund or arbitrary cancellation
 surface is selected. About18 minutes elapsed at selection; the remaining runner
 ceiling remains controlling. No earlier completed plan is extended.
+
+
+## MAGIC-M8 final — M8-035 / M8-036 / M8-037 / M8-038
+
+All selected work is executed: two cores plus optional M8-INTERRUPT. M8-038 reuses
+the eight existing pending records; no new queue, ledger or general registry.
+Common names a bound pending action, while opaque PendingRef owns incarnation,
+logical action and captured caster generation. Its trusted binding query grants
+no casting rights. Normal prepare/release checks current key AND primitive/schema,
+permission, resources and exact still-pending identity. It may remove an admitted
+cast whose former caster has departed, because it executes none of that payload;
+it cannot retarget a different pending action from a replacement caster/queue slot.
+Release adopts payment10, exact removal/plan release and owned interrupted_action
+report together. Late work refusal preserves the already paid queue, counters,
+resources and usable ticket. Prior costs, completed injury, witnesses and old
+observations are never reversed. Administrative cancel remains a separate trusted
+owner operation and is not called by the spell implementation. Default/foreign/
+completed/cancelled/repeated/restored-old refs refuse. Snapshot stays observational.
+
+A separate ordinary interruption caller checkpoints paid Fire action1 due100,
+destroys the original owner and local damage-plan handle, restores, rejects the old ref,
+binds fresh and casts interruption action2. Target stays50hp at100, caster30->20
+(old release)->10 (interrupt); old queued observation stays immutable. Intentional
+whole-world rewind is independently checked: restoring that earlier checkpoint
+revives its paid pending action only in a fresh timeline/incarnation, where it may
+activate once; no process/disk/external exactly-once guarantee is inferred.
+
+Final controlled language deliberately registers14 operations and20 rule concepts.
+New payloads are typed (Animation, Dispelling, Interruption), with no fake scalar
+fields/live pointers in source. New forms stay immediate, one effect/one binding,
+spoken only; delay/mixed/engraving and exact Slow/Ward/all-family dispels refuse.
+Existing4effect/4clause/8binding and all actor/selector/queue/book quotas remain.
+The proposed book caller detail is narrowed to Animation rather than Dispel: its
+independent duration edit proves old accepted revision/checkpoint ownership while
+Dispel executes ordinary compiled Common. This changes no selected capability.
+No personal API preference is claimed from recent agent-authored contracts.
+
+Final native evidence (all complete commands, diagnostics and immediate exits are
+in magic/logs/M8): configure-01 and builds01..11 run through the shared wrapper,
+one job; existing clone-local GNU16.2.1 C++23 Debug ASan+UBSan setup remains. Leak
+accommodation is command-local ASAN_OPTIONS=detect_leaks=0, UBSAN_OPTIONS=
+halt_on_error=1. build-02's test-only API errors, core-01/core-02's work-test setup
+failures and stretch-01's two test assumptions are preserved. stretch-01 passes
+both callers but fails2 contract entries: a new cast had superseded the ticket
+whose expiry was being checked; the tight-work interrupt case incorrectly assumes
+clock advance fits the same quota. build-10 fixes only those test sequences;
+stretch-02 passes affected2/2 (52 lifecycle+16 interruption cases). build-11 changes
+only relevant parser diagnostic wording before the final campaign. build-08/09
+check progressively added optional source, without cancellation/relaunch for lock
+queueing; the final build/campaign binds the saved final source hashes.
+
+ONE final accumulated-01 campaign passes26/26 entries, including all22 M7 names.
+Contract summaries are35 compiler +37 host +34 engraving +25 learning +25 annular
++40 perception +52 M7 mechanics +52 M8 lifecycle +16 interruption =316. All248
+predecessor case names retain their exact order. New ordinary callers2 are separate;
+prior callers,6 file fixtures and9 CLI scenarios remain. discovery-01 saves actual
+CTest names. There are20 native commands total:16 exit0; build-02 exit2 and
+core-01/core-02/stretch-01 exit8 remain visible. No second full campaign or unrelated
+Engine/map/platform/display suite runs. Seven older receipts and predecessor logs/
+provenance remain byte-preserved;37 final source/fixture hashes are checked after
+execution in tested-source-hashes.json/static-review.log.
+
+Exact resource evidence: State reserves292 fixed copy/slot units (prior280 +four
+remains/four servants/four plan handles); expiry adds4 due scans and4 cleanup scans;
+empty three-schema continuation adds8 checks, checkpoint632->652/one-short651.
+Owned LifeSnapshot result costs300/299. In the13-schema core fixture, animation
+preview/release442/441,20 selector visits (16 actors+4 objects),1 target. Minimal
+one-schema fourth-servant command326/325 includes current owner/servant lookups,
+record scan and shared attack resolution. A64byte dispel key/13schemas uses
+1148/1147. Three-schema interruption preview339/release340; at339 prepare succeeds
+but late result-publication debit/queue staging refuses intact, discard remains
+usable. It selects one logical action and uses fixed pending scans charged to work,
+not geometric selector units. All bounds may tighten downward; exact four remains/
+servants,16 actors, zero caps, generation/instance/time/action/ticket/revision/plan/
+source/token/storage/work limits and meaningful refusal-followed-by-valid-action
+paths execute. Fixed accounting counts bounded slot/validation/tuple-comparison
+and result groups, not individual CPU instructions or actual heap/RSS.
+
+Allocation/lifetime remains honest: only fixed inline new mutable arrays and
+bounded stack candidates are added. Retained plans share actual immutable owners;
+refs share the existing incarnation marker. New owned life projections copy eight
+inline records; they are neither restore shortcuts nor live authority. Existing
+cold strings/control blocks/owned observations/checkpoints retain standalone
+standard allocation. Allocation exceptions propagate before adoption; no Engine
+allocator migration, global new/PMR replacement, copied service or allocation-free
+claim. Caller-retained outputs/checkpoints have caller-controlled lifetimes outside
+per-host/per-call logical quotas. No allocator fault injection or leak campaign.
+
+Final receipt continuation/MAGIC-M8.json is ready/true as worker execution evidence,
+subject to coordinator source acceptance. Private trusted fixture only; no broad
+AI/combat/physics, inventory/soul/revival system, network security, GUI/human
+learning/fun/balance, D&D edition, disk/process/crash/power-loss persistence or
+cross-version migration claim. Fresh restore authority and intentional whole-world
+rewind stay distinct from durable delivery. Worker ends idle: coordinator reviews
+three coherent M8 commits/receipt/logs. A concrete unselected next proof is retained
+Slow instance/effect-index provenance before exact Slow dispelling. No next task,
+service/controller, sibling integration or publication is scheduled here.
+
+Final staged review preserves raw CTest discovery JSON whitespace as generated;
+source/record diff checks pass with raw logs excluded. Optional Interrupt occupies
+primitive13, so the new M8 core unknown-enum refusal moves13->14 while retaining
+its case name; a separate exact14-operation catalog case executes. No prior M7
+refusal is removed. Initial two implementation commits are c02be2e and37aea30;
+final tested hashes avoid a self-referential final commit SHA.

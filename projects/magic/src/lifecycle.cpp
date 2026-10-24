@@ -90,7 +90,26 @@ namespace Magic::Reference {
         if (!b.frame.empty() || b.radius_mm || b.inner_radius_mm || !b.inclusive || b.anchor_time != BindingTime::Release ||
             b.query_time != BindingTime::Release || m.effects[0].binding)
             meter.fail(Error::UnsupportedBinding);
-        if (m.delivery == Delivery::Remains) {
+        if (m.delivery == Delivery::Pending) {
+            if (m.effects[0].primitive != Primitive::Interrupt || b.query != Query::CapturedPending || request.remains ||
+                !request.influence.empty())
+                meter.fail(Error::UnsupportedBinding);
+            const auto& ref = request.pending;
+            if (!ref.owner_)
+                meter.fail(Error::InvalidCapability);
+            if (ref.owner_ != owner_)
+                meter.fail(Error::ForeignCapability);
+            meter.spend(2); // owned action/caster identity input and comparison
+            bool found = false;
+            for (const auto& p : state.world.pending) {
+                meter.spend();
+                found |= p.present && p.action == ref.action_ && p.caster == ref.caster_;
+            }
+            if (!found)
+                meter.fail(Error::MissingAction);
+        } else if (!request.pending.empty())
+            meter.fail(Error::UnsupportedBinding);
+        else if (m.delivery == Delivery::Remains) {
             if (m.effects[0].primitive != Primitive::Animate || b.query != Query::CapturedRemains || !request.remains ||
                 !request.influence.empty())
                 meter.fail(Error::UnsupportedBinding);
@@ -143,6 +162,19 @@ namespace Magic::Reference {
     }
     void ReferenceHost::lifecycle(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const {
         meter.select();
+        if (plan->meaning().delivery == Delivery::Pending) {
+            const auto& ref = request.pending;
+            for (std::size_t i = 0; i < pending_capacity; ++i) {
+                meter.spend();
+                if (state.world.pending[i].present && state.world.pending[i].action == ref.action_ &&
+                    state.world.pending[i].caster == ref.caster_) {
+                    state.world.pending[i] = {};
+                    state.plans[i].reset();
+                    return;
+                }
+            }
+            meter.fail(Error::MissingAction);
+        }
         if (plan->meaning().delivery == Delivery::Influence) {
             const auto& ref = request.influence;
             if (ref.kind_ == InfluenceKind::Disguise) {
@@ -264,6 +296,24 @@ namespace Magic::Reference {
             retire_actor(next, command.servant_, meter);
             state_ = std::move(next);
             return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<PendingRef, Failure> ReferenceHost::bind_pending(std::uint64_t action) const {
+        try {
+            Meter meter(limits_);
+            for (const auto& p : state_.world.pending) {
+                meter.spend();
+                if (p.present && action && p.action == action) {
+                    PendingRef r;
+                    r.owner_ = owner_;
+                    r.action_ = action;
+                    r.caster_ = p.caster;
+                    return r;
+                }
+            }
+            meter.fail(Error::MissingAction);
         } catch (Failure f) {
             return std::unexpected(f);
         }
