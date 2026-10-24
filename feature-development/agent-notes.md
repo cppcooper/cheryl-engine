@@ -1203,3 +1203,48 @@ Fixed logical copy rises244->260 for8 records/8 retained handles; work/selector/
 actor/pending/item/disguise/witness quotas are unchanged. This first checkpoint
 completes2/4 cores only. Continue the same assigned invocation through Relocate/
 Shatter and feasible preselected stretches; no ready M7 receipt is claimed here.
+
+## M7-032 second checked capability checkpoint
+
+All four core behaviors are now implemented and focused-checked. Relocation owns
+an exact signed WorldPoint (mm, G0, +/-1000000) in a typed payload; existing Point
+is a compatible alias. Explicit coordinates refuse px because a scalar radius
+context does not define a coordinate origin. ObjectSpec adds bounded G0 position;
+old aggregate defaults remain(0,0). Native fixture occupancy means exact actor or
+opaque physical-object centre, not collision volumes/rays/terrain/pathfinding.
+Relocation is standalone immediate spoken contact to one willing actor. It visits
+16 actor+4 object slots (plus contact1): exact21/20 selector checks. Self is excluded
+from actor occupancy; other live slots block. Passable objects allow arrival and
+intermediate blockers are not traversed. Attack restriction does not prevent the
+same actor's real relocation. Source roles/units/ranges and unselected envelopes
+refuse explicitly; no old effect implementation detects the demonstration.
+
+Shatter is actual removal of one real fixture object, not renamed damage. A new
+Query::CapturedObject and Delivery::Subject express capture at accepted release,
+recheck at activation. The source holds no live object name or pointer. Catalog
+cap7->9 and a downward-disable subject capability are explicit; live key AND
+primitive/current-form mask/subject generation are checked before debit/activation.
+The finite target matrix separately resolves an object binding with one selected
+unit; it is never retargeted into an actor. Immediate and delayed spoken subject
+work is supported; pending Request reconstructs no fictitious aim. One captured
+ObjectId survives source/catalog/owner destruction in the distinct checkpoint.
+At due100 it removes exactly that generation once; departed/replaced subject makes
+advance refuse and preserves the already-paid pending state until explicit cancel.
+Removal retires only that subject's disguises, never another subject or actor hp.
+
+Actual core caller uses the accepted M4 ward revision despite a failed draft/new
+revision, observes capacity, restriction and restored attack, then a real physical
+wall at(300,0) refuses relocation. Shattering it permits the same compiled relocation
+and changes ally position10->300 with hp45 unchanged, caster mana70->50. This is one
+combined real caller, not inflated as four caller counts. Build-04/05 exit0;
+core-03 runs25 cases and caller:24 cases pass, one extreme self-contact setup fails
+because caster is deliberately ineligible. Explicitly marking this test's caster
+eligible corrects the precondition without changing host contact laws. build-06
+exit0; core-04 focused1/1 passes all25 cases. Core caller already passes in core-03;
+no unchanged rerun is needed. Full inherited campaign remains pending until batch
+completion; original native failure evidence stays. Four object-coordinate copy
+slots increase fixed logical copy260->264, with all prior quotas unchanged.
+
+Continue preselected material transmutation and owned creation stretches within
+the same bounded invocation, then accumulated M1–M7 validation and final receipt.
+These stretches are still proposals here, not completed capability claims.

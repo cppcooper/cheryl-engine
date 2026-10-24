@@ -22,6 +22,33 @@ namespace Magic::Reference {
             ++world.revision;
         }
     }
+    void ReferenceHost::erase_object(State& state, ObjectId subject, Meter& meter) const {
+        if (subject.slot >= object_capacity || !subject.generation || !state.perception.objects[subject.slot].present ||
+            state.perception.objects[subject.slot].id != subject)
+            meter.fail(Error::MissingObject);
+        state.perception.objects[subject.slot] = ObjectView{subject};
+        for (std::size_t i = 0; i < disguise_capacity; ++i) {
+            meter.spend();
+            if (state.perception.disguises[i].instance && state.perception.disguises[i].subject == subject) {
+                state.perception.disguises[i] = {};
+                state.disguise_plans[i].reset();
+            }
+        }
+    }
+    void ReferenceHost::relocate(const Relocation& payload, ActorId target, State& state, Meter& meter) const {
+        static_cast<void>(live(state.world, target));
+        for (const auto& actor : state.world.actors) {
+            meter.visit();
+            if (actor.present && actor.id != target && actor.data.position == payload.destination)
+                meter.fail(Error::DestinationBlocked);
+        }
+        for (const auto& object : state.perception.objects) {
+            meter.visit();
+            if (object.present && !object.data.passable && object.data.position == payload.destination)
+                meter.fail(Error::DestinationBlocked);
+        }
+        state.world.actors[target.slot].data.position = payload.destination;
+    }
     std::expected<MechanicsSnapshot, Failure> ReferenceHost::inspect_mechanics() const {
         try {
             Meter meter(limits_);

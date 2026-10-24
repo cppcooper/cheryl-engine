@@ -94,7 +94,7 @@ namespace Magic::Reference {
         }
         bool same_catalog(const Catalog& a, const Catalog& b) {
             if (a.spoken != b.spoken || a.engraved != b.engraved || a.contact != b.contact || a.ray != b.ray || a.burst != b.burst ||
-                a.item_event != b.item_event || a.together != b.together || a.annular != b.annular ||
+                a.item_event != b.item_event || a.together != b.together || a.annular != b.annular || a.subject != b.subject ||
                 a.operations.size() != b.operations.size())
                 return false;
             for (std::size_t i = 0; i < a.operations.size(); ++i) {
@@ -121,7 +121,7 @@ namespace Magic::Reference {
     std::expected<ObjectId, Failure> ReferenceHost::add_object(ObjectSpec data) {
         try {
             Meter meter(limits_);
-            if (!form_valid(data.form))
+            if (!form_valid(data.form) || !point_valid(data.position))
                 meter.fail(Error::InvalidObject);
             auto next = state_;
             for (std::size_t i = 0; i < limits_.objects; ++i) {
@@ -149,7 +149,7 @@ namespace Magic::Reference {
         try {
             Meter meter(limits_);
             static_cast<void>(object(state_.perception, id));
-            if (!form_valid(data.form))
+            if (!form_valid(data.form) || !point_valid(data.position))
                 meter.fail(Error::InvalidObject);
             auto next = state_;
             revision(next.world, limits_);
@@ -167,14 +167,7 @@ namespace Magic::Reference {
             static_cast<void>(object(state_.perception, id));
             auto next = state_;
             revision(next.world, limits_);
-            next.perception.objects[id.slot] = ObjectView{id};
-            for (std::size_t i = 0; i < disguise_capacity; ++i) {
-                meter.spend();
-                if (next.perception.disguises[i].instance && next.perception.disguises[i].subject == id) {
-                    next.perception.disguises[i] = {};
-                    next.disguise_plans[i].reset();
-                }
-            }
+            erase_object(next, id, meter);
             state_ = std::move(next);
             return {};
         } catch (Failure f) {
@@ -429,10 +422,11 @@ namespace Magic::Reference {
         if (meaning.entry.kind != EntryKind::Spoken || meaning.entry.mode != CastingMode::Release ||
             meaning.entry.trigger != Trigger::None || meaning.entry.charges != 0)
             meter.fail(Error::UnsupportedEntry);
-        if (meaning.delivery != Delivery::Contact && meaning.delivery != Delivery::Burst)
+        if (meaning.delivery != Delivery::Contact && meaning.delivery != Delivery::Burst && meaning.delivery != Delivery::Subject)
             meter.fail(Error::UnsupportedDelivery);
         if (!catalog_.spoken || (meaning.delivery == Delivery::Contact && !catalog_.contact) ||
-            (meaning.delivery == Delivery::Burst && !catalog_.burst) || (meaning.effects.size() > 1 && !catalog_.together))
+            (meaning.delivery == Delivery::Burst && !catalog_.burst) || (meaning.delivery == Delivery::Subject && !catalog_.subject) ||
+            (meaning.effects.size() > 1 && !catalog_.together))
             meter.fail(Error::SchemaMismatch);
         const auto& caster = actor(state.world, request.caster);
         if (!caster.data.can_cast || caster.data.health == 0)
@@ -444,11 +438,18 @@ namespace Magic::Reference {
             if (!recipient.data.eligible || !recipient.data.willing || recipient.data.health == 0 ||
                 !within(caster.data.position, recipient.data.position, 50))
                 meter.fail(Error::Contact);
+        } else if (meaning.delivery == Delivery::Subject) {
+            if (request.contact || request.aim || !request.subject)
+                meter.fail(Error::UnsupportedBinding);
         } else if (!request.aim || request.contact || !point_valid(*request.aim))
             meter.fail(Error::InvalidAim);
         for (const auto& binding : meaning.bindings) {
             meter.spend(binding.name.size() + binding.frame.size() + 1);
-            if (meaning.delivery == Delivery::Contact) {
+            if (meaning.delivery == Delivery::Subject) {
+                if (binding.query != Query::CapturedObject || binding.anchor_time != BindingTime::Release ||
+                    binding.query_time != BindingTime::Activation)
+                    meter.fail(Error::UnsupportedBinding);
+            } else if (meaning.delivery == Delivery::Contact) {
                 if (binding.query != Query::WillingTouchedActor || binding.query_time != BindingTime::Release)
                     meter.fail(Error::UnsupportedBinding);
             } else {
@@ -462,14 +463,27 @@ namespace Magic::Reference {
         }
         payload_schema(plan, meter);
         const bool perception = meaning.effects[0].primitive == Primitive::Disguise || meaning.effects[0].primitive == Primitive::Discern;
-        if (perception) {
-            if (meaning.delivery != Delivery::Burst || !request.subject)
+        const bool object_effect = meaning.effects[0].primitive == Primitive::Shatter;
+        if (perception || object_effect) {
+            if ((perception && meaning.delivery != Delivery::Burst) || (object_effect && meaning.delivery != Delivery::Subject) ||
+                !request.subject)
                 meter.fail(Error::UnsupportedBinding);
             const auto& id = *request.subject;
             if (id.slot >= object_capacity || !state.perception.objects[id.slot].present || state.perception.objects[id.slot].id != id ||
                 id.generation == 0)
                 meter.fail(Error::MissingObject);
             meter.spend();
+            if (object_effect) {
+                bool supported = false;
+                for (const auto& schema : catalog_.operations) {
+                    meter.spend();
+                    if (schema.primitive == Primitive::Shatter && schema.key == meaning.effects[0].key &&
+                        (schema.appearances & (1u << static_cast<unsigned>(state.perception.objects[id.slot].data.form))))
+                        supported = true;
+                }
+                if (!supported)
+                    meter.fail(Error::SchemaMismatch);
+            }
         } else if (request.subject)
             meter.fail(Error::UnsupportedBinding);
         if (paying)
@@ -491,14 +505,22 @@ namespace Magic::Reference {
             const bool perception = effect.primitive == Primitive::Disguise || effect.primitive == Primitive::Discern;
             if (perception && meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
-            if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict) && meaning.effects.size() != 1)
+            if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict ||
+                 effect.primitive == Primitive::Relocate || effect.primitive == Primitive::Shatter) &&
+                meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
             bool supported = false;
             for (const auto& schema : catalog_.operations) {
                 meter.spend(effect.key.size() + 1);
                 if (effect.key != schema.key || effect.primitive != schema.primitive)
                     continue;
-                if (auto ward = std::get_if<Absorption>(&effect.payload)) {
+                if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Relocate && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                point_valid(relocation->destination) && meaning.delivery == Delivery::Contact;
+                } else if (auto shatter = std::get_if<ObjectShatter>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Shatter && shatter->subject == SubjectRole::CapturedObject &&
+                                effect.quantity == 0 && effect.duration_ticks == 0 && meaning.delivery == Delivery::Subject;
+                } else if (auto ward = std::get_if<Absorption>(&effect.payload)) {
                     supported = effect.primitive == Primitive::Ward && effect.quantity == 0 && effect.duration_ticks == 0 &&
                                 ward->capacity_dp > 0 && ward->capacity_dp <= schema.max_quantity && ward->duration_ticks > 0 &&
                                 ward->duration_ticks <= schema.max_duration_ticks;
@@ -562,7 +584,14 @@ namespace Magic::Reference {
         for (std::size_t b = 0; b < meaning.bindings.size(); ++b) {
             bool any = false;
             const auto& binding = meaning.bindings[b];
-            if (binding.query == Query::WillingTouchedActor || binding.query == Query::WillingEventToucher) {
+            if (binding.query == Query::CapturedObject) {
+                meter.visit();
+                meter.select();
+                if (!subject || subject->slot >= object_capacity || !state.perception.objects[subject->slot].present ||
+                    state.perception.objects[subject->slot].id != *subject)
+                    meter.fail(Error::MissingObject);
+                any = true;
+            } else if (binding.query == Query::WillingTouchedActor || binding.query == Query::WillingEventToucher) {
                 meter.visit();
                 meter.select();
                 selected[b][recipient->slot] = true;
@@ -596,6 +625,25 @@ namespace Magic::Reference {
             }
             if (!any)
                 meter.fail(Error::EmptySelection);
+        }
+        if (meaning.effects[0].primitive == Primitive::Shatter) {
+            erase_object(state, *subject, meter);
+            return;
+        }
+        if (meaning.effects[0].primitive == Primitive::Relocate) {
+            std::optional<ActorId> target;
+            for (std::size_t i = 0; i < actor_capacity; ++i) {
+                meter.spend();
+                if (selected[meaning.effects[0].binding][i]) {
+                    if (target)
+                        meter.fail(Error::UnsupportedBinding);
+                    target = state.world.actors[i].id;
+                }
+            }
+            if (!target)
+                meter.fail(Error::EmptySelection);
+            relocate(std::get<Relocation>(meaning.effects[0].payload), *target, state, meter);
+            return;
         }
         if (meaning.effects[0].primitive == Primitive::Ward || meaning.effects[0].primitive == Primitive::Restrict) {
             mechanical(plan, selected[meaning.effects[0].binding], state, meter);
@@ -740,9 +788,13 @@ namespace Magic::Reference {
                 }
                 if (slot == limits_.pending)
                     meter.fail(Error::PendingLimit);
-                next.world.pending[slot] = {
-                    true, id, due, input.request.caster, *input.request.aim, input.plan->metrics().retained_bytes, input.request.subject
-                };
+                next.world.pending[slot] = {true,
+                                            id,
+                                            due,
+                                            input.request.caster,
+                                            input.request.aim.value_or(Point{}),
+                                            input.plan->metrics().retained_bytes,
+                                            input.request.subject};
                 next.plans[slot] = input.plan;
                 kind = EventKind::Queued;
             } else
@@ -826,7 +878,10 @@ namespace Magic::Reference {
                     const auto p = next.world.pending[*index];
                     meter.action = p.action;
                     current_action = p.action;
-                    const Request request{p.caster, std::nullopt, p.aim, p.subject};
+                    const Request request{
+                        p.caster, std::nullopt,
+                        next.plans[*index]->meaning().delivery == Delivery::Burst ? std::optional<Point>(p.aim) : std::nullopt, p.subject
+                    };
                     validate(next.plans[*index], request, next, meter, false);
                     apply(next.plans[*index], request.contact, request.aim, request.subject, next, meter);
                     next.world.pending[*index] = {};
@@ -1063,13 +1118,21 @@ namespace Magic::Reference {
             );
             check(
                 state.plans[i] && state.plans[i]->metrics().retained_bytes == p.plan_bytes && state.plans[i]->meaning().onset_ticks != 0 &&
-                state.plans[i]->meaning().delivery == Delivery::Burst
+                (state.plans[i]->meaning().delivery == Delivery::Burst || state.plans[i]->meaning().delivery == Delivery::Subject)
             );
             for (std::size_t j = 0; j < i; ++j) {
                 meter.spend();
                 check(!w.pending[j].present || w.pending[j].action != p.action);
             }
-            validate(state.plans[i], Request{p.caster, std::nullopt, p.aim, p.subject}, state, meter, false);
+            check(state.plans[i]->meaning().delivery == Delivery::Burst || p.aim == Point{});
+            validate(
+                state.plans[i],
+                Request{
+                    p.caster, std::nullopt,
+                    state.plans[i]->meaning().delivery == Delivery::Burst ? std::optional<Point>(p.aim) : std::nullopt, p.subject
+                },
+                state, meter, false
+            );
             for (const auto& effect : state.plans[i]->meaning().effects) {
                 meter.spend();
                 static_cast<void>(later(p.due_tick, effect_duration_ticks(effect), limits_));
@@ -1116,7 +1179,8 @@ namespace Magic::Reference {
             check(o.id.slot == i && o.id.generation <= limits_.max_generation);
             if (o.present)
                 check(
-                    i < limits_.objects && o.id.generation && form_valid(o.data.form) && o.fact_revision && o.fact_revision <= w.revision
+                    i < limits_.objects && o.id.generation && form_valid(o.data.form) && point_valid(o.data.position) && o.fact_revision &&
+                    o.fact_revision <= w.revision
                 );
             else
                 check(o == ObjectView{o.id});
@@ -1289,6 +1353,7 @@ namespace Magic::Reference {
             MAGIC_ERROR(RestrictedIntent);
             MAGIC_ERROR(MechanicLimit);
             MAGIC_ERROR(InvalidIntent);
+            MAGIC_ERROR(DestinationBlocked);
         }
 #undef MAGIC_ERROR
         return "InvalidError";

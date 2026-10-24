@@ -37,9 +37,11 @@ namespace {
     }
     Catalog game() {
         Catalog c;
-        c.operations = {{Primitive::Heal, "game.heal"},         {Primitive::Fire, "game.fire"},       {Primitive::Slow, "game.slow"},
-                        {Primitive::Disguise, "game.disguise"}, {Primitive::Discern, "game.discern"}, {Primitive::Ward, "game.ward"},
-                        {Primitive::Restrict, "game.restrict"}};
+        c.operations = {{Primitive::Heal, "game.heal"},         {Primitive::Fire, "game.fire"},
+                        {Primitive::Slow, "game.slow"},         {Primitive::Disguise, "game.disguise"},
+                        {Primitive::Discern, "game.discern"},   {Primitive::Ward, "game.ward"},
+                        {Primitive::Restrict, "game.restrict"}, {Primitive::Relocate, "game.relocate"},
+                        {Primitive::Shatter, "game.shatter"}};
         return c;
     }
     std::string contact(std::string_view clause) {
@@ -61,6 +63,11 @@ namespace {
         if (!p)
             throw std::runtime_error(p.error().message);
         return *p;
+    }
+    std::string subject_source(std::string_view clause, bool delayed = false) {
+        return std::string("spoken release via subject after ") + (delayed ? "1000" : "0") +
+               " ms {\n  bind object = object captured at release rechecked at activation ;\n  together ordered {\n    on object bridge Common@1 { " +
+               std::string(clause) + " } ;\n  }\n}";
     }
     struct Scene {
         std::unique_ptr<R::ReferenceHost> h;
@@ -317,6 +324,176 @@ int main() {
             else {
                 f.cast("ward absorb 5 dp for 2000 ms");
                 check(f.h->snapshot().actors[f.caster.slot].data.mana == 0);
+            }
+        }
+    });
+    test("relocation and shatter have exact typed roles and Common roundtrip", [] {
+        Meaning expected;
+        expected.bindings = {{"hand", Query::WillingTouchedActor, "", 0, BindingTime::Release, BindingTime::Release, true}};
+        expected.effects = {{Primitive::Relocate, "game.relocate", 0, 0, 0, Relocation{{-300, 400}}}};
+        auto p = plan(contact("relocate to G0 point -300 mm 400 mm instant"));
+        check(
+            p->meaning() == expected && p->common() == contact("relocate to G0 point -300 mm 400 mm instant") &&
+            plan(p->common())->meaning() == expected
+        );
+        expected.delivery = Delivery::Subject;
+        expected.bindings = {{"object", Query::CapturedObject, "", 0, BindingTime::Release, BindingTime::Activation, true}};
+        expected.effects = {{Primitive::Shatter, "game.shatter", 0, 0, 0, ObjectShatter{SubjectRole::CapturedObject}}};
+        p = plan(subject_source("shatter object instant"));
+        check(
+            p->meaning() == expected && p->common() == subject_source("shatter object instant") && plan(p->common())->meaning() == expected
+        );
+        check(p->requirements() == (rule_bit(Rule::TargetBridge) | rule_bit(Rule::CommonShatter)));
+    });
+    test("real wall blocks relocation until shatter removes object without injuring actor", [] {
+        Scene f;
+        auto wall = take(f.h->add_object({Appearance::StoneWall, false, {300, 0}}));
+        auto old = take(f.h->inspect_perception());
+        auto relocation = plan(contact("relocate to G0 point 300 mm 0 mm instant"));
+        f.unchanged([&] { rejects(f.h->prepare(relocation, {f.caster, f.target, {}}), R::Error::DestinationBlocked); });
+        take(f.h->release(take(f.h->prepare(plan(subject_source("shatter object instant")), {f.caster, {}, {}, wall}))));
+        auto destroyed = take(f.h->inspect_perception());
+        check(destroyed.objects[wall.slot] == R::ObjectView{wall});
+        auto before = f.h->snapshot();
+        auto moved = take(f.h->release(take(f.h->prepare(relocation, {f.caster, f.target, {}}))));
+        auto expected = before;
+        expected.revision++;
+        expected.actions_issued++;
+        expected.actors[f.caster.slot].data.mana -= 10;
+        expected.actors[f.target.slot].data.position = {300, 0};
+        check(
+            moved->after == expected && f.h->snapshot() == expected && old.objects[wall.slot].present &&
+            old.objects[wall.slot].data.position == R::Point{300, 0}
+        );
+        check(f.h->snapshot().actors[f.target.slot].data.health == 50 && f.h->snapshot().actors[f.caster.slot].data.mana == 980);
+    });
+    test("relocation does not walk intermediate blockers and includes extreme coordinates", [] {
+        Scene f;
+        take(f.h->add_object({Appearance::StoneWall, false, {150, 0}}));
+        f.cast("relocate to G0 point 300 mm 0 mm instant");
+        check(f.h->snapshot().actors[f.target.slot].data.position == R::Point{300, 0});
+        auto caster = f.h->snapshot().actors[f.caster.slot].data;
+        caster.eligible = true;
+        ok(f.h->update_actor(f.caster, caster));
+        auto self = plan(contact("relocate to G0 point -1000000 mm 1000000 mm instant"));
+        take(f.h->release(take(f.h->prepare(self, {f.caster, f.caster, {}}))));
+        check(f.h->snapshot().actors[f.caster.slot].data.position == R::Point{-1000000, 1000000});
+    });
+    test("relocation refuses occupied actor and opaque wall but passable object is allowed", [] {
+        Scene f;
+        auto p = plan(contact("relocate to G0 point -10 mm 0 mm instant"));
+        f.unchanged([&] { rejects(f.h->prepare(p, {f.caster, f.target, {}}), R::Error::DestinationBlocked); });
+        auto arch = take(f.h->add_object({Appearance::OpenArch, true, {300, 0}}));
+        f.cast("relocate to G0 point 300 mm 0 mm instant");
+        check(take(f.h->inspect_perception()).objects[arch.slot].present);
+    });
+    test("attack restriction permits actual relocation of the restricted actor", [] {
+        Scene f;
+        f.cast("forbid attack for 2000 ms", f.attacker);
+        f.cast("relocate to G0 point 50 mm 0 mm instant", f.attacker);
+        check(f.h->snapshot().actors[f.attacker.slot].data.position == R::Point{50, 0});
+        f.unchanged([&] { rejects(f.h->try_attack(f.attacker, f.target), R::Error::RestrictedIntent); });
+        take(f.h->advance_to(200));
+        take(f.h->try_attack(f.attacker, f.target));
+        check(f.h->snapshot().actors[f.target.slot].data.health == 47);
+    });
+    test("new role wrong dimension exact coordinates overflow and unsupported envelopes refuse", [] {
+        for (auto clause :
+             {"relocate to G0 point 1.1 mm 0 mm instant", "relocate to G0 point 1000001 mm 0 mm instant",
+              "relocate to G0 point 1 hp 0 mm instant", "relocate to G0 point 1 px 0 mm instant", "relocate to G9 point 0 mm 0 mm instant"})
+            check(!compile(contact(clause), game()));
+        rejects(compile(contact("shatter object instant"), game()), Code::RoleMismatch);
+        rejects(compile(subject_source("heal 1 hp instant"), game()), Code::RoleMismatch);
+        rejects(compile(area("relocate to G0 point 0 mm 0 mm instant"), game()), Code::UnsupportedCombination);
+        auto s = subject_source("shatter object instant");
+        s.insert(s.rfind("  }"), "on object bridge Common@1 { shatter object instant } ;\n");
+        check(!compile(s, game()));
+    });
+    test("subject delivery live keys capabilities and current forms recheck before debit", [] {
+        for (unsigned i = 0; i < 4; ++i) {
+            Scene f;
+            auto object = take(f.h->add_object({Appearance::StoneWall, false, {300, 0}}));
+            auto p = plan(subject_source("shatter object instant"));
+            auto t = take(f.h->prepare(p, {f.caster, {}, {}, object}));
+            auto c = game();
+            if (i == 0)
+                c.operations[8].key = "changed.shatter";
+            if (i == 1)
+                c.subject = false;
+            if (i == 2)
+                c.operations[8].appearances = 1;
+            if (i == 3)
+                std::swap(c.operations[8].primitive, c.operations[7].primitive);
+            ok(f.h->replace_catalog(c));
+            f.unchanged([&] { rejects(f.h->release(t), R::Error::SchemaMismatch); });
+        }
+    });
+    test("captured delayed subject cannot retarget replacement or silently refund", [] {
+        Scene f;
+        auto object = take(f.h->add_object({Appearance::StoneWall, false, {300, 0}}));
+        auto p = plan(subject_source("shatter object instant", true));
+        take(f.h->release(take(f.h->prepare(p, {f.caster, {}, {}, object}))));
+        ok(f.h->remove_object(object));
+        auto replacement = take(f.h->add_object({Appearance::OpenArch, true, {300, 0}}));
+        f.unchanged([&] { rejects(f.h->advance_to(100), R::Error::MissingObject); });
+        check(
+            replacement.generation == 2 && take(f.h->inspect_perception()).objects[0].id == replacement &&
+            f.h->snapshot().actors[f.caster.slot].data.mana == 990
+        );
+        take(f.h->cancel(1));
+        check(take(f.h->inspect_perception()).objects[0].present);
+    });
+    test("pending shatter checkpoint owns source captured subject and exact due", [] {
+        R::Checkpoint cp;
+        R::ObjectId object;
+        std::weak_ptr<const Plan> weak;
+        R::Ticket old;
+        {
+            Scene f;
+            object = take(f.h->add_object({Appearance::StoneWall, false, {300, 0}}));
+            auto text = subject_source("shatter object instant", true);
+            auto p = plan(text);
+            weak = p;
+            old = take(f.h->prepare(p, {f.caster, {}, {}, object}));
+            take(f.h->release(old));
+            cp = take(f.h->checkpoint());
+        }
+        auto h = take(R::ReferenceHost::create(game()));
+        ok(h->restore(cp));
+        rejects(h->release(old), R::Error::ForeignTicket);
+        cp = {};
+        check(!weak.expired());
+        take(h->advance_to(99));
+        check(take(h->inspect_perception()).objects[object.slot].present);
+        take(h->advance_to(100));
+        check(!take(h->inspect_perception()).objects[object.slot].present && weak.expired());
+        take(h->advance_to(101));
+        check(!take(h->inspect_perception()).objects[object.slot].present);
+    });
+    test("shatter removes only its disguise and preserves other subjects history and health", [] {
+        Scene f;
+        auto a = take(f.h->add_object({Appearance::StoneWall, false, {300, 0}}));
+        auto b = take(f.h->add_object({Appearance::OpenArch, true, {400, 0}}));
+        auto disguise = plan(
+            "spoken release via burst after 0 ms { bind near = eligible actors in G0 disk 250 mm around aim captured at release queried at activation inclusive ; together ordered { on near bridge Common@1 { show subject captured at release rechecked at activation as stone-wall for 2000 ms to this audience frozen at activation } ; } }"
+        );
+        take(f.h->release(take(f.h->prepare(disguise, {f.caster, {}, R::Point{}, b}))));
+        take(f.h->release(take(f.h->prepare(plan(subject_source("shatter object instant")), {f.caster, {}, {}, a}))));
+        auto p = take(f.h->inspect_perception());
+        check(!p.objects[a.slot].present && p.objects[b.slot].present && p.disguises[0].subject == b && p.disguises[0].instance == 1);
+        check(f.h->snapshot().actors[f.target.slot].data.health == 50);
+    });
+    test("relocation occupancy selector work exact21 and one-short20", [] {
+        for (std::size_t cap : {20u, 21u}) {
+            R::HostLimits l;
+            l.selector_work = cap;
+            Scene f(l);
+            auto p = plan(contact("relocate to G0 point 300 mm 0 mm instant"));
+            if (cap == 20)
+                f.unchanged([&] { rejects(f.h->prepare(p, {f.caster, f.target, {}}), R::Error::SelectorLimit); });
+            else {
+                auto r = take(f.h->release(take(f.h->prepare(p, {f.caster, f.target, {}}))));
+                check(r->usage.selector_work == 21 && r->usage.selected_targets == 1);
             }
         }
     });

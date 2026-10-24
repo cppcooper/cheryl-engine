@@ -23,6 +23,7 @@ namespace Magic::Reference {
     struct ObjectSpec {
         Appearance form = Appearance::OpenArch;
         bool passable = true;
+        WorldPoint position = {};
         bool operator==(const ObjectSpec&) const = default;
     };
     struct ObjectView {
@@ -90,18 +91,15 @@ namespace Magic::Reference {
         ActiveWard,
         RestrictedIntent,
         MechanicLimit,
-        InvalidIntent
+        InvalidIntent,
+        DestinationBlocked
     };
     struct Failure {
         Error code;
         std::uint64_t action = 0; // advance context for an accepted action; failed releases allocate no action (zero)
         std::uint64_t tick = 0;   // failed advance's attempted event tick; world clock remains unchanged
     };
-    struct Point {
-        std::int32_t x = 0;
-        std::int32_t y = 0;
-        bool operator==(const Point&) const = default;
-    };
+    using Point = WorldPoint;
     struct ActorId {
         // Logical reference within one host. The opaque Ticket, rather than an ID, authorizes release.
         std::uint32_t slot = 0;
@@ -165,7 +163,7 @@ namespace Magic::Reference {
         std::size_t actors = actor_capacity;
         std::size_t pending = pending_capacity;
         std::size_t statuses = actor_capacity;
-        std::size_t selected_targets = 128; // (binding, actor) pairs over the complete operation
+        std::size_t selected_targets = 128; // resolved binding/actor-or-object pairs over the complete operation
         std::size_t selector_work = 1024;   // units/visited slot including empty: disk1, annulus2
         std::size_t work = 16384;
         std::size_t plan_bytes = 32768; // per retained M1 plan, logical metric; handles avoid deep copies
@@ -404,6 +402,8 @@ namespace Magic::Reference {
         std::optional<std::uint64_t> mechanic_due(const State& state, std::uint64_t target, Meter& meter) const;
         void expire_mechanics(State& state, std::uint64_t tick, Meter& meter) const;
         void check_mechanics(const State& state, Meter& meter) const;
+        void relocate(const Relocation& payload, ActorId target, State& state, Meter& meter) const;
+        void erase_object(State& state, ObjectId subject, Meter& meter) const;
         void forget_actor_mechanics(State& state, ActorId actor, Meter& meter) const;
         void continuation(const State& state, std::uint64_t tickets, Meter& meter) const;
         [[nodiscard]] const Prepared& authorize(const Ticket& ticket) const;

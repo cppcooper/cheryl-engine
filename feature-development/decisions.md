@@ -90,3 +90,7 @@ Standalone M7 selects four new witnesses and two stretches in
 | ID | Choice, reason, tradeoff and confidence |
 | --- | --- |
 | M7-031 | Add typed absorption wards and an Attack intent restriction, each standalone through normal live spoken authority. Four records each retain actual plans, actor generations, monotonic identities and exact onset/expiry. Shared damage resolution serves Fire and an actual trusted-owner3dp attack. Restrictions gate that action, not arbitrary AI. Whole transitions/checkpoints retain capacity; no stacking, refunds or engraving. High confidence in deterministic behavior, medium in fixture costs/API. |
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M7-032 | Give object spells a distinct captured-object binding and Subject delivery, instead of pretending objects are actors/audiences. Shatter removes a real generation-checked fixture object; immediate contact relocation uses an exact authored G0 point, checked against16 actor and4 opaque object centres. It jumps over intermediate blockers, without physics/pathfinding. Keys/forms/roles/costs and delayed subject checkpoints remain live-checked. High confidence in narrow semantics, medium in point-occupancy game policy. |

@@ -30,7 +30,7 @@
       "bounds": "one selected actor, G0 integer mm +/-1000000, scan16 actor/4 object centres",
       "support_needed": "typed WorldPoint, exact coordinates, explicit point-occupancy fixture policy",
       "rough_effort_minutes": 9,
-      "status": "selected"
+      "status": "focused-checked"
     },
     {
       "id": "M7-SHATTER",
@@ -40,7 +40,7 @@
       "bounds": "existing four object slots, one subject role, standalone immediate/delayed spoken subject delivery",
       "support_needed": "typed object binding/delivery, current object schema, retained pending subject",
       "rough_effort_minutes": 8,
-      "status": "selected"
+      "status": "focused-checked"
     }
   ],
   "stretch": [
@@ -64,7 +64,7 @@
     }
   ],
   "estimated_total_minutes": "45-60 uncertain, no padding; resource/3600s boundary takes precedence",
-  "status": "two cores focused-checked, batch continues",
+  "status": "four cores focused-checked; preselected stretches and final campaign pending",
   "assumptions": [
     "Private native owner, no personal API taste inference beyond recorded v3 evidence.",
     "Each new operation standalone only; old multi-effects unchanged; perception composition not selected.",

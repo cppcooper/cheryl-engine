@@ -1,0 +1,74 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_(contracts|caller)$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 20
+    Start 20: magic_mechanics_contracts
+
+20: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_checks
+20: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+20: Test timeout computed to be: 30
+20: PASS ward and restriction exact typed meanings Common and concept requirements
+20: PASS capacity5 hits3 then4 absorbs3 then2 and passes2 exactly once
+20: PASS attack intent restriction gates actual action and exact expiry
+20: PASS ward and restriction interact without changing unrelated state
+20: PASS current symbolic keys primitive quantities duration permission recheck
+20: PASS overlap refuses and refused action leaves valid earlier ticket usable
+20: PASS new actor generations do not inherit expired or removed contributions
+20: PASS pending audience and capacity resolve at activation paid failure preserved
+20: PASS exact4 ward slots and one-short activation rollback
+20: PASS new identity horizon exhaustion refuses without wrapping
+20: PASS owned checkpoints retain partially spent wards and restrictions
+20: PASS source dimensions ranges unsupported bundles owned diagnostics
+20: PASS default foreign stale repeated normal live tickets still gate mechanics
+20: PASS new finite cap expansion refuses and exact mana9 versus10
+20: PASS relocation and shatter have exact typed roles and Common roundtrip
+20: PASS real wall blocks relocation until shatter removes object without injuring actor
+20: FAIL relocation does not walk intermediate blockers and includes extreme coordinates: unexpected refusal
+20: PASS relocation refuses occupied actor and opaque wall but passable object is allowed
+20: PASS attack restriction permits actual relocation of the restricted actor
+20: PASS new role wrong dimension exact coordinates overflow and unsupported envelopes refuse
+20: PASS subject delivery live keys capabilities and current forms recheck before debit
+20: PASS captured delayed subject cannot retarget replacement or silently refund
+20: PASS pending shatter checkpoint owns source captured subject and exact due
+20: PASS shatter removes only its disguise and preserves other subjects history and health
+20: PASS relocation occupancy selector work exact21 and one-short20
+20: 24 M7 mechanics cases passed; 1 failed.
+1/2 Test #20: magic_mechanics_contracts ........***Failed    0.02 sec
+test 21
+    Start 21: magic_mechanics_caller
+
+21: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_demo
+21: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+21: Test timeout computed to be: 30
+21: Shatter removes real wall; previously blocked relocation moves actor to(300,0), hp45, caster mana50.
+21: spoken release via contact after 0 ms {
+21:   bind hand = willing touched actor at release ;
+21:   together ordered {
+21:     on hand bridge Common@1 { ward absorb 5 dp for 2000 ms } ;
+21:   }
+21: }
+21: Ward5: hit3 prevents3, fire4 prevents2/passes2; attack seal refuses until100. Restored attack hp48->45, mana70; failed draft and old revision remain owned.
+21: 1 M7 mechanics caller passed.
+2/2 Test #21: magic_mechanics_caller ...........   Passed    0.01 sec
+
+The following tests passed:
+	magic_mechanics_caller
+
+50% tests passed, 1 tests failed out of 2
+
+Total Test time (real) =   0.03 sec
+
+The following tests FAILED:
+	 20 - magic_mechanics_contracts (Failed)
+Errors while running CTest
+Output from these tests are in: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/Testing/Temporary/LastTest.log
+Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
+
+exit_status=8

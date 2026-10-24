@@ -45,6 +45,10 @@ namespace Magic {
                     return "ward absorb";
                 case Primitive::Restrict:
                     return "forbid attack";
+                case Primitive::Relocate:
+                    return "relocate";
+                case Primitive::Shatter:
+                    return "shatter";
             }
             return "invalid";
         }
@@ -58,6 +62,8 @@ namespace Magic {
                     return "burst";
                 case Delivery::ItemEvent:
                     return "item-event";
+                case Delivery::Subject:
+                    return "subject";
             }
             return "invalid";
         }
@@ -87,6 +93,7 @@ namespace Magic {
             Quantity quantity;
             Quantity duration;
             Token appearance;
+            Quantity x, y;
             Span span;
         };
         struct Authored {
@@ -258,6 +265,8 @@ namespace Magic {
                 syntax.delivery = Delivery::Ray;
             else if (delivery.text == "burst")
                 syntax.delivery = Delivery::Burst;
+            else if (delivery.text == "subject")
+                syntax.delivery = Delivery::Subject;
             else if (delivery.text == "item-event")
                 syntax.delivery = Delivery::ItemEvent;
             else
@@ -286,6 +295,14 @@ namespace Magic {
                         expect("at");
                         expect("activation");
                     }
+                } else if (query.text == "object") {
+                    binding.query = Query::CapturedObject;
+                    expect("captured");
+                    expect("at");
+                    expect("release");
+                    expect("rechecked");
+                    expect("at");
+                    expect("activation");
                 } else if (query.text == "eligible") {
                     expect("actors");
                     expect("in");
@@ -374,6 +391,18 @@ namespace Magic {
                         expect("speed");
                         expect("by");
                         effect.primitive = Primitive::Slow;
+                    } else if (operation.text == "relocate") {
+                        effect.primitive = Primitive::Relocate;
+                        expect("to");
+                        expect("G0");
+                        expect("point");
+                        effect.x = quantity();
+                        effect.y = quantity();
+                        expect("instant");
+                    } else if (operation.text == "shatter") {
+                        effect.primitive = Primitive::Shatter;
+                        expect("object");
+                        expect("instant");
                     } else if (operation.text == "ward" || operation.text == "forbid") {
                         effect.primitive = operation.text == "ward" ? Primitive::Ward : Primitive::Restrict;
                         if (effect.primitive == Primitive::Ward) {
@@ -417,7 +446,8 @@ namespace Magic {
                             "Unknown Common primitive; use heal, fire damage or multiply speed by. Host support is checked separately."
                         );
                     if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
-                        effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict) {
+                        effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict &&
+                        effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -639,6 +669,18 @@ namespace Magic {
                 fail(Code::Range, quantity.number.span, "Quantity is outside the supported range for this role and host schema.");
             return static_cast<std::uint32_t>(n);
         }
+        std::int32_t coordinate(Quantity quantity) {
+            if (quantity.unit.text == "px")
+                fail(
+                    Code::UnsupportedUnit, quantity.unit.span,
+                    "World coordinates require exact mm; a scalar pixel scale does not define a coordinate origin."
+                );
+            const bool negative = quantity.number.text.starts_with('-');
+            if (negative)
+                quantity.number.text.remove_prefix(1);
+            const auto magnitude = value(quantity, Dimension::Length, false, max_quantity);
+            return negative ? -static_cast<std::int32_t>(magnitude) : static_cast<std::int32_t>(magnitude);
+        }
         void lower(const Authored& syntax, Plan& plan) {
             auto& meaning = plan.meaning_;
             plan.requirements_ = rule_bit(Rule::TargetBridge);
@@ -649,7 +691,8 @@ namespace Magic {
                 (meaning.entry.kind == EntryKind::Engraved && !catalog_.engraved) ||
                 (meaning.delivery == Delivery::Contact && !catalog_.contact) || (meaning.delivery == Delivery::Ray && !catalog_.ray) ||
                 (meaning.delivery == Delivery::Burst && !catalog_.burst) ||
-                (meaning.delivery == Delivery::ItemEvent && !catalog_.item_event) || (syntax.effects.size() > 1 && !catalog_.together))
+                (meaning.delivery == Delivery::ItemEvent && !catalog_.item_event) ||
+                (meaning.delivery == Delivery::Subject && !catalog_.subject) || (syntax.effects.size() > 1 && !catalog_.together))
                 fail(Code::UnsupportedCombination, {}, "The host catalog disables this entry, delivery or multi-effect bundle capability.");
             if ((meaning.entry.kind == EntryKind::Engraved) != (meaning.delivery == Delivery::ItemEvent) ||
                 ((meaning.delivery == Delivery::Contact || meaning.delivery == Delivery::ItemEvent) && meaning.onset_ticks != 0))
@@ -674,7 +717,12 @@ namespace Magic {
                 Binding binding;
                 binding.name = copy(raw.name.text, raw.name.span);
                 binding.query = raw.query;
-                if (raw.query == Query::EligibleDisk || raw.query == Query::EligibleAnnulus) {
+                if (raw.query == Query::CapturedObject) {
+                    retain(1); // owned empty frame terminator
+                    if (meaning.delivery != Delivery::Subject)
+                        fail(Code::RoleMismatch, raw.span, "An object binding requires subject delivery.");
+                    binding.query_time = BindingTime::Activation;
+                } else if (raw.query == Query::EligibleDisk || raw.query == Query::EligibleAnnulus) {
                     binding.frame = copy(raw.frame.text, raw.frame.span);
                     binding.radius_mm = value(raw.radius, Dimension::Length, true, max_quantity, raw.frame.text, &plan.conversion_);
                     if (raw.query == Query::EligibleAnnulus) {
@@ -733,13 +781,29 @@ namespace Magic {
                         Code::UnknownBinding, raw.target.span,
                         "Bridge references an unbound target; add an explicit bind declaration in this activation."
                     );
+                if ((meaning.bindings[target].query == Query::CapturedObject) != (raw.primitive == Primitive::Shatter))
+                    fail(Code::RoleMismatch, raw.span, "This operation requires its exact actor/object target role.");
                 const auto& operation = schema(raw.primitive, raw.span);
                 Effect effect;
                 effect.primitive = raw.primitive;
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (raw.primitive == Primitive::Ward || raw.primitive == Primitive::Restrict) {
+                if (raw.primitive == Primitive::Relocate || raw.primitive == Primitive::Shatter) {
+                    if (syntax.effects.size() != 1)
+                        fail(Code::UnsupportedComposition, raw.span, "Object and relocation operations are standalone.");
+                    if (meaning.entry.kind != EntryKind::Spoken)
+                        fail(Code::UnsupportedCombination, raw.span, "New spatial operations require spoken entry.");
+                    if (raw.primitive == Primitive::Relocate) {
+                        if (meaning.delivery != Delivery::Contact)
+                            fail(Code::UnsupportedCombination, raw.span, "Relocation needs one willing contact actor, immediately.");
+                        effect.payload = Relocation{{coordinate(raw.x), coordinate(raw.y)}};
+                    } else {
+                        if (meaning.delivery != Delivery::Subject)
+                            fail(Code::RoleMismatch, raw.span, "Shatter needs a captured object binding.");
+                        effect.payload = ObjectShatter{};
+                    }
+                } else if (raw.primitive == Primitive::Ward || raw.primitive == Primitive::Restrict) {
                     if (syntax.effects.size() != 1)
                         fail(
                             Code::UnsupportedComposition, raw.span,
@@ -800,7 +864,9 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Ward       ? Rule::CommonWard
+                const auto concept_rule = raw.primitive == Primitive::Relocate   ? Rule::CommonRelocate
+                                          : raw.primitive == Primitive::Shatter  ? Rule::CommonShatter
+                                          : raw.primitive == Primitive::Ward     ? Rule::CommonWard
                                           : raw.primitive == Primitive::Restrict ? Rule::CommonRestrict
                                           : raw.primitive == Primitive::Disguise ? Rule::CommonDisguise
                                           : raw.primitive == Primitive::Discern  ? Rule::CommonDiscern
@@ -830,7 +896,9 @@ namespace Magic {
                 append(output, "  bind ");
                 append(output, binding.name);
                 append(output, " = ");
-                if (binding.query == Query::WillingTouchedActor)
+                if (binding.query == Query::CapturedObject)
+                    append(output, "object captured at release rechecked at activation");
+                else if (binding.query == Query::WillingTouchedActor)
                     append(output, "willing touched actor at release");
                 else if (binding.query == Query::WillingEventToucher)
                     append(output, "willing event toucher at activation");
@@ -856,7 +924,20 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (auto ward = std::get_if<Absorption>(&effect.payload)) {
+                if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
+                    append(output, "relocate to G0 point ");
+                    auto signed_number = [&](std::int32_t coordinate) {
+                        if (coordinate < 0)
+                            append(output, "-");
+                        number(output, static_cast<std::uint64_t>(coordinate < 0 ? -static_cast<std::int64_t>(coordinate) : coordinate));
+                    };
+                    signed_number(relocation->destination.x);
+                    append(output, " mm ");
+                    signed_number(relocation->destination.y);
+                    append(output, " mm instant");
+                } else if (std::holds_alternative<ObjectShatter>(effect.payload))
+                    append(output, "shatter object instant");
+                else if (auto ward = std::get_if<Absorption>(&effect.payload)) {
                     append(output, "ward absorb ");
                     number(output, ward->capacity_dp);
                     append(output, " dp for ");
@@ -1009,6 +1090,10 @@ namespace Magic {
                 return "common.ward@1";
             case Rule::CommonRestrict:
                 return "common.restrict-attack@1";
+            case Rule::CommonRelocate:
+                return "common.relocate@1";
+            case Rule::CommonShatter:
+                return "common.shatter@1";
         }
         return "invalid-rule";
     }

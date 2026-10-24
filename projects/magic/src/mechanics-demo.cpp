@@ -23,7 +23,13 @@ namespace {
 int main() {
     try {
         Catalog game;
-        game.operations = {{Primitive::Ward, "game.ward"}, {Primitive::Restrict, "game.restrict"}, {Primitive::Fire, "game.fire"}};
+        game.operations = {
+            {Primitive::Ward, "game.ward"},
+            {Primitive::Restrict, "game.restrict"},
+            {Primitive::Fire, "game.fire"},
+            {Primitive::Relocate, "game.relocate"},
+            {Primitive::Shatter, "game.shatter"}
+        };
         auto host = take(R::ReferenceHost::create(game));
         auto caster = take(host->add_actor({{0, 0}, 100, 100, 100, 1000, false, true, true}));
         auto ally = take(host->add_actor({{10, 0}, 50, 100, 0, 1000, true, true, false}));
@@ -71,6 +77,24 @@ int main() {
             host->snapshot().actors[caster.slot].data.mana == 70
         );
         check(hit->damage == R::DamageResolution{3, 3, 0});
+        auto wall = take(host->add_object({Appearance::StoneWall, false, {300, 0}}));
+        const std::string relocation_source =
+            "spoken release via contact after 0 ms { bind hand = willing touched actor at release ; together ordered { on hand bridge Common@1 { relocate to G0 point 300 mm 0 mm instant } ; } }";
+        auto relocation = take(compile(relocation_source, game));
+        auto blocked = host->prepare(relocation, {caster, ally, {}});
+        check(!blocked && blocked.error().code == R::Error::DestinationBlocked);
+        auto shatter = take(compile(
+            "spoken release via subject after 0 ms { bind object = object captured at release rechecked at activation ; together ordered { on object bridge Common@1 { shatter object instant } ; } }",
+            game
+        ));
+        take(host->release(take(host->prepare(shatter, {caster, {}, {}, wall}))));
+        take(host->release(take(host->prepare(relocation, {caster, ally, {}}))));
+        check(
+            !take(host->inspect_perception()).objects[wall.slot].present &&
+            host->snapshot().actors[ally.slot].data.position == R::Point{300, 0} && host->snapshot().actors[ally.slot].data.health == 45 &&
+            host->snapshot().actors[caster.slot].data.mana == 50
+        );
+        std::cout << "Shatter removes real wall; previously blocked relocation moves actor to(300,0), hp45, caster mana50.\n";
         std::cout
             << accepted->common()
             << "\nWard5: hit3 prevents3, fire4 prevents2/passes2; attack seal refuses until100. Restored attack hp48->45, mana70; failed draft and old revision remain owned.\n1 M7 mechanics caller passed.\n";

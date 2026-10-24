@@ -53,8 +53,16 @@ namespace Magic {
         std::string message;
     };
 
-    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict };
-    inline constexpr std::size_t primitive_count = 7;
+    struct WorldPoint {
+        std::int32_t x = 0, y = 0;
+        bool operator==(const WorldPoint&) const = default;
+    };
+    struct Relocation {
+        WorldPoint destination;
+        bool operator==(const Relocation&) const = default;
+    };
+    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict, Relocate, Shatter };
+    inline constexpr std::size_t primitive_count = 9;
     enum class Intent { Attack };
     struct Absorption {
         std::uint32_t capacity_dp = 0, duration_ticks = 0;
@@ -67,6 +75,10 @@ namespace Magic {
     };
     enum class Appearance : std::uint8_t { OpenArch, StoneWall };
     enum class SubjectRole { CapturedObject };
+    struct ObjectShatter {
+        SubjectRole subject = SubjectRole::CapturedObject;
+        bool operator==(const ObjectShatter&) const = default;
+    };
     struct VisualDisguise {
         SubjectRole subject = SubjectRole::CapturedObject;
         Appearance form = Appearance::StoneWall;
@@ -77,13 +89,13 @@ namespace Magic {
         SubjectRole subject = SubjectRole::CapturedObject;
         bool operator==(const Discernment&) const = default;
     };
-    using Payload = std::variant<std::monostate, VisualDisguise, Discernment, Absorption, IntentRestriction>;
+    using Payload = std::variant<std::monostate, VisualDisguise, Discernment, Absorption, IntentRestriction, Relocation, ObjectShatter>;
     [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
     enum class Trigger { None, ItemTouch };
-    enum class Delivery { Contact, Ray, Burst, ItemEvent };
-    enum class Query { WillingTouchedActor, EligibleDisk, WillingEventToucher, EligibleAnnulus };
+    enum class Delivery { Contact, Ray, Burst, ItemEvent, Subject };
+    enum class Query { WillingTouchedActor, EligibleDisk, WillingEventToucher, EligibleAnnulus, CapturedObject };
     enum class BindingTime { Release, Activation };
 
     struct Entry {
@@ -150,13 +162,15 @@ namespace Magic {
         CommonDisguise,
         CommonDiscern,
         CommonWard,
-        CommonRestrict
+        CommonRestrict,
+        CommonRelocate,
+        CommonShatter
     };
     using RuleMask = std::uint32_t;
-    inline constexpr RuleMask all_rules = 8191;
+    inline constexpr RuleMask all_rules = 32767;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 13 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 15 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
@@ -188,6 +202,7 @@ namespace Magic {
         bool item_event = true;
         bool together = true;
         bool annular = true;
+        bool subject = true;
     };
 
     struct PixelContext {
