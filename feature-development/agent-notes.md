@@ -831,3 +831,311 @@ Measured fixture-specific resource evidence: equivalent one-target disk activati
 Static/staged review is saved separately. Runtime remains private single-thread native-owner fixture code, with current symbolic key+primitive/schema/permission checks, no physics/acquisition/renderer or production combat integration. No human comprehension/fun, graphical book, full language packs, additional effects, disk codec, cross-version/process save migration, crash/power-loss durability or external exactly-once claim. Book/knowledge records are still outside M3 world checkpoints. Other platforms/toolchains/ABIs, leak coverage under tracing, allocation fault injection/OOM and exact heap/CPU accounting remain unverified. These are acceptance boundaries, not blockers to the selected mechanical prototype.
 
 This is the third and final magic milestone in feature-round-20261024-0500. Finish one coherent M5 checkpoint and remain idle; no fourth unit/worker/service is scheduled. Next concrete action is coordinator source/receipt/log review. A useful but **unselected** next evidence is a small human text-comprehension exercise: predict centre/inner/outer membership and shared school scope from the exact Common row, then compare with the literal fixture. Conducting it, graphical work or any new capability requires a separate assignment. Publisher owns ordinary feat/magic backup transport.
+
+
+# MAGIC-M6 standalone continuation
+
+## Pre-implementation gate and proposed caller
+
+Exact clean base c4dbffe4523009b9f74cf103a19ee5b4ecd105b9 on feat/magic.
+M5 receipt matches feature-round-20261024-0500/MAGIC-M5 ready/true; all five
+complete committed native logs are nonempty, byte-equal and exit0. Source inspection
+covers the compiler, learning consumer, staged host and distinct checkpoint.
+Run 20261024T065550Z-d1fbd338f67b uses inherited configured model, explicit ultra,
+no-swap adaptive scope; admission11823MiB available, floor4096. Standalone M6 does
+not extend the completed queue. Original v3 provenance above remains the only
+personal-taste evidence; these private additions are engineering choices.
+
+Proposed caller BEFORE dependent APIs (names provisional):
+```cpp
+auto arch = owner.add_object({Appearance::OpenArch, true});
+auto verse = compile(disguise_source, host_catalog); // show captured subject as wall
+Request request{caster, {}, Point{0,0}, arch};
+auto ticket = owner.prepare(*verse, request);
+owner.release(*ticket); // pay10, freeze subject/aim, due100; audience remains future
+checkpoint = owner.checkpoint(); // owns actual retained plan
+// A moves251->100; B100->251. Destroy sources/catalog/owner; restore checkpoint.
+owner.advance_to(100);
+auto a_view = owner.perceive(A, arch); // stone-wall only; no bundled secret truth
+assert(owner.inspect_perception().objects[arch.slot].data.passable);
+owner.release(*owner.prepare(discern_plan, {caster, {}, Point{100,0}, arch}));
+// Exact small disk selects only A; witness(arch generation,OpenArch,passable,tick100,instance1).
+auto active = owner.checkpoint(); // keeps contribution + instance-specific witness
+owner.advance_to(300); // expires before new activation; dated witness remains
+```
+
+Selected reversible policies, high confidence in ownership and medium in private
+syntax/API: a typed payload variant appends Disguise/Discern to the three existing
+operations; closed OpenArch/StoneWall appearances. One captured object role is
+independent of audience geometry. Exactly one perception effect/activation and
+burst audience only; all mixed/perception bundles and engraving refuse before
+payment. Each selected observer must have an unrevealed applicable instance for
+discernment; otherwise the whole activation refuses (no-applicable policy).
+Witnesses never evict, repeats on an already revealed instance refuse. Physical
+facts, active overlays and dated knowledge are separately owned. Owner object
+edits update truth without rewriting history. Removal retires only matching
+contributions/memberships, never retargets historical references.
+
+Hard caller-tightenable ceilings:4 objects,8 instances each with16 generation-bound
+audience cells,16 lifetime witness records; max instance identity1000000 and object
+generations use existing max_generation. Preserve existing quotas, payment10/effect,
+no-refund cancel and blocking-clock atomic whole-step advance. New fixed state
+copies/scans and owned compiler variant slots are explicitly charged; exact cost
+assertions may change but quota ceilings and old behavioral case names remain.
+No generic perception framework, callbacks, renderer, physical collision, disk codec
+or network secrecy is introduced. New ordinary results own only perceived form,
+subject/observer and tick; trusted owner separately inspects truth/contributions/history.
+
+## M6-028 — Typed compiler and knowledge boundary (implemented)
+
+Actual source: compiler.h/compiler.cpp append Disguise and Discern to the original
+three primitives. Effect::payload is monostate for all old scalar effects, or a
+VisualDisguise{CapturedObject, registered Appearance, duration_ticks}, or
+Discernment{CapturedObject}; legacy quantity/duration fields remain zero for new
+payloads. No string parameter bag, actor-stat stand-in or executable object name.
+The only new role describes the live request's separately captured ObjectId.
+Common@1 clauses spell subject capture at release/recheck at activation, form,
+independent duration and frozen audience at activation. Existing bindings specify
+G0, actor-centre membership, exact inclusive disk/strict-inner annulus and held aim.
+New source fixtures independently author disguise/discern Common. Reparse equals
+complete Meaning including variant/role; changed appearance/onset/duration/shape
+are independent literal tests. Existing invented Mend/Cinder clauses stay intact;
+new operations use Common within the same explicit bridge. No real fantasy-language
+claim or D&D edition/dice/save/concentration compatibility is made.
+
+The registered schema set grows only3->5. Keys remain host-owned <=64 bytes,
+unique by primitive/key. Disguise checks current key AND primitive, typed role,
+closed form capability bit, positive duration and current max_duration; Discern
+checks its own key/primitive/typed role and instantaneous zero legacy fields.
+Appearance support is a two-bit caller mask (OpenArch1, StoneWall2). Source cannot
+supply current object authority. Eleven rule bits (mask2047) append exactly the two
+Common operation concepts to M5's511. M4 books prove recognition with unknown
+Disguise/Discern concept, accepted known entry, owned failed draft preservation,
+and a known plan refused by the current host. Common does not bypass concepts.
+Concept availability is fixture-initialized Knowledge, as with older operation
+concepts; existing five school/target lessons do not teach new concepts or mint
+host tickets. No new tome, language-pack or generic content facility is selected.
+
+Alternative: parallel perception spell parser/consumer would duplicate binding,
+units, authority and checkpoint laws. Selected shared compiler/host stages preserve
+those contracts. Alternative untyped enum quantities would confuse appearance and
+information with hp/rate. Variant is narrow/private; future cross-domain algebra
+is unselected. Current source and host explicitly refuse any bundle involving
+perception plus another operation and any perception engraving before payment.
+Old multi-effect heal/fire/slow composition remains supported.
+
+## M6-029 — Physical truth, perceived result and dated knowledge (implemented)
+
+Trusted native owner creates/edits/removes at most4 ObjectView facts. ObjectId is a
+slot/generation logical reference, not a pointer; form and passability are physical
+fixture facts, with fact_revision drawn from the checked world revision. Logical
+references grant no release authority. Existing max_generation<=1000000 and
+max_revision<=1000000000 bound object reuse/edits. Invalid forms, missing/stale
+subjects and horizon/capacity exhaustion refuse without mutation.
+
+Disguise activation allocates one checked monotonic instance (max_instance<=1000000)
+with subject, form, action provenance, onset/until, actual immutable plan handle and
+16 fixed actor-generation cells. At most8 active slots:128 membership cells maximum,
+no growing vectors. All eligible audience centres are resolved once through shared
+M2/M5 disk/annulus selection before any contribution. A changed camera/request/owner
+position cannot move the held point; object reference remains captured at accepted
+release. Delayed activation rechecks current subject generation and schema. Later
+movement/eligibility changes do not continually retarget an accepted influence.
+Removal clears only that generation's memberships; an empty contribution retires.
+Object removal retires only that object's contributions. Neither removal alters
+dated witness history or targets a replacement slot. There is at most one active
+contribution per (subject generation, observer generation), including revealed
+contributions. New overlaps refuse completely; disjoint audiences/subjects coexist.
+Expiry is [onset,until), before same-tick new activations, and removes only current
+contributions/retained plans; it never restores physical facts or a stale snapshot.
+
+Ordinary perceive(observer,subject) returns an owned value snapshot with only
+observer/subject/current perceived form/tick; no physical passability, hidden
+influence list or unconditional true form. The host never borrows or mutates prior
+value outputs. inspect_perception is explicitly a trusted-owner inspection of
+facts/contributions/history; knowledge(observer) returns only that generation's
+already recorded dated witnesses. These read paths grant no knowledge, mana
+charge, release/event ticket or capability. They are not network secrecy APIs.
+
+Authorized Discernment uses ordinary prepare/release, live caster permission,
+payment10 and current symbolic schema. Every selected observer must have an active
+unrevealed instance for this subject. No instance OR already revealed means
+NoDisguise for the complete activation, before any debit for immediate release.
+Capacity failure also preserves everything. Each accepted witness records observer,
+subject generations, actual physical form/passability, observation tick, fact
+revision and identified instance. All additions are prepared in fixed scratch
+before adoption. Sixteen lifetime records never evict; ordinary failed attempts
+consume nothing. Historical facts survive physical edits/removal/expiry, remain
+dated, and never become current omniscience. Revealing instance1 does not reveal2.
+This all-or-refuse policy is reversible fixture policy, selected to avoid partial
+information/payment; general sensory tests/dispel/AI/control remain unselected.
+
+## M6-030 — Staging, retained continuation and resources (implemented)
+
+Release validates subject/schema/authority/funds, captures ObjectId+G0 point and
+adopts payment/queue together. Existing10 mana/effect, no-refund cancellation and
+blocking-clock policies are unchanged. A delayed request does not promise future
+audience/conflict/instance/witness capacity at release. At advance, subject, current
+eligible audience, keys/schemas, overlap/horizons and all budgets resolve on the
+scratch State. Failure preserves the previous paid pending world/clock/queue and
+all facts/knowledge/counters. Successful earlier scratch actions or expiry in that
+same failed step are also discarded. No external callback or automatic retry exists.
+
+State and DISTINCT opaque Checkpoint retain all M3 actors/slow/clock/actions/items/
+charges/ledger/schema/limits plus object facts/generations/revisions, active
+instances/audiences/expiry/provenance plans, witnesses/horizon and actual pending
+perception plan/subject/aim/due. Continuation validates all bounds, canonical empty
+slots, live references, historical generation bounds, duplicate instance/pair/
+witness identities, schemas, exact limit identity and due/expiry times. Capture
+refuses an unsupported retained plan; incompatible/default restore preserves the
+destination and its old usable ticket. Restore validates before allocating/adopting
+new owner incarnation; old casting/event inputs never revive. Logical instance/
+replay identity differs from live authority. Deliberate whole-world rewind can
+rewind knowledge/charges/counters within the restored timeline, never an external
+exactly-once guarantee. Snapshot/PerceptionSnapshot remain observations, not restore
+shortcuts. No disk codec, cross-version ABI/schema migration or book save is added.
+
+Existing source8192/tokens512/bindings8/clauses4/effects4/compiler work65536/retained32768
+and host actor16/pending8/status16/selected128/selector1024/work16384/plan32768 quotas
+are unchanged, as are M4 book quotas. New caller-tightenable object4/instance8/
+witness16/max_instance1000000 caps refuse zero/one-short/exhaustion explicitly.
+The logical fixed copy model rises80->244 units:164 extra for object4 + instance8*
+(16 audience cells+metadata+plan handle) + witness16. Pending subject lives in the
+already accounted fixed pending slot. Checkpoint additionally scans4+8+16 slots;
+extra schemas above3 charge70 each for bounded key/metadata copy/identity. Queries
+charge fixed results and visited slots/witness records; normal selector work is
+still disk1/annulus2 per actor slot and two annular radius units. Added type slots
+are charged by sizeof(Effect) before allocation; input/retained source/gloss and
+all old compiler/tome budgets remain checked. Logical units are not exact CPU,
+allocator/control-block, heap or RSS accounting. Factory catalog validation/copy
+is intrinsically bounded by five schemas/64-byte keys; no variable-sized world or
+external callbacks are admitted. Allocation exceptions preserve existing adopted
+state; allocator fault injection remains unexecuted.
+
+## M6 executed verification and retained gaps
+
+Actual ordinary caller is projects/magic/src/perception-demo.cpp (not the proposed
+pseudocode): compile/inspect actual Common; create passable open arch and A251/B100;
+pure preview; paid delayed release at held(0,0) radius250; move A100/B251; checkpoint
+pending; destroy original authoring/catalog/host; restore fresh authority; tick99
+arch, tick100 A wall/B arch; physical OpenArch/passable true; authorize A-only
+Discernment; exact witness(instance1, tick100, fact revision4, arch/passable); checkpoint
+active; destroy that owner; restore; expiry300; witness retained; immediate later
+instance2 again hides the arch from A; old tick100 wall result remains unchanged
+after every owner dies. No source regeneration substitutes for pending/active plans.
+The caller prints actual Common and checks typed outputs/health/speed/resources;
+its single success line follows the assertions, not an assumed transcript.
+
+First seven actual wrapper invocations, all one job, complete command/diagnostics and
+immediate exits saved under feature-development/magic/logs/M6:
+
+1. configure-01.log: `/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug -DMAGIC_SANITIZERS=ON`, exit0.
+2. build-01.log: wrapper `cmake --build projects/magic/build --parallel 1`, exit2.
+   GNU -Werror catches ObjectView{id} missing a default data initializer in the
+   new owner. Fix is ObjectSpec data={}, preserving default canonical empty facts.
+3. build-02.log: same incremental build after that source correction, exit0.
+4. build-03.log: same incremental build after pre-run test review adds a valid
+   ninth eligible actor for the full-instance refusal and alternate-form/removal
+   assertions (plus include ordering/clarifying checkpoint comment), exit0.
+5. accumulated-01.log: command-local ASAN_OPTIONS=detect_leaks=0 and
+   UBSAN_OPTIONS=halt_on_error=1 wrapper `ctest --test-dir projects/magic/build --verbose --parallel 1`, exit8.
+   **18/19 entries pass**, new35 perception cases and real caller pass. The old
+   M3 case `checkpoint state work bound refuses without changing caller outputs`
+   fails during fixture actor setup because work100 predates fixed copy244.
+   This is not a compiler/runtime semantic failure. Correct setup allowance100->300
+   permits setup yet still refuses checkpoint (at least540); assertions/name stay.
+   All other previous names/behaviors pass. The initial failed evidence is retained.
+6. build-04.log: wrapper `cmake --build projects/magic/build --target magic_engraving_checks magic_perception_checks --parallel 1`, exit0.
+   Test-only setup correction plus five materially useful added perception cases:
+   live delayed schema, captured subject/aim through edits, all-or-none witness
+   capacity, full16 audience/witnesses, exact-expiry discernment blocking policy.
+   Combined checkpoint case now actually holds illusion+witness+pending old
+   annulus+item+outstanding event, then resumes heal/fire/slow/expiry coherently.
+7. affected-01.log: same sanitizer environment, wrapper
+   `ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_(engraving|perception)_contracts$'`, exit0, **2/2 entries**.
+   **34 engraving/checkpoint and40 perception cases pass**. Original tool session
+   remains queued behind the shared native lock and completes normally; no cancel,
+   relaunch, resource bypass or unchanged admission retry.
+
+No second accumulated run. Final evidence covers all19 unique CTest names through
+the one accumulated run plus affected correction; do not report19/19 accumulated
+or count the focused rerun as additional entries. Counts remain separate: M1
+35 compiler cases/4 callers/6 file fixtures/9 CLI scenarios; M2 37 host cases/6
+caller scenarios; M3 34 cases/3 caller scenarios; M4 25 cases/1 caller; M5 25 cases/
+1 caller; M6 40 cases/1 caller. Old names and receipts/log bytes (including M4's
+corrected failure history) remain. No sanitizer finding, admission refusal,
+authentication fallback or unresolved native failure is observed.
+
+Measured model, GNU16/Linux C++23 Debug ASan+UBSan (existing clone-local build):
+- M6 disguise compiler fixture:61 tokens,2959 work,2891 retained logical bytes;
+  exact/one-short source/token/work/storage acceptance verified.
+- M6 delayed activation:471 complete work,16 selector visits,1 selected target;
+  exact471/470,16/15 and1/0 preserve complete paid pending state on refusal.
+- Retained old S2 complete activation:308->496 work. Extra164 fixed state copies
+  and24 expiry scans (8 discovery +8 expiry +8 rediscovery) account for188.
+  Equivalent M5 annulus326->514, still exactly18 extra work and32 selector visits
+  versus disk16. Complete selector1024/1023 and target128/127 tests still pass.
+- Old touch168->332 work in the initial run,333 after final charged envelope scan. Empty compatible three-schema checkpoint348->540,
+  one-short539 refuses. Historical test name `exact348 and one-short347` stays
+  to preserve discovery; its literals now540/539 with the explicit model comment.
+- Typed variant adds16 bytes per Effect slot in this ABI: retained S1 2096->2112,
+  S2 2773->2805, M5 annular3103->3135. Existing dynamic exact-limit assertions stay.
+  M4 lesson retained17972->18036, work23361 unchanged; annular lesson18937->19001,
+  work25335 unchanged. M4 edited-spell work14824 unchanged. CLI's now five-schema
+  catalog adds121 compiler work to old fixture inspection; typed meanings stay.
+- Fixed host7360, observational Snapshot1688, Observation3600 bytes on this ABI;
+  these are measured sizeof witnesses, not logical quota units or portable ABI.
+
+Passing new cases use independent complete Meaning/Common, exact geometry and
+literal facts/views/witnesses, both actor insertion orders, independent alternate
+form, duration/onset/audience edits, live key+primitive/form/duration/permission
+refusals at release and activation, default/foreign/stale/copied/repeated authority,
+subject/observer removal/reuse, capacities/horizons, overlap, pure queries and
+no-applicable policy, step rollback, source/catalog/owner destruction, immutable
+old value outputs, old accepted meaning and complex M3 state continuity. They use
+ordinary host/book/compiler entry points; the caller shares no test helpers.
+
+Remaining limits: private trusted native owner only; no network secrecy/authentication
+sandbox, D&D edition conformance, real sensory detection, physics/collision/rays/
+occlusion, rendering/audio, AI beliefs/control, general dispel/counterspell/stacking,
+recurring auras, perception engraving/rearm, cross-domain composition, provider or
+public Engine API. Physical passability is a fixture fact, not a physics integration.
+No human clarity/learning/fun or graphical acceptance; no new playtest claim.
+Known tracing restriction keeps leak checking disabled/unverified; other platforms/
+toolchains/ABIs, allocator fault injection/exact RSS/CPU remain unverified. In-memory
+checkpoint ownership is verified, not disk/process/crash/power-loss durability,
+cross-version migration or external exactly-once. Knowledge/book save remains
+outside this world checkpoint. Native value results are owned snapshots; callers
+may edit their own copies, while host changes cannot alter earlier outputs.
+
+Next concrete action: remain idle for coordinator review of standalone M6 source,
+receipt and all saved evidence. A separately selected graphical observer-view
+comparison would be useful next evidence for human readability; it is unselected
+and no worker/unit/service/integration is scheduled here. Publisher owns transport.
+
+
+### Final accounting review and affected verification
+
+Final code review identifies one added inscription-envelope scan needing its own
+work charge. It now spends one unit per effect before accepting/refusing the
+entry; quotas stay fixed. This changes S5 touch332->333 (old M5 touch168), not any
+physical/perception mechanic. The uncommitted receipt is explicitly held pending
+until the affected executable check completes, then marked ready again.
+
+8. build-05.log: wrapper `cmake --build projects/magic/build --parallel 1`, exit0,
+   rebuilds the modified reference host and relinks dependents incrementally.
+9. affected-02.log: same sanitizer environment, wrapper
+   `ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_((engraving|learning|annular|perception)_contracts|engraving_caller)$'`,
+   exit0, **5/5** affected entries.34 engraving,25 learning,25 annular and40
+   perception cases plus3 engraving caller scenarios pass. Exact touch333 and
+   unchanged perception471/disk496/annular514/compiler/tome metrics are printed.
+   This selection covers inscription consumers/checkpoint paths; unaffected old
+   compiler/host and new perception-caller evidence is retained from the one
+   accumulated run. No second unchanged full suite is run.
+
+Final total:9 configure/build/native invocations, with complete original errors,
+commands/immediate exits. All selected acceptance has passing evidence after
+correction; standalone receipt ready/true. Staged/static review verifies source
+hashes, preserved predecessor receipt/evidence bytes, old case names, formatting,
+final pass coverage of19 unique CTest names across justified runs, and no unrelated
+changes. No subagent/provider/service/push/dependency change or new unit follows.

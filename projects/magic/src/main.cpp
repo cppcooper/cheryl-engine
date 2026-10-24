@@ -9,7 +9,11 @@ namespace {
     Magic::Catalog fixture_catalog() {
         Magic::Catalog catalog;
         catalog.operations = {
-            {Magic::Primitive::Heal, "game.heal"}, {Magic::Primitive::Fire, "game.fire"}, {Magic::Primitive::Slow, "game.slow"}
+            {Magic::Primitive::Heal, "game.heal"},
+            {Magic::Primitive::Fire, "game.fire"},
+            {Magic::Primitive::Slow, "game.slow"},
+            {Magic::Primitive::Disguise, "game.disguise"},
+            {Magic::Primitive::Discern, "game.discern"}
         };
         return catalog;
     }

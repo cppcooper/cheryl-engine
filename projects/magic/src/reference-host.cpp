@@ -18,13 +18,14 @@ namespace Magic::Reference {
                    actor.health <= actor.max_health && actor.mana <= 1'000'000 && actor.base_speed_mm_per_s <= 1'000'000;
         }
         bool catalog_valid(const Catalog& catalog) {
-            if (catalog.operations.size() > 3)
+            if (catalog.operations.size() > 5)
                 return false;
             for (std::size_t i = 0; i < catalog.operations.size(); ++i) {
                 const auto& schema = catalog.operations[i];
                 if (schema.key.empty() || schema.key.size() > 64 || schema.max_quantity == 0 || schema.max_quantity > 1'000'000 ||
-                    schema.max_duration_ticks > 8'640'000 ||
-                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow))
+                    schema.max_duration_ticks > 8'640'000 || schema.appearances > 3 ||
+                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow &&
+                     schema.primitive != Primitive::Disguise && schema.primitive != Primitive::Discern))
                     return false;
                 for (char c : schema.key)
                     if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-'))
@@ -41,7 +42,8 @@ namespace Magic::Reference {
                    l.selector_work <= c.selector_work && l.work <= c.work && l.plan_bytes <= c.plan_bytes && l.max_tick <= c.max_tick &&
                    l.max_action <= c.max_action && l.max_ticket <= c.max_ticket && l.max_revision <= c.max_revision &&
                    l.max_generation <= c.max_generation && l.items <= c.items && l.touch_receipts <= c.touch_receipts &&
-                   l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id;
+                   l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id && l.objects <= c.objects &&
+                   l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -98,7 +100,7 @@ namespace Magic::Reference {
                 const auto& x = a.operations[i];
                 const auto& y = b.operations[i];
                 if (x.key != y.key || x.primitive != y.primitive || x.max_quantity != y.max_quantity ||
-                    x.max_duration_ticks != y.max_duration_ticks)
+                    x.max_duration_ticks != y.max_duration_ticks || x.appearances != y.appearances)
                     return false;
             }
             return true;
@@ -112,7 +114,7 @@ namespace Magic::Reference {
         std::uint64_t tick = 0;
         explicit Meter(const HostLimits& value)
         : limits(value) {
-            spend(80);
+            spend(244); // Old fixed state80 + new objects4/instances8*(16 audience+metadata+plan)/witnesses16 =164.
         }
         [[noreturn]] void fail(Error code) const { throw Failure{code, action, tick}; }
         void spend(std::size_t count = 1) {
@@ -134,12 +136,218 @@ namespace Magic::Reference {
         }
     };
 
+    namespace {
+        bool form_valid(Appearance form) {
+            return form == Appearance::OpenArch || form == Appearance::StoneWall;
+        }
+        const ObjectView& object(const PerceptionSnapshot& state, ObjectId id) {
+            if (id.slot >= object_capacity || !id.generation || !state.objects[id.slot].present || state.objects[id.slot].id != id)
+                refuse(Error::MissingObject);
+            return state.objects[id.slot];
+        }
+    }
+    std::expected<ObjectId, Failure> ReferenceHost::add_object(ObjectSpec data) {
+        try {
+            Meter meter(limits_);
+            if (!form_valid(data.form))
+                meter.fail(Error::InvalidObject);
+            auto next = state_;
+            for (std::size_t i = 0; i < limits_.objects; ++i) {
+                meter.spend();
+                auto& slot = next.perception.objects[i];
+                if (slot.present)
+                    continue;
+                if (slot.id.generation == limits_.max_generation)
+                    meter.fail(Error::GenerationLimit);
+                revision(next.world, limits_);
+                ++slot.id.generation;
+                slot.present = true;
+                slot.data = data;
+                slot.fact_revision = next.world.revision;
+                const auto id = slot.id;
+                state_ = std::move(next);
+                return id;
+            }
+            meter.fail(Error::ObjectLimit);
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<void, Failure> ReferenceHost::update_object(ObjectId id, ObjectSpec data) {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(object(state_.perception, id));
+            if (!form_valid(data.form))
+                meter.fail(Error::InvalidObject);
+            auto next = state_;
+            revision(next.world, limits_);
+            next.perception.objects[id.slot].data = data;
+            next.perception.objects[id.slot].fact_revision = next.world.revision;
+            state_ = std::move(next);
+            return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<void, Failure> ReferenceHost::remove_object(ObjectId id) {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(object(state_.perception, id));
+            auto next = state_;
+            revision(next.world, limits_);
+            next.perception.objects[id.slot] = ObjectView{id};
+            for (std::size_t i = 0; i < disguise_capacity; ++i) {
+                meter.spend();
+                if (next.perception.disguises[i].instance && next.perception.disguises[i].subject == id) {
+                    next.perception.disguises[i] = {};
+                    next.disguise_plans[i].reset();
+                }
+            }
+            state_ = std::move(next);
+            return {};
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<PerceptionSnapshot, Failure> ReferenceHost::inspect_perception() const {
+        try {
+            Meter meter(limits_);
+            meter.spend(156);
+            return state_.perception;
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<KnowledgeView, Failure> ReferenceHost::knowledge(ActorId observer) const {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(actor(state_.world, observer));
+            KnowledgeView result;
+            meter.spend(witness_capacity); // fixed owned output
+            for (std::size_t i = 0; i < state_.perception.witness_count; ++i) {
+                meter.spend();
+                if (state_.perception.witnesses[i].observer == observer)
+                    result.witnesses[result.count++] = state_.perception.witnesses[i];
+            }
+            return result;
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    std::expected<Perceived, Failure> ReferenceHost::perceive(ActorId observer, ObjectId subject) const {
+        try {
+            Meter meter(limits_);
+            static_cast<void>(actor(state_.world, observer));
+            const auto& physical = object(state_.perception, subject);
+            Perceived result{observer, subject, physical.data.form, state_.world.tick};
+            meter.spend(4); // owned result
+            for (const auto& d : state_.perception.disguises) {
+                meter.spend();
+                if (!d.instance || d.subject != subject || d.audience[observer.slot] != observer)
+                    continue;
+                bool revealed = false;
+                for (std::size_t i = 0; i < state_.perception.witness_count; ++i) {
+                    meter.spend();
+                    const auto& w = state_.perception.witnesses[i];
+                    if (w.observer == observer && w.instance == d.instance)
+                        revealed = true;
+                }
+                if (!revealed)
+                    result.form = d.form;
+            }
+            return result;
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+    void ReferenceHost::perceptual(
+        const PlanHandle& plan,
+        ObjectId subject,
+        const std::array<bool, actor_capacity>& audience,
+        State& state,
+        Meter& meter
+    ) const {
+        const auto& physical = object(state.perception, subject);
+        auto& p = state.perception;
+        const auto& effect = plan->meaning().effects[0];
+        if (const auto* payload = std::get_if<VisualDisguise>(&effect.payload)) {
+            const auto expiry = later(state.world.tick, payload->duration_ticks, limits_);
+            if (p.instances_issued == limits_.max_instance)
+                meter.fail(Error::InstanceLimit);
+            std::optional<std::size_t> free;
+            for (std::size_t i = 0; i < disguise_capacity; ++i) {
+                meter.spend();
+                const auto& d = p.disguises[i];
+                if (!d.instance) {
+                    if (i < limits_.disguises && !free)
+                        free = i;
+                    continue;
+                }
+                for (std::size_t a = 0; a < actor_capacity; ++a) {
+                    meter.spend();
+                    if (d.subject == subject && audience[a] && d.audience[a] == state.world.actors[a].id)
+                        meter.fail(Error::Overlap);
+                }
+            }
+            if (!free)
+                meter.fail(Error::InstanceLimit);
+            DisguiseView d;
+            d.instance = p.instances_issued + 1;
+            d.action = meter.action;
+            d.subject = subject;
+            d.form = payload->form;
+            d.onset_tick = state.world.tick;
+            d.until_tick = expiry;
+            d.plan_bytes = plan->metrics().retained_bytes;
+            for (std::size_t a = 0; a < actor_capacity; ++a) {
+                meter.spend();
+                if (audience[a])
+                    d.audience[a] = state.world.actors[a].id;
+            }
+            p.disguises[*free] = d;
+            state.disguise_plans[*free] = plan;
+            ++p.instances_issued;
+        } else {
+            std::array<Witness, actor_capacity> additions{};
+            std::size_t count = 0;
+            for (std::size_t a = 0; a < actor_capacity; ++a) {
+                meter.spend();
+                if (!audience[a])
+                    continue;
+                const auto observer = state.world.actors[a].id;
+                std::uint64_t instance = 0;
+                for (const auto& d : p.disguises) {
+                    meter.spend();
+                    if (d.instance && d.subject == subject && d.audience[a] == observer)
+                        instance = d.instance;
+                }
+                if (!instance)
+                    meter.fail(Error::NoDisguise);
+                for (std::size_t i = 0; i < p.witness_count; ++i) {
+                    meter.spend();
+                    if (p.witnesses[i].observer == observer && p.witnesses[i].instance == instance)
+                        meter.fail(Error::NoDisguise);
+                }
+                additions[count++] = {
+                    observer, subject, physical.data.form, physical.data.passable, state.world.tick, physical.fact_revision, instance
+                };
+            }
+            if (count > limits_.witnesses - p.witness_count)
+                meter.fail(Error::WitnessLimit);
+            meter.spend(actor_capacity + count); // fixed scratch witnesses and retained writes
+            for (std::size_t i = 0; i < count; ++i)
+                p.witnesses[p.witness_count++] = additions[i];
+        }
+    }
+
     ReferenceHost::ReferenceHost(Catalog catalog, HostLimits limits)
     : catalog_(std::move(catalog)), limits_(limits), owner_(std::make_shared<const std::uint8_t>(0)) {
         for (std::size_t i = 0; i < actor_capacity; ++i)
             state_.world.actors[i].id.slot = static_cast<std::uint32_t>(i);
         for (std::size_t i = 0; i < item_capacity; ++i)
             state_.items.items[i].id.slot = static_cast<std::uint32_t>(i);
+        for (std::size_t i = 0; i < object_capacity; ++i)
+            state_.perception.objects[i].id.slot = static_cast<std::uint32_t>(i);
     }
 
     std::expected<std::unique_ptr<ReferenceHost>, Failure> ReferenceHost::create(const Catalog& catalog, HostLimits limits) {
@@ -194,12 +402,29 @@ namespace Magic::Reference {
         try {
             Meter meter(limits_);
             static_cast<void>(actor(state_.world, id));
-            auto next = state_.world;
-            revision(next, limits_);
-            next.actors[id.slot].present = false;
-            next.actors[id.slot].data = {};
-            next.actors[id.slot].slow = {};
-            state_.world = next;
+            auto next = state_;
+            revision(next.world, limits_);
+            next.world.actors[id.slot].present = false;
+            next.world.actors[id.slot].data = {};
+            next.world.actors[id.slot].slow = {};
+            for (std::size_t i = 0; i < disguise_capacity; ++i) {
+                meter.spend();
+                auto& d = next.perception.disguises[i];
+                if (!d.instance)
+                    continue;
+                if (d.audience[id.slot] == id)
+                    d.audience[id.slot] = {};
+                bool any = false;
+                for (const auto& member : d.audience) {
+                    meter.spend();
+                    any |= member.generation != 0;
+                }
+                if (!any) {
+                    d = {};
+                    next.disguise_plans[i].reset();
+                }
+            }
+            state_ = std::move(next);
             return {};
         } catch (Failure failure) {
             return std::unexpected(failure);
@@ -263,6 +488,17 @@ namespace Magic::Reference {
             }
         }
         payload_schema(plan, meter);
+        const bool perception = meaning.effects[0].primitive == Primitive::Disguise || meaning.effects[0].primitive == Primitive::Discern;
+        if (perception) {
+            if (meaning.delivery != Delivery::Burst || !request.subject)
+                meter.fail(Error::UnsupportedBinding);
+            const auto& id = *request.subject;
+            if (id.slot >= object_capacity || !state.perception.objects[id.slot].present || state.perception.objects[id.slot].id != id ||
+                id.generation == 0)
+                meter.fail(Error::MissingObject);
+            meter.spend();
+        } else if (request.subject)
+            meter.fail(Error::UnsupportedBinding);
         if (paying)
             static_cast<void>(later(state.world.tick, meaning.onset_ticks, limits_));
         const auto cost = static_cast<std::uint32_t>(meaning.effects.size() * 10); // M1 has <=4 effects
@@ -279,14 +515,28 @@ namespace Magic::Reference {
         if (meaning.effects.size() > 1 && !catalog_.together)
             meter.fail(Error::SchemaMismatch);
         for (const auto& effect : meaning.effects) {
+            const bool perception = effect.primitive == Primitive::Disguise || effect.primitive == Primitive::Discern;
+            if (perception && meaning.effects.size() != 1)
+                meter.fail(Error::UnsupportedComposition);
             bool supported = false;
             for (const auto& schema : catalog_.operations) {
                 meter.spend(effect.key.size() + 1);
-                if (effect.key == schema.key && effect.primitive == schema.primitive && effect.quantity > 0 &&
-                    effect.quantity <= schema.max_quantity && effect.duration_ticks <= schema.max_duration_ticks &&
-                    ((effect.primitive == Primitive::Slow && effect.quantity <= 1000 && effect.duration_ticks > 0) ||
-                     (effect.primitive != Primitive::Slow && effect.duration_ticks == 0)))
-                    supported = true;
+                if (effect.key != schema.key || effect.primitive != schema.primitive)
+                    continue;
+                if (auto d = std::get_if<VisualDisguise>(&effect.payload)) {
+                    const auto form = static_cast<unsigned>(d->form);
+                    supported = effect.primitive == Primitive::Disguise && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                d->subject == SubjectRole::CapturedObject && form < 2 && (schema.appearances & (1u << form)) &&
+                                d->duration_ticks > 0 && d->duration_ticks <= schema.max_duration_ticks;
+                } else if (auto d = std::get_if<Discernment>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Discern && d->subject == SubjectRole::CapturedObject &&
+                                effect.quantity == 0 && effect.duration_ticks == 0;
+                } else
+                    supported =
+                        !perception && effect.quantity > 0 && effect.quantity <= schema.max_quantity &&
+                        effect.duration_ticks <= schema.max_duration_ticks &&
+                        ((effect.primitive == Primitive::Slow && effect.quantity <= 1000 && effect.duration_ticks > 0) ||
+                         ((effect.primitive == Primitive::Heal || effect.primitive == Primitive::Fire) && effect.duration_ticks == 0));
             }
             if (!supported)
                 meter.fail(Error::SchemaMismatch);
@@ -295,6 +545,11 @@ namespace Magic::Reference {
     void ReferenceHost::inscription(const PlanHandle& plan, Meter& meter) const {
         payload_schema(plan, meter);
         const auto& m = plan->meaning();
+        for (const auto& e : m.effects) {
+            meter.spend(); // Count the added envelope scan, including legacy inscriptions.
+            if (e.primitive == Primitive::Disguise || e.primitive == Primitive::Discern)
+                meter.fail(Error::UnsupportedEntry);
+        }
         if (m.entry.kind != EntryKind::Engraved || m.entry.mode != CastingMode::Release || m.entry.trigger != Trigger::ItemTouch ||
             m.entry.charges != 1 || m.onset_ticks != 0)
             meter.fail(Error::UnsupportedEntry);
@@ -313,6 +568,7 @@ namespace Magic::Reference {
         const PlanHandle& plan,
         std::optional<ActorId> recipient,
         std::optional<Point> aim,
+        std::optional<ObjectId> subject,
         State& state,
         Meter& meter
     ) const {
@@ -356,6 +612,10 @@ namespace Magic::Reference {
             }
             if (!any)
                 meter.fail(Error::EmptySelection);
+        }
+        if (meaning.effects[0].primitive == Primitive::Disguise || meaning.effects[0].primitive == Primitive::Discern) {
+            perceptual(plan, *subject, selected[meaning.effects[0].binding], state, meter);
+            return;
         }
         struct Writes {
             int health = 0;
@@ -421,7 +681,7 @@ namespace Magic::Reference {
             const auto due = later(state_.world.tick, plan->meaning().onset_ticks, limits_);
             if (plan->meaning().onset_ticks == 0) {
                 auto scratch = state_;
-                apply(plan, request.contact, request.aim, scratch, meter);
+                apply(plan, request.contact, request.aim, request.subject, scratch, meter);
             } // Delayed preview cannot promise future members/status capacity.
             return Preview{static_cast<std::uint32_t>(plan->meaning().effects.size() * 10), due, meter.usage};
         } catch (Failure failure) {
@@ -492,11 +752,13 @@ namespace Magic::Reference {
                 }
                 if (slot == limits_.pending)
                     meter.fail(Error::PendingLimit);
-                next.world.pending[slot] = {true, id, due, input.request.caster, *input.request.aim, input.plan->metrics().retained_bytes};
+                next.world.pending[slot] = {
+                    true, id, due, input.request.caster, *input.request.aim, input.plan->metrics().retained_bytes, input.request.subject
+                };
                 next.plans[slot] = input.plan;
                 kind = EventKind::Queued;
             } else
-                apply(input.plan, input.request.contact, input.request.aim, next, meter);
+                apply(input.plan, input.request.contact, input.request.aim, input.request.subject, next, meter);
             next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
             next.world.actions_issued = id;
             Observation observation{state_.world, next.world, {}, 1, meter.usage};
@@ -536,6 +798,11 @@ namespace Magic::Reference {
                         (!due || slot.slow.until_tick < *due))
                         due = slot.slow.until_tick;
                 }
+                for (const auto& d : next.perception.disguises) {
+                    meter.spend();
+                    if (d.instance && d.until_tick <= target && (!due || d.until_tick < *due))
+                        due = d.until_tick;
+                }
                 if (!due)
                     break;
                 next.world.tick = *due;
@@ -546,6 +813,13 @@ namespace Magic::Reference {
                     meter.spend();
                     if (slot.present && slot.slow.until_tick != 0 && slot.slow.until_tick <= *due)
                         slot.slow = {};
+                }
+                for (std::size_t i = 0; i < disguise_capacity; ++i) {
+                    meter.spend();
+                    if (next.perception.disguises[i].instance && next.perception.disguises[i].until_tick <= *due) {
+                        next.perception.disguises[i] = {};
+                        next.disguise_plans[i].reset();
+                    }
                 }
                 while (true) {
                     std::optional<std::size_t> index;
@@ -560,9 +834,9 @@ namespace Magic::Reference {
                     const auto p = next.world.pending[*index];
                     meter.action = p.action;
                     current_action = p.action;
-                    const Request request{p.caster, std::nullopt, p.aim};
+                    const Request request{p.caster, std::nullopt, p.aim, p.subject};
                     validate(next.plans[*index], request, next, meter, false);
-                    apply(next.plans[*index], request.contact, request.aim, next, meter);
+                    apply(next.plans[*index], request.contact, request.aim, request.subject, next, meter);
                     next.world.pending[*index] = {};
                     next.plans[*index].reset();
                     observation.events[observation.event_count++] = {EventKind::Activated, p.action, *due};
@@ -736,7 +1010,7 @@ namespace Magic::Reference {
             eligible(state_.world, record.toucher);
             auto next = state_;
             revision(next.world, limits_);
-            apply(next.inscriptions[record.item.slot], record.toucher, std::nullopt, next, meter);
+            apply(next.inscriptions[record.item.slot], record.toucher, std::nullopt, std::nullopt, next, meter);
             --next.items.items[record.item.slot].charges;
             next.items.ledger[index].consumed = true;
             auto report =
@@ -803,10 +1077,11 @@ namespace Magic::Reference {
                 meter.spend();
                 check(!w.pending[j].present || w.pending[j].action != p.action);
             }
-            validate(state.plans[i], Request{p.caster, std::nullopt, p.aim}, state, meter, false);
+            validate(state.plans[i], Request{p.caster, std::nullopt, p.aim, p.subject}, state, meter, false);
             for (const auto& effect : state.plans[i]->meaning().effects) {
                 meter.spend();
-                static_cast<void>(later(p.due_tick, effect.duration_ticks, limits_));
+                const auto* d = std::get_if<VisualDisguise>(&effect.payload);
+                static_cast<void>(later(p.due_tick, d ? d->duration_ticks : effect.duration_ticks, limits_));
             }
         }
         for (std::size_t i = 0; i < item_capacity; ++i) {
@@ -842,11 +1117,95 @@ namespace Magic::Reference {
             }
             // Historical references may be departed/replaced. They remain receipts, never live authority.
         }
+        const auto& ps = state.perception;
+        check(ps.instances_issued <= limits_.max_instance && ps.witness_count <= limits_.witnesses);
+        for (std::size_t i = 0; i < object_capacity; ++i) {
+            meter.spend();
+            const auto& o = ps.objects[i];
+            check(o.id.slot == i && o.id.generation <= limits_.max_generation);
+            if (o.present)
+                check(
+                    i < limits_.objects && o.id.generation && form_valid(o.data.form) && o.fact_revision && o.fact_revision <= w.revision
+                );
+            else
+                check(o == ObjectView{o.id});
+        }
+        for (std::size_t i = 0; i < disguise_capacity; ++i) {
+            meter.spend();
+            const auto& d = ps.disguises[i];
+            if (!d.instance) {
+                check(d == DisguiseView{} && !state.disguise_plans[i]);
+                continue;
+            }
+            check(
+                i < limits_.disguises && d.instance <= ps.instances_issued && d.action && d.action <= w.actions_issued &&
+                d.onset_tick <= w.tick && d.until_tick > w.tick && d.until_tick <= limits_.max_tick && form_valid(d.form)
+            );
+            static_cast<void>(object(ps, d.subject));
+            const auto& plan = state.disguise_plans[i];
+            check(
+                plan && d.plan_bytes == plan->metrics().retained_bytes && plan->meaning().effects.size() == 1 &&
+                plan->meaning().entry.kind == EntryKind::Spoken && plan->meaning().delivery == Delivery::Burst
+            );
+            check(catalog_.spoken && catalog_.burst);
+            payload_schema(plan, meter);
+            const auto* payload = std::get_if<VisualDisguise>(&plan->meaning().effects[0].payload);
+            check(payload && payload->form == d.form && d.until_tick - d.onset_tick == payload->duration_ticks);
+            for (const auto& b : plan->meaning().bindings) {
+                meter.spend(b.name.size() + b.frame.size() + 1);
+                check(
+                    (b.query == Query::EligibleDisk || (b.query == Query::EligibleAnnulus && catalog_.annular)) && b.frame == "G0" &&
+                    b.inclusive && b.anchor_time == BindingTime::Release && b.query_time == BindingTime::Activation && b.radius_mm > 0 &&
+                    b.radius_mm <= 1'000'000 &&
+                    (b.query == Query::EligibleAnnulus ? b.inner_radius_mm < b.radius_mm : b.inner_radius_mm == 0)
+                );
+            }
+            bool any = false;
+            for (std::size_t a = 0; a < actor_capacity; ++a) {
+                meter.spend();
+                const auto member = d.audience[a];
+                if (!member.generation) {
+                    check(member == ActorId{});
+                    continue;
+                }
+                any = true;
+                check(member.slot == a);
+                static_cast<void>(actor(w, member));
+                for (std::size_t j = 0; j < i; ++j) {
+                    meter.spend();
+                    const auto& prior = ps.disguises[j];
+                    check(!prior.instance || prior.instance != d.instance);
+                    check(!prior.instance || prior.subject != d.subject || prior.audience[a] != member);
+                }
+            }
+            check(any);
+        }
+        for (std::size_t i = 0; i < witness_capacity; ++i) {
+            meter.spend();
+            const auto& v = ps.witnesses[i];
+            if (i >= ps.witness_count) {
+                check(v == Witness{});
+                continue;
+            }
+            check(
+                v.observer.slot < limits_.actors && v.observer.generation &&
+                v.observer.generation <= w.actors[v.observer.slot].id.generation && v.subject.slot < limits_.objects &&
+                v.subject.generation && v.subject.generation <= ps.objects[v.subject.slot].id.generation && form_valid(v.observed_form) &&
+                v.observation_tick <= w.tick && v.fact_revision && v.fact_revision <= w.revision && v.instance &&
+                v.instance <= ps.instances_issued
+            );
+            for (std::size_t j = 0; j < i; ++j) {
+                meter.spend();
+                check(ps.witnesses[j].observer != v.observer || ps.witnesses[j].instance != v.instance);
+            }
+        }
     }
     std::expected<Checkpoint, Failure> ReferenceHost::checkpoint() const {
         try {
             Meter meter(limits_);
-            meter.spend(220); // bounded catalog metadata/key copy, in addition to fixed State overhead
+            meter.spend(
+                220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0)
+            ); // bounded catalog metadata/key copy, in addition to fixed State overhead
             continuation(state_, tickets_issued_, meter);
             return Checkpoint(std::make_shared<const Checkpoint::Data>(Checkpoint::Data{state_, catalog_, limits_, tickets_issued_}));
         } catch (Failure f) {
@@ -859,8 +1218,8 @@ namespace Magic::Reference {
             if (!checkpoint.data_)
                 meter.fail(Error::InvalidCheckpoint);
             const auto& data = *checkpoint.data_;
-            // Catalog is bounded (three keys, at most64 bytes each); charge identity comparison before copying.
-            meter.spend(220);
+            // Catalog is bounded (five keys, at most64 bytes each); charge identity comparison before copying.
+            meter.spend(220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0));
             if (data.limits != limits_ || !same_catalog(data.catalog, catalog_))
                 meter.fail(Error::IncompatibleCheckpoint);
             continuation(data.state, data.tickets_issued, meter);
@@ -927,6 +1286,13 @@ namespace Magic::Reference {
             MAGIC_ERROR(NonceLimit);
             MAGIC_ERROR(InvalidCheckpoint);
             MAGIC_ERROR(IncompatibleCheckpoint);
+            MAGIC_ERROR(InvalidObject);
+            MAGIC_ERROR(ObjectLimit);
+            MAGIC_ERROR(MissingObject);
+            MAGIC_ERROR(InstanceLimit);
+            MAGIC_ERROR(WitnessLimit);
+            MAGIC_ERROR(NoDisguise);
+            MAGIC_ERROR(UnsupportedComposition);
         }
 #undef MAGIC_ERROR
         return "InvalidError";

@@ -1,0 +1,43 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  6%] Built target magic_compiler
+[ 12%] Built target magic_inspect
+[ 18%] Built target magic_checks
+[ 25%] Built target magic_caller_checks
+[ 28%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 31%] Linking CXX static library libmagic_reference_host.a
+[ 31%] Built target magic_reference_host
+[ 34%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[ 37%] Linking CXX executable magic_host_checks
+[ 37%] Built target magic_host_checks
+[ 40%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[ 43%] Linking CXX executable magic_reference_demo
+[ 43%] Built target magic_reference_demo
+[ 46%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[ 50%] Linking CXX executable magic_engraving_checks
+[ 50%] Built target magic_engraving_checks
+[ 53%] Building CXX object CMakeFiles/magic_engraving_demo.dir/src/engraving-demo.cpp.o
+[ 56%] Linking CXX executable magic_engraving_demo
+[ 56%] Built target magic_engraving_demo
+[ 59%] Building CXX object CMakeFiles/magic_learning.dir/src/learning.cpp.o
+[ 62%] Linking CXX static library libmagic_learning.a
+[ 62%] Built target magic_learning
+[ 65%] Building CXX object CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o
+[ 68%] Linking CXX executable magic_learning_checks
+[ 68%] Built target magic_learning_checks
+[ 71%] Building CXX object CMakeFiles/magic_learning_demo.dir/src/learning-demo.cpp.o
+[ 75%] Linking CXX executable magic_learning_demo
+[ 75%] Built target magic_learning_demo
+[ 78%] Building CXX object CMakeFiles/magic_annular_checks.dir/tests/annular.cpp.o
+[ 81%] Linking CXX executable magic_annular_checks
+[ 81%] Built target magic_annular_checks
+[ 84%] Building CXX object CMakeFiles/magic_annular_demo.dir/src/annular-demo.cpp.o
+[ 87%] Linking CXX executable magic_annular_demo
+[ 87%] Built target magic_annular_demo
+[ 90%] Building CXX object CMakeFiles/magic_perception_checks.dir/tests/perception.cpp.o
+[ 93%] Linking CXX executable magic_perception_checks
+[ 93%] Built target magic_perception_checks
+[ 96%] Building CXX object CMakeFiles/magic_perception_demo.dir/src/perception-demo.cpp.o
+[100%] Linking CXX executable magic_perception_demo
+[100%] Built target magic_perception_demo
+
+exit_status=0

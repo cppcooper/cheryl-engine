@@ -647,7 +647,7 @@ int main() {
                 rejects(learner.learn(take(L::make_lesson(input, game()))), L::Error::DuplicateIdentity);
             }
         }
-        rejects(L::Learner::create(512), L::Error::InvalidLimits);
+        rejects(L::Learner::create(static_cast<RuleMask>(all_rules + 1)), L::Error::InvalidLimits);
     });
     test("book lesson edit preserves prior accepted disk and malformed annular draft", [] {
         auto l = take(L::Learner::create(all_rules & ~rule_bit(Rule::AnnularTarget)));

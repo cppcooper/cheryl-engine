@@ -68,3 +68,18 @@ nothing. Coordinator source review is next. A concrete **unselected** next
 evidence is a small human prediction exercise for centre/inner/outer boundaries
 and shared school bridges; no playtest/GUI or new capability work is authorized
 by this handoff. Existing platform/leak/allocator/durability gaps remain.
+
+MAGIC-M6 is a separately assigned continuation from exact reviewed M5
+c4dbffe; it does not modify or extend feature-round-20261024-0500.
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M6-028 | Append only typed VisualDisguise/Discernment payloads, one captured object role and closed OpenArch/StoneWall forms. Exact Common uses the existing audience bridge, disk/annulus, onset and independent duration. Two operation-concept bits distinguish recognized syntax from fixture knowledge and live permission; no new school/tome or public Engine API. A variant preserves old scalar meanings without fake hp parameters. High confidence in separation, medium in reversible verbose spelling. |
+| M6-029 | Own four physical objects, eight monotonic disguise instances with fixed16-cell frozen generation-bound audiences, and sixteen non-evicting dated witnesses. Native observation returns only perceived form; trusted inspection separately owns truth/history. Discernment pays normally and reveals only an applicable unrevealed instance to each selected observer; any missing/revealed member refuses the complete activation. Conflicting subject/observer pairs refuse, expiry precedes same-tick activation, and removal cannot retarget replacements. High confidence in deterministic fixture behavior; no sensory/AI/security claim. |
+| M6-030 | Extend the staged State and distinct checkpoint with actual active/pending plan handles, subject captures, facts, audiences, instance horizon and witnesses. Exact schemas/limits and all references/times validate before adoption; restoration gets fresh authority. Delayed release pays10 and defers future audience/conflict/capacity; failed advance preserves the paid blocking timeline. Fixed copy/scan costs rise explicitly within unchanged old quotas. One perception operation only; bundles/engraving refuse before payment. High confidence in in-memory continuity, no disk/cross-version/external delivery guarantee. |
+
+M6 actual command results, corrected setup history and numerical resource evidence
+are in agent-notes.md and the standalone continuation receipt. Completed queued
+receipts remain immutable. The worker finishes idle for coordinator review;
+rendering/human clarity/fun, production physics, leak/platform and durability
+acceptance remain outside this proof.

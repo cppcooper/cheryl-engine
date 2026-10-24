@@ -1,0 +1,75 @@
+{
+  "milestone_id": "MAGIC-M6",
+  "base_commit": "c4dbffe4523009b9f74cf103a19ee5b4ecd105b9",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "feature-development/magic/logs/M6/configure-01.log",
+    "feature-development/magic/logs/M6/build-01.log",
+    "feature-development/magic/logs/M6/build-02.log",
+    "feature-development/magic/logs/M6/build-03.log",
+    "feature-development/magic/logs/M6/accumulated-01.log",
+    "feature-development/magic/logs/M6/build-04.log",
+    "feature-development/magic/logs/M6/affected-01.log",
+    "feature-development/magic/logs/M6/build-05.log",
+    "feature-development/magic/logs/M6/affected-02.log"
+  ],
+  "predecessor_receipt": "feature-development/queue/feature-round-20261024-0500/MAGIC-M5.json",
+  "implemented_contracts": [
+    "M6-028: Actual owned compiler appends only typed VisualDisguise and Discernment payloads, closed OpenArch/StoneWall appearances and one captured-object role. Exact Common preserves complete typed meaning; independent form/audience/onset/duration edits and owned diagnostics pass. Old scalar payloads and invented school bridges remain unchanged in meaning.",
+    "Two exact Common operation-concept requirement bits extend the bounded knowledge registry to2047. M4 books distinguish recognized/unknown from accepted fixture knowledge and current host refusal; no new teaching framework or knowledge-derived release/event authority.",
+    "M6-029: Four generation-checked physical object facts, eight monotonic disguise instances with fixed16-cell frozen actor-generation audiences and sixteen non-evicting dated witnesses. Ordinary perceived value exposes only current appearance/IDs/tick; trusted inspection separately exposes physical facts, contributions and history. Illusion never mutates physical form/passability, health or speed.",
+    "Normal opaque prepare/release/live key AND primitive/typed appearance-duration-schema/payment checks govern both operations. Held G0 aim/subject bind at release, eligible disk/annular audience queries at activation. At most one active instance per subject/observer pair; whole overlap refusal, expiry-before-activation and removal/reuse never retarget old references.",
+    "Discernment records physical form/passability, subject and observer generations, observation tick/fact revision and influence identity for every selected observer atomically. Any no-applicable/already-revealed member refuses the complete activation. Witnesses stay historical across edits/expiry/removal, reveal only that instance and grant no future omniscience.",
+    "M6-030: Whole-transition staged release/advance retains the existing10-mana/effect, blocking-clock and no-refund cancellation laws. Future delayed audience/conflict/capacity is deferred; failure preserves paid pending state and all scratch effects/clock/knowledge/counters. Perception bundles/engraving refuse before payment, old multi-effects/items remain supported.",
+    "Distinct owned checkpoint retains coherent facts/generations, actual active and pending plans/subject captures/aim/due, instance horizons/audiences/expiry/witnesses and all M3 items/events/statuses. Bounds/references/time/schema/limit compatibility validate before adoption; fresh host incarnation invalidates old live tickets/events. Snapshots remain observational; deliberate rewind is timeline-local.",
+    "Real independent finite caller compiles/inspects, releases due100 radius250 aim0, moves A251->100/B100->251, restores pending after original owners die, observes A wall/B arch with passage open, casts A-only discernment, restores active state, expires300 and proves instance2 is not revealed by witness1. Old tick100 observer result stays owned.",
+    "Unchanged previous compiler/host/book quotas; explicit additional fixed-copy/scan and variant storage costs. Hard object4/instance8/witness16 caps, checked monotonic instance/generation/revision horizons, full16 audience/witness transition and exact/one-short work/selection/storage/time refusal checks pass."
+  ],
+  "verification": {
+    "native_invocations": 9,
+    "configuration": "Existing clone-local C++23 GNU16/Linux Debug ASan+UBSan; command-local detect_leaks=0/halt_on_error=1; all wrapper calls one job.",
+    "accumulated": "One run:18/19 entries pass, including all35 new perception cases and real caller. M3 legacy work100 setup fails because new fixed copy is244, before the intended checkpoint assertion.",
+    "correction": "Preserves old case name/assertions; setup allowance100->300, checkpoint still refuses. Test-only additions strengthen combined checkpoint, delayed live checks, captured subject/aim, witness atomicity, full16 audience and exact expiry.",
+    "focused": "2/2 engraving/perception entries pass:34 engraving/checkpoint cases and40 perception cases. All19 unique CTest names have final passing evidence across accumulated plus focused; no second accumulated run. Final one-unit/effect inscription-envelope scan charge is source-reviewed; build-05 and affected-02 exit0,5/5 inscription-related entries pass (34 engraving,25 learning,25 annular,40 perception cases plus3 engraving callers), no quota increase or second whole run.",
+    "retained_separate_counts": {
+      "compiler_cases": 35,
+      "compiler_callers": 4,
+      "file_fixtures": 6,
+      "cli_scenarios": 9,
+      "host_cases": 37,
+      "host_caller_scenarios": 6,
+      "engraving_cases": 34,
+      "engraving_caller_scenarios": 3,
+      "learning_cases": 25,
+      "learning_callers": 1,
+      "annular_cases": 25,
+      "annular_callers": 1,
+      "perception_cases": 40,
+      "perception_callers": 1
+    },
+    "history": "Initial build-01 exit2 missing ObjectView default data initializer is corrected; build-02/03/04 exit0. Accumulated exit8 setup failure is corrected and affected exit0. Complete failed logs and older M4 correction history remain; no unresolved native failure, sanitizer finding or resource/auth refusal. Final build-05/affected-02 exit0 cover the accounted inscription scan.",
+    "measured_logical_bounds": {
+      "fixed_host_copy_work": 244,
+      "perception_compiler_tokens": 61,
+      "perception_compiler_work": 2959,
+      "perception_compiler_retained": 2891,
+      "perception_activation_work": 471,
+      "perception_activation_selector": 16,
+      "perception_selected": 1,
+      "old_disk_activation_work": 496,
+      "old_annular_activation_work": 514,
+      "old_touch_work": 333,
+      "empty_three_schema_checkpoint_work": 540
+    }
+  },
+  "limitations": [
+    "Private trusted native fixture, not public Engine integration, network secrecy/authentication or a sandbox; physical passability is an authoritative fixture fact, not collision/physics integration.",
+    "Only one new perception operation per activation, spoken disk/annular audience and one captured object. No perception engraving, mixed bundles, general dispel/counterspell/stacking, recurring aura, AI beliefs/control, rays/occlusion/real sensory detection, rendering/audio, provider or additional effect family.",
+    "No D&D edition/dice/slot/save/concentration conformance, human comprehension/teaching/enjoyment/playtest or graphical clarity acceptance.",
+    "In-memory checkpoints require exact current catalog/limit identity and intentional whole-world rewind. No disk codec, cross-version ABI/schema migration, book/learner save, process/crash/power-loss durability or external exactly-once guarantee.",
+    "GNU16/Linux Debug ASan+UBSan only. Leak checking under known tracing restriction, other platforms/toolchains/ABIs, allocator fault injection and exact heap/RSS/CPU remain unverified. Logical work/storage excludes allocator/control-block overhead and caller-retained output history.",
+    "No raw Plan/Checkpoint decoder or public mutable continuation exists; compatibility/default/current unsupported-plan refusals are tested, not forged serialized-state deserialization."
+  ],
+  "next_action": "Remain idle for coordinator review of standalone M6 source/receipt/complete logs and publisher backup on feat/magic. A separately selected graphical observer-view comparison is useful unselected human-readability evidence. No subsequent unit, fourth queued task, worker/service or automatic integration is scheduled."
+}

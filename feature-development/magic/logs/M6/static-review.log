@@ -1,0 +1,41 @@
+$ git diff --check
+exit_status=0
+$ clang-format --dry-run --Werror projects/magic/include/magic/compiler.h projects/magic/include/magic/reference-host.h projects/magic/src/compiler.cpp projects/magic/src/reference-host.cpp projects/magic/src/main.cpp projects/magic/src/perception-demo.cpp projects/magic/tests/perception.cpp projects/magic/tests/engraving.cpp projects/magic/tests/learning.cpp projects/magic/tests/annular.cpp
+exit_status=0
+feature-development/magic/MAGIC-M1.json: receipt and complete earlier saved evidence bytes preserved
+feature-development/magic/MAGIC-M2.json: receipt and complete earlier saved evidence bytes preserved
+feature-development/queue/feature-round-20261024-0500/MAGIC-M3.json: receipt and complete earlier saved evidence bytes preserved
+feature-development/queue/feature-round-20261024-0500/MAGIC-M4.json: receipt and complete earlier saved evidence bytes preserved
+feature-development/queue/feature-round-20261024-0500/MAGIC-M5.json: receipt and complete earlier saved evidence bytes preserved
+compiler: all existing literal case names preserved (30 literal declarations; native counts separate)
+reference-host: all existing literal case names preserved (35 literal declarations; native counts separate)
+engraving: all existing literal case names preserved (34 literal declarations; native counts separate)
+learning: all existing literal case names preserved (25 literal declarations; native counts separate)
+annular: all existing literal case names preserved (25 literal declarations; native counts separate)
+configure-01.log: actual complete saved diagnostics bytes=315 immediate exit=0
+build-01.log: actual complete saved diagnostics bytes=2238 immediate exit=2
+build-02.log: actual complete saved diagnostics bytes=2397 immediate exit=0
+build-03.log: actual complete saved diagnostics bytes=2892 immediate exit=0
+accumulated-01.log: actual complete saved diagnostics bytes=42419 immediate exit=8
+build-04.log: actual complete saved diagnostics bytes=725 immediate exit=0
+affected-01.log: actual complete saved diagnostics bytes=7596 immediate exit=0
+build-05.log: actual complete saved diagnostics bytes=1400 immediate exit=0
+affected-02.log: actual complete saved diagnostics bytes=13206 immediate exit=0
+accumulated-01.log: actual discovered/executed entries=19
+affected-01.log: actual discovered/executed entries=2
+affected-02.log: actual discovered/executed entries=5
+Final pass coverage:19 unique CTest names across one accumulated18/19 run and justified affected2/2 then5/5 corrections; no second full run.
+projects/magic/include/magic/compiler.h sha256=35d4c870ad987742a7d3f51d458e930d6e12234dca299a5812e614536345ef04
+projects/magic/include/magic/reference-host.h sha256=1d3ea1fb5bca4e93fd2a3eb5ab87877ecd22dc69d984d2611dba9dee2fb598a0
+projects/magic/src/compiler.cpp sha256=c6002dabbb67c4bc6d41e6bd95f8fca2d78847abc6cb1b3c1230446af91deb25
+projects/magic/src/reference-host.cpp sha256=bba1f5acfe05545416b8d2c5c930acf5b60111f28f9580a0ae14fca3693f3c77
+projects/magic/src/main.cpp sha256=3da35133c5222cb55f9e76c1ad89719dc77069f3a8647c19a37bac8085bb6e7b
+projects/magic/src/perception-demo.cpp sha256=376b5980fa826ce5689cebac0bb68c9977df013de09f68750f54139c626d23b3
+projects/magic/tests/perception.cpp sha256=3e85d2db228ad199fcfed9645cdb3399c51909e90f7f08bc8c683d46aecb3664
+projects/magic/tests/engraving.cpp sha256=f8498ecdd4aace677297540caa4c5c9333485137e219b71fb8c0739868ea39e6
+projects/magic/tests/learning.cpp sha256=f8cd06dec637d181812844b572452bbb5f63c2a3c9e6179e3c80f42a3505deb3
+projects/magic/tests/annular.cpp sha256=a0b419e9731c96ea17b0adbb28329f01dd0805cad9bbf22975163c573b603205
+projects/magic/CMakeLists.txt sha256=3a040cbe8672b0a76c726837d757ab4315c91d70b46c5b9c9951d4e8ed43d63f
+projects/magic/fixtures/m6/discern.common sha256=55d4c67d99b9281dab94a01a14ef648fcd9802658d5795bcebffb339d4241777
+projects/magic/fixtures/m6/disguise.common sha256=57d5d2cced442ef392f0854869d0febad563330d3918206c2f0c03192c72b9eb
+Standalone receipt binding, final evidence/counts, limitations and idle next action validated. static exit_status=0

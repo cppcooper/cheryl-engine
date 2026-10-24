@@ -14,6 +14,24 @@ namespace Magic::Reference {
     inline constexpr std::size_t pending_capacity = 8;
     inline constexpr std::size_t item_capacity = 8;
     inline constexpr std::size_t touch_capacity = 16;
+    inline constexpr std::size_t object_capacity = 4, disguise_capacity = 8, witness_capacity = 16;
+    struct ObjectId {
+        std::uint32_t slot = 0;
+        std::uint64_t generation = 0;
+        bool operator==(const ObjectId&) const = default;
+    };
+    struct ObjectSpec {
+        Appearance form = Appearance::OpenArch;
+        bool passable = true;
+        bool operator==(const ObjectSpec&) const = default;
+    };
+    struct ObjectView {
+        ObjectId id;
+        bool present = false;
+        ObjectSpec data = {};
+        std::uint64_t fact_revision = 0;
+        bool operator==(const ObjectView&) const = default;
+    };
 
     enum class Error {
         InvalidLimits,
@@ -61,7 +79,14 @@ namespace Magic::Reference {
         EventLimit,
         NonceLimit,
         InvalidCheckpoint,
-        IncompatibleCheckpoint
+        IncompatibleCheckpoint,
+        InvalidObject,
+        ObjectLimit,
+        MissingObject,
+        InstanceLimit,
+        WitnessLimit,
+        NoDisguise,
+        UnsupportedComposition
     };
     struct Failure {
         Error code;
@@ -113,6 +138,7 @@ namespace Magic::Reference {
         ActorId caster;
         Point aim; // accepted world-mm point in G0, independent of camera and caster movement
         std::size_t plan_bytes = 0;
+        std::optional<ObjectId> subject = {}; // Captured at paid release, generation rechecked at activation.
         bool operator==(const PendingView&) const = default;
     };
     // Observational projection only: it omits retained plans, schemas, items and live authority.
@@ -128,6 +154,7 @@ namespace Magic::Reference {
         ActorId caster;
         std::optional<ActorId> contact;
         std::optional<Point> aim;
+        std::optional<ObjectId> subject = {};
     };
     struct HostLimits {
         // Only tighten these ceilings, including zero; metrics bound operations rather than CPU cycles/RSS.
@@ -147,6 +174,8 @@ namespace Magic::Reference {
         std::size_t touch_receipts = touch_capacity; // lifetime admissions; never evicted
         std::uint64_t max_event_nonce = 1'000'000;
         std::uint64_t max_fact_id = 1'000'000'000;
+        std::size_t objects = object_capacity, disguises = disguise_capacity, witnesses = witness_capacity;
+        std::uint64_t max_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
     struct ItemId {
@@ -176,6 +205,44 @@ namespace Magic::Reference {
         std::array<TouchRecord, touch_capacity> ledger;
         std::uint64_t events_issued = 0;
         bool operator==(const ItemSnapshot&) const = default;
+    };
+    struct DisguiseView {
+        std::uint64_t instance = 0, action = 0;
+        ObjectId subject;
+        Appearance form = Appearance::StoneWall;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        std::array<ActorId, actor_capacity> audience; // generation0 means absent; frozen after activation
+        std::size_t plan_bytes = 0;
+        bool operator==(const DisguiseView&) const = default;
+    };
+    struct Witness {
+        ActorId observer;
+        ObjectId subject;
+        Appearance observed_form = Appearance::OpenArch;
+        bool observed_passable = true;
+        std::uint64_t observation_tick = 0, fact_revision = 0, instance = 0;
+        bool operator==(const Witness&) const = default;
+    };
+    // Trusted-owner inspection. Historical witnesses are dated facts, never current authoritative truth.
+    struct PerceptionSnapshot {
+        std::array<ObjectView, object_capacity> objects;
+        std::array<DisguiseView, disguise_capacity> disguises;
+        std::array<Witness, witness_capacity> witnesses;
+        std::size_t witness_count = 0;
+        std::uint64_t instances_issued = 0;
+        bool operator==(const PerceptionSnapshot&) const = default;
+    };
+    // Ordinary owned result deliberately contains only the current perceived form, not hidden contributions/truth.
+    struct Perceived {
+        ActorId observer;
+        ObjectId subject;
+        Appearance form = Appearance::OpenArch;
+        std::uint64_t tick = 0;
+        bool operator==(const Perceived&) const = default;
+    };
+    struct KnowledgeView {
+        std::array<Witness, witness_capacity> witnesses;
+        std::size_t count = 0;
     };
     struct Usage {
         std::size_t work = 0;
@@ -256,6 +323,8 @@ namespace Magic::Reference {
             std::array<PlanHandle, pending_capacity> plans;
             ItemSnapshot items;
             std::array<PlanHandle, item_capacity> inscriptions;
+            PerceptionSnapshot perception;
+            std::array<PlanHandle, disguise_capacity> disguise_plans;
         };
         struct Prepared {
             PlanHandle plan;
@@ -275,7 +344,21 @@ namespace Magic::Reference {
         void validate(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
         void payload_schema(const PlanHandle& plan, Meter& meter) const;
         void inscription(const PlanHandle& plan, Meter& meter) const;
-        void apply(const PlanHandle& plan, std::optional<ActorId> recipient, std::optional<Point> aim, State& state, Meter& meter) const;
+        void apply(
+            const PlanHandle& plan,
+            std::optional<ActorId> recipient,
+            std::optional<Point> aim,
+            std::optional<ObjectId> subject,
+            State& state,
+            Meter& meter
+        ) const;
+        void perceptual(
+            const PlanHandle& plan,
+            ObjectId subject,
+            const std::array<bool, actor_capacity>& audience,
+            State& state,
+            Meter& meter
+        ) const;
         void continuation(const State& state, std::uint64_t tickets, Meter& meter) const;
         [[nodiscard]] const Prepared& authorize(const Ticket& ticket) const;
         [[nodiscard]] StepResult adopt(State&& next, Observation observation);
@@ -284,6 +367,12 @@ namespace Magic::Reference {
         ReferenceHost(const ReferenceHost&) = delete;
         ReferenceHost& operator=(const ReferenceHost&) = delete;
         [[nodiscard]] static std::expected<std::unique_ptr<ReferenceHost>, Failure> create(const Catalog& catalog, HostLimits limits = {});
+        [[nodiscard]] std::expected<ObjectId, Failure> add_object(ObjectSpec object);
+        [[nodiscard]] std::expected<void, Failure> update_object(ObjectId id, ObjectSpec object);
+        [[nodiscard]] std::expected<void, Failure> remove_object(ObjectId id);
+        [[nodiscard]] std::expected<PerceptionSnapshot, Failure> inspect_perception() const;
+        [[nodiscard]] std::expected<Perceived, Failure> perceive(ActorId observer, ObjectId subject) const;
+        [[nodiscard]] std::expected<KnowledgeView, Failure> knowledge(ActorId observer) const;
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

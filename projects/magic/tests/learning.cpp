@@ -511,7 +511,7 @@ int main() {
         slow.practice_gloss = replace(slow.gloss, "750", "700");
         check(take(l.learn(slow.make())), "Mend slow");
         check(
-            l.snapshot().known == (all_rules & ~rule_bit(Rule::AnnularTarget)) && l.snapshot().revision == 4,
+            l.snapshot().known == 255 && l.snapshot().revision == 4,
             "original eight rule bits; four school productions do not teach annular targeting"
         );
     });

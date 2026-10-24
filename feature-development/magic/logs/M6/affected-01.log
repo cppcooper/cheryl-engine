@@ -1,0 +1,113 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_(engraving|perception)_contracts$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 12
+    Start 12: magic_engraving_contracts
+
+12: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_checks
+12: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+12: Test timeout computed to be: 30
+12: PASS literal armed/released/spent worlds and immutable report
+12: PASS accepted event binds actual toucher rather than installer/previous target
+12: PASS unwilling ineligible and dead admission stays usable after explicit correction
+12: PASS installation funds exactly10 once; nine and permission refuse
+12: PASS live key primitive quantity and capability changes refuse atomically
+12: PASS unknown owned key never dispatches solely by enum
+12: PASS default foreign copied and repeated capabilities
+12: PASS disabled refusal preserves admission; spent stays visible and inert
+12: PASS removed/reused item generation rejects old fact and never refunds
+12: PASS removed/reused toucher cannot retarget an old admission
+12: PASS item generation horizon refuses first-free reuse without mutation
+12: PASS item exact capacity eight and one-short zero
+12: PASS receipt exact sixteen and one-short admission limits; no eviction
+12: PASS nonce and fact horizons exact and one-short without wrap
+12: PASS installation refuses wrong envelope and missing plan
+12: PASS whole payload shares slow/health logic; conflicting bindings cannot partially heal
+12: PASS plan byte quota exact and one-short on installation
+12: touch exact work=332
+12: PASS touch work exact boundary and one-short preserve charge and receipt
+12: PASS touch selector and selected target one-short
+12: PASS owned armed checkpoint survives source catalog and original owner destruction
+12: PASS restore fresh authority rejects both old tickets and event copies; resume explicit
+12: PASS explicit whole-world rewind restores charges but not old live authority
+12: PASS checkpoint retains ledger tombstones across removal/replacement
+12: PASS default/incompatible schema/limits restore preserves old world and casting ticket
+12: PASS checkpoint rejects currently unsupported retained schema and departed pending caster
+12: PASS pending plan captured aim due tick active slow and expiry survive checkpoints
+12: PASS checkpoint state work bound refuses without changing caller outputs
+12: PASS one checkpoint coherently retains items receipts slow and pending spoken work
+12: PASS checkpoint refuses intrinsic pending duration beyond time horizon
+12: PASS checkpoint capture and restore work exact348 and one-short347
+12: PASS revision exhaustion preserves touch charge and admission
+12: PASS nonzero accepted aim remains fixed across owner movement and destruction
+12: PASS restoration retains issuance and generation exhaustion horizons
+12: PASS new limit ceilings refuse rather than raising storage
+12: 34 engraving/checkpoint cases passed; 0 failed.
+1/2 Test #12: magic_engraving_contracts ........   Passed    0.03 sec
+test 18
+    Start 18: magic_perception_contracts
+
+18: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_perception_checks
+18: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+18: Test timeout computed to be: 30
+18: PASS independent complete typed Common meaning roundtrip and requirements
+18: PASS appearance duration onset and annular audience edit independent roles
+18: PASS owned role appearance unit range and scope diagnostics
+18: PASS perception bundles and engraving refuse before any payment
+18: PASS literal before paid release onset expiry in both actor storage orders
+18: PASS discernment records exact A-only fact and no ordinary query grants knowledge
+18: PASS no applicable disguise or partial audience discernment refuses all
+18: PASS dated witnesses survive changed physical facts and do not reveal future instances
+18: PASS live symbolic key primitive appearance duration and permissions rechecked
+18: PASS discern current unknown key and disabled capability refuse without information
+18: PASS default foreign stale copied and repeated authority cannot act
+18: PASS subject capture refuses missing generation at release and delayed activation
+18: PASS observer removal reuse and subject removal retire only matching contributions
+18: PASS eligibility at activation and frozen audience after movement
+18: PASS same subject audience overlap refuses while disjoint audiences and subjects coexist
+18: PASS delayed future overlap capacity intentionally deferred and failed advance preserves paid queue
+18: PASS expiry precedes same-tick activation without stale expiry removing replacement
+18: PASS object count generation revision and fixed ceiling refusal
+18: PASS eight live instance slots exact and one-short; disjoint audiences bound storage
+18: PASS instance identity exhaustion never wraps even after expiry
+18: PASS sixteen retained witnesses exact and one-short without silent eviction
+18: PASS paid delayed discernment witness exhaustion rolls back whole advance
+18: PASS exact and insufficient funds with subject and pure preview
+18: PASS annular audience shares checked membership and old disk centre behavior
+18: perception activation work=471 selector=16 selected=1
+18: PASS selection selector and complete advance work exact and one-short
+18: PASS time horizon exact versus one-short remains paid pending on failure
+18: PASS later failed perception action preserves earlier scratch activation and clock
+18: perception compiler tokens=61 work=2959 retained=2891
+18: PASS compiler source token work retention exact while old output remains owned
+18: PASS M4 books distinguish recognized concepts knowledge and host permission
+18: PASS pending and active checkpoints outlive original owner source catalog and actual plans
+18: PASS checkpoint incompatible catalog limits and invalid input preserve destination live ticket
+18: PASS whole-world rewind retains logical instances but fresh live authority
+18: PASS old spoken disk annulus item and event continuation share current checkpoint
+18: PASS old observer results remain immutable through edits expiry and owner destruction
+18: PASS alternate appearance is a real overlay and actor removal keeps other memberships
+18: PASS new current schema and subject facts are rechecked at delayed activation
+18: PASS accepted subject and aim survive request edits caster movement and physical edits
+18: PASS witness capacity resolves complete audience before any addition
+18: PASS all sixteen actor generations fit one audience and one witness transition
+18: PASS discernment at exact expiry refuses and keeps the previously paid timeline
+18: 40 perception contract cases passed; 0 failed.
+2/2 Test #18: magic_perception_contracts .......   Passed    0.05 sec
+
+The following tests passed:
+	magic_engraving_contracts
+	magic_perception_contracts
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.07 sec
+
+exit_status=0

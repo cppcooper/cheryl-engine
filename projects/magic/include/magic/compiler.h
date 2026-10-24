@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 namespace Magic {
@@ -52,7 +53,21 @@ namespace Magic {
         std::string message;
     };
 
-    enum class Primitive { Heal, Fire, Slow };
+    enum class Primitive { Heal, Fire, Slow, Disguise, Discern };
+    enum class Appearance : std::uint8_t { OpenArch, StoneWall };
+    enum class SubjectRole { CapturedObject };
+    struct VisualDisguise {
+        SubjectRole subject = SubjectRole::CapturedObject;
+        Appearance form = Appearance::StoneWall;
+        std::uint32_t duration_ticks = 0;
+        bool operator==(const VisualDisguise&) const = default;
+    };
+    struct Discernment {
+        SubjectRole subject = SubjectRole::CapturedObject;
+        bool operator==(const Discernment&) const = default;
+    };
+    using Payload = std::variant<std::monostate, VisualDisguise, Discernment>;
+    [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
     enum class Trigger { None, ItemTouch };
@@ -86,6 +101,7 @@ namespace Magic {
         std::size_t binding = 0;
         std::uint32_t quantity = 0;       // heal hp, fire damage dp, or speed multiplier permille (750 means 0.750x)
         std::uint32_t duration_ticks = 0; // zero is an impulse; one tick = 10 ms
+        Payload payload = {};             // New domains use typed payloads; legacy quantity/duration stay zero for them.
         bool operator==(const Effect&) const = default;
     };
 
@@ -108,13 +124,15 @@ namespace Magic {
         MendSlow,
         CinderFire,
         CinderSlow,
-        AnnularTarget
+        AnnularTarget,
+        CommonDisguise,
+        CommonDiscern
     };
     using RuleMask = std::uint16_t;
-    inline constexpr RuleMask all_rules = 511;
+    inline constexpr RuleMask all_rules = 2047;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 9 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 11 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
@@ -133,6 +151,7 @@ namespace Magic {
         std::string key;
         std::uint32_t max_quantity = 1'000'000;
         std::uint32_t max_duration_ticks = 8'640'000;
+        std::uint8_t appearances = 3; // Disguise only: OpenArch bit0, StoneWall bit1; caller may disable either.
     };
 
     struct Catalog {

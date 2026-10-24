@@ -552,7 +552,7 @@ int main() {
     });
     test("checkpoint state work bound refuses without changing caller outputs", [] {
         HostLimits l;
-        l.work = 100;
+        l.work = 300; // Valid actor setup under new fixed copy244; checkpoint still exceeds the allowance.
         Fixture f(l);
         const auto before = f.h->snapshot();
         rejects(f.h->checkpoint(), Error::WorkLimit);
@@ -617,11 +617,11 @@ int main() {
     });
     test("checkpoint capture and restore work exact348 and one-short347", [] {
         HostLimits l;
-        l.work = 348;
+        l.work = 540; // Historical case name retained; new fixed state copy164 + validation scans28.
         Fixture exact(l);
         auto cp = take(exact.h->checkpoint());
         ok(exact.h->restore(cp));
-        l.work = 347;
+        l.work = 539;
         Fixture short_host(l);
         short_host.unchanged([&] { rejects(short_host.h->checkpoint(), Error::WorkLimit); });
     });

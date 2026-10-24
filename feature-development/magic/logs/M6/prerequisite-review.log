@@ -1,0 +1,7 @@
+M6 prerequisite review: exact HEAD clean feat/magic; M5 exact ready/true binding.
+feature-development/magic/logs/M5/configure-01.log sha256=18ebfce30ddd2624594351d4edc89ebe3a79e7f87a1f51ebbb5ca1cbb214e191 bytes=315 exit0
+feature-development/magic/logs/M5/build-01.log sha256=9b46f4d791b8089f41d53a0a399dd4db3a346581c7081fdbbbd6b1a4746821b5 bytes=2521 exit0
+feature-development/magic/logs/M5/accumulated-01.log sha256=c1d403d54e8d979d7d63130257c50375b5844b6b1153a8a7b79ef05c389c5aa4 bytes=37742 exit0
+feature-development/magic/logs/M5/build-02.log sha256=ca4a14edb3ca092cd63cec6a57b5c974fcb44769ad751b601bc1d081ba3a7cf3 bytes=428 exit0
+feature-development/magic/logs/M5/affected-01.log sha256=86624700fe71cf40e8b3b9de339093d8aa8c660fb0a3c378586ad3de5fa9ccfc bytes=3283 exit0
+Inspected actual compiler, host staged resolution/adoption/continuation, learning metadata and predecessor caller/check source.

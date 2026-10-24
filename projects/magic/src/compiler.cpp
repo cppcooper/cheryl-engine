@@ -37,6 +37,10 @@ namespace Magic {
                     return "fire damage";
                 case Primitive::Slow:
                     return "multiply speed by";
+                case Primitive::Disguise:
+                    return "show";
+                case Primitive::Discern:
+                    return "discern";
             }
             return "invalid";
         }
@@ -78,6 +82,7 @@ namespace Magic {
             Primitive primitive;
             Quantity quantity;
             Quantity duration;
+            Token appearance;
             Span span;
         };
         struct Authored {
@@ -365,17 +370,47 @@ namespace Magic {
                         expect("speed");
                         expect("by");
                         effect.primitive = Primitive::Slow;
+                    } else if (operation.text == "show" || operation.text == "discern") {
+                        effect.primitive = operation.text == "show" ? Primitive::Disguise : Primitive::Discern;
+                        const auto role = take();
+                        if (role.text != "subject")
+                            fail(Code::RoleMismatch, role.span, "Perception needs the captured object subject role.");
+                        expect("captured");
+                        expect("at");
+                        expect("release");
+                        expect("rechecked");
+                        expect("at");
+                        expect("activation");
+                        if (effect.primitive == Primitive::Disguise) {
+                            expect("as");
+                            effect.appearance = take();
+                            expect("for");
+                            effect.duration = quantity();
+                            expect("to");
+                            expect("this");
+                            expect("audience");
+                            expect("frozen");
+                            expect("at");
+                            expect("activation");
+                        } else {
+                            expect("for");
+                            expect("this");
+                            expect("audience");
+                            expect("instant");
+                        }
                     } else
                         fail(
                             Code::UnknownPhrase, operation.span,
                             "Unknown Common primitive; use heal, fire damage or multiply speed by. Host support is checked separately."
                         );
-                    effect.quantity = quantity();
-                    if (effect.primitive == Primitive::Slow) {
-                        expect("for");
-                        effect.duration = quantity();
-                    } else
-                        expect("instant");
+                    if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern) {
+                        effect.quantity = quantity();
+                        if (effect.primitive == Primitive::Slow) {
+                            expect("for");
+                            effect.duration = quantity();
+                        } else
+                            expect("instant");
+                    }
                 } else if (effect.language.text == "Mend") {
                     const auto operation = take();
                     if (operation.text == "sela")
@@ -432,14 +467,15 @@ namespace Magic {
             return syntax;
         }
         void catalog() {
-            if (catalog_.operations.size() > 3)
-                fail(Code::InvalidCatalog, {}, "Catalog has more than three M1 primitive schemas.");
+            if (catalog_.operations.size() > 5)
+                fail(Code::InvalidCatalog, {}, "Catalog has more than five registered primitive schemas.");
             for (std::size_t i = 0; i < catalog_.operations.size(); ++i) {
                 const auto& schema = catalog_.operations[i];
                 spend(1);
                 if (schema.key.empty() || schema.key.size() > max_key || schema.max_quantity == 0 || schema.max_quantity > max_quantity ||
-                    schema.max_duration_ticks > max_time ||
-                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow))
+                    schema.max_duration_ticks > max_time || schema.appearances > 3 ||
+                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow &&
+                     schema.primitive != Primitive::Disguise && schema.primitive != Primitive::Discern))
                     fail(
                         Code::InvalidCatalog, {},
                         "Catalog needs valid unique primitive schemas, 1..64-byte symbolic keys and bounded positive quantities."
@@ -685,19 +721,48 @@ namespace Magic {
                         "Bridge references an unbound target; add an explicit bind declaration in this activation."
                     );
                 const auto& operation = schema(raw.primitive, raw.span);
-                const auto dimension = raw.primitive == Primitive::Heal   ? Dimension::Health
-                                       : raw.primitive == Primitive::Fire ? Dimension::Damage
-                                                                          : Dimension::Rate;
-                Effect effect{
-                    raw.primitive, copy(operation.key, raw.span), target,
-                    value(
+                Effect effect;
+                effect.primitive = raw.primitive;
+                effect.key = copy(operation.key, raw.span);
+                effect.binding = target;
+                const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
+                if (perception) {
+                    if (syntax.effects.size() != 1)
+                        fail(
+                            Code::UnsupportedComposition, raw.span,
+                            "Perception accepts exactly one operation; mixed bundles are unsupported."
+                        );
+                    if (meaning.entry.kind != EntryKind::Spoken || meaning.delivery != Delivery::Burst)
+                        fail(
+                            Code::UnsupportedCombination, raw.span,
+                            "Perception requires spoken burst audience and a separately captured object subject."
+                        );
+                    if (raw.primitive == Primitive::Disguise) {
+                        Appearance form;
+                        if (raw.appearance.text == "open-arch")
+                            form = Appearance::OpenArch;
+                        else if (raw.appearance.text == "stone-wall")
+                            form = Appearance::StoneWall;
+                        else
+                            fail(Code::UnknownPhrase, raw.appearance.span, "Unknown registered appearance; use open-arch or stone-wall.");
+                        if (!(operation.appearances & (1u << static_cast<unsigned>(form))))
+                            fail(Code::UnsupportedOperation, raw.appearance.span, "Current schema disables this appearance.");
+                        effect.payload = VisualDisguise{
+                            SubjectRole::CapturedObject, form, value(raw.duration, Dimension::Time, true, operation.max_duration_ticks)
+                        };
+                    } else
+                        effect.payload = Discernment{};
+                } else {
+                    const auto dimension = raw.primitive == Primitive::Heal   ? Dimension::Health
+                                           : raw.primitive == Primitive::Fire ? Dimension::Damage
+                                                                              : Dimension::Rate;
+                    effect.quantity = value(
                         raw.quantity, dimension, true,
                         std::min(operation.max_quantity, raw.primitive == Primitive::Slow ? std::uint32_t{1000} : max_quantity)
-                    ),
-                    0
-                };
-                if (raw.primitive == Primitive::Slow)
-                    effect.duration_ticks = value(raw.duration, Dimension::Time, true, operation.max_duration_ticks);
+                    );
+                    if (raw.primitive == Primitive::Slow)
+                        effect.duration_ticks = value(raw.duration, Dimension::Time, true, operation.max_duration_ticks);
+                }
                 for (const auto& prior : meaning.effects) {
                     spend(1, raw.span);
                     const bool same_field = (prior.primitive == Primitive::Slow) == (effect.primitive == Primitive::Slow);
@@ -708,9 +773,11 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Heal   ? Rule::CommonHeal
-                                          : raw.primitive == Primitive::Fire ? Rule::CommonFire
-                                                                             : Rule::CommonSlow;
+                const auto concept_rule = raw.primitive == Primitive::Disguise  ? Rule::CommonDisguise
+                                          : raw.primitive == Primitive::Discern ? Rule::CommonDiscern
+                                          : raw.primitive == Primitive::Heal    ? Rule::CommonHeal
+                                          : raw.primitive == Primitive::Fire    ? Rule::CommonFire
+                                                                                : Rule::CommonSlow;
                 auto production = concept_rule;
                 if (raw.language.text == "Mend")
                     production = raw.primitive == Primitive::Heal ? Rule::MendHeal : Rule::MendSlow;
@@ -760,15 +827,25 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                append(output, primitive_name(effect.primitive));
-                append(output, " ");
-                number(output, effect.quantity);
-                if (effect.primitive == Primitive::Slow) {
-                    append(output, " permille for ");
-                    number(output, static_cast<std::uint64_t>(effect.duration_ticks) * 10);
-                    append(output, " ms");
-                } else
-                    append(output, effect.primitive == Primitive::Heal ? " hp instant" : " dp instant");
+                if (auto disguise = std::get_if<VisualDisguise>(&effect.payload)) {
+                    append(output, "show subject captured at release rechecked at activation as ");
+                    append(output, appearance_name(disguise->form));
+                    append(output, " for ");
+                    number(output, static_cast<std::uint64_t>(disguise->duration_ticks) * 10);
+                    append(output, " ms to this audience frozen at activation");
+                } else if (std::holds_alternative<Discernment>(effect.payload))
+                    append(output, "discern subject captured at release rechecked at activation for this audience instant");
+                else {
+                    append(output, primitive_name(effect.primitive));
+                    append(output, " ");
+                    number(output, effect.quantity);
+                    if (effect.primitive == Primitive::Slow) {
+                        append(output, " permille for ");
+                        number(output, static_cast<std::uint64_t>(effect.duration_ticks) * 10);
+                        append(output, " ms");
+                    } else
+                        append(output, effect.primitive == Primitive::Heal ? " hp instant" : " dp instant");
+                }
                 append(output, " } ;\n");
             }
             append(output, "  }\n}");
@@ -804,7 +881,8 @@ namespace Magic {
                 append(inspection, " (");
                 append(inspection, meaning.bindings[effect.binding].name);
                 append(inspection, ") duration ");
-                number(inspection, effect.duration_ticks);
+                const auto* disguise = std::get_if<VisualDisguise>(&effect.payload);
+                number(inspection, disguise ? disguise->duration_ticks : effect.duration_ticks);
                 append(inspection, " ticks (10 ms each); grammar ");
                 append(inspection, plan.provenance_[i].grammar);
                 append(inspection, "@1 span ");
@@ -817,6 +895,11 @@ namespace Magic {
                 append(
                     inspection,
                     "Annulus: inner_radius < distance(actor centre, captured aim) <= outer_radius. Inner disk includes its boundary; zero inner still excludes centre.\n"
+                );
+            if (plan.requirements_ & (rule_bit(Rule::CommonDisguise) | rule_bit(Rule::CommonDiscern)))
+                append(
+                    inspection,
+                    "Perception: one captured generation-checked object subject; audience freezes at activation. Visual form never changes physical form/passability. Discernment records dated observer-specific facts and reveals only that instance.\n"
                 );
             append(inspection, plan.conversion_);
             append(inspection, "Exact Common:\n");
@@ -847,6 +930,15 @@ namespace Magic {
         }
     };
 
+    std::string_view appearance_name(Appearance form) noexcept {
+        switch (form) {
+            case Appearance::OpenArch:
+                return "open-arch";
+            case Appearance::StoneWall:
+                return "stone-wall";
+        }
+        return "invalid";
+    }
     CompileResult compile(std::string_view source, const Catalog& catalog, const Options& options) {
         return Compiler(source, catalog, options).run();
     }
@@ -871,6 +963,10 @@ namespace Magic {
                 return "cinder.slow@1";
             case Rule::AnnularTarget:
                 return "target.annulus@1";
+            case Rule::CommonDisguise:
+                return "common.disguise@1";
+            case Rule::CommonDiscern:
+                return "common.discern@1";
         }
         return "invalid-rule";
     }

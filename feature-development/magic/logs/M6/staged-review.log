@@ -1,0 +1,66 @@
+$ git diff --cached --check
+exit_status=0
+$ git diff --cached --stat
+ feature-development/agent-notes.md                 | 308 +++++++
+ feature-development/continuation/MAGIC-M6.json     |  75 ++
+ feature-development/decisions.md                   |  15 +
+ .../magic/logs/M6/accumulated-01.log               | 640 ++++++++++++++
+ feature-development/magic/logs/M6/affected-01.log  | 113 +++
+ feature-development/magic/logs/M6/affected-02.log  | 198 +++++
+ feature-development/magic/logs/M6/build-01.log     |  28 +
+ feature-development/magic/logs/M6/build-02.log     |  43 +
+ feature-development/magic/logs/M6/build-03.log     |  51 ++
+ feature-development/magic/logs/M6/build-04.log     |  14 +
+ feature-development/magic/logs/M6/build-05.log     |  31 +
+ feature-development/magic/logs/M6/configure-01.log |   6 +
+ .../magic/logs/M6/prerequisite-review.log          |   7 +
+ .../magic/logs/M6/static-review.log                |  41 +
+ feature-development/next.md                        |  66 +-
+ projects/magic/CMakeLists.txt                      |  12 +
+ projects/magic/fixtures/m6/discern.common          |   6 +
+ projects/magic/fixtures/m6/disguise.common         |   6 +
+ projects/magic/include/magic/compiler.h            |  27 +-
+ projects/magic/include/magic/reference-host.h      |  93 +-
+ projects/magic/src/compiler.cpp                    | 164 +++-
+ projects/magic/src/main.cpp                        |   6 +-
+ projects/magic/src/perception-demo.cpp             | 115 +++
+ projects/magic/src/reference-host.cpp              | 422 +++++++++-
+ projects/magic/tests/annular.cpp                   |   2 +-
+ projects/magic/tests/engraving.cpp                 |   6 +-
+ projects/magic/tests/learning.cpp                  |   2 +-
+ projects/magic/tests/perception.cpp                | 937 +++++++++++++++++++++
+ 28 files changed, 3329 insertions(+), 105 deletions(-)
+exit_status=0
+$ git diff --cached --name-only
+feature-development/agent-notes.md
+feature-development/continuation/MAGIC-M6.json
+feature-development/decisions.md
+feature-development/magic/logs/M6/accumulated-01.log
+feature-development/magic/logs/M6/affected-01.log
+feature-development/magic/logs/M6/affected-02.log
+feature-development/magic/logs/M6/build-01.log
+feature-development/magic/logs/M6/build-02.log
+feature-development/magic/logs/M6/build-03.log
+feature-development/magic/logs/M6/build-04.log
+feature-development/magic/logs/M6/build-05.log
+feature-development/magic/logs/M6/configure-01.log
+feature-development/magic/logs/M6/prerequisite-review.log
+feature-development/magic/logs/M6/static-review.log
+feature-development/next.md
+projects/magic/CMakeLists.txt
+projects/magic/fixtures/m6/discern.common
+projects/magic/fixtures/m6/disguise.common
+projects/magic/include/magic/compiler.h
+projects/magic/include/magic/reference-host.h
+projects/magic/src/compiler.cpp
+projects/magic/src/main.cpp
+projects/magic/src/perception-demo.cpp
+projects/magic/src/reference-host.cpp
+projects/magic/tests/annular.cpp
+projects/magic/tests/engraving.cpp
+projects/magic/tests/learning.cpp
+projects/magic/tests/perception.cpp
+exit_status=0
+$ git diff --exit-code
+exit_status=0
+Inspected staged typed payload/role boundaries, host generation/schema/payment/expiry/knowledge stages, retained checkpoint validation, ordinary caller, resource corrections and matching M6-028..030 records. All staged file bytes match reviewed working inputs; no unrelated paths or predecessor modifications. Standalone ready receipt retains exact base and actual passing affected evidence; original failed diagnostics remain saved. No native job remains active. Ready for one command-local identity checkpoint; publisher owns transport.

@@ -1,37 +1,41 @@
 # Next MAGIC action
 
-MAGIC-M5 is **ready for coordinator review**. Controlled grammar now composes a
-protected-centre annulus (`inner < distance <= outer`) through the same explicit
-bindings and existing school effects. Ordinary disks keep their centre included;
-zero-inner annuli exclude the exact centre. One bounded lesson teaches the new
-modifier without granting host authority.
+Standalone MAGIC-M6 is **ready for coordinator review**, based on exact reviewed
+M5 c4dbffe4523009b9f74cf103a19ee5b4ecd105b9. This does not add a fourth task to the
+completed feature-round-20261024-0500 or change its receipts.
 
-Receipt: [MAGIC-M5.json](queue/feature-round-20261024-0500/MAGIC-M5.json).
-Evidence: **17/17 accumulated CTest entries** once, including all15 M1–M4 names,
-24 initial annular cases and one real learner/edit/move/checkpoint/cast caller.
-A test-only refinement passes **1/1**, ending with **25 annular cases**. All five
-configure/build/native invocations exit0; full commands/counts/resource evidence
-are in [agent-notes.md](agent-notes.md), logs under magic/logs/M5.
+Typed Common now compiles a timed disguise and instantaneous discernment of a
+separately captured object for a disk/annular audience. Physical truth, perceived
+form and dated observer knowledge stay distinct. The real caller demonstrates A
+seeing a wall/B seeing an arch at tick100 while passage remains open, A-only
+instance1 discernment, pending/active restore across original-owner destruction,
+expiry300, and a fresh instance2 hidden despite the older witness. Old outputs own
+their dated meaning. Current symbolic schemas/live authority still decide support.
 
-The caller restores actual pending shape/aim/due100 after original owners vanish,
-rejects old live authority, and observes protected hp50 versus current ring hp42
-with slow750 until300. Current removal/eligibility and both boundaries matter.
-Old disk plans/checkpoints retain centre inclusion; M3 item/charge/receipt laws
-remain intact. Annular selector costs32 units versus disk16 per binding; host
-caps remain target128/selector1024/work16384, with exact/one-short refusals.
+Receipt: [MAGIC-M6.json](continuation/MAGIC-M6.json).
+Actual evidence: one accumulated **18/19** run (all new35 cases/caller pass), then
+corrected legacy M3 setup allowance and test-only extensions pass **2/2 affected
+entries**, then final scan-accounting correction passes **5/5 affected entries**.
+Final counts include **40 perception cases +34 engraving cases**. All19 unique
+CTest names have final passing evidence; no second accumulated run. Initial build
+warning and old setup failure remain saved, with fixes/counts/commands in
+[agent-notes.md](agent-notes.md), logs under magic/logs/M6. No native failure remains.
 
-This is the **third and final magic milestone in this batch**. The worker ends
-idle; no fourth unit or worker is scheduled. Next concrete action: coordinator
-reviews the actual source, receipt and saved evidence. A useful **unselected**
-next evidence is a small human text-comprehension exercise predicting inner/outer
-membership and shared school scope from Common. It needs a separate assignment;
-no playtest, GUI, integration or additional capability starts here. Publisher
-handles ordinary feat/magic backup transport.
+Caps: object4, active instance8 with16 fixed membership cells each, lifetime
+witness16; prior actor16/queue8/selector1024/target128/work16384 remain unchanged.
+Exactly one new perception operation/activation; bundles and perception engraving
+refuse before payment. Paid delayed activation failures preserve the prior blocking
+clock/queue without refund. Old spoken disk/annular/item behavior and fresh restore
+authority remain tested.
 
-Reference runtime remains private spoken contact/G0 disks/annuli and immediate
-one-charge item-touch. No ray, general trigger/rearm, physics/camera acquisition,
-new effect family, arbitrary shape graph, provider or scripting VM. Graphical/fun/
-human-learning acceptance, other platforms/toolchains/ABIs, leak coverage under
-tracing, allocator fault injection, exact heap/CPU accounting, disk/cross-version
-save migration, crash durability and external exactly-once remain unverified.
-M3 checkpoints retain world/actual plans, not book/knowledge records.
+**Idle.** Next concrete action is coordinator source/receipt/log review and publisher
+backup. A separately selected graphical observer-view comparison is useful
+unselected evidence for human readability; no subsequent task, worker/service,
+queue extension or automatic integration is authorized by this handoff.
+
+No sensory/AI/physics/network-security/graphical/fun acceptance, D&D edition claim,
+general dispel/stacking, cross-domain perception bundle, engraving/rearm, provider
+or public Engine extraction. Leak checking under tracing, other platforms/ABIs,
+allocator fault injection/exact memory/time remain unverified. Checkpoints are owned
+in-memory continuations with exact schema/limit identity and intentional world
+rewind, not disk/cross-version/process/crash durability or external exactly-once.

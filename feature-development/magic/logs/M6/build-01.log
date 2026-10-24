@@ -1,0 +1,28 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  3%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[  6%] Linking CXX static library libmagic_compiler.a
+[  6%] Built target magic_compiler
+[  9%] Building CXX object CMakeFiles/magic_inspect.dir/src/main.cpp.o
+[ 12%] Linking CXX executable magic_inspect
+[ 12%] Built target magic_inspect
+[ 15%] Building CXX object CMakeFiles/magic_checks.dir/tests/compiler.cpp.o
+[ 18%] Linking CXX executable magic_checks
+[ 18%] Built target magic_checks
+[ 21%] Building CXX object CMakeFiles/magic_caller_checks.dir/tests/caller.cpp.o
+[ 25%] Linking CXX executable magic_caller_checks
+[ 25%] Built target magic_caller_checks
+[ 28%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+/mnt/projects/cheryl-features/projects/magic/projects/magic/src/reference-host.cpp: In member function ‘std::expected<void, Magic::Reference::Failure> Magic::Reference::ReferenceHost::remove_object(Magic::Reference::ObjectId)’:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/src/reference-host.cpp:198:61: error: missing initializer for member ‘Magic::Reference::ObjectView::data’ [-Werror=missing-field-initializers]
+  198 |             next.perception.objects[id.slot] = ObjectView{id};
+      |                                                             ^
+/mnt/projects/cheryl-features/projects/magic/projects/magic/src/reference-host.cpp: In member function ‘void Magic::Reference::ReferenceHost::continuation(const State&, uint64_t, Meter&) const’:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/src/reference-host.cpp:1129:43: error: missing initializer for member ‘Magic::Reference::ObjectView::data’ [-Werror=missing-field-initializers]
+ 1129 |                 check(o == ObjectView{o.id});
+      |                                           ^
+cc1plus: all warnings being treated as errors
+make[2]: *** [CMakeFiles/magic_reference_host.dir/build.make:79: CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:260: CMakeFiles/magic_reference_host.dir/all] Error 2
+make: *** [Makefile:101: all] Error 2
+
+exit_status=2

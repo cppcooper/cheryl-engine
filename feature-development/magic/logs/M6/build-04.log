@@ -1,0 +1,14 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_engraving_checks magic_perception_checks --parallel 1
+[ 33%] Built target magic_compiler
+[ 66%] Built target magic_reference_host
+[ 83%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[100%] Linking CXX executable magic_engraving_checks
+[100%] Built target magic_engraving_checks
+[ 25%] Built target magic_compiler
+[ 50%] Built target magic_learning
+[ 75%] Built target magic_reference_host
+[ 87%] Building CXX object CMakeFiles/magic_perception_checks.dir/tests/perception.cpp.o
+[100%] Linking CXX executable magic_perception_checks
+[100%] Built target magic_perception_checks
+
+exit_status=0
