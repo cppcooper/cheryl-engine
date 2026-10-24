@@ -1,0 +1,96 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1
+[  4%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[  8%] Linking CXX static library libmagic_compiler.a
+[  8%] Built target magic_compiler
+[ 12%] Building CXX object CMakeFiles/magic_inspect.dir/src/main.cpp.o
+[ 16%] Linking CXX executable magic_inspect
+[ 16%] Built target magic_inspect
+[ 20%] Building CXX object CMakeFiles/magic_checks.dir/tests/compiler.cpp.o
+[ 25%] Linking CXX executable magic_checks
+[ 25%] Built target magic_checks
+[ 29%] Building CXX object CMakeFiles/magic_caller_checks.dir/tests/caller.cpp.o
+[ 33%] Linking CXX executable magic_caller_checks
+[ 33%] Built target magic_caller_checks
+[ 37%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 41%] Linking CXX static library libmagic_reference_host.a
+[ 41%] Built target magic_reference_host
+[ 45%] Building CXX object CMakeFiles/magic_host_checks.dir/tests/reference-host.cpp.o
+[ 50%] Linking CXX executable magic_host_checks
+[ 50%] Built target magic_host_checks
+[ 54%] Building CXX object CMakeFiles/magic_reference_demo.dir/src/reference-demo.cpp.o
+[ 58%] Linking CXX executable magic_reference_demo
+[ 58%] Built target magic_reference_demo
+[ 62%] Building CXX object CMakeFiles/magic_engraving_checks.dir/tests/engraving.cpp.o
+[ 66%] Linking CXX executable magic_engraving_checks
+[ 66%] Built target magic_engraving_checks
+[ 70%] Building CXX object CMakeFiles/magic_engraving_demo.dir/src/engraving-demo.cpp.o
+[ 75%] Linking CXX executable magic_engraving_demo
+[ 75%] Built target magic_engraving_demo
+[ 79%] Building CXX object CMakeFiles/magic_learning.dir/src/learning.cpp.o
+[ 83%] Linking CXX static library libmagic_learning.a
+[ 83%] Built target magic_learning
+[ 87%] Building CXX object CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:81:54: error: ‘void {anonymous}::failed(const Magic::Learning::AttemptHandle&, Magic::Learning::Error)’ redeclared as different kind of entity
+   81 |     void failed(const L::AttemptHandle& a, L::Error e) {
+      |                                                      ^
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:16:21: note: previous declaration ‘int {anonymous}::failed’
+   16 |     int passed = 0, failed = 0;
+      |                     ^~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:125:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  125 |         failed(missing, L::Error::UnknownKnowledge);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:201:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  201 |         failed(malformed, L::Error::Compile);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:206:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  206 |         failed(unsupported, L::Error::Compile);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:209:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  209 |         failed(too_big, L::Error::TextLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:226:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  226 |         failed(edit(*b, read("m4/composed.verse"), l), L::Error::RevisionLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:230:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  230 |         failed(edit(*zero, read("S1.verse"), l), L::Error::RevisionLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:262:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  262 |         failed(bad, L::Error::TextLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:274:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  274 |         failed(rejected, L::Error::TextLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:280:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  280 |         failed(edit(*s, read("S1.verse") + " ", l), L::Error::TextLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:288:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  288 |         failed(edit(*b, read("S1.verse"), known), L::Error::StorageLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:309:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  309 |         failed(rejected, L::Error::StorageLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:324:15: error: ‘{anonymous}::failed’ cannot be used as a function
+  324 |         failed(fail, L::Error::WorkLimit);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: In lambda function:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:546:19: error: ‘{anonymous}::failed’ cannot be used as a function
+  546 |             failed(edit(*b, "spoken ???", l), L::Error::Compile);
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp: At global scope:
+/mnt/projects/cheryl-features/projects/magic/projects/magic/tests/learning.cpp:81:10: error: ‘void {anonymous}::failed(const Magic::Learning::AttemptHandle&, Magic::Learning::Error)’ defined but not used [-Werror=unused-function]
+   81 |     void failed(const L::AttemptHandle& a, L::Error e) {
+      |          ^~~~~~
+cc1plus: all warnings being treated as errors
+make[2]: *** [CMakeFiles/magic_learning_checks.dir/build.make:79: CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:446: CMakeFiles/magic_learning_checks.dir/all] Error 2
+make: *** [Makefile:101: all] Error 2
+
+exit_status=2

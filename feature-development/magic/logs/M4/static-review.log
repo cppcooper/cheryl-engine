@@ -1,0 +1,28 @@
+$ git diff --check
+exit_status=0
+$ clang-format --dry-run --Werror projects/magic/include/magic/compiler.h projects/magic/include/magic/learning.h projects/magic/src/compiler.cpp projects/magic/src/learning.cpp projects/magic/src/learning-demo.cpp projects/magic/tests/learning.cpp
+exit_status=0
+$ git diff --exit-code HEAD -- projects/magic/include/magic/reference-host.h projects/magic/src/reference-host.cpp projects/magic/tests/reference-host.cpp projects/magic/tests/engraving.cpp projects/magic/src/reference-demo.cpp projects/magic/src/engraving-demo.cpp projects/magic/tests/compiler.cpp projects/magic/tests/caller.cpp
+exit_status=0
+feature-development/magic/MAGIC-M1.json: committed receipt and all saved evidence bytes preserved
+feature-development/magic/MAGIC-M2.json: committed receipt and all saved evidence bytes preserved
+feature-development/queue/feature-round-20261024-0500/MAGIC-M3.json: committed receipt and all saved evidence bytes preserved
+M4 receipt exact binding and seven passing native-command logs verified; corrected build01 exit2 retained separately
+accumulated-01: 1: 35 contract cases passed; 0 failed.
+accumulated-01: 10: 37 reference host cases passed; 0 failed.
+accumulated-01: 12: 34 engraving/checkpoint cases passed; 0 failed.
+accumulated-01: 14: 23 learning/book/tome cases passed; 0 failed.
+accumulated-01: 15: 1 teach-compose-cast caller passed (recognition, lesson, host refusal, failed edit, real cast).
+accumulated-01: 100% tests passed out of 15
+affected-01: 14: 24 learning/book/tome cases passed; 0 failed.
+affected-01: 15: 1 teach-compose-cast caller passed (recognition, lesson, host refusal, failed edit, real cast).
+affected-01: 100% tests passed out of 2
+affected-02: 14: 25 learning/book/tome cases passed; 0 failed.
+affected-02: 100% tests passed out of 1
+projects/magic/src/compiler.cpp sha256=b6a22fac20910a28ab453b123a575f2dfd8e574c7f8064310fe5f01f7f2394b0
+projects/magic/include/magic/compiler.h sha256=753076de1d4f4de4d67e9b364a049ebbc0a43d5ac66205626d5a262a5a713a4e
+projects/magic/src/learning.cpp sha256=86b82834b31dfaa6af0ebf058a2cacfbf7a4af838e5dd92f4aec53cf6d2c7593
+projects/magic/include/magic/learning.h sha256=852e088b7c1b6e163edfb6eb5b8d01acaa27591c6b31e67458d40cf34b37bb51
+projects/magic/tests/learning.cpp sha256=61e1208cdb35ce39037b023441f562d0c1534879a5d09b5b64342e12aa1569c0
+projects/magic/src/learning-demo.cpp sha256=1d061ae0134ee695f27c16d79aca2a47e5e38ddf9f0c0179fb5f68ca13a1a3a1
+static review exit_status=0

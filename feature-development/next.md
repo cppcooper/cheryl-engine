@@ -1,30 +1,33 @@
 # Next MAGIC action
 
-MAGIC-M3 is **ready for coordinator review**. Immediate one-charge item-touch
-engravings use actual retained M1 plans and the shared M2 payload path. S5 heals
-the admitted eligible willing toucher by 12 and atomically spends one prepaid
-charge. A distinct owned in-memory checkpoint retains plans, pending work,
-items, replay receipts and schema/limit identity. Restore creates fresh authority;
-Snapshot remains observational.
+MAGIC-M4 is **ready for coordinator review**. Owned book revisions preserve the
+last accepted source/plan/Common while failed drafts remain inspectable. A
+validated Cinder/Common lesson teaches an actual invented duration-first slow
+production; the caller transfers it into new Mend healing plus slow, obtains
+ordinary live host authority, and executes the actual reference state changes.
 
-Receipt: [MAGIC-M3.json](queue/feature-round-20261024-0500/MAGIC-M3.json).
-Evidence: accumulated **13/13** CTest entries once, including all M1/M2 regressions.
-Two affected **2/2** runs verify checkpoint refinements and final caller/test
-witnesses: **34 new contract cases and 3 caller scenarios**. Separate retained
-counts: 35 compiler cases, 4 ordinary callers, 6 fixtures, 9 CLI scenarios; 37 M2 host
-cases and 6 reference callers. Complete commands/exits and limits are in
-[agent-notes.md](agent-notes.md), with logs under magic/logs/M3.
+Receipt: [MAGIC-M4.json](queue/feature-round-20261024-0500/MAGIC-M4.json).
+Evidence: accumulated **15/15** entries once, retaining all M1–M3 regressions.
+A narrow typed-key identity correction passes **2/2** learning entries with
+24 cases and one caller; final test-only budget witnesses pass **1/1**, ending
+with **25 learning cases**. One earlier test-harness compiler failure is saved
+and corrected. All commands/immediate exits and model limits are in
+[agent-notes.md](agent-notes.md), with complete logs under magic/logs/M4.
 
-The worker ends idle. Next pinned task is MAGIC-M4 learning records/tome, only
+The worker ends idle. Next pinned task is MAGIC-M5 annular composition, only
 through the finite controller's clean/drained committed-receipt/evidence gate.
-Its worker must inspect actual M3 source and evidence before building on it;
-this turn starts no later unit. Publisher handles ordinary feat/magic backup.
+M5 must first inspect the real M4 lesson-to-new-cast proof and predecessor
+source/receipt/logs. This turn starts no later unit. Publisher handles backup.
 
-Runtime remains private and finite: spoken contact/G0 disks and immediate
-item-touch only; ray, general triggers and rearming refuse or remain absent.
-Prepaid 10 mana/effect never refunds. Sixteen lifetime touch receipts never evict;
-exhaustion refuses. Restore requires exact catalog/limit identity and deliberately
-rewinds the whole world, with duplicate prevention inside each resulting timeline.
-No disk/process/crash guarantee or external exactly-once claim. Graphics/fun,
-production integration, learning, other platforms, leak coverage under tracing,
-allocator fault injection and exact heap accounting remain unverified.
+Recognition, learned availability and current host permission remain separate.
+Common can replace an unfamiliar school production when its concept is learned;
+it bypasses neither concept nor host key/schema/permission/resource checks.
+Knowledge/entries/lessons create no release/event tickets. Old queued/item plans
+and M3 checkpoints retain prior meaning across book edits and owner destruction.
+
+No graphical editor, human-learning/fun acceptance, language-pack framework,
+provider, disk book/save format or book/knowledge checkpoint integration is
+selected. Reference balance/Engine integration, durability/external exactly-once,
+leak checking under tracing, allocation fault injection, other platforms and exact
+heap/CPU accounting remain unverified. Runtime still supports only spoken
+contact/G0 disks and immediate one-charge item-touch; no ray/general trigger/rearm.

@@ -561,6 +561,7 @@ namespace Magic {
         }
         void lower(const Authored& syntax, Plan& plan) {
             auto& meaning = plan.meaning_;
+            plan.requirements_ = rule_bit(Rule::TargetBridge);
             meaning.entry = syntax.entry;
             meaning.delivery = syntax.delivery;
             meaning.onset_ticks = value(syntax.onset, Dimension::Time, false, max_time);
@@ -659,7 +660,17 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                plan.provenance_.push_back({raw.span, copy(raw.language.text, raw.language.span)});
+                const auto concept_rule = raw.primitive == Primitive::Heal   ? Rule::CommonHeal
+                                          : raw.primitive == Primitive::Fire ? Rule::CommonFire
+                                                                             : Rule::CommonSlow;
+                auto production = concept_rule;
+                if (raw.language.text == "Mend")
+                    production = raw.primitive == Primitive::Heal ? Rule::MendHeal : Rule::MendSlow;
+                if (raw.language.text == "Cinder")
+                    production = raw.primitive == Primitive::Fire ? Rule::CinderFire : Rule::CinderSlow;
+                spend(1, raw.span);
+                plan.requirements_ |= rule_bit(concept_rule) | rule_bit(production);
+                plan.provenance_.push_back({raw.span, copy(raw.language.text, raw.language.span), production});
             }
         }
         void render(Plan& plan) {
@@ -777,6 +788,28 @@ namespace Magic {
 
     CompileResult compile(std::string_view source, const Catalog& catalog, const Options& options) {
         return Compiler(source, catalog, options).run();
+    }
+
+    std::string_view rule_key(Rule rule) noexcept {
+        switch (rule) {
+            case Rule::CommonHeal:
+                return "common.heal@1";
+            case Rule::CommonFire:
+                return "common.fire@1";
+            case Rule::CommonSlow:
+                return "common.slow@1";
+            case Rule::TargetBridge:
+                return "bridge.target@1";
+            case Rule::MendHeal:
+                return "mend.heal@1";
+            case Rule::MendSlow:
+                return "mend.slow@1";
+            case Rule::CinderFire:
+                return "cinder.fire@1";
+            case Rule::CinderSlow:
+                return "cinder.slow@1";
+        }
+        return "invalid-rule";
     }
 
     std::string_view code_name(Code code) noexcept {

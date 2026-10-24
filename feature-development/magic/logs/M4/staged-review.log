@@ -1,0 +1,37 @@
+$ git diff --cached --check
+exit_status=0
+$ git diff --cached --stat
+ feature-development/agent-notes.md                 |  75 +++
+ feature-development/decisions.md                   |  22 +-
+ .../magic/logs/M4/accumulated-01.log               | 520 ++++++++++++++++++
+ feature-development/magic/logs/M4/affected-01.log  |  77 +++
+ feature-development/magic/logs/M4/affected-02.log  |  54 ++
+ feature-development/magic/logs/M4/build-01.log     |  96 ++++
+ feature-development/magic/logs/M4/build-02.log     |  15 +
+ feature-development/magic/logs/M4/build-03.log     |  16 +
+ feature-development/magic/logs/M4/build-04.log     |   9 +
+ feature-development/magic/logs/M4/configure-01.log |   6 +
+ .../magic/logs/M4/static-review.log                |  28 +
+ feature-development/next.md                        |  51 +-
+ .../feature-round-20261024-0500/MAGIC-M4.json      |  97 ++++
+ projects/magic/CMakeLists.txt                      |  14 +
+ projects/magic/fixtures/m4/composed.common         |   7 +
+ projects/magic/fixtures/m4/composed.verse          |   7 +
+ projects/magic/fixtures/m4/practice.common         |   7 +
+ projects/magic/fixtures/m4/practice.verse          |   7 +
+ projects/magic/fixtures/m4/worked.common           |   7 +
+ projects/magic/fixtures/m4/worked.verse            |   7 +
+ projects/magic/include/magic/compiler.h            |  12 +
+ projects/magic/include/magic/learning.h            | 151 ++++++
+ projects/magic/src/compiler.cpp                    |  35 +-
+ projects/magic/src/learning-demo.cpp               | 118 ++++
+ projects/magic/src/learning.cpp                    | 281 ++++++++++
+ projects/magic/tests/learning.cpp                  | 603 +++++++++++++++++++++
+ 26 files changed, 2293 insertions(+), 29 deletions(-)
+exit_status=0
+$ git diff --name-only
+exit_status=0
+Staged compiler metadata, learning ownership/authority/budget paths, caller, test/literal fixtures, records and receipt inspected.
+All seven passing native logs and corrected failed build are staged and nonempty; exact receipt binding verified.
+No unstaged/untracked intended work. Old reference host/item/checkpoint code and all earlier receipts/evidence unchanged.
+staged review exit_status=0

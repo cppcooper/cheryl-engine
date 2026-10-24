@@ -97,9 +97,19 @@ namespace Magic {
         bool operator==(const Meaning&) const = default;
     };
 
+    // Registered invented grammar productions and Common operation concepts; no live authority.
+    enum class Rule : std::uint8_t { CommonHeal, CommonFire, CommonSlow, TargetBridge, MendHeal, MendSlow, CinderFire, CinderSlow };
+    using RuleMask = std::uint16_t;
+    inline constexpr RuleMask all_rules = 255;
+    [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
+        const auto index = static_cast<unsigned>(rule);
+        return index < 8 ? static_cast<RuleMask>(1u << index) : 0;
+    }
+    [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
         Span clause;
         std::string grammar;
+        Rule rule = Rule::CommonHeal;
     };
 
     struct OperationSchema {
@@ -165,12 +175,14 @@ namespace Magic {
         std::string common_;
         std::string inspection_;
         Metrics metrics_;
+        RuleMask requirements_ = 0;
         Plan() = default;
         friend class Compiler;
 
     public:
         Plan(const Plan&) = delete;
         Plan& operator=(const Plan&) = delete;
+        [[nodiscard]] RuleMask requirements() const noexcept { return requirements_; }
         [[nodiscard]] const Meaning& meaning() const noexcept { return meaning_; }
         [[nodiscard]] std::string_view source() const noexcept { return source_; }
         [[nodiscard]] const std::vector<Provenance>& provenance() const noexcept { return provenance_; }

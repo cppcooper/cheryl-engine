@@ -1,0 +1,97 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "MAGIC-M4",
+  "status": "ready",
+  "checks_passed": true,
+  "base_commit": "9321bedd7d7543c1b7e96b1459d02122edfa2abb",
+  "prerequisite": {
+    "milestone_id": "MAGIC-M3",
+    "receipt": "feature-development/queue/feature-round-20261024-0500/MAGIC-M3.json",
+    "source_and_all_seven_passing_native_logs_inspected": true
+  },
+  "evidence": [
+    "feature-development/magic/logs/M4/configure-01.log",
+    "feature-development/magic/logs/M4/build-02.log",
+    "feature-development/magic/logs/M4/accumulated-01.log",
+    "feature-development/magic/logs/M4/build-03.log",
+    "feature-development/magic/logs/M4/affected-01.log",
+    "feature-development/magic/logs/M4/build-04.log",
+    "feature-development/magic/logs/M4/affected-02.log"
+  ],
+  "failed_diagnostics": [
+    "feature-development/magic/logs/M4/build-01.log"
+  ],
+  "verification": {
+    "platform": "GNU/Linux Debug C++23 GNU16, ASan+UBSan and warnings as errors",
+    "sanitizer_environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "configure_invocations": 1,
+    "build_invocations": 4,
+    "passing_builds": 3,
+    "corrected_test_harness_build_failures": 1,
+    "accumulated_suite_invocations": 1,
+    "accumulated_ctest_entries_passed": 15,
+    "affected_ctest_entries_passed": [
+      2,
+      1
+    ],
+    "new_contract_cases_by_run": [
+      23,
+      24,
+      25
+    ],
+    "final_learning_contract_cases": 25,
+    "teach_compose_cast_callers": 1,
+    "new_authored_verse_common_files": 6,
+    "retained_m1": {
+      "ctest_entries": 9,
+      "compiler_cases": 35,
+      "ordinary_callers": 4,
+      "file_fixtures": 6,
+      "cli_processes": 9
+    },
+    "retained_m2": {
+      "ctest_entries": 2,
+      "host_cases": 37,
+      "reference_callers": 6
+    },
+    "retained_m3": {
+      "ctest_entries": 2,
+      "item_checkpoint_cases": 34,
+      "reference_callers": 3
+    },
+    "fixture_exact_boundaries": {
+      "new_edit_work": 14823,
+      "lesson_work": 23357,
+      "lesson_retained_bytes": 17860,
+      "failure_envelope": 12288,
+      "entries": 8,
+      "source_bytes": 8192,
+      "identity_bytes": 32,
+      "title_bytes": 64,
+      "annotation_bytes": 256,
+      "registered_rules": 8,
+      "studied_school_lessons": 4
+    },
+    "results": "All15 accumulated entries pass once. Typed-key duplicate-identity correction passes the two affected learning entries (24 cases plus caller); final test-only minimum/zero budget witnesses pass the contract entry (25 cases). Prior test helper/counter naming collision causes build01 exit2 and is corrected in build02; its full diagnostics are retained. All other native commands exit0; no resource/auth refusal or sanitizer finding."
+  },
+  "implemented_contracts": [
+    "M4-022: Actual checked compiler productions emit fixed owned requirement bits and per-clause rule IDs for Common effect concepts, explicit target bridge and invented Mend/Cinder productions. Recognized syntax, learned consumer availability and current host key/schema/permission/resource authority are distinct; Common never bypasses concept or host prerequisites.",
+    "M4-023: Bounded owned book identities/titles, immutable accepted plan/source/Common/annotation/revisions, and separate current owned draft attempts. Syntax/capability/knowledge/text/work/storage/revision failures preserve earlier acceptance with bounded repairable diagnostics/prefixes; success creates a new checked revision. Old handles and actual queued/item/checkpoint plans stay immutable.",
+    "M4-024: One owned bilingual lesson validates registered school rule, actual worked/practice plans, canonical Common reparsing/equivalent meaning and changed practice semantics; clause alignment uses compiler spans. Eight-bit versioned knowledge with at most four retained school lessons learns one production idempotently, rejects missing concepts/bridge or inconsistent identities including changed symbolic effect keys, and grants no host/event authority.",
+    "Real independent headless caller starts from usable Mend healing, reports recognized-but-unknown Cinder slow, teaches its duration-first rule, accepts a distinct9hp plus600-permille3s slow over300mm disk after500ms, demonstrates live host schema refusal, preserves a failed sequential draft, then executes hp50->59 at tick50 and exact slow expiry350 with mana100->80.",
+    "Finite entry/text/rule/lesson/revision/work/logical-storage bounds and preallocation checks; explicit bounded failure envelope; actual M1 compile work/retention admission and measured copies. Independent exact meaning/Common/world assertions, destruction ownership, typed identity consistency and preserved M3 continuation are verified.",
+    "One accumulated native regression run retains all13 M1-M3 names; narrowly affected rechecks only after corrections/refinements. Complete commands/diagnostics/immediate exits and matching M4-022..024 compact/detailed/next records are saved."
+  ],
+  "limitations": [
+    "Private synchronous single-thread fixture consumer, not a production knowledge/security system. Trusted native owner may call host directly; the learning library itself links no host authority API.",
+    "Mend/Cinder words and languages are invented controlled subsets; eight fixed rules and four teachable school productions only. No general language-pack/content framework, NLP/provider, graphical editor or human comprehension/enjoyment/playtest result.",
+    "No disk book/knowledge/save format, migration or inclusion of drafts/knowledge in M3 checkpoints. M3 retains spell meaning and existing intentional whole-world timeline semantics only.",
+    "Reference runtime still supports spoken contact/G0 disks and immediate one-charge item-touch; no ray, general trigger/rearm, new engine integration, balance or production durability/external exactly-once guarantee.",
+    "Logical storage/work models reserve bounded failure envelopes and exclude allocator/control-block/fixed-object overhead and caller-retained immutable history. Temporary bounded compiler/staging plans may coexist. No exact RSS/CPU accounting or allocation fault injection/OOM verification.",
+    "GNU/Linux Debug GNU16 ASan/UBSan only; known tracing restriction leaves leak checking unverified, other platforms/toolchains/ABIs unverified."
+  ],
+  "next_action": "Remain idle after this one local feat/magic checkpoint. Finite controller may admit pinned MAGIC-M5 only through clean/drained committed passing predecessor receipt/evidence; M5 inspects actual lesson-to-new-cast source and logs before extending annular composition. Publisher handles transport; no worker scheduling or later-unit implementation here."
+}

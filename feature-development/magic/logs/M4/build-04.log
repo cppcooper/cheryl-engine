@@ -1,0 +1,9 @@
+$ /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_learning_checks --parallel 1
+[ 25%] Built target magic_compiler
+[ 50%] Built target magic_reference_host
+[ 75%] Built target magic_learning
+[ 87%] Building CXX object CMakeFiles/magic_learning_checks.dir/tests/learning.cpp.o
+[100%] Linking CXX executable magic_learning_checks
+[100%] Built target magic_learning_checks
+
+exit_status=0

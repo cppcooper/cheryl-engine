@@ -1,0 +1,54 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_learning_contracts$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 14
+    Start 14: magic_learning_contracts
+
+14: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_learning_checks
+14: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+14: Test timeout computed to be: 30
+14: PASS actual production metadata and independent worked/composed meanings
+14: PASS recognized unknown then taught production accepts a new revision
+14: PASS Common can replace unknown school syntax but never unknown operation concept
+14: PASS aligned bilingual clauses are exact owned recognized productions
+14: PASS lesson and accepted entries outlive source catalog book and input tome
+14: PASS malformed unsupported and over-budget edits preserve accepted source plan revision
+14: PASS revision and knowledge exhaustion refuse without wrapping
+14: PASS entry count exact eight and one-short zero/one
+14: PASS identity title and annotation exact byte bounds and duplicates
+14: PASS authored text exact8192 and one-over; tightened exact input length
+14: PASS book reserved storage admission exact and one-short
+14: PASS accepted payload storage exact and one-short preserves smaller old spell
+14: new edit exact work=14823
+14: PASS book work exact and one-short keeps inspectable failure
+14: PASS invalid learning ceilings and fixed diagnostic work reserve
+14: PASS minimum failure reserve and zero text quota still publish inspectable attempts
+14: PASS unknown malformed and contradictory teaching inputs never unlock
+14: PASS lesson byte fields exact bounds and one-over
+14: lesson exact work=23357 retained=17860
+14: PASS lesson work storage exact and one-short
+14: PASS idempotent lesson and duplicate identity contradiction preserve knowledge
+14: PASS same lesson identity/text with different bound effect keys refuses
+14: PASS learning needs operation/bridge prerequisite and sets only taught bit
+14: PASS all four registered school productions fit finite learned lesson record
+14: PASS learned rule never creates live release or item authority
+14: PASS new edited spell executes literal current world at release onset and expiry
+14: PASS book edits cannot change queued casts installed inscriptions or M3 checkpoint
+14: 25 learning/book/tome cases passed; 0 failed.
+1/1 Test #14: magic_learning_contracts .........   Passed    0.03 sec
+
+The following tests passed:
+	magic_learning_contracts
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.04 sec
+
+exit_status=0

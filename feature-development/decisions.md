@@ -1,7 +1,7 @@
 # MAGIC decisions
 
 Coordinator MAGIC-001–012 remain design intent in coordination/magic/design.md;
-this clone implements M1, the bounded spoken M2 host and M3 item/checkpoint continuation. Detailed
+this clone implements M1–M4 compilation, finite execution/checkpoints and owned learning records. Detailed
 evidence and original caller/baseline are in [agent-notes.md](agent-notes.md).
 
 | ID | Choice, reason, tradeoff and confidence |
@@ -37,6 +37,20 @@ and all saved evidence remain unchanged.
 M3 execution evidence and current handoff are in [next.md](next.md) and the
 batch receipt. Private runtime supports spoken contact/G0 disks and immediate
 one-charge item-touch only; ray and broader triggers remain unsupported. Graphics,
-fun, learning, other platforms, leak coverage, allocator fault injection and
-production durability remain unverified. The next pinned unit is M4, only after
-the finite controller's predecessor receipt/evidence gate; this worker ends idle.
+fun, human learning, other platforms, leak coverage, allocator fault injection and
+production durability remain unverified. M4 continues the accepted source below.
+
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M4-022 | Emit eight registered rule bits and a production ID per actual checked compiler clause. School syntax requires its Common operation concept and explicit target bridge; Common can replace unknown school syntax while host key/schema/permission checks remain independent. This proves recognition/knowledge/authority without scanning text heuristically. Grammar, Meaning and Common stay stable; plan/provenance storage and work metrics include metadata. High confidence in separation, medium in reversible private registry shape. |
+| M4-023 | Keep eight owned book identities, one immutable accepted revision and one current owned Attempt each. Success increments a checked revision; syntax/knowledge/capability/work/storage/text failure preserves accepted source/plan/Common/annotation and records a repairable bounded draft. Reserve a fixed failure envelope, admit compilation through remaining quotas and stage pointer adoption. Caller-held old history is outside quotas; no removal/history editor is added. High confidence in ownership, medium in private APIs. |
+| M4-024 | Validate one owned bilingual lesson's original/practice plans, exact Common glosses and actual registered school production; derive aligned clauses from compiler spans. Four studied lesson handles enforce identity/definition consistency, including typed effect keys. Learning idempotently adds only one production after concept/bridge prerequisites, with checked revision. It supplies no host authority or reward. This proves deterministic rule transfer; teaching/enjoyment need human evidence. High confidence in bounded mechanics, medium in pedagogy. |
+
+M4's real caller teaches invented Cinder duration-first slowing, transfers it into
+new Mend healing plus slow (9 hp, 600 permille, 3 s; 300 mm disk, 500 ms onset), preserves a
+failed draft and executes with ordinary live host authority. Current proof/counts
+are in [next.md](next.md) and the M4 receipt. No graphical editor, generic language
+pack/provider, disk book format or human comprehension result is claimed. The
+next pinned unit is M5, only after the controller's predecessor gate and real
+source/receipt/log review. This worker ends idle after one coherent checkpoint.
