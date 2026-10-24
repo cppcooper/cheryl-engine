@@ -1,0 +1,56 @@
+{
+  "batch_id": "procgen-climate-20261024-0615",
+  "milestone_id": "PROCGEN-U13",
+  "starting_head": "954bf3b38933378d09d1519f3b1c005440a0fc64",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u13/build-1.log",
+    "builds/procedural-generation/logs/u13/ctest-1.log",
+    "builds/procedural-generation/logs/u13/discovery.json"
+  ],
+  "executed": {
+    "ctest_entries_passed": 135,
+    "retained_entries": 122,
+    "cases_passed": 124,
+    "assertions": 45176,
+    "new_cases": {
+      "moisture_transport": 42,
+      "moisture_faces": 41,
+      "moisture_phases": 38,
+      "moisture_sources": 25,
+      "moisture_ridge": 79,
+      "moisture_generated": 48,
+      "moisture_grouped": 25,
+      "moisture_boundaries": 55,
+      "moisture_capacity": 18,
+      "moisture_invalid": 118,
+      "moisture_limits": 94,
+      "moisture_ownership": 25
+    },
+    "new_assertions": 608,
+    "consumers_passed": 11,
+    "demonstrations_passed": 38,
+    "new_consumer_passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "configuration": "GNU16.2.1/Linux Ninja Debug/C++23/UBSan; shared wrapper/one job/preserved cache; accumulated suite once, no native failures or reruns"
+  },
+  "contracts": {
+    "identity": "face_upwind_moisture model1/numerics1; complete owned U12 baseline/source/context plus evolving Q/L/finite mm/reference-K arrays, integer tick, options and last owned constant face-forcing interval; no retained views or RNG.",
+    "flow": "Closed/periodic shared-face conservative donor retention; explicit east/north m/s with frame row sign. Actual outgoing water and incoming intensive-temperature fractions<=1 choose smallest1..64 substeps;1..10 whole ticks. No hidden wind clipping/skipped time.",
+    "phases": "One lapse diagnoses local temperature; linear/clamped nominal column capacity proxy, bounded condensation/cloud re-evaporation/rain, explicit finite depletion and reported external replenishment. Rain is export, no latent-heat/energy/RH/discharge claim.",
+    "ledger": "Whole-cell mm depths, constant admitted metric area dx*dy; m3=mm*area/1000. Checked residual=(final+rain)-initial-replenished, tolerance1e-10*max(1,initial+replenished+rain)m3; no clipping/repair.",
+    "ownership": "Complete candidate/report publication; source/context compares full relevant values, budgets admission-only. Refusal preserves old owners, allocation/programming exceptions propagate. Report paired with state, not a detached save/delivery credential.",
+    "resources": "Hard128x128/16384 cells/16MiB/100M work/10 ticks/64 substeps. Start16384+216*C bytes,64+8*C work; advance16384+304*C+8*F bytes,64+9*C+2*F+n*(4*C+1)+ticks+steps*(7*C+2*D+1) block work. Rejected schedule trials charged. Payload excludes preexisting inputs/caller copies/runtime/RSS.",
+    "preservation": "135 accumulated entries pass once, all122 old names/counts and33 source/archive/receipt hashes retained; no old producer or WORLD/archive changes, native failures/reruns or sibling integration."
+  },
+  "limitations": [
+    "GNU16.2.1/Linux Debug/UBSan only; other OSes/toolchains, ASan/leaks and broad performance unverified. Floating replay requires same model/numerics/build/platform/order.",
+    "First-order known constant face winds and frozen initial baseline, closed/periodic only. No open boundaries, dynamic pressure/wind/thermal memory, refined transport or physical weather forecast.",
+    "Capacity/rate rules are game proxies; no measured RH/dew point, latent-heat/energy conservation, calibrated rain shadow, ocean inference or U11 discharge conversion.",
+    "Owned current state needs full arrays/context and future forcing; last forcing is not all prior history. No persisted checkpoint/recipe/event delivery format, public Engine/SDK or new integration.",
+    "Graphical attractiveness/correctness/fun and prior WORLD visual/input/assets/ABI/file durability remain separate unexecuted acceptance."
+  ],
+  "next_action": "Remain idle for coordinator source/log review and publisher transport. Only finite controller may select U14 after clean drain and this committed passing receipt; inspect actual source/evidence before adding bounded named dynamic wind and thermal memory, retaining exact source/frame/clock/one-lapse semantics."
+}

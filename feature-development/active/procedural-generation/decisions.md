@@ -199,3 +199,43 @@ source/archive/receipt witnesses remain. Independent solar scalars/integral,
 ridge/coast, units/calendar/ownership and refusal checks pass. The receipt is
 execution evidence. Controller alone may select U13; transport, dynamics,
 physical/visual/platform/public acceptance remain separate.
+
+## CLIMATE-003 — Conservative known-face transport (U13)
+
+**User progression; implemented private choice.** Transport vapour/cloud water
+with shared-face first-order donor retention, using explicit east/north winds,
+closed or periodic boundaries and the retained U12 metric area. Reference air
+temperature instead uses an intensive advective difference update that preserves
+constants during convergence. This gives auditable mass transport before dynamic
+pressure, trading feature sharpness for bounded nonnegative updates. Confidence
+high in executed discrete contracts, medium in game usefulness; detailed evidence follows.
+
+## CLIMATE-005 — Water and elevation cause rainout (U13)
+
+**User mechanism; implemented engineering model.** A clamped linear column-capacity
+proxy diagnoses local temperature from transported reference temperature and one
+lapse correction. Bounded condensation/cloud evaporation/rain transfers move actual
+available water. Finite evaporation depletes an explicit reservoir; replenishment
+is reported external supply and rain is export. Ridge/gap experiments test causal
+removal. No RH/dew-point, latent-heat, real ocean or hydrodynamic claim. Confidence
+high in accounting, unverified in physical/coarse rain-shadow calibration.
+
+## CLIMATE-006 — Fixed ticks and complete bounded advances (U13)
+
+**User limits plus engineering schedule.** Accept1..10 integer ticks and choose
+the smallest1..64 substeps satisfying actual outgoing water AND incoming intensive
+fractions per cell. Account unsuccessful trials, every copy/pass/face and full
+candidate/report payload. Refusal preserves prior owners; no wind clipping or
+skipped time. Own exact baseline/model/state and latest forcing interval; floating
+replay is build/platform/order scoped. Confidence high in bounded publication,
+medium in numerical policy; no evolving pressure solver is selected here.
+
+## PROCGEN-049 — Executed conservative transport checkpoint
+
+**User acceptance; executed GNU/Linux Debug/UBSan.** All135 accumulated entries
+pass once:124 cases/45176 assertions plus eleven consumers/38 demos. New608
+assertions include literal transport/transfer oracles, terrain/gap/mirror rainout,
+exact resource limits, runtime refusal, grouping and ownership. All122 previous
+names/counts and33 preservation witnesses match. Confidence high in checked
+mechanisms, unverified for physical calibration, visuals, ASan/portability/public
+integration. Receipt reports execution; only controller may select U14.

@@ -1201,3 +1201,264 @@ exits.tsv, discovery.json, build-{1,2,3}.log and ctest-{1,2}.log retain full evi
 and101 prior case counts retained. No source-provenance archive, WORLD source,
 predecessor receipt or sibling was modified. New ready receipt reports execution,
 not coordinator source acceptance or a new platform/physical guarantee.
+
+## PROCGEN-U13 — Caller proposed before dependent APIs
+
+Exact clean starting head954bf3b38933378d09d1519f3b1c005440a0fc64, committed
+procgen-climate-20261024-0615/U12 ready/true receipt, actual climate sources and
+nonempty122 accumulated+12 affected native evidence were inspected. No unresolved
+prerequisite is extended. U12 is an owned physical/solar baseline; its fractions
+are not reservoir depths. U10 fills and U11 counts remain non-water context.
+
+Proposed spelling shown in ordinary progress before adding APIs:
+
+```cpp
+auto state = start_moisture(baseline, initial_cells, model, limits);
+auto step = advance_moisture(state.value(), baseline, face_winds, 4, limits);
+inspect(step->state, step->report.water, step->report.transfers);
+```
+
+Engineering proposal (now implemented privately, acceptance pending): closed and
+periodic constant face winds, conservative shared-face upwind water, separate
+intensive reference-temperature differences, explicit finite/replenished supply
+and bounded phase/rain transfers. Exact face fractions choose deterministic
+substeps; complete state/report candidates preserve older owners. No new physics
+framework, dynamic pressure solver, open-boundary ghosts or graphical claim.
+
+## CLIMATE-003 — Implemented known-face transport
+
+Private owner moisture.h/.cpp, start_moisture and advance_moisture. Reuses accepted
+ClimateBaseline and Domain by value, not a new World/service. State owns complete
+U12 baseline/source witness, four fields per cell, model/numerics1, integer tick
+and latest owned face winds/interval. Baseline is frozen initial context in U13;
+no solar repaint or seasonal/thermal relaxation is hidden in transport. Initial
+A (reference_kelvin) is explicit reference-level air state, not local air_reference
+passed through a second lapse correction. Initial T in[250,600]K, nonnegative Q/L/
+finite_surface in[0,1e12]mm; local diagnosed temperature must be[1,2000]K. Positive
+finite water requires finite_water_fraction>0. Evolved reference guard[249,601]K
+allows negligible floating endpoint error without clipping; all water remains
+nonnegative and <=1e12 or refuses. These are admitted numeric ranges, not plausible
+weather observations.
+
+Cell area is the explicit constant dx*dy of the selected regional approximation.
+All water fields are equivalent depth over WHOLE horizontal cell area; m3 is
+mm*area/1000. Latitude mapping does not turn these into varying-area globe cells.
+Vapour/cloud are transported; finite surface water stays at its source cell.
+Initial clock is the retained baseline.tick and seconds/tick comes from its
+calendar. There is no wall clock, RNG, global state or implicit starting weather.
+
+Face arrays are east[(width+1)*height], north[width*(height+1)], x-fast. Positive
+values are east/north m/s. Row velocity is physical north times the explicit row
+sign. Finite speeds in[-1000,1000]m/s; unsupported winds are not clipped. Closed
+exterior faces must be0. Periodic opposite duplicates must agree; process one
+wrap face only. Unit-axis self wraps are computational no-ops and omitted from
+CFL/flux counts. Periodic transport is a torus experiment, not a promise that
+U8 geography has matching seams. No open-boundary mode/ghost data is supported;
+unknown boundary enum values explicitly reject.
+
+Canonical face order is east interiors then wrap per row, followed by north
+interior rows then final wrap row. Sign picks donor/receiver. Let f=abs(speed)*dt/
+spacing. For every cell compute sums of ACTUAL outgoing and incoming f in left,
+right,top,bottom order. Outgoing<=1 admits nonnegative conserved water; incoming
+<=1 is the additional convexity condition for intensive temperature. Start each
+water update with Qold*(1-outgoing), Lold*(1-outgoing), then add each shared donor
+flux to its neighbor exactly once. No independent inconsistent two-sided fluxes,
+sequential donor clipping or diagonal link exists. Intensive A instead starts at
+Aold and adds f*(Adonor-Aold_receiver) for incoming faces. Thus constant A remains
+exactly constant even where water mass per area accumulates. This is not an
+energy/mass temperature conservation model. First-order transport diffuses pulses;
+only an admitted pure axis f=1 step gives exact cell translation.
+
+advance takes an EXPECTED baseline to detect stale source/context. Compare Domain,
+revision pair, full physical/calendar/model context, original baseline tick,
+optional U8 algorithm/version/key/config and EVERY owned ClimateCell. Same-size/
+same-ID arrays alone do not establish compatibility. Only admission-budget metadata
+is excluded from semantic comparison. Retained result still owns the original
+complete baseline descriptor. New geometry/source/response context requires an
+explicit future reinitialization/remap policy, not silent adoption.
+
+CLIMATE-003 confidence high for tested discrete invariants once executed, medium
+for game suitability. Chosen types/schedule are engineering decisions. Intentional
+v3 typed setup evidence remains eb3f81c/include/abstracts/singleton.h::construct
+(typed forwarding/checks, medium confidence); singleton ownership/counterevidence
+does not prescribe this weather API. U12/older agent APIs are compatibility only.
+
+## CLIMATE-005 — Implemented capacity, reservoirs and rain
+
+Version1 nominal capacity proxy is
+clamp(capacity_at_273_mm + capacity_mm_per_kelvin*(Tlocal-273.15),min,max).
+Parameters at273/min/max in[0,1000]mm, nonnegative slope<=10mm/K, min<=max. This is
+a tunable column saturation/fog CAPACITY PROXY, not measured RH/dew point or cloud
+optics. Scalar helper accepts local[1,2000]K; no implicit pressure/humidity inputs.
+Tlocal=A-lapse*(baseline.z-reference_metres), using the U12 explicit lapse ONCE.
+There is no additional -lapse*wind.dot(slope) term that double-cools a mountain.
+
+Per internal step order: transport, evaporation supply, condensation OR cloud
+re-evaporation, then cloud rain. Condensation/cloud evaporation/rain coefficients
+are[0,1]/s; process fraction=min(rate*dt,1). Condensation removes (Q-capacity)*f
+when Q exceeds capacity. Otherwise cloud re-evaporation removes min(capacity-Q,L)*f
+from L into Q. Rain removes L*f after those transfers, reporting a per-cell interval
+amount and exported volume. Zero coefficients disable processes. No dry closed
+initial Q=L=reservoir0 can produce rain without a declared source.
+
+Surface evaporation coefficient[0,.1]mm/s multiplies declared finite/replenished
+water fractions and dt. Finite contribution is capped by available whole-cell
+finite_surface_mm, reducing it and increasing Q. Replenished contribution increases
+Q and is reported external supply; it is not falsely stored/depleted finite water.
+A sea threshold, spill depth, channel mask or contributing-cell count supplies
+neither fraction nor reservoir. Roughness is retained context with no wind solver
+in U13. Constant source rates are a chosen game rate rule; no latent heat/energy
+budget, ocean physics, discharge or rainfall forecast is claimed.
+
+Report transfers own finite evaporation, replenishment, condensation, cloud
+re-evaporation and rain depth per cell for the WHOLE accepted interval. WaterLedger
+owns initial/final Q+L+finite volumes, internal-transfer volumes, external supply,
+rain export and closed/periodic boundary in/out0. Check residual=(final+rain)-initial-
+replenished against tolerance1e-10*max(1,initial+replenished+rain)m3; refusal is
+explicit if exceeded. No roundoff mass repair/clipping is applied. This is a
+reported floating diagnostic, not exact physical mass/energy metrology. Exported
+rain awaits the separately assigned soil adapter; no event-delivery/save rule.
+
+## CLIMATE-006 — Implemented bounds, work and ownership
+
+Hard128x128/16384 cells,16MiB model payload,100M charged blocks/request,10 ticks,
+64 substeps/tick. Work/storage/index arithmetic and vector capacities preflight
+before C buffers. Whole ticks must be positive; tick addition checked for u64
+overflow. Validate exact source and every face before any new cell/forcing copy.
+Borrowed baseline/initial/winds exist only during the synchronous call; constructor
+copies complete owned inputs. Allocation/programming exceptions propagate; only
+internal expected Stop refusals become MoistureFailure with consumed work.
+
+Trial n=1..min(caller cap,64), dt=seconds_per_tick/n. Charge each full actual-fraction
+scan, even rejected ones. Choose first passing n, constant for all requested ticks.
+If none fits or work runs out, publish nothing. No hidden spinup, refinement,
+wind adjustment, skipped outer ticks or pressure iterations. Grouping fixed-wind
+whole ticks retains the same update sequence/clock; latest forcing interval and
+request reports naturally describe different groupings. Sufficient budget caps
+never select a different successful n/content.
+
+For C cells, F=(w+1)*h+w*(h+1) supplied face values, D canonical nonself processed
+faces: closed D=(w-1)*h+(h-1)*w, periodic additionally h if w>1 and w if h>1.
+Start payload16384+216*C (184 baseline witness+32 state), work64+8*C. Advance peak
+16384+304*C+8*F, comprising184*C baseline,32*C current,40*C transfer report,
+32*C next,16*C outgoing/incoming scratch and8*F owned forcing. No duplicate queue,
+solver or scratch per substep. Full128x128 start3555328 bytes; advance5261312.
+These are requested model payloads, not RSS; preexisting baseline/state/expected
+inputs/held reports, caller copies, allocator/runtime/exception overhead excluded.
+Fixed metadata allowance is guarded by size assertions. No pressure/OOM test.
+
+Accepted advance exact work64+9*C+2*F+n*(4*C+1)+ticks+steps*(7*C+2*D+1), steps=ticks*n.
+64 scalar/version/clock/context; C exact cell comparison; F face validation;
+2*C initializes fraction scratch; each trial1+4*C;5*C+F covers baseline/state/report/
+next copies/initial-total reduction and forcing copies; each tick1; each substep
+C donor-retention init+2*D shared water/temp face work+6*C phase/numeric/report
+blocks+1 swap; final C covers paired state/transfer reductions. These are bounded
+operation blocks, not CPU instructions. Start64 context/model,2*C initial validation
+and6*C owned-copy/initialization blocks. Runtime failure reports actually consumed
+blocks; metadata/preflight refusal0. Min work assumes one successful trial/substep
+per tick; after admission determines n, exact remaining work preflights before
+candidate copy. A low budget can still exhaust during rejected schedule trials.
+All resources admit independently; not every combination of maximum dimensions/
+ticks/substeps fits100M and such a request refuses before its full candidate.
+
+Complete owned result has no alias to input/scratch. Earlier states/reports and
+source are preserved on any expected refusal or thrown allocation error. Result
+spans expire on move/assignment/destruction; moved-from supports only destruction/
+assignment. State owns arrays/clock/options/complete baseline and latest applied
+constant forcing interval; replay from an arbitrary checkpoint needs those arrays
+and specified FUTURE forcing, not only an elevation seed. Latest forcing alone is
+not the entire prior forcing history. No saved wire format is selected. Float
+replay is same model/numerics/build/platform/operation order only. No cross-platform
+bit identity follows from U8 integer streams. No dynamic pressure/thermal memory,
+water impacts, renderer, public Engine API or sibling integration is implemented.
+
+## PROCGEN-049 — Executed U13 acceptance and handoff
+
+Existing GNU16.2.1/Linux Ninja Debug C++23/UBSan configuration, strict warnings and
+shared wrapper/one job. format-1/build-1 pass; discovery135 nonempty preserves
+all122 previous registrations. The live discovery18373 session waited normally
+behind shared native work and completed without cancellation/relaunch; ctest86810
+also completed. Single accumulated ctest-1 passes135/135,0 failures/0 skips.
+124 cases/45176 assertions, twelve new cases/608 assertions, eleven consumers/
+38 demos including moisture5/5. All122 prior names/112 counts match U12's actual
+post-correction source (ctest1 combined with affected ctest2). No native failure,
+compiler/UBSan diagnostic, rerun or admission75/auth/allowance refusal. Old Engine/
+map suites were not repeated.33 archive/shared/U8/U9/U10/U11/U12 source/receipt
+hash witnesses match; no source/archive/receipt rewrite or sibling mutation.
+
+New case assertions: transport42,faces41,phases38,sources25,ridge79,generated48,
+grouped25,boundaries55,capacity18,invalid118,limits94,ownership25. Independent
+reductions also run in each ordinary advance/consumer, outside counted CHECKs.
+Literal checks use complete expected weights rather than the production update:
+periodic2x2 Q4/L2 at cell0 with f_e=f_row=.25 ->Q{2,1,1,0},L{1,.5,.5,0};
+pure f=1 periodic row{1,2,4}->{4,1,2}; two-axis f=1 requires n2 and gives
+{2,0,0,2}, not an asserted exact diagonal shift. Four divergent centre faces
+require n4 despite zero opposite-face centre velocity; inverse convergence
+preserves constant A exactly and retains81/256 of each peripheral pulse after
+four quarter steps. Unequal donor reference temperatures250/260/270/280 around
+500K centre give265K intensive mean, rather than treating A as conserved mass.
+
+One-cell phase oracle Q10/L2,capacity6,condensation.5,rain.25 ->Q8/L3/rain1mm,
+12->11 retained units. Cloud re-evaporation Q2/L4/cap6/fraction.5 ->Q4/L2;
+dry zero input with no supply produces no rain over10 ticks. Finite/replenished
+.5/.5 fractions,2x3m area,10s tick and.1mm/s rate deplete.25mm finite supply
+and add1mm replenishment in two ticks; m3 initial.0015,final.0075,source.006.
+Independent reservoir difference and per-cell transfer sums check the ledger.
+Unit axes/self wraps, physical row-north sign, closed boundaries, periodic-copy
+validation, zero wind, capacity limits and every nonfinite model/state field pass.
+Exact source mismatch includes changed datum/revisions and changed height cells
+with same-size/same IDs; sufficient budget metadata changes remain compatible.
+
+Literal7x3 1km grid/1000s ticks: uniform280K reference,9mm wet pulse moving one
+cell east per tick. At1000m ridge, single lapse.0065K/m gives273.5K local and
+capacity6.175mm; rain removes2.825mm per affected row. No ridge:0 rain,27000m3
+retained. Full ridge:8475m3 rain/18525m3 retained; central resolved gap:5650m3/
+21350m3 with the gap row still9mm versus6.175mm behind the full ridge. Reflecting
+BOTH wind and source moves pulse centre x5->x1 and mirrors the per-cell rain,
+retaining8475m3. Reported differences arise from actual capacity and removal,
+not a painted lee mask. These full/gap cases each1294 work/23184 payload bytes.
+
+Actual U8 key{42,0x67656f6772617068,7},17x11/pitch3/-80..120 uses explicit10m/tick,
+datum0,2km spacing/1000s ticks and2m/s east known wind. Eleven western replenished
+cells and a.02mm finite pool are explicitly supplied, not sea/fill/river inference.
+Q9mm initially at each x1, all A280K; eight accepted ticks move vapour centre to
+x8.93111232. Initial396080m3, final274650m3, finite transfer80m3, external3520m3,
+condensation/exported rain124950m3. Residual within5.2455e-5m3 reported tolerance;
+no correction is applied.19324 work/76448 bytes, n1. Other two generated seeds
+also pass independent reductions. No global seed uniqueness/physical quality claim.
+
+Boundary/refusal checks cover exact start1cell work72/payload16600 and two-tick
+advance work104/payload16720; one-short cell/bytes/work/ticks/substeps preserves
+held owners. n4 advance9cells work694 exact/one-short; n64 accepted on9cells,
+more than64 refuses. A319-work budget admits minimum planning but exhausts during
+unsuccessful schedule trials, returning consumed work and no candidate. Controlled
+numeric concentration beyond1e12mm refuses without changing input. Full128x128
+zero-wind accepted within5261312 bytes; no deliberate pressure. u64 clock overflow,
+huge Domain planner arithmetic, allocation-denied preflight and propagated bad_alloc
+are checked. Previous source/state/report copies survive later calls/rejections.
+
+Fixed forcing direct4ticks versus2+2 produces identical cells/clock, with interval
+rain totals agreeing separately. Latest forcing interval metadata differs by
+request grouping as documented. The report is paired with its returned state;
+a detached report alone is neither the full source witness nor a durable delivery
+receipt/checkpoint. Full current arrays/context and future prescribed forcing
+are necessary for continuation. No file/save/event delivery format is selected.
+
+Complete commands/stdout/stderr/immediate exits and source witnesses live under
+builds/procedural-generation/logs/u13/{commands.txt,exits.tsv,format-1.log,build-1.log,
+discovery.json,discovery.stderr.log,ctest-1.log,consumer.log,consumer-counts.log,
+counts.json,source-evidence.json,preservation-before.json,preservation-after.json}.
+Ready U13 receipt is an execution report, not automatic coordinator source or
+platform acceptance. Confidence high in literal discrete proofs/ownership/bounds,
+medium in API/numerical choice/game behavior; no unresolved blocker. Other OSes/
+compilers, ASan/leaks, broad performance, physical rain-shadow calibration, latent
+heat, graphics/attractiveness/fun, Engine/SDK and persistence remain unverified.
+Existing WORLD visual/input/assets/ABI/file durability gaps remain with owners.
+
+Next action: idle for coordinator source/log review and publisher transport.
+Controller alone may select U14. If assigned, inspect this actual checkpoint and
+receipt before adding the separately named dynamic pressure/wind and thermal
+memory model. Supply coherent known-face transports with explicit source/frame/
+clock and one lapse interpretation; do not bypass exact-context checks, infer
+available water from U10/U11, silently replace baseline geometry or replay old
+rain as a new impact. U13 launches no next unit/service or automatic integration.
