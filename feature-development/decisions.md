@@ -1,27 +1,30 @@
 # Tilemap milestone decisions
 
-U1–U5 provide finite CPU maps, checked ranges/picking, retained bindings/packets,
-pass composition and the required atlas demo fixture. U6 shares a private editor
-state implementation between synthetic consumers and compiled demo event wiring.
-These are engineering choices under delegated authority, not user-confirmed API
-or control preferences. Matching IDs in [agent-notes.md](agent-notes.md) retain
-contracts, alternatives, provenance and confidence/reversal costs.
+U1–U6 provide finite CPU maps, computed-edge picking/visibility, retained
+bindings/packets, pass consumers and a private tested editor with compiled demo
+wiring. U7 adds a private CPU terrain consumer with separate semantic labels,
+explicit target-to-logical mapping and transactional local updates. These choices
+are engineering decisions under delegated authority, not user-confirmed tastes.
+Stable IDs match [agent-notes.md](agent-notes.md); [next.md](next.md) records the
+caller, exact commands, executed results and remaining acceptance.
 
-U6 starts clean at accepted ff76e5d (44/44 CPU cases). It adds seven editor cases,
-private app wiring and explicit private unit source/include requirements. All
-**51/51 pass, zero failed/skipped, 32.16 seconds**, under Debug ASan/UBSan. Both
-tests-engine and demo build/link with immediate exit 0. Public
-Map/picking/resolver/camera/input/frame/pass/backend/startup/persistence APIs and
-pins stay unchanged. Exact commands, immediate exits, registration correspondence,
-logs and executed-vs-pending results are in [next.md](next.md#actual-commands-and-results).
+U7 starts clean at accepted fb0feef (51/51 Debug ASan/UBSan cases). The preserved
+CPU runner builds and registers 61 nonempty names: all 51 accepted plus eight
+terrain cases and two retained-frame consumers. Initial execution passes 60/61
+(all 51 regressions), zero skips, in 36.52 seconds; the negative consumer fixture
+expected 11 setup packets but correctly produced 15. That assertion is corrected;
+the focused case passes 1/1 (0.42s, exit 0). All 61 unique names have passing
+evidence across these runs; no whole-suite exit-0 rerun is claimed. No helper
+behavior changed for the fixture error.
 
-The unchanged graphical gap remains: U4's probe exited 255 with
-`Error: unable to open display :1`. U6 does not retry it. Compiled demo input and
-synthetic events cannot establish real display/input, asset decode/upload,
-capture, graphical cleanup or leak acceptance. Only command-local detect_leaks=0
-is permitted for the diagnosed tracing limitation; ASan/UBSan/halt_on_error remain
-selected. No installed SDK/Windows/other-toolchain ABI acceptance is inferred.
-No later unit or recurring scheduling is activated; publisher owns transport.
+Only private unit consumer files/records change. Public Engine/editor/input/
+camera/renderer APIs, build selections and pins stay unchanged; demo compiled
+inputs do not change and require no rebuild. Synthetic CPU evidence does not
+establish graphical input/display, app asset upload, native teardown, leaks,
+installed SDK/Windows or cross-toolchain ABI acceptance. ASan/UBSan/halt_on_error
+remain selected, with only command-local detect_leaks=0 for the diagnosed tracing
+limitation. U4's `Error: unable to open display :1` remains unchanged and is not
+retried. Publisher owns transport; stop after the coherent U7 checkpoint.
 
 ## TM-001
 
@@ -76,22 +79,24 @@ cases; actual visual order remains unobserved.
 
 ## TM-006
 
-Share one private editor state between demo and synthetic events. Consume
-ordered gameplay records; selection acts immediately and each click/wheel uses
-its own captured pointer. Only Press edits; middle samples including empty,
-left paints, right erases. Invalid operations preserve values/view, while earlier
-valid events remain applied. Frames retain copied output independently of later
-edits or helper destruction. This costs repeated resolution and lacks tick
-rollback. Engineering confidence is high; controls are reversible private choices.
+Consume ordered gameplay events in the shared private editor; selection acts
+immediately and each click/wheel uses its captured pointer. Press edits, middle
+samples empty too, and frames retain copied output. U7 separately resolves all
+invalidated semantic-neighbor results before publishing one terrain edit;
+failures preserve labels and tiles. Neither operation promises tick/frame
+rollback. This costs repeated resolution and private state. Engineering confidence
+is high; naming/controls remain reversible local choices, with low taste confidence.
 
 ## TM-007
 
-Begin with explicitly authored tile IDs and leave automatic terrain/Wang editing
-for a later unit. Existing selection remains a synchronous borrowed sampler
-boundary, with distinct outside/unknown observations and ordinary failure values.
-This avoids inventing terrain meaning from visual IDs or animating selected cells
-twice. The tradeoff is no automatic neighbor redraw in this milestone. Confidence
-is high about compatibility and medium about this scope choice, without v3 preference proof.
+Own semantic labels separately from copied visual tiles; map selection targets
+through a caller-owned table copied at construction. Reuse four-neighbor select
+with authored cardinal bit order and empty outside samples. Empty labels clear;
+unchanged labels do nothing. Resolve center plus unique bounded cardinal neighbors
+before publication; failures preserve both. This avoids visual-ID
+terrain inference but copies dense state and lacks Wang/diagonals or live rule
+replacement. Engineering confidence is high; private spelling has low taste
+confidence and local reversal cost.
 
 ## TM-008
 

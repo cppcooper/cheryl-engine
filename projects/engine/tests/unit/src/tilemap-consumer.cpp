@@ -1,4 +1,5 @@
 #include "tilemap-editor.h"
+#include "tilemap-terrain.h"
 
 #include <assets/submission/tilemap2d.h>
 #include <core/rendering/render-frame.h>
@@ -1030,4 +1031,144 @@ TEST(tilemap_consumer, editor_frames) {
     EXPECT_TRUE(geometry.expired());
     EXPECT_TRUE(image.expired());
     calls->expect_cpu();
+}
+
+namespace {
+    using TilemapTerrain::TerrainLabel;
+    using TilemapTerrain::TerrainMap;
+
+    Tiles::BitmaskRule terrain_rule() {
+        Tiles::BitmaskRule rule;
+        rule.type = Tiles::BitmaskType::FourNeighbor;
+        rule.bit_order = {Tiles::Direction::North, Tiles::Direction::East, Tiles::Direction::South, Tiles::Direction::West};
+        for (std::uint32_t mask = 0; mask < 16; ++mask)
+            rule.cases.emplace(mask, mask % 4); // Synthetic selector targets, not terrain labels or logical IDs.
+        return rule;
+    }
+
+    constexpr std::array terrain_ids{Maps::TileId{7}, Maps::TileId{8}, Maps::TileId{9}, Maps::TileId{10}};
+
+    std::vector<TerrainLabel> terrain_labels(const TerrainMap& map) {
+        std::vector<TerrainLabel> result;
+        for (std::int64_t row = 0; row < map.tiles().extent().rows; ++row)
+            for (std::int64_t column = 0; column < map.tiles().extent().columns; ++column)
+                result.push_back(map.label({column, row}));
+        return result;
+    }
+
+    void prepare_terrain(Render::Frame& frame, const Fixture& fixture, const TerrainMap& west, const TerrainMap& east) {
+        Render::FrameWriter writer(frame);
+        auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
+        const Submit::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+        pass.add(Submit::resolve_tilemap_layer(west.tiles(), ground, fixture.bindings, fixture.west_view, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(west.tiles(), detail, fixture.bindings, fixture.west_view, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(east.tiles(), ground, fixture.bindings, fixture.east_view, {}, context));
+        pass.add(Submit::resolve_tilemap_layer(east.tiles(), detail, fixture.bindings, fixture.east_view, {}, context));
+    }
+}
+
+TEST(tilemap_consumer, terrain_frames) {
+    const auto calls = std::make_shared<Calls>();
+    Render::Frame older, newer;
+    std::vector<Render::DrawPacket2D> prior, changed;
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    const std::array original{
+        ExpectedDraw{8, 105, 191},
+        ExpectedDraw{0, 125, 191},
+        ExpectedDraw{12, 105, 179},
+        ExpectedDraw{4, 125, 179},
+        authored[3],
+        authored[4],
+        ExpectedDraw{0, 305, 191},
+        ExpectedDraw{0, 325, 179},
+        authored[7]
+    };
+    const std::array edited{
+        ExpectedDraw{0, 105, 191},
+        ExpectedDraw{12, 105, 179},
+        ExpectedDraw{0, 125, 179},
+        authored[3],
+        authored[4],
+        ExpectedDraw{0, 305, 191},
+        ExpectedDraw{0, 325, 179},
+        authored[7]
+    };
+    {
+        const Fixture fixture(calls);
+        geometry = fixture.geometry;
+        image = fixture.image;
+        const std::vector<TerrainLabel> west_labels{{1}, {1}, {0}, {1}, {1}, {0}};
+        const std::vector<TerrainLabel> east_labels{{2}, {0}, {0}, {0}, {2}, {0}};
+        TerrainMap west(fixture.west, ground, west_labels, terrain_rule(), terrain_ids);
+        const TerrainMap east(fixture.east, ground, east_labels, terrain_rule(), terrain_ids);
+        const auto sibling = cells(east.tiles());
+        const auto source_west = cells(fixture.west);
+        auto expected = cells(west.tiles());
+        prepare_terrain(older, fixture, west, east);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(older, original));
+        prior = older.passes()[0].draws;
+        EXPECT_EQ(west.edit({1, 0}, {0}), (std::vector<Maps::Point>{{1, 0}, {2, 0}, {1, 1}, {0, 0}}));
+        expected[0] = {7};
+        expected[1] = {0};
+        expected[4] = {7};
+        EXPECT_EQ(cells(west.tiles()), expected); // Includes untouched detail layer.
+        EXPECT_EQ(cells(east.tiles()), sibling);
+        EXPECT_EQ(terrain_labels(east), east_labels);
+        EXPECT_EQ(cells(fixture.west), source_west); // Constructor never edited its caller's base.
+        prepare_terrain(newer, fixture, west, east);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(newer, edited));
+        changed = newer.passes()[0].draws;
+        for (std::size_t i = 4; i < prior.size(); ++i)
+            expect_payload(changed[i - 1], prior[i]); // Other layer/map retain their payloads; authored order shifts.
+        expect_packets(older, prior);
+        calls->expect_cpu();
+    } // Terrain grids, rules/mappings, bindings and provider all gone.
+    expect_draws(older, original);
+    expect_draws(newer, edited);
+    expect_packets(older, prior);
+    expect_packets(newer, changed);
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    older.recycle();
+    newer.recycle();
+    prior.clear();
+    EXPECT_FALSE(geometry.expired());
+    changed.clear();
+    EXPECT_TRUE(geometry.expired());
+    EXPECT_TRUE(image.expired());
+    calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, terrain_rejection) {
+    const Fixture fixture;
+    const std::vector<TerrainLabel> initial(6, {1});
+    const TerrainMap east(fixture.east, ground, initial, terrain_rule(), terrain_ids);
+    const auto sibling = cells(east.tiles());
+    for (const auto missing_rule : {true, false}) {
+        auto rule = terrain_rule();
+        if (missing_rule)
+            rule.cases.erase(2);
+        else
+            rule.cases[2] = std::numeric_limits<CE::Assets::Grids::CellIndex>::max();
+        TerrainMap west(fixture.west, ground, initial, rule, terrain_ids); // Initial 3x2 masks never need case2.
+        const auto before = cells(west.tiles());
+        Render::Frame older, after;
+        prepare_terrain(older, fixture, west, east);
+        const auto packets = older.passes()[0].draws;
+        ASSERT_EQ(packets.size(), 15u); // Six ground cells per map plus two west/one east detail draws.
+        try {
+            static_cast<void>(west.edit({0, 0}, {0})); // Empty center and east resolve first; south then refuses case2.
+            ADD_FAILURE() << "Expected a late terrain derivation refusal";
+        } catch (const bad_request& error) {
+            EXPECT_NE(std::string{error.what()}.find("(0,1)"), std::string::npos);
+        }
+        EXPECT_EQ(terrain_labels(west), initial);
+        EXPECT_EQ(cells(west.tiles()), before);
+        EXPECT_EQ(cells(east.tiles()), sibling);
+        prepare_terrain(after, fixture, west, east);
+        expect_packets(older, packets);
+        expect_packets(after, packets);
+        fixture.calls->expect_cpu();
+    }
 }
