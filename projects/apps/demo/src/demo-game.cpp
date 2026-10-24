@@ -88,6 +88,7 @@ class GameImpl : public CE::Game::AbstractGame {
     CE::Text::LayoutOptions text_options_;
     bool unicode_preview_;
     bool tilemap_display_;
+    std::filesystem::path tilemap_document_dir_;
     CE::Text::Rendering::RasterOptions raster_options_;
     std::optional<CE::Text::Font> fonts_;
     std::shared_ptr<const CE::Text::Rendering::Generation> target_text_;
@@ -116,7 +117,8 @@ public:
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
         bool text_runs,
-        bool tilemap_display
+        bool tilemap_display,
+        std::filesystem::path tilemap_document_dir
     )
     : engine_(engine),
       camera_(),
@@ -128,6 +130,7 @@ public:
       text_options_(std::move(text_options)),
       unicode_preview_(unicode_preview),
       tilemap_display_(tilemap_display),
+      tilemap_document_dir_(std::move(tilemap_document_dir)),
       raster_options_{.positioned_runs = text_runs} {}
 
     void stop_after_updates(const std::uint64_t count, std::function<void()> stop) {
@@ -147,7 +150,7 @@ public:
         if (tilemap_display_) {
             auto materials = load_materials(asset_root_, resources, false, engine_.events().publisher());
             image_shader_ = std::move(materials.images);
-            tilemaps_.emplace();
+            tilemaps_.emplace(tilemap_document_dir_);
             tilemaps_->load(asset_root_, resources);
             // This mode returns before ordinary bindings/capture. Raw ordered
             // records need their own lease, retained through platform cleanup.
@@ -562,7 +565,8 @@ struct DemoGame::GameState {
         CE::Text::LayoutOptions text_options,
         const bool unicode_preview,
         const bool text_runs,
-        const bool tilemap_display
+        const bool tilemap_display,
+        std::filesystem::path tilemap_document_dir
     )
     : game(
           engine,
@@ -572,7 +576,8 @@ struct DemoGame::GameState {
           std::move(text_options),
           unicode_preview,
           text_runs,
-          tilemap_display
+          tilemap_display,
+          std::move(tilemap_document_dir)
       ) {}
 };
 
@@ -584,7 +589,8 @@ DemoGame::DemoGame(
     CE::Text::LayoutOptions text_options,
     const bool unicode_preview,
     const bool text_runs,
-    const bool tilemap_display
+    const bool tilemap_display,
+    std::filesystem::path tilemap_document_dir
 )
 : game_state_(
       std::make_unique<GameState>(
@@ -595,7 +601,8 @@ DemoGame::DemoGame(
           std::move(text_options),
           unicode_preview,
           text_runs,
-          tilemap_display
+          tilemap_display,
+          std::move(tilemap_document_dir)
       )
   ) {}
 

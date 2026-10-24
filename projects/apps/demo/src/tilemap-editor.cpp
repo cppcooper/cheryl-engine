@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace {
     namespace Maps = CE::Tilemaps;
@@ -12,6 +13,14 @@ namespace {
     namespace Events = CE::Input::Events;
     constexpr std::array<Maps::LocalPoint, 2> origins{Maps::LocalPoint{48, 240}, Maps::LocalPoint{328, 208}};
     constexpr Maps::CellSize cells{64, 48};
+
+    WorldProof::KeyTable document_keys() {
+        const std::array entries{
+            WorldProof::KeyId{"tilemap:brown", {7}}, WorldProof::KeyId{"tilemap:black", {8}}, WorldProof::KeyId{"tilemap:grey", {9}},
+            WorldProof::KeyId{"tilemap:red", {10}}
+        };
+        return WorldProof::KeyTable(entries);
+    }
 
     bool finite(const glm::mat4& matrix) {
         for (int column = 0; column < 4; ++column)
@@ -37,11 +46,11 @@ DemoTilemapEditor::TerrainPalette DemoTilemapEditor::diagnostic_terrain() {
     return result;
 }
 
-DemoTilemapEditor::DemoTilemapEditor()
-: DemoTilemapEditor(diagnostic_terrain()) {}
+DemoTilemapEditor::DemoTilemapEditor(std::filesystem::path document_dir)
+: DemoTilemapEditor(diagnostic_terrain(), {32, 6, 256}, std::move(document_dir)) {}
 
-DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::TerrainBatchLimits limits)
-: terrain_limits_(limits) {
+DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::TerrainBatchLimits limits, std::filesystem::path document_dir)
+: document_keys_(document_keys()), document_dir_(std::move(document_dir)), terrain_limits_(limits) {
     for (const auto id : palette.target_to_id)
         if (id.value != 0 && (id.value < 7 || id.value > 10))
             throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
@@ -55,11 +64,43 @@ DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::Terrain
     constexpr std::array<std::array<std::uint32_t, 6>, 4> ids{
         {{7, 8, 9, 10, 0, 7}, {0, 10, 0, 9, 0, 0}, {9, 7, 0, 8, 10, 9}, {10, 0, 10, 0, 7, 0}}
     };
-    for (std::size_t instance = 0; instance < maps_.size(); ++instance)
-        for (std::int64_t layer = 0; layer < 2; ++layer)
-            for (std::int64_t row = 0; row < 2; ++row)
-                for (std::int64_t column = 0; column < 3; ++column)
-                    maps_[instance].set({layer}, {column, row}, {ids[instance * 2 + layer][row * 3 + column]});
+    for (std::size_t instance = 0; instance < documents_.size(); ++instance) {
+        CE::Maps::Snapshot source{
+            instance == 0 ? "tilemap:west" : "tilemap:east",
+            3,
+            2,
+            {{"ground", std::vector<std::optional<std::string>>(6)}, {"detail", std::vector<std::optional<std::string>>(6)}},
+            {{"entry", "ground", 0, 0}, {"marker", "detail", static_cast<std::uint32_t>(instance + 1), 0}}
+        };
+        for (std::size_t layer = 0; layer < 2; ++layer)
+            for (std::size_t row = 0; row < 2; ++row)
+                for (std::size_t column = 0; column < 3; ++column)
+                    source.layers[layer].cells[row * 3 + column] = document_keys_.key({ids[instance * 2 + layer][row * 3 + column]});
+        documents_[instance] = WorldProof::LiteralOwner::from(source, document_keys_);
+    }
+}
+
+void DemoTilemapEditor::document_action(const bool save) {
+    if (mode_ != Mode::Literal)
+        throw CE::Exceptions::bad_request(CE_HERE, "Literal document SAVE/LOAD is unavailable in terrain mode");
+    if (document_dir_.empty())
+        throw CE::Exceptions::bad_request(CE_HERE, "Literal document SAVE/LOAD is disabled; set --tilemap-document-dir PATH");
+    std::error_code error;
+    if (!std::filesystem::is_directory(document_dir_, error))
+        throw CE::Exceptions::bad_request(
+            CE_HERE,
+            "Literal document directory is unavailable: " + document_dir_.string() + (error ? ": " + error.message() : " (not a directory)")
+        );
+    const auto path = document_dir_ / (selected_map_ == 0 ? "west.json" : "east.json");
+    if (save) {
+        CE::Maps::save(path, documents_[selected_map_]->snapshot());
+    } else {
+        const auto source = CE::Maps::load(path);
+        if (source.width != 3 || source.height != 2 || source.layers.size() != 2)
+            throw CE::Exceptions::bad_request(CE_HERE, "Literal document LOAD requires exactly 3x2 cells and two ordered layers");
+        auto candidate = WorldProof::LiteralOwner::from(source, document_keys_);
+        documents_[selected_map_].swap(candidate); // Complete owner precedes adoption; no remaining allocation.
+    }
 }
 
 std::optional<DemoTilemapEditor::Geometry> DemoTilemapEditor::geometry(const Sizes sizes, const Maps::LocalPoint pan, const double zoom) {
@@ -116,7 +157,7 @@ std::optional<Maps::Point> DemoTilemapEditor::pick(const Events::Pointer pointer
     const Maps::LocalPoint local{pan_.x + x / zoom_ - origin.x, origin.y - (pan_.y + y / zoom_)};
     if (!std::isfinite(local.x) || !std::isfinite(local.y))
         return {};
-    return Maps::pick_cell(maps_[selected_map_].extent(), cells, local);
+    return Maps::pick_cell(map(selected_map_).extent(), cells, local);
 }
 
 void DemoTilemapEditor::consume(const std::span<const Events::Record> records, const Sizes sizes) {
@@ -127,7 +168,9 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
     std::vector<Maps::TerrainEdit> pending;
     const auto flush = [&] {
         if (!pending.empty()) {
-            static_cast<void>(terrain_[selected_map_][selected_layer_.value]->edit_batch(pending, terrain_limits_));
+            static_cast<void>(
+                terrain_[selected_map_][static_cast<std::size_t>(selected_layer_.value)]->edit_batch(pending, terrain_limits_)
+            );
             pending.clear();
         }
     };
@@ -141,6 +184,12 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 flush(); // Selection, modes, brushes and view changes affect only later records.
                 using Key = CE::Input::KeyboardKey;
                 switch (button->key) {
+                    case Key::F8:
+                        document_action(true);
+                        break;
+                    case Key::F9:
+                        document_action(false);
+                        break;
                     case Key::B:
                         mode_ = Mode::Terrain;
                         break;
@@ -205,12 +254,12 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 const auto cell = pick(*button->position);
                 if (!cell)
                     continue;
-                auto& map = maps_[selected_map_];
+                auto& map = mutable_map(selected_map_);
                 using Mouse = CE::Input::MouseButton;
                 if (mode_ == Mode::Terrain) {
                     if (button->mouse_button == Mouse::Middle) {
                         flush();
-                        terrain_brush_ = terrain_[selected_map_][selected_layer_.value]->label(*cell);
+                        terrain_brush_ = terrain_[selected_map_][static_cast<std::size_t>(selected_layer_.value)]->label(*cell);
                     } else if (button->mouse_button == Mouse::Left || button->mouse_button == Mouse::Right) {
                         if (pending.size() == terrain_limits_.requests)
                             throw CE::Exceptions::bad_request(CE_HERE, "Private terrain input run exceeds request cap");
@@ -265,9 +314,9 @@ void DemoTilemapEditor::write(
     auto overlay = images;
     overlay.alpha = 0.5f;
     // Explicit west ground/detail, east ground/detail, then each vector's row/column order.
-    for (std::size_t i = 0; i < maps_.size(); ++i) {
-        const auto& ground = mode_ == Mode::Terrain ? terrain_[i][0]->tiles() : maps_[i];
-        const auto& detail = mode_ == Mode::Terrain ? terrain_[i][1]->tiles() : maps_[i];
+    for (std::size_t i = 0; i < documents_.size(); ++i) {
+        const auto& ground = mode_ == Mode::Terrain ? terrain_[i][0]->tiles() : map(i);
+        const auto& detail = mode_ == Mode::Terrain ? terrain_[i][1]->tiles() : map(i);
         pass.add(Submit::resolve_tilemap_layer(ground, {0}, bindings, geometry_->maps[i], images, context));
         pass.add(Submit::resolve_tilemap_layer(detail, {1}, bindings, geometry_->maps[i], overlay, context));
     }

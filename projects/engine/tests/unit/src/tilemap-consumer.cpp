@@ -1,4 +1,5 @@
 #include "tilemap-editor.h"
+#include "tilemap-demo.h"
 #include <cheryl/maps/terrain-map.h>
 
 #include <assets/submission/tilemap2d.h>
@@ -11,10 +12,14 @@
 #include <ext/matrix_clip_space.hpp>
 
 #include <array>
+#include <chrono>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <span>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -1643,4 +1648,271 @@ TEST(tilemap_consumer, editor_terrain_frames) {
     EXPECT_TRUE(geometry.expired());
     EXPECT_TRUE(image.expired());
     calls->expect_cpu();
+}
+
+namespace {
+    namespace Documents = CE::Maps;
+    struct DocumentFiles {
+        std::filesystem::path directory;
+
+        DocumentFiles() {
+            const auto root = std::filesystem::path(CHERYL_SOURCE_DIR) / "build/world-u2-checks";
+            std::filesystem::create_directories(root); // Test-owned scratch only; the editor never creates directories.
+            const auto nonce = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+            for (unsigned attempt = 0; attempt < 16; ++attempt) {
+                directory = root / (nonce + "-" + std::to_string(attempt));
+                if (std::filesystem::create_directory(directory)) {
+                    std::cout << "Owned document fixtures: " << directory << '\n';
+                    return;
+                }
+            }
+            throw std::runtime_error("Could not create unique document test directory");
+        }
+        // Keep owned files as evidence. No earlier fixture/output is removed.
+    };
+
+    Documents::Snapshot custom_document() {
+        return {
+            "editor:authored",
+            3,
+            2,
+            {{"floor", {"tilemap:brown", "tilemap:black", std::nullopt, "tilemap:red", std::nullopt, "tilemap:grey"}},
+             {"trim", {std::nullopt, "tilemap:red", std::nullopt, "tilemap:grey", std::nullopt, std::nullopt}}},
+            {{"arrival", "floor", 1, 0}, {"scenery", "trim", 0, 1}}
+        };
+    }
+    void raw_document(const std::filesystem::path& path, const std::string_view text) {
+        std::ofstream out(path, std::ios::binary);
+        out.write(text.data(), static_cast<std::streamsize>(text.size()));
+        out.close();
+        if (out.fail())
+            throw std::runtime_error("Test fixture write failed");
+    }
+    std::string document_bytes(const std::filesystem::path& path) {
+        std::ifstream input(path, std::ios::binary);
+        if (!input.is_open())
+            throw std::runtime_error("Test fixture read failed");
+        std::ostringstream result;
+        result << input.rdbuf();
+        if (input.bad() || result.fail())
+            throw std::runtime_error("Incomplete test fixture read");
+        return result.str();
+    }
+}
+
+TEST(tilemap_consumer, editor_documents) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    Documents::save(files.directory / "west.json", custom_document());
+    DemoTilemapEditor editor(files.directory);
+    const auto east = editor.document(1).snapshot();
+    edit(editor, {key(Key::T), key(Key::F9)});
+    EXPECT_EQ(editor.document(0).snapshot(), custom_document()); // All ID/layer/spawn fields adopted.
+    EXPECT_EQ(editor.selected_layer(), detail);                  // Selection remains an ordinal, names are retained metadata.
+    Render::Frame older, restored;
+    prepare_editor(older, editor, fixture);
+    const auto previous = older.passes()[0].draws;
+    edit(editor, {key(Key::Digit4), click(Mouse::Left, {104, 144}), key(Key::F8)});
+    auto saved = custom_document();
+    saved.layers[1].cells[5] = "tilemap:black";
+    EXPECT_EQ(Documents::load(files.directory / "west.json"), saved);
+    EXPECT_EQ(editor.document(0).snapshot(), saved);
+    edit(editor, {click(Mouse::Right, {104, 144}), key(Key::F9)});
+    EXPECT_EQ(editor.document(0).snapshot(), saved);
+    EXPECT_EQ(editor.document(1).snapshot(), east);
+    EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Literal);
+    prepare_editor(restored, editor, fixture);
+    EXPECT_EQ(restored.passes()[0].draws.size(), previous.size() + 1);
+    expect_packets(older, previous);
+    const auto west_bytes = document_bytes(files.directory / "west.json");
+    edit(editor, {key(Key::Digit2), key(Key::G), key(Key::Digit6), click(Mouse::Left, {180, 140}), key(Key::F8)});
+    auto east_saved = east;
+    east_saved.layers[0].cells[0] = "tilemap:red";
+    EXPECT_EQ(Documents::load(files.directory / "east.json"), east_saved);
+    edit(editor, {click(Mouse::Right, {180, 140}), key(Key::F9)});
+    EXPECT_EQ(editor.document(1).snapshot(), east_saved);
+    EXPECT_EQ(editor.document(0).snapshot(), saved);
+    EXPECT_EQ(document_bytes(files.directory / "west.json"), west_bytes);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_document_filters) {
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::F8, Events::ButtonPhase::Release), key(Key::F9, Events::ButtonPhase::Repeat)});
+    auto unadmitted = key(Key::F8);
+    unadmitted.to_gameplay = false;
+    const std::array denied{unadmitted};
+    editor.consume(denied, editor_sizes);
+    const std::array minimized{key(Key::F8)};
+    editor.consume(minimized, {{0, 200}, {800, 600}});
+    EXPECT_TRUE(std::filesystem::is_empty(files.directory)); // No constructor/update/release/repeat automatic I/O.
+    edit(editor, {key(Key::F8)});
+    const auto predecessor = document_bytes(files.directory / "west.json");
+    edit(editor, {key(Key::B), click(Mouse::Left, {40, 128})});
+    const auto labels = editor_terrain_labels(editor);
+    const auto literal = editor.document(0).snapshot();
+    for (const auto action : {Key::F8, Key::F9}) {
+        EXPECT_THROW(edit(editor, {key(action)}), bad_request);
+        EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Terrain);
+        EXPECT_EQ(editor_terrain_labels(editor), labels);
+        EXPECT_EQ(editor.document(0).snapshot(), literal);
+        EXPECT_EQ(document_bytes(files.directory / "west.json"), predecessor);
+    }
+    DemoTilemapEditor disabled;
+    const auto before = disabled.document(0).snapshot();
+    EXPECT_THROW(edit(disabled, {key(Key::F8)}), bad_request);
+    EXPECT_THROW(edit(disabled, {key(Key::F9)}), bad_request);
+    EXPECT_EQ(disabled.document(0).snapshot(), before);
+    DemoTilemapEditor missing(files.directory / "not-created");
+    EXPECT_THROW(edit(missing, {key(Key::F8)}), bad_request);
+    EXPECT_FALSE(std::filesystem::exists(files.directory / "not-created"));
+}
+
+TEST(tilemap_consumer, editor_document_load_failures) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::T), key(Key::Digit5), key(Key::D)});
+    const auto before = editor.document(0).snapshot();
+    const auto east = editor.document(1).snapshot();
+    const auto* identity = &editor.document(0);
+    Render::Frame old;
+    prepare_editor(old, editor, fixture);
+    const auto packets = old.passes()[0].draws;
+    const auto preserved = [&] {
+        EXPECT_EQ(&editor.document(0), identity);
+        EXPECT_EQ(editor.document(0).snapshot(), before);
+        EXPECT_EQ(editor.document(1).snapshot(), east);
+        EXPECT_EQ(editor.selected_map(), 0u);
+        EXPECT_EQ(editor.selected_layer(), detail);
+        EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Literal);
+        EXPECT_EQ(editor.brush(), (Maps::TileId{9}));
+        EXPECT_DOUBLE_EQ(editor.pan().x, 32);
+        expect_packets(old, packets);
+    };
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error); // Missing file, existing directory.
+    preserved();
+    raw_document(files.directory / "west.json", "{");
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+    preserved();
+    auto unknown = custom_document();
+    unknown.layers[1].cells[5] = "tilemap:unknown";
+    Documents::save(files.directory / "west.json", unknown); // Valid storage setup; conversion is the refusal.
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), WorldProof::Error);
+    preserved();
+    auto wrong_shape = custom_document();
+    wrong_shape.width = 1;
+    wrong_shape.height = 6;
+    wrong_shape.spawns = {{"entry", "floor", 0, 5}};
+    Documents::save(files.directory / "west.json", wrong_shape);
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), bad_request);
+    preserved();
+    wrong_shape = custom_document();
+    wrong_shape.layers.resize(1);
+    wrong_shape.spawns.resize(1);
+    Documents::save(files.directory / "west.json", wrong_shape);
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), bad_request);
+    preserved();
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_document_save_failures) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::F8)});
+    const auto saved = editor.document(0).snapshot();
+    const auto predecessor = document_bytes(files.directory / "west.json");
+    // Inject one unsupported ID into an actually mutable Map via its read facade;
+    // production controls emit only 7..10. This is a deliberate negative fixture.
+    auto& actual = const_cast<Maps::Map&>(editor.map(0));
+    actual.set(ground, {2, 1}, {999});
+    EXPECT_THROW(edit(editor, {key(Key::F8)}), WorldProof::Error);
+    EXPECT_EQ(actual.get(ground, {2, 1}), (Maps::TileId{999})); // No rollback of a prior authored runtime edit.
+    EXPECT_EQ(document_bytes(files.directory / "west.json"), predecessor);
+    EXPECT_EQ(Documents::load(files.directory / "west.json"), saved);
+    actual.set(ground, {2, 1}, {7});
+    // Native supported profile rejects a final symlink before file publication.
+    std::filesystem::rename(files.directory / "west.json", files.directory / "predecessor.json");
+    std::filesystem::create_symlink(files.directory / "predecessor.json", files.directory / "west.json");
+    edit(editor, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    const auto authored = editor.document(0).snapshot();
+    EXPECT_THROW(edit(editor, {key(Key::F8)}), Documents::Error);
+    EXPECT_EQ(editor.document(0).snapshot(), authored);
+    EXPECT_EQ(document_bytes(files.directory / "predecessor.json"), predecessor);
+    EXPECT_EQ(Documents::load(files.directory / "predecessor.json"), saved);
+    EXPECT_TRUE(std::filesystem::is_symlink(files.directory / "west.json"));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_document_frames) {
+    const DocumentFiles files;
+    Documents::save(files.directory / "west.json", custom_document());
+    const auto calls = std::make_shared<Calls>();
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    Render::Frame old, replaced;
+    std::vector<Render::DrawPacket2D> original, updated;
+    {
+        const Fixture fixture(calls);
+        geometry = fixture.geometry;
+        image = fixture.image;
+        DemoTilemapEditor editor(files.directory);
+        edit(editor, {});
+        prepare_editor(old, editor, fixture);
+        original = old.passes()[0].draws;
+        const auto owned_old = editor.document(0).snapshot();
+        edit(editor, {key(Key::F9)});
+        prepare_editor(replaced, editor, fixture);
+        updated = replaced.passes()[0].draws;
+        EXPECT_NE(owned_old, editor.document(0).snapshot());
+        EXPECT_EQ(editor.document(0).snapshot(), custom_document());
+        expect_packets(old, original);
+        ASSERT_GE(original.size(), 3u);
+        ASSERT_GE(updated.size(), 3u);
+        EXPECT_NE(original[2].first_vertex, updated[2].first_vertex);
+    }
+    expect_packets(old, original);
+    expect_packets(replaced, updated);
+    EXPECT_FALSE(image.expired());
+    EXPECT_FALSE(geometry.expired());
+    old.recycle();
+    replaced.recycle();
+    original.clear();
+    EXPECT_FALSE(image.expired());
+    updated.clear();
+    EXPECT_TRUE(image.expired());
+    EXPECT_TRUE(geometry.expired());
+    calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_document_diagnostics) {
+    const DocumentFiles files;
+    raw_document(files.directory / "west.json", "{");
+    DemoTilemaps demo(files.directory); // No atlas load/native startup; exercise the real update catch only.
+    const std::array bad_tick{key(Key::Digit6), click(Mouse::Left, {72, 144}), key(Key::F9), key(Key::Digit2), key(Key::F8)};
+    testing::internal::CaptureStderr();
+    demo.update(bad_tick, editor_sizes);
+    const auto diagnostic = testing::internal::GetCapturedStderr();
+    EXPECT_NE(diagnostic.find("document storage rejected"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(files.directory / "east.json")); // Rest of tick dropped.
+    const std::array save{key(Key::F8)};
+    demo.update(save, editor_sizes); // Later updates continue, preserving the earlier successful paint.
+    const auto restored = Documents::load(files.directory / "west.json");
+    EXPECT_EQ(restored.id, "tilemap:west");
+    EXPECT_EQ(restored.layers[0].cells[4], "tilemap:red");
+    auto unknown = custom_document();
+    unknown.layers[1].cells[5] = "tilemap:unknown";
+    Documents::save(files.directory / "west.json", unknown);
+    testing::internal::CaptureStderr();
+    const std::array load{key(Key::F9)};
+    demo.update(load, editor_sizes);
+    const auto conversion = testing::internal::GetCapturedStderr();
+    EXPECT_NE(conversion.find("document conversion rejected"), std::string::npos);
+    const std::array terrain{key(Key::B), key(Key::F8)};
+    testing::internal::CaptureStderr();
+    demo.update(terrain, editor_sizes);
+    const auto mode = testing::internal::GetCapturedStderr();
+    EXPECT_NE(mode.find("unavailable in terrain mode"), std::string::npos);
 }

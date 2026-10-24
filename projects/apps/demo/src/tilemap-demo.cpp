@@ -65,6 +65,7 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
                      "Terrain click runs publish atomically (32 requests, 6 affected cells, 256 work units); no held brush\n"
                      "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
                      "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
+                     "Literal only: F8 SAVE / F9 LOAD selected document; --tilemap-document-dir PATH enables west.json/east.json\n"
                   << std::flush;
     } catch (const std::exception& error) {
         throw std::runtime_error("Required tilemap display atlas 'tileset:tileset' (" + source.string() + "): " + error.what());
@@ -77,7 +78,11 @@ void DemoTilemaps::update(const std::span<const CE::Input::Events::Record> recor
     } catch (const CE::Exceptions::bad_request& error) {
         // Engine preserved the refused run. Earlier boundary-completed runs
         // remain; report the rejection without aborting ordinary demo updates.
-        std::cerr << "Tilemap input batch rejected: " << error.what() << '\n';
+        std::cerr << "Tilemap input/action rejected (remaining tick records dropped): " << error.what() << '\n';
+    } catch (const CE::Maps::Error& error) {
+        std::cerr << "Tilemap document storage rejected (remaining tick records dropped): " << error.what() << '\n';
+    } catch (const WorldProof::Error& error) {
+        std::cerr << "Tilemap document conversion rejected (remaining tick records dropped): " << error.what() << '\n';
     }
 }
 

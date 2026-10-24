@@ -3,6 +3,7 @@
 #include "tilemap-editor.h"
 
 #include <filesystem>
+#include <utility>
 
 namespace CE::Rendering::Resources {
     struct Provider;
@@ -15,6 +16,8 @@ class DemoTilemaps final {
     CE::Rendering::Submission::TilemapBindings bindings_;
 
 public:
+    explicit DemoTilemaps(std::filesystem::path document_dir = {})
+    : editor_(std::move(document_dir)) {}
     void load(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider);
     void update(std::span<const CE::Input::Events::Record> records, DemoTilemapEditor::Sizes sizes);
     void write(CE::Rendering::FrameWriter& frame, const CE::Rendering::DrawStyle2D& images) const;

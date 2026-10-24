@@ -1,5 +1,10 @@
 # World integration decisions
 
+Current unit: WORLD-U2 literal-document actions in the real private editor,
+starting at accepted e9289fc. One accumulated Debug ASan/UBSan invocation passes
+97/97 entries, zero failed/skipped; demo compiles/links and same-source checks pass. The coordinator already promoted U1; no new merge
+or transport is performed here. WINT-007/008 extend the preserved U1 decisions.
+
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
 189 standalone storage and 71 procedural entries (350 total, no failures/skips),
@@ -26,7 +31,8 @@ verification. Coordinator review alone selects worker1 promotion.
 
 ## WINT-002 — Exercise one real shared Engine
 
-Link the private combined caller to normal Cheryl::Engine. Reuse the existing
+Link the private combined caller to normal Cheryl::Engine. U2 relocates its
+adapter into demo source and compiles it for three callers. Reuse the existing
 storage consumer within that same build; compile actual private cave sources in
 a generator-only archive. Header-first, symbol/import/loader and producer checks
 prove the selected source-tree boundary without implementation substitution.
@@ -58,7 +64,7 @@ Confidence is high locally; reversal changes private policy, not formats.
 
 Use the actual seeded 5x4 cave producer with one declared smoothing step and an
 independently known full occupancy oracle. Map solid/floor to labels 11/23 and
-persistent keys, while cardinal selection derives separate visual IDs1001–1016.
+persistent keys, while cardinal selection derives separate visual IDs 1001–1016.
 A coalesced terrain edit produces one final semantic patch; fresh reload rebuilds
 all meaning and visuals. Simple diagnostic generation trades visual richness for
 auditable integration. Confidence is high in CPU semantics; game meanings/control
@@ -73,3 +79,23 @@ resource wrapper. Save full logs, immediate exits and process evidence; record
 resolved initial compile errors. This costs separate configurations but preserves
 existing fault/replay coverage. Confidence is high in executed CPU results;
 graphics, fun, leaks and broad platform acceptance remain open.
+
+## WINT-007 — Own literal editor documents through the proven adapter
+
+Replace only two literal Map owners with independent LiteralOwner pointers from
+the relocated private adapter. Keep map() compatibility, copied metadata and
+explicit keys mapping to IDs 7–10. Reject LOAD shapes other than 3x2/two layers
+before conversion and adopt only complete candidates. This adds validation/copy
+cost while preserving original geometry and terrain isolation. Confidence is high
+in CPU contracts, low in naming taste; reversal is private, with future persisted
+key changes requiring a mapping decision.
+
+## WINT-008 — Make file actions explicit and serialized
+
+Use admitted F8/F9 Press for selected literal-document SAVE/LOAD in an explicit
+existing directory; empty disables. Terrain mode refuses, and no startup I/O or
+auto-creation occurs. Anticipated errors log and drop remaining tick records,
+allowing later updates while preserving earlier edits and file predecessors.
+Synchronous I/O trades possible simulation stalls for simple ownership. Engineering
+confidence is high; hotkeys/path UI are reversible private choices. Native durability,
+graphics, leaks and broader platforms remain unverified.

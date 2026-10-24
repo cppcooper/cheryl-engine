@@ -16,7 +16,7 @@ int main(const int argc, char** argv) {
 
     DemoGame game(
         *result.context, options.asset_root, options.load_all_assets, std::move(options.font_selection), std::move(options.text_options),
-        options.unicode_preview, options.text_runs, options.tilemap_display
+        options.unicode_preview, options.text_runs, options.tilemap_display, options.tilemap_document_dir
     );
     auto game_runtime = result.make_runtime(game);
     if (options.max_updates != 0)

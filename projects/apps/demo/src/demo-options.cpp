@@ -24,6 +24,13 @@ void DemoOptions::register_with(CE::Application::Startup& startup) {
         options.add_flag("--tilemap-display", tilemap_display, "Show only the private two-map/two-layer editor fixture")
             ->trigger_on_parse();
         options
+            .add_option_function<std::string>(
+                "--tilemap-document-dir", [this](const std::string& path) { tilemap_document_dir = std::filesystem::path(path); },
+                "Existing directory for literal editor F8 SAVE / F9 LOAD (west.json/east.json); empty disables"
+            )
+            ->type_name("PATH")
+            ->trigger_on_parse();
+        options
             .add_flag_callback(
                 "--builtin-font", [this] { font_selection.automatic_system_fonts = false; }, "Disable automatic system font discovery"
             )

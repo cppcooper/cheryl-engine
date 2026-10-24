@@ -30,7 +30,8 @@ public:
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
         bool text_runs,
-        bool tilemap_display
+        bool tilemap_display,
+        std::filesystem::path tilemap_document_dir
     );
     ~DemoGame() override;
     DemoGame(const DemoGame&) = delete;

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U2",
+  "status": "ready",
+  "checks_passed": true,
+  "current_parent_sha": "e9289fcb992feddf85deb942a560562a54971f78",
+  "source_checkpoint": "e9289fcb992feddf85deb942a560562a54971f78",
+  "evidence": [
+    "build/world-u2-logs/shared-build-2.log",
+    "build/world-u2-logs/demo-build.log",
+    "build/world-u2-logs/ownership.log",
+    "build/world-u2-logs/tests.log",
+    "build/world-u2-logs/editor_documents-editor-author.log",
+    "build/world-u2-logs/editor_documents-fresh-editor-verify.log",
+    "build/world-u2-logs/demo-build-final.log"
+  ],
+  "implemented_contracts": [
+    "Actual WORLD-U1 private adapter relocated to demo source with identical header and source bodies except include spelling. The same adapter/editor compile into demo, unit cases and world consumer; actual single shared Engine/import/loader proof remains.",
+    "Two independent literal document pointers retain map ID, ordered names/spawns and actual numeric Map. Explicit persistent color keys map to IDs 7..10; zero/null and atlas targets 0..3 remain distinct. Original literal layout/geometry and separate terrain owners stay compatible.",
+    "F8 SAVE/F9 LOAD act only on admitted keyboard Press and selected complete literal document. Explicit existing --tilemap-document-dir enables fixed west.json/east.json; empty disables, with no startup action or directory creation. Terrain mode explicitly refuses both.",
+    "LOAD requires exactly 3x2/two layers before conversion; complete candidate precedes pointer swap. Malformed/unknown/missing/wrong-shape refusals preserve full old cells/metadata, sibling, state/results and frames. SAVE refuses unknown reverse IDs and preserves predecessor through prepublication errors while retaining earlier runtime edits.",
+    "The real demo update catches storage/conversion/bad_request, logs and drops remaining current tick records; later updates continue. These catches execute synthetically without atlas loading or runtime startup. Borrowed old document views expire on replacement; copied values/prepared frame resources remain owned.",
+    "One accumulated selection passes 97/97 with zero failures/skips in 52.83s, retaining all 90 accepted shared names plus six unit cases and one fresh-process editor scenario. Eight world child exits zero, including independent full west/east snapshot and 24 numeric-cell verification.",
+    "375 public/production/replay/archive/unchanged-suite paths and all old unit consumer bodies preserved. Demo compiles/links, same-source hashes and single-Engine inspections pass. Final review restores unrelated GameImpl formatting only; demo relinks and changed-range format checks pass, while tested helper/adapter bytes stay identical."
+  ],
+  "limitations": [
+    "Real display/input, atlas decode/upload, capture, graphical teardown, visual correctness/fun and leaks remain unverified; unchanged X11 :1 failure not retried. Demo linked only; update catch proof is synthetic CPU execution.",
+    "Debug ASan/UBSan/halt_on_error enabled; invocation-local detect_leaks=0 only for recorded tracing limitation. GNU/Linux source-tree shared Engine; installed SDK/static/Release/other-platform/toolchain ABI unverified.",
+    "Filesystem I/O is synchronous on simulation and may stall a tick. Caller supplies stable cwd and an existing controlled single-writer directory. Native no-fsync/power-loss, hostile-race and multiwriter limitations remain; runtime edits and checked file publication are separate boundaries.",
+    "LOAD can temporarily own a full storage-bounded input before fixed geometry refusal. Logical bounds do not promise exact allocator/RSS usage; allocation/programming exceptions propagate. Unsupported reverse-ID negative coverage deliberately injects a value into an actually mutable Map through its read facade.",
+    "Initial shared compile failed on pinned GLM conversion diagnostics exposed by editor headers. Only existing vendor include directories are SYSTEM in the private world target; application Werror/conversion flags and public Engine requirements remain. Full failed/corrected logs preserved; no test failed or reran.",
+    "Standalone unchanged storage/procedural suites were not repeated. Literal-only file actions do not select semantic persistence, a public World/editor service, compact retention, new schema/recipe format, undo, resizing or chunking."
+  ],
+  "next_action": "Coordinator reviews this exact checkpoint/receipt/logs and publisher backup after the run drains, then selects any future merge with worker1 geography. Worker2 stays idle; no automatic promotion, sibling merge or later unit."
+}

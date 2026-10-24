@@ -1,11 +1,12 @@
 {
   "schema": 1,
-  "status": "WORLD-U1 combined CPU checks passed; coordinator source/promotion review pending",
+  "status": "WORLD-U1 accepted/promoted by coordinator; WORLD-U2 literal editor CPU/build checks passed, coordinator review pending",
   "sources": {
     "tilemap": "edf710a79ef4fc59c7949f7bc78d9bf7d617e29a",
     "map-storage": "def28ccfc63eb057995f6e1fb95ee48cfeb8fd75",
     "procedural-generation": "946c2db7d9a14311a398664444fc4d1fe0417a90"
   },
   "documentation_policy": "Complete source text; only relative inline Markdown link targets are rewritten.",
-  "candidate_sha": "aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d"
+  "candidate_sha": "aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d",
+  "source_checkpoint": "e9289fcb992feddf85deb942a560562a54971f78"
 }

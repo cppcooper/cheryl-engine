@@ -1,5 +1,7 @@
 #pragma once
 
+#include "world-document.h"
+
 #include <assets/submission/tilemap2d.h>
 #include <core/controls/input-record.h>
 #include <core/display/framebuffer-size.h>
@@ -38,7 +40,9 @@ private:
         std::array<CE::Rendering::Submission::TilemapView, 2> maps;
     };
 
-    std::array<CE::Tilemaps::Map, 2> maps_{CE::Tilemaps::Map{{3, 2}, 2}, CE::Tilemaps::Map{{3, 2}, 2}};
+    WorldProof::KeyTable document_keys_;
+    std::array<std::unique_ptr<WorldProof::LiteralOwner>, 2> documents_;
+    std::filesystem::path document_dir_;
     std::array<std::array<std::unique_ptr<CE::Tilemaps::TerrainMap>, 2>, 2> terrain_;
     CE::Tilemaps::TerrainBatchLimits terrain_limits_;
     Mode mode_ = Mode::Literal;
@@ -52,10 +56,16 @@ private:
     std::optional<Geometry> geometry_;
 
     static std::optional<Geometry> geometry(Sizes sizes, CE::Tilemaps::LocalPoint pan, double zoom);
+    [[nodiscard]] CE::Tilemaps::Map& mutable_map(std::size_t index) { return documents_.at(index)->map(); }
+    void document_action(bool save);
 
 public:
-    DemoTilemapEditor();
-    explicit DemoTilemapEditor(TerrainPalette palette, CE::Tilemaps::TerrainBatchLimits limits = {32, 6, 256});
+    explicit DemoTilemapEditor(std::filesystem::path document_dir = {});
+    explicit DemoTilemapEditor(
+        TerrainPalette palette,
+        CE::Tilemaps::TerrainBatchLimits limits = {32, 6, 256},
+        std::filesystem::path document_dir = {}
+    );
     DemoTilemapEditor(const DemoTilemapEditor&) = delete;
     DemoTilemapEditor& operator=(const DemoTilemapEditor&) = delete;
     DemoTilemapEditor(DemoTilemapEditor&&) = delete;
@@ -77,7 +87,10 @@ public:
         const CE::Rendering::DrawStyle2D& images
     ) const;
 
-    [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return maps_.at(index); } // Literal storage, in either mode.
+    // Literal storage in either mode. Replacement invalidates borrowed document/
+    // map references; copied values and prepared packets retain their ownership.
+    [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return documents_.at(index)->map(); }
+    [[nodiscard]] const WorldProof::LiteralOwner& document(std::size_t index) const { return *documents_.at(index); }
     [[nodiscard]] const CE::Tilemaps::TerrainMap& terrain(std::size_t index, CE::Tilemaps::LayerIndex layer) const {
         return *terrain_.at(index).at(static_cast<std::size_t>(layer.value));
     }

@@ -15,6 +15,7 @@ struct DemoOptions {
     bool unicode_preview = false;
     bool text_runs = false;
     bool tilemap_display = false;
+    std::filesystem::path tilemap_document_dir;
     CE::Text::FontSelection font_selection;
     CE::Text::LayoutOptions text_options;
     unsigned int max_updates = 0;

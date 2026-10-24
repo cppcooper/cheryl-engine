@@ -1,6 +1,7 @@
 #include <cheryl/core/resources/map-storage/cell-patch.h>
 #include <cheryl/maps/terrain-map.h>
-#include "bridge.h"
+#include "world-document.h"
+#include "tilemap-editor.h"
 #include "cave.h"
 
 #include <internals/exceptions.h>
@@ -289,6 +290,84 @@ namespace {
         std::cout << "FRESH process: 20 semantic labels/derived visuals + 40 numeric meaning cells PASS; no generator replay used\n";
     }
 
+    Storage::Snapshot editor_expected(const bool east) {
+        // Complete literal expectations, independent of editor/document conversion.
+        if (east)
+            return {
+                "tilemap:east",
+                3,
+                2,
+                {{"ground", {"tilemap:grey", "tilemap:brown", std::nullopt, "tilemap:black", "tilemap:red", "tilemap:grey"}},
+                 {"detail", {"tilemap:red", std::nullopt, "tilemap:red", std::nullopt, "tilemap:black", std::nullopt}}},
+                {{"entry", "ground", 0, 0}, {"marker", "detail", 2, 0}}
+            };
+        return {
+            "tilemap:west",
+            3,
+            2,
+            {{"ground", {"tilemap:brown", "tilemap:black", "tilemap:grey", "tilemap:red", "tilemap:red", "tilemap:brown"}},
+             {"detail", {std::nullopt, "tilemap:red", std::nullopt, "tilemap:grey", std::nullopt, std::nullopt}}},
+            {{"entry", "ground", 0, 0}, {"marker", "detail", 1, 0}}
+        };
+    }
+    namespace Events = CE::Input::Events;
+    using Key = CE::Input::KeyboardKey;
+    Events::Record press(const Key key) {
+        return {
+            0,
+            {},
+            1,
+            CE::Input::DeviceKind::Keyboard,
+            Events::Button{CE::Input::control_id(key), Events::ButtonPhase::Press, CE::Input::Modifiers::None, -1, -1, key}
+        };
+    }
+    Events::Record paint(const double x, const double y) {
+        const auto button = CE::Input::MouseButton::Left;
+        return {
+            0,
+            {},
+            2,
+            CE::Input::DeviceKind::Mouse,
+            Events::Button{
+                CE::Input::control_id(button), Events::ButtonPhase::Press, CE::Input::Modifiers::None, -1, -1, Key::Unknown, button,
+                Events::Pointer{x, y}
+            }
+        };
+    }
+    void editor_events(DemoTilemapEditor& editor, const std::initializer_list<Events::Record> events) {
+        editor.consume({events.begin(), events.size()}, {{400, 200}, {800, 600}});
+    }
+    void editor_author(const std::filesystem::path& directory) {
+        DemoTilemapEditor editor(directory);
+        require(
+            !std::filesystem::exists(directory / "west.json") && !std::filesystem::exists(directory / "east.json"),
+            "Editor performed automatic startup file I/O"
+        );
+        editor_events(editor, {press(Key::Digit6), paint(72, 144), press(Key::F8)});
+        require(Storage::load(directory / "west.json") == editor_expected(false), "Actual F8 west output differs from literal");
+        editor_events(editor, {press(Key::Digit3), paint(72, 144), press(Key::F9)});
+        require(editor.document(0).snapshot() == editor_expected(false), "F9 failed to restore west cells/metadata");
+        editor_events(editor, {press(Key::Digit2), press(Key::T), press(Key::Digit4), paint(212, 156), press(Key::F8)});
+        require(Storage::load(directory / "east.json") == editor_expected(true), "Actual selected-layer F8 east output differs");
+        require(editor.document(0).snapshot() == editor_expected(false), "Saving east changed west");
+        std::cout << "Real private editor ordered paint/F8/change/F9: two independent full literal documents PASS\n";
+    }
+    void editor_verify(const std::filesystem::path& directory) {
+        require(Storage::load(directory / "west.json") == editor_expected(false), "Fresh complete west snapshot differs");
+        require(Storage::load(directory / "east.json") == editor_expected(true), "Fresh complete east snapshot differs");
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::F9), press(Key::Digit2), press(Key::F9)});
+        constexpr std::array<std::uint32_t, 12> west{7, 8, 9, 10, 10, 7, 0, 10, 0, 9, 0, 0};
+        constexpr std::array<std::uint32_t, 12> east{9, 7, 0, 8, 10, 9, 10, 0, 10, 0, 8, 0};
+        check_map(editor.map(0), {3, 2}, west);
+        check_map(editor.map(1), {3, 2}, east);
+        require(
+            editor.document(0).snapshot() == editor_expected(false) && editor.document(1).snapshot() == editor_expected(true),
+            "Fresh actual editor adoption lost complete literal metadata"
+        );
+        std::cout << "FRESH process: full west/east literal fields +24 independent numeric cells through F9 PASS\n";
+    }
+
     void refusals(const std::filesystem::path& path) {
         const KeyTable table(keys);
         auto live = LiteralOwner::from(literal_base(), table);
@@ -487,6 +566,10 @@ int main(const int argc, char** argv) {
             generated_verify(path);
         else if (mode == "refusals")
             refusals(path);
+        else if (mode == "editor-author")
+            editor_author(path);
+        else if (mode == "editor-verify")
+            editor_verify(path);
         else
             throw std::runtime_error("Unknown world mode");
         return 0;
