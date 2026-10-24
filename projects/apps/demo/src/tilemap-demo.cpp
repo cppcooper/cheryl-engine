@@ -65,6 +65,7 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
                      "Terrain click runs publish atomically (32 requests, 6 affected cells, 256 work units); no held brush\n"
                      "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
                      "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
+                     "F6 UNDO / F7 REDO selected mode/document (32 commands, 256 KiB canonical history bytes)\n"
                      "F8 SAVE / F9 LOAD selected mode/document; --tilemap-document-dir PATH enables existing directory\n"
                      "V files: west.json/east.json; B files: west-terrain.json/east-terrain.json (semantic keys, both layers)\n"
                   << std::flush;
@@ -83,7 +84,9 @@ void DemoTilemaps::update(const std::span<const CE::Input::Events::Record> recor
     } catch (const CE::Maps::Error& error) {
         std::cerr << "Tilemap document storage rejected (remaining tick records dropped): " << error.what() << '\n';
     } catch (const WorldProof::Error& error) {
-        std::cerr << "Tilemap document conversion rejected (remaining tick records dropped): " << error.what() << '\n';
+        std::cerr << (error.code == WorldProof::Refusal::History ? "Tilemap document history rejected"
+                                                                 : "Tilemap document conversion rejected")
+                  << " (remaining tick records dropped): " << error.what() << '\n';
     }
 }
 

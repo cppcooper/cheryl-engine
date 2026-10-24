@@ -46,11 +46,23 @@ DemoTilemapEditor::TerrainPalette DemoTilemapEditor::diagnostic_terrain() {
     return result;
 }
 
-DemoTilemapEditor::DemoTilemapEditor(std::filesystem::path document_dir)
-: DemoTilemapEditor(diagnostic_terrain(), {32, 6, 256}, std::move(document_dir)) {}
+DemoTilemapEditor::DemoTilemapEditor(std::filesystem::path document_dir, const WorldProof::HistoryLimits history_limits)
+: DemoTilemapEditor(diagnostic_terrain(), {32, 6, 256}, std::move(document_dir), history_limits) {}
 
-DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::TerrainBatchLimits limits, std::filesystem::path document_dir)
-: document_keys_(document_keys()), document_dir_(std::move(document_dir)), terrain_limits_(limits) {
+DemoTilemapEditor::DemoTilemapEditor(
+    TerrainPalette palette,
+    const Maps::TerrainBatchLimits limits,
+    std::filesystem::path document_dir,
+    const WorldProof::HistoryLimits history_limits
+)
+: document_keys_(document_keys()),
+  document_dir_(std::move(document_dir)),
+  terrain_limits_(limits),
+  history_limits_(history_limits),
+  histories_{
+      {{WorldProof::DocumentHistory(history_limits), WorldProof::DocumentHistory(history_limits)},
+       {WorldProof::DocumentHistory(history_limits), WorldProof::DocumentHistory(history_limits)}}
+  } {
     for (const auto id : palette.target_to_id)
         if (id.value != 0 && (id.value < 7 || id.value > 10))
             throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
@@ -112,6 +124,7 @@ void DemoTilemapEditor::document_action(const bool save) {
         const auto source = CE::Maps::load(path);
         if (source.width != 3 || source.height != 2 || source.layers.size() != 2)
             throw CE::Exceptions::bad_request(CE_HERE, "Document LOAD requires exactly 3x2 cells and two ordered layers");
+        WorldProof::DocumentHistory reset(history_limits_);
         if (semantic) {
             auto candidate = terrain_[selected_map_]->replacement(source);
             terrain_[selected_map_].swap(candidate); // BOTH layers, metadata and rules precede adoption.
@@ -121,7 +134,51 @@ void DemoTilemapEditor::document_action(const bool save) {
             auto candidate = WorldProof::LiteralOwner::from(source, document_keys_);
             documents_[selected_map_].swap(candidate);
         }
+        selected_history().swap(reset); // No allocation after content adoption.
     }
+}
+
+WorldProof::DocumentHistory& DemoTilemapEditor::selected_history() {
+    return histories_[selected_map_][mode_ == Mode::Literal ? 0 : 1];
+}
+
+void DemoTilemapEditor::literal_edit(const Maps::Point point, const Maps::TileId id) {
+    if (map(selected_map_).get(selected_layer_, point) == id)
+        return;
+    auto before = documents_[selected_map_]->snapshot();
+    auto candidate = WorldProof::LiteralOwner::from(before, document_keys_);
+    candidate->map().set(selected_layer_, point, id);
+    auto after = candidate->snapshot();
+    auto history = selected_history().recorded(std::move(before), std::move(after));
+    documents_[selected_map_].swap(candidate);
+    selected_history().swap(history);
+}
+
+void DemoTilemapEditor::terrain_edit(const std::span<const Maps::TerrainEdit> edits) {
+    auto before = terrain_[selected_map_]->snapshot();
+    auto candidate = terrain_[selected_map_]->replacement(before);
+    static_cast<void>(candidate->edit_batch(selected_layer_, edits, terrain_limits_));
+    auto after = candidate->snapshot();
+    if (before == after)
+        return; // Validated complete Engine batch, but no final semantic change.
+    auto history = selected_history().recorded(std::move(before), std::move(after));
+    terrain_[selected_map_].swap(candidate);
+    selected_history().swap(history);
+}
+
+void DemoTilemapEditor::history_action(const bool undo) {
+    auto& current = selected_history();
+    const auto& target = current.target(undo); // Empty history refuses without touching content/stacks.
+    const auto before = mode_ == Mode::Terrain ? terrain_[selected_map_]->snapshot() : documents_[selected_map_]->snapshot();
+    auto history = current.stepped(undo, before);
+    if (mode_ == Mode::Terrain) {
+        auto candidate = terrain_[selected_map_]->replacement(target); // BOTH owners rederived before publication.
+        terrain_[selected_map_].swap(candidate);
+    } else {
+        auto candidate = WorldProof::LiteralOwner::from(target, document_keys_);
+        documents_[selected_map_].swap(candidate);
+    }
+    current.swap(history); // Unique pointer and timeline swaps cannot allocate.
 }
 
 std::optional<DemoTilemapEditor::Geometry> DemoTilemapEditor::geometry(const Sizes sizes, const Maps::LocalPoint pan, const double zoom) {
@@ -189,7 +246,7 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
     std::vector<Maps::TerrainEdit> pending;
     const auto flush = [&] {
         if (!pending.empty()) {
-            static_cast<void>(terrain_[selected_map_]->edit_batch(selected_layer_, pending, terrain_limits_));
+            terrain_edit(pending);
             pending.clear();
         }
     };
@@ -203,6 +260,12 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 flush(); // Selection, modes, brushes and view changes affect only later records.
                 using Key = CE::Input::KeyboardKey;
                 switch (button->key) {
+                    case Key::F6:
+                        history_action(true);
+                        break;
+                    case Key::F7:
+                        history_action(false);
+                        break;
                     case Key::F8:
                         document_action(true);
                         break;
@@ -273,7 +336,6 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 const auto cell = pick(*button->position);
                 if (!cell)
                     continue;
-                auto& map = mutable_map(selected_map_);
                 using Mouse = CE::Input::MouseButton;
                 if (mode_ == Mode::Terrain) {
                     if (button->mouse_button == Mouse::Middle) {
@@ -288,13 +350,13 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                 }
                 switch (button->mouse_button) {
                     case Mouse::Left:
-                        map.set(selected_layer_, *cell, brush_);
+                        literal_edit(*cell, brush_);
                         break;
                     case Mouse::Right:
-                        map.set(selected_layer_, *cell, {0});
+                        literal_edit(*cell, {0});
                         break;
                     case Mouse::Middle:
-                        brush_ = map.get(selected_layer_, *cell);
+                        brush_ = map(selected_map_).get(selected_layer_, *cell);
                         break;
                     default:
                         break;

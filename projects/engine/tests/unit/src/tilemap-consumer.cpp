@@ -2268,3 +2268,456 @@ TEST(tilemap_consumer, semantic_document_frames) {
     EXPECT_TRUE(geometry.expired());
     calls->expect_cpu();
 }
+
+namespace {
+    using Mode = DemoTilemapEditor::Mode;
+    using HistoryState = WorldProof::HistoryState;
+    std::size_t history_cost(const Documents::Snapshot& before, const Documents::Snapshot& after) {
+        return Documents::encode(before).size() + Documents::encode(after).size();
+    }
+    void expect_semantic_history(
+        const DemoTilemapEditor& editor,
+        const Documents::Snapshot& west,
+        const Documents::Snapshot& east,
+        const std::vector<TerrainLabel>& labels
+    ) {
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), west);
+        EXPECT_EQ(editor.terrain_document(1).snapshot(), east);
+        EXPECT_EQ(editor_terrain_labels(editor), labels);
+        EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(labels));
+    }
+}
+
+TEST(tilemap_consumer, history_literal) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    Documents::save(files.directory / "west.json", custom_document());
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::F9)});
+    const auto base = custom_document();
+    const auto east = editor.document(1).snapshot();
+    const auto semantic = editor.terrain_document(0).snapshot();
+    EXPECT_EQ(editor.history(0, Mode::Literal), HistoryState{});
+    EXPECT_THROW(edit(editor, {key(Key::F6)}), WorldProof::Error);
+    EXPECT_THROW(edit(editor, {key(Key::F7)}), WorldProof::Error);
+    EXPECT_EQ(editor.document(0).snapshot(), base);
+    edit(editor, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    auto painted = base;
+    painted.layers[0].cells[4] = "tilemap:red";
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{1, 0, history_cost(base, painted)}));
+    edit(editor, {key(Key::T), click(Mouse::Right, {72, 128})});
+    auto erased = painted;
+    erased.layers[1].cells[1].reset();
+    EXPECT_EQ(editor.document(0).snapshot(), erased);
+    const auto retained = history_cost(base, painted) + history_cost(painted, erased);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{2, 0, retained}));
+    edit(editor, {key(Key::D), key(Key::F6)});
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    EXPECT_EQ(editor.selected_layer(), detail);
+    EXPECT_DOUBLE_EQ(editor.pan().x, 32);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{1, 1, retained}));
+    edit(editor, {key(Key::F6)});
+    EXPECT_EQ(editor.document(0).snapshot(), base);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{0, 2, retained}));
+    // No-op erase leaves redo intact; view/brush/layer are not restored by undo.
+    edit(editor, {key(Key::R), click(Mouse::Right, {104, 128})});
+    EXPECT_EQ(editor.document(0).snapshot(), base);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{0, 2, retained}));
+    edit(editor, {key(Key::F7)});
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    edit(editor, {key(Key::F7)});
+    EXPECT_EQ(editor.document(0).snapshot(), erased);
+    edit(editor, {key(Key::F6), key(Key::Digit2), key(Key::G), key(Key::Digit4), click(Mouse::Left, {180, 140})});
+    auto edited_east = east;
+    edited_east.layers[0].cells[0] = "tilemap:black";
+    EXPECT_EQ(editor.document(1).snapshot(), edited_east);
+    edit(editor, {key(Key::B), key(Key::Digit1), click(Mouse::Left, {40, 128})});
+    EXPECT_EQ(editor.history(0, Mode::Terrain).undo, 1u);
+    EXPECT_EQ(editor.history(0, Mode::Literal), (HistoryState{1, 1, retained}));
+    edit(editor, {key(Key::V), key(Key::T), key(Key::Digit5), click(Mouse::Left, {104, 144})});
+    auto branched = painted;
+    branched.layers[1].cells[5] = "tilemap:grey";
+    EXPECT_EQ(editor.document(0).snapshot(), branched);
+    EXPECT_EQ(editor.history(0, Mode::Literal).undo, 2u);
+    EXPECT_EQ(editor.history(0, Mode::Literal).redo, 0u);
+    EXPECT_THROW(edit(editor, {key(Key::F7)}), WorldProof::Error);
+    EXPECT_EQ(editor.document(1).snapshot(), edited_east);
+    edit(editor, {key(Key::B), key(Key::F6)});
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), semantic);
+    EXPECT_EQ(editor.document(0).snapshot(), branched);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, history_terrain) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    const auto base = editor.terrain_document(0).snapshot();
+    const auto east = editor.terrain_document(1).snapshot();
+    const auto literal = editor.document(0).snapshot();
+    std::vector<TerrainLabel> labels(24);
+    edit(
+        editor, {key(Key::B), click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128}), click(Mouse::Right, {40, 128}),
+                 click(Mouse::Left, {40, 128})}
+    );
+    auto ground_doc = base;
+    ground_doc.layers[0].cells[0] = ground_doc.layers[0].cells[1] = "terrain:one";
+    labels[0] = labels[1] = {1};
+    expect_semantic_history(editor, ground_doc, east, labels);
+    const auto ground_cost = history_cost(base, ground_doc);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), (HistoryState{1, 0, ground_cost})); // Four samples, ONE accepted batch.
+    edit(editor, {key(Key::T), key(Key::Digit4), click(Mouse::Left, {40, 128})});
+    auto both = ground_doc;
+    both.layers[1].cells[0] = "terrain:two";
+    labels[6] = {2};
+    expect_semantic_history(editor, both, east, labels);
+    const auto both_cost = ground_cost + history_cost(ground_doc, both);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), (HistoryState{2, 0, both_cost}));
+    edit(editor, {key(Key::F6)});
+    labels[6] = {0};
+    expect_semantic_history(editor, ground_doc, east, labels);
+    EXPECT_EQ(editor.selected_layer(), detail);
+    // Coalesced cancelled run and redundant ground paint are no commands, preserving redo.
+    edit(
+        editor,
+        {click(Mouse::Left, {104, 144}), click(Mouse::Right, {104, 144}), key(Key::G), key(Key::Digit3), click(Mouse::Left, {40, 128})}
+    );
+    expect_semantic_history(editor, ground_doc, east, labels);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), (HistoryState{1, 1, both_cost}));
+    edit(editor, {key(Key::F7)});
+    labels[6] = {2};
+    expect_semantic_history(editor, both, east, labels);
+    // Isolated labels1 and2 select the SAME ID7; history restores meaning, not color.
+    edit(editor, {key(Key::T), key(Key::Digit3), click(Mouse::Left, {40, 128})});
+    auto alias = both;
+    alias.layers[1].cells[0] = "terrain:one";
+    labels[6] = {1};
+    expect_semantic_history(editor, alias, east, labels);
+    EXPECT_EQ(editor.terrain(0, detail).tiles().get(detail, {0, 0}), (Maps::TileId{7}));
+    edit(editor, {key(Key::F6)});
+    labels[6] = {2};
+    expect_semantic_history(editor, both, east, labels);
+    edit(editor, {key(Key::F7)});
+    labels[6] = {1};
+    expect_semantic_history(editor, alias, east, labels);
+    edit(editor, {key(Key::F6), key(Key::Digit5), click(Mouse::Left, {72, 144})});
+    auto branch = both;
+    branch.layers[1].cells[4] = "terrain:three";
+    labels[6] = {2};
+    labels[10] = {3};
+    expect_semantic_history(editor, branch, east, labels);
+    EXPECT_EQ(editor.history(0, Mode::Terrain).redo, 0u);
+    EXPECT_EQ(editor.document(0).snapshot(), literal);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, history_limits) {
+    const Fixture fixture;
+    DemoTilemapEditor seed;
+    const auto base = seed.document(0).snapshot();
+    auto red = base;
+    red.layers[0].cells[4] = "tilemap:red";
+    auto brown = base;
+    brown.layers[0].cells[4] = "tilemap:brown";
+    const auto cost = history_cost(base, red);
+    for (const auto limits : {WorldProof::HistoryLimits{0, cost}, WorldProof::HistoryLimits{1, cost - 1}}) {
+        DemoTilemapEditor rejected(std::filesystem::path{}, limits);
+        edit(rejected, {key(Key::Digit6)});
+        const auto* owner = &rejected.document(0);
+        EXPECT_THROW(edit(rejected, {click(Mouse::Left, {72, 144})}), WorldProof::Error);
+        EXPECT_EQ(&rejected.document(0), owner);
+        EXPECT_EQ(rejected.document(0).snapshot(), base);
+        EXPECT_EQ(rejected.history(0, Mode::Literal), HistoryState{});
+        edit(rejected, {click(Mouse::Right, {72, 144})}); // A no-op needs no history entry, even at zero capacity.
+        EXPECT_EQ(rejected.document(0).snapshot(), base);
+    }
+    DemoTilemapEditor exact(std::filesystem::path{}, {1, cost});
+    edit(exact, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    EXPECT_EQ(exact.document(0).snapshot(), red);
+    EXPECT_EQ(exact.history(0, Mode::Literal), (HistoryState{1, 0, cost}));
+    edit(exact, {key(Key::F6)});
+    EXPECT_EQ(exact.document(0).snapshot(), base);
+    const auto redo = exact.history(0, Mode::Literal);
+    ASSERT_GT(history_cost(base, brown), cost);
+    edit(exact, {key(Key::Digit3)});
+    EXPECT_THROW(edit(exact, {click(Mouse::Left, {72, 144})}), WorldProof::Error);
+    EXPECT_EQ(exact.document(0).snapshot(), base);
+    EXPECT_EQ(exact.history(0, Mode::Literal), redo);
+    edit(exact, {key(Key::F7)});
+    EXPECT_EQ(exact.document(0).snapshot(), red);
+    // Oldest-first entry eviction keeps the new command's undo contract.
+    DemoTilemapEditor bounded(std::filesystem::path{}, {2, 1024 * 1024});
+    edit(bounded, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    auto second = red;
+    second.layers[1].cells[5] = "tilemap:brown";
+    edit(bounded, {key(Key::T), key(Key::Digit3), click(Mouse::Left, {104, 144})});
+    EXPECT_EQ(bounded.document(0).snapshot(), second);
+    auto third = second;
+    third.layers[0].cells[4] = "tilemap:grey";
+    edit(bounded, {key(Key::G), key(Key::Digit5), click(Mouse::Left, {72, 144})});
+    EXPECT_EQ(bounded.document(0).snapshot(), third);
+    EXPECT_EQ(bounded.history(0, Mode::Literal), (HistoryState{2, 0, history_cost(red, second) + history_cost(second, third)}));
+    edit(bounded, {key(Key::F6)});
+    EXPECT_EQ(bounded.document(0).snapshot(), second);
+    edit(bounded, {key(Key::F6)});
+    EXPECT_EQ(bounded.document(0).snapshot(), red);
+    const auto retained = bounded.history(0, Mode::Literal);
+    EXPECT_THROW(edit(bounded, {key(Key::F6)}), WorldProof::Error);
+    EXPECT_EQ(bounded.history(0, Mode::Literal), retained);
+    EXPECT_EQ(bounded.document(0).snapshot(), red);
+    // Exact cumulative byte cap vs one-short causes only the OLDEST command to evict.
+    const auto two_bytes = history_cost(base, red) + history_cost(red, second);
+    for (const auto bytes : {two_bytes, two_bytes - 1}) {
+        DemoTilemapEditor byte_bound(std::filesystem::path{}, {3, bytes});
+        edit(byte_bound, {key(Key::Digit6), click(Mouse::Left, {72, 144}), key(Key::T), key(Key::Digit3), click(Mouse::Left, {104, 144})});
+        EXPECT_EQ(byte_bound.document(0).snapshot(), second);
+        EXPECT_EQ(byte_bound.history(0, Mode::Literal).undo, bytes == two_bytes ? 2u : 1u);
+        EXPECT_EQ(byte_bound.history(0, Mode::Literal).bytes, bytes == two_bytes ? two_bytes : history_cost(red, second));
+    }
+    // The same caps charge semantic KEYS and full metadata, never visual IDs.
+    const auto sem = seed.terrain_document(0).snapshot();
+    auto one = sem;
+    one.layers[0].cells[0] = "terrain:one";
+    const auto semantic_cost = history_cost(sem, one);
+    for (const auto bytes : {semantic_cost, semantic_cost - 1}) {
+        DemoTilemapEditor bounded_semantic(std::filesystem::path{}, {1, bytes});
+        edit(bounded_semantic, {key(Key::B)});
+        if (bytes == semantic_cost) {
+            edit(bounded_semantic, {click(Mouse::Left, {40, 128})});
+            EXPECT_EQ(bounded_semantic.terrain_document(0).snapshot(), one);
+            EXPECT_EQ(bounded_semantic.history(0, Mode::Terrain), (HistoryState{1, 0, semantic_cost}));
+        } else {
+            EXPECT_THROW(edit(bounded_semantic, {click(Mouse::Left, {40, 128})}), WorldProof::Error);
+            EXPECT_EQ(bounded_semantic.terrain_document(0).snapshot(), sem);
+            EXPECT_EQ(bounded_semantic.history(0, Mode::Terrain), HistoryState{});
+        }
+    }
+    for (const auto limits : {WorldProof::HistoryLimits{257, 0}, {1, std::numeric_limits<std::size_t>::max()}})
+        EXPECT_THROW(static_cast<void>(DemoTilemapEditor(std::filesystem::path{}, limits)), WorldProof::Error);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, history_files) {
+    const Fixture fixture;
+    const DocumentFiles files;
+    Documents::save(files.directory / "west.json", custom_document());
+    Documents::save(files.directory / "west-terrain.json", semantic_document());
+    DemoTilemapEditor editor(files.directory);
+    edit(editor, {key(Key::F9), key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    auto literal = custom_document();
+    literal.layers[0].cells[4] = "tilemap:red";
+    const auto literal_history = editor.history(0, Mode::Literal);
+    edit(editor, {key(Key::B), key(Key::F9), key(Key::Digit4), click(Mouse::Left, {104, 144})});
+    auto semantic = semantic_document();
+    semantic.layers[0].cells[5] = "terrain:two";
+    const auto semantic_history = editor.history(0, Mode::Terrain);
+    edit(editor, {key(Key::Digit2), click(Mouse::Left, {180, 140}), key(Key::V), click(Mouse::Left, {180, 140})});
+    const auto east_literal = editor.document(1).snapshot();
+    const auto east_semantic = editor.terrain_document(1).snapshot();
+    const auto east_lh = editor.history(1, Mode::Literal), east_sh = editor.history(1, Mode::Terrain);
+    edit(editor, {key(Key::Digit1), key(Key::F8)});
+    EXPECT_EQ(editor.history(0, Mode::Literal), literal_history);
+    EXPECT_EQ(Documents::load(files.directory / "west.json"), literal);
+    raw_document(files.directory / "west.json", "{");
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+    EXPECT_EQ(editor.document(0).snapshot(), literal);
+    EXPECT_EQ(editor.history(0, Mode::Literal), literal_history);
+    Documents::save(files.directory / "west.json", custom_document());
+    edit(editor, {key(Key::F9)});
+    EXPECT_EQ(editor.document(0).snapshot(), custom_document());
+    EXPECT_EQ(editor.history(0, Mode::Literal), HistoryState{});
+    EXPECT_EQ(editor.history(0, Mode::Terrain), semantic_history);
+    edit(editor, {key(Key::B), key(Key::F8)});
+    EXPECT_EQ(editor.history(0, Mode::Terrain), semantic_history);
+    EXPECT_EQ(Documents::load(files.directory / "west-terrain.json"), semantic);
+    raw_document(files.directory / "west-terrain.json", "{");
+    EXPECT_THROW(edit(editor, {key(Key::F9)}), Documents::Error);
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), semantic);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), semantic_history);
+    Documents::save(files.directory / "west-terrain.json", semantic_document());
+    edit(editor, {key(Key::F9)});
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), semantic_document());
+    EXPECT_EQ(editor.history(0, Mode::Terrain), HistoryState{});
+    EXPECT_EQ(editor.document(1).snapshot(), east_literal);
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east_semantic);
+    EXPECT_EQ(editor.history(1, Mode::Literal), east_lh);
+    EXPECT_EQ(editor.history(1, Mode::Terrain), east_sh);
+    // Failed SAVE keeps both history and prior runtime edit; file predecessor is independent.
+    std::filesystem::rename(files.directory / "west-terrain.json", files.directory / "predecessor.json");
+    const auto bytes = document_bytes(files.directory / "predecessor.json");
+    std::filesystem::create_symlink(files.directory / "predecessor.json", files.directory / "west-terrain.json");
+    edit(editor, {key(Key::T), key(Key::Digit3), click(Mouse::Left, {104, 144})});
+    const auto authored = editor.terrain_document(0).snapshot();
+    const auto history = editor.history(0, Mode::Terrain);
+    EXPECT_THROW(edit(editor, {key(Key::F8)}), Documents::Error);
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), authored);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), history);
+    EXPECT_EQ(document_bytes(files.directory / "predecessor.json"), bytes);
+    edit(editor, {key(Key::F6)});
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), semantic_document());
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, history_refusals) {
+    const Fixture fixture;
+    auto palette = DemoTilemapEditor::diagnostic_terrain();
+    palette.rule.cases.erase(2);
+    DemoTilemapEditor editor(palette);
+    // A full board is valid; the later batch needs missing mask2 only after an earlier valid candidate.
+    edit(
+        editor, {key(Key::B), click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128}), click(Mouse::Left, {104, 128}),
+                 click(Mouse::Left, {40, 144}), click(Mouse::Left, {72, 144}), click(Mouse::Left, {104, 144})}
+    );
+    const auto before = editor.terrain_document(0).snapshot();
+    const auto history = editor.history(0, Mode::Terrain);
+    const auto visuals = editor_terrain_tiles(editor);
+    EXPECT_THROW(edit(editor, {click(Mouse::Right, {40, 128}), click(Mouse::Right, {104, 144})}), bad_request);
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), before);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), history);
+    EXPECT_EQ(editor_terrain_tiles(editor), visuals);
+    edit(editor, {key(Key::F6)});
+    const auto undone = editor.terrain_document(0).snapshot();
+    const auto redo = editor.history(0, Mode::Terrain);
+    EXPECT_THROW(edit(editor, {click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128})}), bad_request);
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), undone);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), redo);
+    edit(editor, {key(Key::F7)});
+    EXPECT_EQ(editor.terrain_document(0).snapshot(), before);
+    // Deliberate negative alias write violates read-only facade; witness refusal preserves both stacks/content.
+    DemoTilemapEditor literal;
+    edit(literal, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    const auto valid = literal.document(0).snapshot();
+    const auto lh = literal.history(0, Mode::Literal);
+    const_cast<Maps::Map&>(literal.map(0)).set(ground, {0, 0}, {8});
+    const auto altered = literal.document(0).snapshot();
+    EXPECT_THROW(edit(literal, {key(Key::F6)}), WorldProof::Error);
+    EXPECT_EQ(literal.document(0).snapshot(), altered);
+    EXPECT_EQ(literal.history(0, Mode::Literal), lh);
+    const_cast<Maps::Map&>(literal.map(0)).set(ground, {0, 0}, {7});
+    edit(literal, {key(Key::F6)});
+    const auto prior = literal.document(0).snapshot();
+    const auto rh = literal.history(0, Mode::Literal);
+    const_cast<Maps::Map&>(literal.map(0)).set(ground, {0, 0}, {999});
+    EXPECT_THROW(edit(literal, {key(Key::F7)}), WorldProof::Error);
+    EXPECT_EQ(literal.map(0).get(ground, {0, 0}), (Maps::TileId{999}));
+    EXPECT_EQ(literal.history(0, Mode::Literal), rh);
+    const_cast<Maps::Map&>(literal.map(0)).set(ground, {0, 0}, {7});
+    EXPECT_EQ(literal.document(0).snapshot(), prior);
+    edit(literal, {key(Key::F7)});
+    EXPECT_EQ(literal.document(0).snapshot(), valid);
+    // Real demo update: earlier paint commits; empty REDO rejects and drops following map switch/save.
+    const DocumentFiles files;
+    DemoTilemaps demo(files.directory);
+    const std::array tick{key(Key::Digit6), click(Mouse::Left, {72, 144}), key(Key::F7), key(Key::Digit2), key(Key::F8)};
+    testing::internal::CaptureStderr();
+    demo.update(tick, editor_sizes);
+    const auto diagnostic = testing::internal::GetCapturedStderr();
+    EXPECT_NE(diagnostic.find("document history rejected"), std::string::npos);
+    EXPECT_NE(diagnostic.find("redo history is empty"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(files.directory / "east.json"));
+    const std::array save{key(Key::F8)};
+    demo.update(save, editor_sizes);
+    EXPECT_EQ(Documents::load(files.directory / "west.json").layers[0].cells[4], "tilemap:red");
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, history_filters) {
+    DemoTilemapEditor editor;
+    const auto base = editor.document(0).snapshot();
+    edit(editor, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    const auto painted = editor.document(0).snapshot();
+    const auto history = editor.history(0, Mode::Literal);
+    auto denied = key(Key::F6);
+    denied.to_gameplay = false;
+    const std::array ignored{key(Key::F6, Events::ButtonPhase::Release), key(Key::F7, Events::ButtonPhase::Repeat), denied};
+    editor.consume(ignored, editor_sizes);
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    EXPECT_EQ(editor.history(0, Mode::Literal), history);
+    const std::array undo{key(Key::F6)};
+    editor.consume(undo, {{0, 200}, {800, 600}});
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    EXPECT_EQ(editor.history(0, Mode::Literal), history);
+    edit(editor, {key(Key::D), key(Key::T), key(Key::Digit4), key(Key::F6)});
+    EXPECT_EQ(editor.document(0).snapshot(), base);
+    EXPECT_EQ(editor.selected_layer(), detail);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{8}));
+    EXPECT_DOUBLE_EQ(editor.pan().x, 32);
+    const auto redo = editor.history(0, Mode::Literal);
+    edit(editor, {key(Key::G), key(Key::R), key(Key::Digit3), click(Mouse::Left, {40, 128})}); // Existing brown is no-op.
+    EXPECT_EQ(editor.history(0, Mode::Literal), redo);
+    EXPECT_EQ(editor.document(0).snapshot(), base);
+    {
+        std::vector<Events::Record> ephemeral{key(Key::F7)};
+        editor.consume(ephemeral, editor_sizes);
+        ephemeral.clear();
+    }
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+    EXPECT_EQ(editor.history(0, Mode::Literal), history);
+    edit(editor, {key(Key::F6), key(Key::F7)});
+    EXPECT_EQ(editor.document(0).snapshot(), painted);
+}
+
+TEST(tilemap_consumer, history_frames) {
+    const auto calls = std::make_shared<Calls>();
+    const DocumentFiles files;
+    Render::Frame original, painted, undone, redone;
+    std::vector<Render::DrawPacket2D> a, b, c, d;
+    std::weak_ptr<Image> image;
+    std::weak_ptr<Geometry> geometry;
+    Documents::Snapshot held;
+    {
+        const Fixture fixture(calls);
+        image = fixture.image;
+        geometry = fixture.geometry;
+        Documents::save(files.directory / "west-terrain.json", semantic_document());
+        DemoTilemapEditor editor(files.directory);
+        edit(editor, {key(Key::B), key(Key::F9)});
+        held = editor.terrain_document(0).snapshot();
+        prepare_editor(original, editor, fixture);
+        a = original.passes()[0].draws;
+        edit(editor, {key(Key::Digit6), click(Mouse::Left, {40, 144}), key(Key::T), key(Key::Digit3), click(Mouse::Left, {40, 128})});
+        auto expected = semantic_document();
+        expected.layers[0].cells[3] = "terrain:four";
+        expected.layers[1].cells[0] = "terrain:one";
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), expected);
+        auto labels = semantic_expected();
+        labels[3] = {4};
+        labels[6] = {1};
+        EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(labels));
+        prepare_editor(painted, editor, fixture);
+        b = painted.passes()[0].draws;
+        edit(editor, {key(Key::F6), key(Key::F6)});
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), held);
+        prepare_editor(undone, editor, fixture);
+        c = undone.passes()[0].draws;
+        expect_packets(undone, a);
+        edit(editor, {key(Key::F7), key(Key::F7)});
+        EXPECT_EQ(editor.terrain_document(0).snapshot(), expected);
+        prepare_editor(redone, editor, fixture);
+        d = redone.passes()[0].draws;
+        expect_packets(redone, b);
+        EXPECT_EQ(held, semantic_document());
+        expect_packets(original, a);
+        expect_packets(painted, b);
+        calls->expect_cpu();
+    }
+    expect_packets(original, a);
+    expect_packets(painted, b);
+    expect_packets(undone, c);
+    expect_packets(redone, d);
+    EXPECT_EQ(held, semantic_document());
+    EXPECT_FALSE(image.expired());
+    EXPECT_FALSE(geometry.expired());
+    original.recycle();
+    painted.recycle();
+    undone.recycle();
+    redone.recycle();
+    a.clear();
+    b.clear();
+    c.clear();
+    EXPECT_FALSE(image.expired());
+    d.clear();
+    EXPECT_TRUE(image.expired());
+    EXPECT_TRUE(geometry.expired());
+    calls->expect_cpu();
+}

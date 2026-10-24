@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "WORLD-U4",
+  "status": "ready",
+  "checks_passed": true,
+  "current_parent_sha": "b6658f24df2739adce8d672cabb9407f8b28f40b",
+  "source_checkpoint": "b6658f24df2739adce8d672cabb9407f8b28f40b",
+  "evidence": [
+    "build/world-u4-logs/shared-build.log",
+    "build/world-u4-logs/demo-build.log",
+    "build/world-u4-logs/discovery.log",
+    "build/world-u4-logs/tests.log",
+    "build/world-u4-logs/document_history-history-author.log",
+    "build/world-u4-logs/document_history-fresh-history-verify.log",
+    "build/world-u4-logs/ownership.log"
+  ],
+  "implemented_contracts": [
+    "F6 undo/F7 redo in SAME private application editor/document code used by demo/unit/world caller. Owned availability counts and canonical-byte charge are independent for each of west/east x literal/terrain; camera/selection/brush history excluded.",
+    "One changed literal edit or completed changing semantic Engine batch is one command. Complete before/after Snapshot keys/metadata are owned; repeated samples coalesce, final no-ops preserve redo and owner, and aliased visual IDs never reconstruct labels.",
+    "Default combined undo+redo cap32 entries/256 KiB canonical before+after encoding bytes per map/mode, hard constructor maxima256/8 MiB. Checked sums, oldest-first candidate eviction, zero/no-op behavior and single-command rejection retain the current command undo contract. Bytes include complete cell/key/ordered metadata representation, not exact allocator usage.",
+    "Prepare complete replacement content and candidate history before nonallocating/noexcept swaps. Undo/redo checks current witness and rebuilds both nonmovable terrain layer owners under copied immutable epoch configuration. Refusal preserves current content and both stacks; new accepted edits alone clear redo.",
+    "SAVE and failed SAVE preserve history/earlier authored runtime edits. LOAD prepares owner and empty timeline then resets only selected map/mode; failed LOAD preserves both stacks. Actual update logs history errors distinctly, drops remaining tick records and permits later updates, with no whole-tick rollback.",
+    "One accumulated Debug ASan/UBSan invocation passes112/112,0 failed/skipped,54.58s, retaining all104 accepted names plus7 unit cases/1 process scenario. All12 world child exits0; fresh verifier independently compares complete metadata,24 literal numeric cells and24 semantic labels/meaning IDs/cardinal-derived visuals of undone/redone saved states.",
+    "Exact/one-short entry and byte boundaries, oldest eviction, empty history, no-op/redo policy, late batch failure, file predecessor/history preservation, admission/filtering, owned input destruction and retained old/new frames/resources are exercised. Synthetic native bind/draw/upload counters remain zero.",
+    "Actual demo links without warnings. Same private source hashes/compile inputs/history symbols,14 Engine exports/imports, normal shared producer/header/link/loader evidence pass.375 production/archive paths, previous receipts and all prior unit bodies preserved; unchanged standalone storage/procedural suites not repeated."
+  ],
+  "limitations": [
+    "Real display/input, atlas decode/upload, capture, graphical teardown, visual correctness/fun and leaks unverified. No unchanged X11 :1 retry. Compiled demo and synthetic events do not prove graphical key delivery.",
+    "Debug ASan/UBSan/halt_on_error retained; only command-local detect_leaks=0 for tracing limitation. GNU/Linux source-tree shared linking checked; installed SDK/static/Release/other-platform/toolchain ABI unverified.",
+    "Canonical history bytes are logical content charges, not allocator/RSS quotas. C++ capacity/object overhead, current owner/configuration, temporary encodings and old/new owner/timeline copies coexist. Allocation/programming exceptions propagate. Synchronous copy/derivation/I/O may stall simulation.",
+    "Serialized update/preparation and stable immutable owner epoch configuration required. Changing edits, undo/redo and LOAD invalidate borrowed views; no-op preserves them. Negative const-facade injections are deliberate invalid caller fixtures, not permission for out-of-band/concurrent writes.",
+    "Controlled existing single-writer directory/stable cwd and native checked rename profile remain; no fsync/power-loss, hostile-race, multiwriter or distributed transaction guarantee. Runtime transitions, file publication and full input ticks are separate boundaries.",
+    "Fixed3x2/two layers; history is not persisted, compact, a public command bus or asynchronous service. Active tables/rule/targets remain owned reconstruction configuration; no migration/fingerprint/schema/replay or sibling integration added."
+  ],
+  "next_action": "Coordinator reviews exact checkpoint/receipt/logs after this run drains; finite controller alone selects any later exact task through its gates. Worker2 remains idle; publisher owns assigned-branch backup, no sibling integration or later unit starts here."
+}

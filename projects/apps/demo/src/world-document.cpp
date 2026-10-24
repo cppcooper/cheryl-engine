@@ -3,6 +3,7 @@
 #include <cheryl/core/resources/map-storage/cell-patch.h>
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 namespace WorldProof {
@@ -242,5 +243,70 @@ namespace WorldProof {
         result.layers[1] = std::move(second.layers[1]);
         admit(result);
         return result;
+    }
+    DocumentHistory::DocumentHistory(const HistoryLimits limits)
+    : limits_(limits) {
+        if (limits.entries > 256 || limits.bytes > Storage::max_document_bytes)
+            throw Error(Refusal::History, "History limits exceed 256 commands or 8 MiB canonical bytes per document");
+    }
+    HistoryState DocumentHistory::state() const {
+        return {cursor_, entries_.size() - cursor_, bytes_};
+    }
+    DocumentHistory DocumentHistory::recorded(Storage::Snapshot before, Storage::Snapshot after) const {
+        const auto before_bytes = Storage::encode(before).size();
+        const auto after_bytes = Storage::encode(after).size();
+        if (!entries_.empty()) {
+            const auto& expected = cursor_ == 0 ? entries_.front().before : entries_[cursor_ - 1].after;
+            if (before != expected)
+                throw Error(Refusal::History, "Document content differs from the history witness");
+        }
+        if (before == after)
+            return *this; // Valid no-op preserves redo and consumes no retained budget.
+        if (after_bytes > std::numeric_limits<std::size_t>::max() - before_bytes)
+            throw Error(Refusal::History, "History command byte charge overflows size_t");
+        const auto cost = before_bytes + after_bytes;
+        if (!limits_.entries || cost > limits_.bytes)
+            throw Error(Refusal::History, "History cannot retain this command within its entry/byte cap");
+        std::size_t retained = 0;
+        for (std::size_t i = 0; i < cursor_; ++i) {
+            if (entries_[i].bytes > std::numeric_limits<std::size_t>::max() - retained)
+                throw Error(Refusal::History, "History retained byte charge overflows size_t");
+            retained += entries_[i].bytes;
+        }
+        std::size_t oldest = 0;
+        while (cursor_ - oldest >= limits_.entries || retained > limits_.bytes - cost)
+            retained -= entries_[oldest++].bytes;
+        DocumentHistory candidate(limits_);
+        candidate.entries_.reserve(cursor_ - oldest + 1); // <=256, never a caller-sized allocation probe.
+        for (auto i = oldest; i < cursor_; ++i)
+            candidate.entries_.push_back(entries_[i]);
+        candidate.entries_.push_back({std::move(before), std::move(after), cost});
+        candidate.cursor_ = candidate.entries_.size();
+        candidate.bytes_ = retained + cost; // Checked above against limits_.bytes.
+        return candidate;                   // Redo/eviction happens only in this owned candidate.
+    }
+    const Storage::Snapshot& DocumentHistory::target(const bool undo) const {
+        if (undo ? cursor_ == 0 : cursor_ == entries_.size())
+            throw Error(Refusal::History, undo ? "Document undo history is empty" : "Document redo history is empty");
+        return undo ? entries_[cursor_ - 1].before : entries_[cursor_].after;
+    }
+    DocumentHistory DocumentHistory::stepped(const bool undo, const Storage::Snapshot& current) const {
+        static_cast<void>(target(undo));
+        const auto& expected = undo ? entries_[cursor_ - 1].after : entries_[cursor_].before;
+        if (current != expected)
+            throw Error(Refusal::History, "Document content differs from the history witness");
+        auto candidate = *this;
+        if (undo)
+            --candidate.cursor_;
+        else
+            ++candidate.cursor_;
+        return candidate;
+    }
+    void DocumentHistory::swap(DocumentHistory& other) noexcept {
+        using std::swap;
+        swap(limits_, other.limits_);
+        entries_.swap(other.entries_);
+        swap(cursor_, other.cursor_);
+        swap(bytes_, other.bytes_);
     }
 }

@@ -1,14 +1,14 @@
 # World integration contracts and provenance
 
-WORLD-U3 starts clean on feat/tilemap at reviewed literal-editor checkpoint
-`8522b2976013c10c23266b6413e3d46a408b1251`. Its committed WORLD-U2 receipt, nonempty
-saved native logs and 97/97 XML entries were inspected before dependent work.
-WINT-009/010 add semantic persistence while WINT-007/008 retain literal/event
-compatibility. Historical U1/U2 evidence and source archives remain unchanged;
-current exact execution and limits belong in next.md and the batch receipt.
-One accumulated Debug ASan/UBSan run passes 104/104, zero failed/skipped, 54.78s,
-retaining all 97 prior names. Ten process children exit zero; actual demo link,
-same-source and normal shared-Engine checks pass. No graphical/leak acceptance.
+WORLD-U4 starts clean on feat/tilemap at the controller-selected passing U3
+checkpoint `b6658f24df2739adce8d672cabb9407f8b28f40b`. Its committed ready/true batch
+receipt, nonempty native logs and 104/104 XML entries were inspected before use.
+WINT-011/012 add bounded independent document history to the SAME real editor.
+One accumulated Debug ASan/UBSan run passes 112/112, zero failed/skipped, 54.58s,
+retaining all 104 names. Twelve process children exit zero; actual demo link and
+same-source/single-Engine checks pass. Historical records, receipts and archives
+stay intact. Current exact commands/limits belong in next.md and the U4 receipt;
+no geography integration or graphical/leak acceptance is implied.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -23,7 +23,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–010 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–012 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records
@@ -476,3 +476,146 @@ user preference; compatibility and successful CPU checks support high engineerin
 confidence. Changing persisted keys requires explicit conversion; other reversal
 cost is private only. Exact executed counts, ownership inspections and remaining
 visual/input/upload/teardown/fun/leak/platform gaps are in next.md and the receipt.
+
+## WINT-011 — Owned document commands and complete restoration
+
+Small proposed-before-implementation caller, now exercised by world-consumer's
+actual admitted-record factories and the same editor source compiled into demo:
+
+```cpp
+DemoTilemapEditor editor(existing_directory);
+const std::array literal{press(Key::Digit6), paint(72,144), press(Key::F6),
+                         press(Key::F7), press(Key::F8), press(Key::F9)};
+editor.consume(literal, {{400,200},{800,600}});
+const std::array semantic{press(Key::B), press(Key::G), paint(40,128),
+                          press(Key::T), paint(72,144), press(Key::F6),
+                          press(Key::F7), press(Key::F8), press(Key::F9)};
+editor.consume(semantic, {{400,200},{800,600}});
+auto available = editor.history(0, DemoTilemapEditor::Mode::Terrain); // owned counts/byte charge
+editor.write(frame, bindings, style);
+```
+
+Private DocumentHistory lives beside the existing owners in world-document.*.
+Four independent timelines (west/east x literal/semantic) each own complete before
+and after Snapshots; one cursor represents undo/redo stacks. A command is exactly
+one accepted changing literal paint/erase or one completed changing Engine semantic
+input batch, after last-write-wins coalescing. Labels and qualified semantic keys
+are history, never selected visual/atlas IDs. Complete map ID, dimensions, ordered
+layer names, all ordered spawns and all cells participate in equality/restoration.
+Layers share one document history; selection/brush/view/mode are deliberately NOT
+saved. Undo after changing the selected layer can restore another layer without
+changing that selection. Map/mode switching merely selects a different timeline.
+
+Each semantic document owns immutable copied key/label/rule/target configuration
+for its epoch. Every candidate replacement copies it forward; undo/redo rebuilds
+BOTH public nonmovable Engine TerrainMaps from saved keys under that same owned
+configuration. LOAD replaces the epoch and clears only its history. No history
+entry borrows an old owner/configuration, event record, source snapshot or temporary
+sampler. There is no mutable palette/table setter or cross-epoch replay. This
+retains all reconstruction inputs without repeating a configuration inside each
+entry; current live owner/configuration is baseline state, outside retained-history
+byte charging. Distinct labels rendering ID 7 remain distinct on undo/redo and disk.
+
+Literal edits now copy a complete LiteralOwner candidate, change only that
+candidate, export it, and prepare a candidate timeline. Semantic edits reconstruct
+a complete TerrainDocument candidate and use the ACTUAL Engine edit_batch; final
+owned keys determine whether a command exists. Undo/redo first checks availability
+and current content against its exact history witness, copies the candidate
+history/cursor, and validates a complete replacement owner. Only then do unique
+pointer and timeline swaps publish both. Swaps allocate nothing and are noexcept;
+serialized update/preparation excludes observing an intermediate swap. No hardware
+atomicity or concurrent writer/recycler guarantee is claimed. Construction,
+conversion, rule/target, budget or allocation refusal leaves live content and both
+stacks unchanged at that action boundary. Allocation/programming exceptions still
+propagate; no blanket catch or no-allocation claim is added.
+
+Any changing edit, undo, redo or LOAD replaces an owner and invalidates borrowed
+document/map/terrain references. No-ops preserve the owner pointer. Copied snapshots,
+prepared frame matrices/ranges/resources and other maps/modes remain independent.
+The private mutable Map facade is removed; actual controls use the candidate path.
+Negative tests deliberately write through the const facade to simulate invalid
+out-of-band content: exact-witness/reverse-conversion refusal preserves current
+values and stacks. Such alias writes remain outside the ordinary caller contract.
+
+Alternatives: cell deltas would need extra metadata/witness policy and special
+semantic reconstruction; keeping live owners per entry would retain derived state
+and heavier ownership. A public command bus or generic history framework would
+grow an unproven boundary. Full semantic snapshots and tiny owner composition
+trade copies/latency for a reviewable prototype. Engineering confidence is high
+from source and executed checks; naming/hotkeys are not personal preference
+inferences. Reversal changes private app code, not Engine/schema/replay contracts.
+
+## WINT-012 — Bounded retention, event ordering and file epochs
+
+HistoryLimits defaults to 32 entries and 256 KiB per map/mode. Constructor limits
+are at most 256 entries and 8 MiB; zero is permitted and rejects changing commands.
+The combined undo+redo timeline is bounded, not two independently growing stacks.
+HistoryState returns owned undo count, redo count and retained byte charge. Empty
+undo/redo throws WorldProof::Error with Refusal::History, preserving all state.
+F6/F7 are private engineering controls alongside unchanged F8 SAVE/F9 LOAD; no
+public input API, held-pointer history, native key injection or new control service.
+
+Byte charge is EXACTLY encode(before).size()+encode(after).size() for each command,
+using the unchanged deterministic v1 encoder. This covers cell/null values, all
+key and metadata bytes (including escaping/ordered spawns), extent and format
+representation. Adjacent commands intentionally duplicate their shared snapshot.
+Addition and prefix accumulation check size_t overflow; constructor caps and
+storage encoding caps reject huge limits without huge allocation probes. New
+history storage reserves only its admitted <=256 entries, not arbitrary caller
+limits. A changed command that cannot fit BY ITSELF rejects before any live edit,
+redo clear or eviction. After acceptance, the candidate discards redo and evicts
+oldest undo entries until combined entry/byte caps fit. The newest command always
+retains its complete undo state; the oldest remaining before-snapshot becomes the
+reachable boundary. Empty-history rejection never fabricates the epoch's original
+content after older entries have been evicted.
+
+A literal equal-ID paint/empty erase is a no-op. Semantic batches still validate
+ALL requests and Engine work/affected caps, including duplicate samples and
+cancellations, then compare complete final keys. A valid final no-op consumes no
+entry/bytes, does not clear redo, does not evict and does not replace the owner.
+Changing a label with identical visuals still creates a command. Undo/redo only
+moves the candidate cursor: retained entries/bytes are constant and redo does not
+evict anything. New changing edits invalidate redo only after all checks succeed.
+
+F6/F7 follows the same admitted keyboard Press filter as F8/F9. Release/Repeat,
+unadmitted records and invalid/minimized sizes do nothing. A keyboard Press first
+flushes the earlier semantic run, so a history action can immediately undo that
+completed command. Ordered pointer observations, independent framebuffer scales,
+computed edges, pan/zoom and existing batch barriers remain unchanged. Camera,
+selection and brushes are excluded from document undo. Existing platform capture
+leases raw Events before the tilemap-mode early return; TickContext supplies
+captured sizes/records to the shared helper. No new platform/backend binding is
+necessary; compile evidence still does not establish real graphical key delivery.
+
+Successful LOAD resets only the replaced document/mode's timeline, even for
+identical content; candidate owner AND empty history exist before adoption.
+Failed LOAD preserves both stacks. SAVE/failed SAVE preserves all history and does
+not roll back earlier authored edits. Runtime edits/undo/redo, file rename
+publication and a whole input tick are separate boundaries. The actual
+DemoTilemaps::update reports history errors distinctly, drops remaining tick
+records and permits later updates. Earlier completed edits/runs remain. Native
+controlled-directory/single-writer/no-fsync/power-loss/race limits stay unchanged.
+
+Retained canonical byte caps are NOT exact allocator/RSS budgets. C++ object/vector
+capacity overhead, current live owners/configuration, transient encodings and
+old/new document/timeline copies coexist. Public snapshot field/count limits plus
+entry/byte caps bound logical content; allocations can still fail. I/O/encoding,
+copy and full rederivation run synchronously on serialized simulation and may
+stall it. No OOM probe, async service, compact history format or persistence of
+history is introduced. A fresh process reconstructs saved content with empty
+histories. Default four-document history charge is at most 1 MiB; allowed maximum
+is 32 MiB, excluding the stated overhead/transients/baseline state.
+
+Executed evidence: 112/112 in one accumulated run, zero failed/skipped, 54.58s; all 104
+predecessor names and old unit bodies remain. Seven focused history cases cover
+full values/metadata, semantic oracles, repeated/cancelled samples, aliases,
+redo invalidation, exact/one-short entry+byte caps, oldest eviction, file boundaries,
+empty/witness/refusal preservation, admission and retained resources with zero
+synthetic native counters. world.document_history adds two of the12 successful
+child invocations: actual edit/undo/redo/save/reload, then fresh independent full
+literal/semantic/meaning-ID/cardinal checks. Shared runner, header probes and
+actual demo compile/link without warnings. Same-source symbols/compile inputs,
+normal Engine imports/exports/loader and format checks pass. No CPU failure or
+rerun. Exact logs/commands/receipt and remaining graphical/input/upload/teardown/
+fun/leak/platform/durability gaps are in next.md. Confidence high for tested CPU
+policy, low as personal taste; changing caps/hotkeys is private and reversible.

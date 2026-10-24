@@ -1,13 +1,12 @@
 # World integration decisions
 
-Current unit: WORLD-U3 semantic-document persistence in the same private editor,
-starting at reviewed `8522b2976013c10c23266b6413e3d46a408b1251`. WINT-009/010 extend
-the matching detailed view. WORLD-U2's saved 97/97 acceptance and its receipt stay
-preserved. Current execution/results belong in next.md and the batch receipt;
-no worker1 geography integration or unchanged display retry is selected. One
-accumulated Debug ASan/UBSan run passes 104/104, zero failed/skipped, retaining all
-97 prior names; ten child exits are zero. Demo link and same-source/Engine checks
-pass; graphics/input/leaks remain unverified.
+Current unit: WORLD-U4 independent bounded document history, starting clean at
+`b6658f24df2739adce8d672cabb9407f8b28f40b`. The committed U3 receipt/nonempty logs
+and 104 passing entries were inspected before dependent work. One accumulated
+Debug ASan/UBSan run passes 112/112, zero failed/skipped, retaining all 104 names;
+twelve process children exit zero. Actual demo link and same-source/single-Engine
+checks pass. WINT-011/012 extend the detailed view. Graphics/input/leaks stay open;
+no geography merge or unchanged display retry occurs.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -123,3 +122,23 @@ wrong kind, shape, unknown/ambiguous meanings and needed rule/mapping failures.
 This private convention distinguishes even all-null documents without schema growth.
 Confidence is high in CPU isolation, low as taste evidence; changing persisted
 meanings requires explicit conversion.
+
+## WINT-011 — Restore owned document content transactionally
+
+Keep a separate timeline per map/mode, storing complete before/after semantic-key
+Snapshots. One literal change or completed semantic batch is one command; camera,
+selection and brush are excluded. Rebuild complete owners, including both terrain
+layers with their copied epoch configuration, before swapping content/history.
+This preserves aliased meanings and failure isolation at copying cost. Confidence
+is high from CPU tests, low as personal taste; reversal is private and leaves
+Engine/storage contracts unchanged.
+
+## WINT-012 — Bound retention and expose ordered history actions
+
+Use F6 undo/F7 redo with owned availability counts. Bound both stacks together to
+32 commands/256 KiB canonical bytes by default; evict oldest accepted commands.
+Reject an unretainable new command before mutation. No-ops preserve redo; accepted
+changes clear it. LOAD resets only its document, SAVE preserves history. Full
+snapshots trade compactness for auditable bounds. Confidence is high in tested
+CPU policy; hotkeys/budgets are reversible engineering choices, with native
+allocation/latency and graphical limits retained.

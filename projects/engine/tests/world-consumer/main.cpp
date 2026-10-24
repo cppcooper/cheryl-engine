@@ -394,27 +394,35 @@ namespace {
     constexpr std::array<std::array<std::uint32_t, 12>, 2> semantic_meaning_values{
         {{101, 101, 203, 0, 307, 307, 203, 0, 203, 409, 0, 0}, {409, 0, 101, 101, 203, 0, 0, 307, 0, 307, 0, 203}}
     };
-    void check_semantic_editor(const DemoTilemapEditor& editor) {
+    void check_semantic_editor(const DemoTilemapEditor& editor, const bool edited_east = false) {
         const std::array entries{
             KeyId{"terrain:one", {101}}, KeyId{"terrain:two", {203}}, KeyId{"terrain:three", {307}}, KeyId{"terrain:four", {409}}
         };
         const KeyTable meaning(entries);
         for (std::size_t instance = 0; instance < 2; ++instance) {
+            auto expected = semantic_expected(instance == 1);
+            auto label_values = semantic_label_values[instance];
+            auto meaning_values = semantic_meaning_values[instance];
+            if (edited_east && instance == 1) {
+                expected.layers[1].cells[4] = "terrain:two";
+                label_values[10] = 2;
+                meaning_values[10] = 203;
+            }
             const auto snapshot = editor.terrain_document(instance).snapshot();
-            require(snapshot == semantic_expected(instance == 1), "Complete semantic cells/metadata differ from literal");
+            require(snapshot == expected, "Complete semantic cells/metadata differ from literal");
             const auto numeric = LiteralOwner::from(snapshot, meaning);
-            check_map(numeric->map(), {3, 2}, semantic_meaning_values[instance]);
+            check_map(numeric->map(), {3, 2}, meaning_values);
             for (std::int64_t layer = 0; layer < 2; ++layer)
                 for (std::int64_t y = 0; y < 2; ++y)
                     for (std::int64_t x = 0; x < 3; ++x) {
                         const auto offset = static_cast<std::size_t>(layer * 6 + y * 3 + x);
-                        const auto label = semantic_label_values[instance][offset];
+                        const auto label = label_values[offset];
                         const auto& terrain = editor.terrain(instance, {layer});
                         require(terrain.label({x, y}).value == label, "Rebuilt opaque semantic label differs");
                         // Independent cardinal oracle; never calls selection/batch or cached visuals.
                         const auto same = [&](const std::int64_t nx, const std::int64_t ny) {
                             return nx >= 0 && nx < 3 && ny >= 0 && ny < 2 &&
-                                   semantic_label_values[instance][static_cast<std::size_t>(layer * 6 + ny * 3 + nx)] == label;
+                                   label_values[static_cast<std::size_t>(layer * 6 + ny * 3 + nx)] == label;
                         };
                         const unsigned mask = (same(x, y - 1) ? 1u : 0u) | (same(x + 1, y) ? 2u : 0u) | (same(x, y + 1) ? 4u : 0u) |
                                               (same(x - 1, y) ? 8u : 0u);
@@ -476,6 +484,63 @@ namespace {
         editor_events(editor, {press(Key::B), press(Key::F9), press(Key::Digit2), press(Key::F9)});
         check_semantic_editor(editor);
         std::cout << "FRESH process F9: all24 labels/numeric meaning IDs/derived visuals and every ordered metadata field PASS\n";
+    }
+
+    void history_author(const std::filesystem::path& directory) {
+        semantic_author(directory); // Proven actual event setup; no test-only owner replacement.
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::F9), press(Key::Digit6), paint(72, 144), press(Key::F6)});
+        require(editor.document(0).snapshot().layers[0].cells[4] == std::nullopt, "Literal undo failed");
+        editor_events(editor, {press(Key::F7), press(Key::F8)});
+        require(Storage::load(directory / "west.json") == editor_expected(false), "Literal redo/save differs from full literal");
+        editor_events(editor, {press(Key::Digit3), paint(72, 144), press(Key::F9)});
+        require(
+            editor.document(0).snapshot() == editor_expected(false) && editor.history(0, DemoTilemapEditor::Mode::Literal).undo == 0,
+            "Literal LOAD did not reset only its history"
+        );
+        editor_events(
+            editor, {press(Key::Digit2), press(Key::T), press(Key::Digit4), paint(212, 156), press(Key::F6), press(Key::F7), press(Key::F8)}
+        );
+        require(Storage::load(directory / "east.json") == editor_expected(true), "East literal undo/redo/save differs");
+        editor_events(editor, {press(Key::B), press(Key::Digit1), press(Key::G), press(Key::F9), press(Key::Digit6), paint(40, 144)});
+        auto changed = semantic_expected(false);
+        changed.layers[0].cells[3] = "terrain:four";
+        require(editor.terrain_document(0).snapshot() == changed, "Semantic change lost metadata/meaning");
+        editor_events(editor, {press(Key::F6)});
+        require(editor.terrain_document(0).snapshot() == semantic_expected(false), "Semantic undo lost full original fields");
+        editor_events(editor, {press(Key::F7)});
+        require(editor.terrain_document(0).snapshot() == changed, "Semantic redo lost full changed fields");
+        editor_events(editor, {press(Key::F6), press(Key::F8)}); // Persist UNDONE west state.
+        require(Storage::load(directory / "west-terrain.json") == semantic_expected(false), "Saved derived rather than undone meaning");
+        editor_events(
+            editor, {press(Key::Digit2), press(Key::F9), press(Key::T), press(Key::Digit4), paint(212, 156), press(Key::F6), press(Key::F7),
+                     press(Key::F8)}
+        );
+        auto east = semantic_expected(true);
+        east.layers[1].cells[4] = "terrain:two";
+        require(Storage::load(directory / "east-terrain.json") == east, "Saved REDONE semantic state differs");
+        check_semantic_editor(editor, true);
+        editor_events(editor, {press(Key::Digit6), paint(212, 156), press(Key::F9)});
+        require(
+            editor.terrain_document(1).snapshot() == east && editor.history(1, DemoTilemapEditor::Mode::Terrain).undo == 0,
+            "Semantic reload lost full saved meaning or history reset"
+        );
+        require(editor.history(0, DemoTilemapEditor::Mode::Terrain).redo == 1, "East LOAD cleared independent west redo");
+        std::cout << "Actual literal/semantic edit/F6/F7/F8/F9; saved undone west and redone east meaning PASS\n";
+    }
+    void history_verify(const std::filesystem::path& directory) {
+        editor_verify(directory); // Independent complete literal expectations +24 numeric cells.
+        require(Storage::load(directory / "west-terrain.json") == semantic_expected(false), "Fresh undone west snapshot differs");
+        auto east = semantic_expected(true);
+        east.layers[1].cells[4] = "terrain:two";
+        require(Storage::load(directory / "east-terrain.json") == east, "Fresh redone east snapshot differs");
+        DemoTilemapEditor editor(directory);
+        editor_events(editor, {press(Key::B), press(Key::F9), press(Key::Digit2), press(Key::F9)});
+        check_semantic_editor(editor, true);
+        for (std::size_t map = 0; map < 2; ++map)
+            for (const auto mode : {DemoTilemapEditor::Mode::Literal, DemoTilemapEditor::Mode::Terrain})
+                require(editor.history(map, mode) == HistoryState{}, "Fresh process inherited unsaved history");
+        std::cout << "FRESH complete metadata +24 literal cells +24 semantic labels/meaning IDs/cardinal visuals; histories empty PASS\n";
     }
 
     void refusals(const std::filesystem::path& path) {
@@ -684,6 +749,10 @@ int main(const int argc, char** argv) {
             semantic_author(path);
         else if (mode == "semantic-verify")
             semantic_verify(path);
+        else if (mode == "history-author")
+            history_author(path);
+        else if (mode == "history-verify")
+            history_verify(path);
         else
             throw std::runtime_error("Unknown world mode");
         return 0;

@@ -45,6 +45,8 @@ private:
     std::filesystem::path document_dir_;
     std::array<std::unique_ptr<WorldProof::TerrainDocument>, 2> terrain_;
     CE::Tilemaps::TerrainBatchLimits terrain_limits_;
+    WorldProof::HistoryLimits history_limits_;
+    std::array<std::array<WorldProof::DocumentHistory, 2>, 2> histories_;
     Mode mode_ = Mode::Literal;
     CE::Tilemaps::TerrainLabel terrain_brush_{1};
     Sizes sizes_;
@@ -56,15 +58,19 @@ private:
     std::optional<Geometry> geometry_;
 
     static std::optional<Geometry> geometry(Sizes sizes, CE::Tilemaps::LocalPoint pan, double zoom);
-    [[nodiscard]] CE::Tilemaps::Map& mutable_map(std::size_t index) { return documents_.at(index)->map(); }
     void document_action(bool save);
+    [[nodiscard]] WorldProof::DocumentHistory& selected_history();
+    void literal_edit(CE::Tilemaps::Point point, CE::Tilemaps::TileId id);
+    void terrain_edit(std::span<const CE::Tilemaps::TerrainEdit> edits);
+    void history_action(bool undo);
 
 public:
-    explicit DemoTilemapEditor(std::filesystem::path document_dir = {});
+    explicit DemoTilemapEditor(std::filesystem::path document_dir = {}, WorldProof::HistoryLimits history_limits = {});
     explicit DemoTilemapEditor(
         TerrainPalette palette,
         CE::Tilemaps::TerrainBatchLimits limits = {32, 6, 256},
-        std::filesystem::path document_dir = {}
+        std::filesystem::path document_dir = {},
+        WorldProof::HistoryLimits history_limits = {}
     );
     DemoTilemapEditor(const DemoTilemapEditor&) = delete;
     DemoTilemapEditor& operator=(const DemoTilemapEditor&) = delete;
@@ -87,14 +93,18 @@ public:
         const CE::Rendering::DrawStyle2D& images
     ) const;
 
-    // Literal storage in either mode. Replacement invalidates borrowed document/
-    // map references; copied values and prepared packets retain their ownership.
+    // Content edits, undo/redo and LOAD replace owners, invalidating borrowed
+    // document/map/terrain views. No-ops preserve them; owned values/packets stay
+    // independent. Literal storage remains available in either mode.
     [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return documents_.at(index)->map(); }
     [[nodiscard]] const WorldProof::LiteralOwner& document(std::size_t index) const { return *documents_.at(index); }
     [[nodiscard]] const CE::Tilemaps::TerrainMap& terrain(std::size_t index, CE::Tilemaps::LayerIndex layer) const {
         return terrain_.at(index)->terrain(layer);
     }
     [[nodiscard]] const WorldProof::TerrainDocument& terrain_document(std::size_t index) const { return *terrain_.at(index); }
+    [[nodiscard]] WorldProof::HistoryState history(std::size_t index, Mode mode) const {
+        return histories_.at(index).at(mode == Mode::Literal ? 0 : 1).state();
+    }
     [[nodiscard]] Mode mode() const { return mode_; }
     [[nodiscard]] CE::Tilemaps::TerrainLabel terrain_brush() const { return terrain_brush_; }
     [[nodiscard]] std::size_t selected_map() const { return selected_map_; }

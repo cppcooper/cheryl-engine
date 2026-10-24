@@ -12,7 +12,7 @@
 namespace WorldProof {
     namespace Storage = CE::Maps;
     namespace Tiles = CE::Tilemaps;
-    enum class Refusal { Table, UnknownKey, UnknownId, UnknownLabel, Limit };
+    enum class Refusal { Table, UnknownKey, UnknownId, UnknownLabel, Limit, History };
     struct Error final : std::runtime_error {
         Refusal code;
         Error(Refusal code, const std::string& detail);
@@ -115,5 +115,40 @@ namespace WorldProof {
         [[nodiscard]] std::vector<Tiles::Point>
         edit_batch(Tiles::LayerIndex layer, std::span<const Tiles::TerrainEdit> edits, Tiles::TerrainBatchLimits limits);
         [[nodiscard]] Storage::Snapshot snapshot() const;
+    };
+    struct HistoryLimits {
+        std::size_t entries = 32;
+        std::size_t bytes = 256 * 1024;
+    };
+    struct HistoryState {
+        std::size_t undo = 0;
+        std::size_t redo = 0;
+        std::size_t bytes = 0;
+        [[nodiscard]] bool operator==(const HistoryState&) const = default;
+    };
+    // One private document's bounded timeline; a cursor represents both stacks.
+    // Charge is BOTH complete canonical-v1 encodings, not allocator/RSS usage.
+    // Reconstruction configuration belongs to the immutable current owner epoch;
+    // successful LOAD replaces that epoch and clears only its own history.
+    class DocumentHistory {
+        struct Entry {
+            Storage::Snapshot before;
+            Storage::Snapshot after;
+            std::size_t bytes;
+        };
+        HistoryLimits limits_;
+        std::vector<Entry> entries_;
+        std::size_t cursor_ = 0;
+        std::size_t bytes_ = 0;
+
+    public:
+        explicit DocumentHistory(HistoryLimits limits = {});
+        DocumentHistory(const DocumentHistory&) = default;
+        DocumentHistory& operator=(const DocumentHistory&) = default;
+        [[nodiscard]] HistoryState state() const;
+        [[nodiscard]] DocumentHistory recorded(Storage::Snapshot before, Storage::Snapshot after) const;
+        [[nodiscard]] const Storage::Snapshot& target(bool undo) const;
+        [[nodiscard]] DocumentHistory stepped(bool undo, const Storage::Snapshot& current) const;
+        void swap(DocumentHistory& other) noexcept;
     };
 }
