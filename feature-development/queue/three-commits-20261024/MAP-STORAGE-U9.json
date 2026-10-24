@@ -1,0 +1,21 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "MAP-STORAGE-U9",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/map-storage-u1-debug/u9-logs/tests.log",
+    "build/map-storage-u4-consumer-debug/u9-logs/build.log",
+    "build/map-storage-u4-consumer-debug/u9-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u9-logs/build.log",
+    "build/map-storage-u5-shared-debug/u9-logs/tests.log",
+    "build/map-storage-u5-shared-debug/u9-logs/exports.log"
+  ],
+  "limitations": [
+    "Shared Engine execution uses invocation-local ASAN_OPTIONS=detect_leaks=0 for the known ptrace/LeakSanitizer runner limitation; ASan/UBSan remain enabled, leak checking is unverified.",
+    "Standalone CPU Debug is unsanitized. Full static Engine, non-Linux/other-toolchain ABI and installed SDK acceptance remain unverified.",
+    "Full canonical witnesses can cost 8 MiB and depend on current codec behavior; they prove edit correctness, not compact generated-base retention, a stable cross-version digest or a persisted patch/recipe format.",
+    "Diff bounds logical output/scratch, not caller storage or allocator overhead; allocation/programming exceptions propagate by source inspection without OOM testing. Public C++ values/errors require compatible ABI, and borrowed witness views expire on destruction/move/assignment.",
+    "File guarantees remain the Linux caller-controlled single-writer profile without fsync/durability, hostile-directory race, network-filesystem or multiwriter acceptance."
+  ]
+}

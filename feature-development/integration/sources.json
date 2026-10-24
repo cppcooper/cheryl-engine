@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "status": "combined native acceptance PENDING",
+  "sources": {
+    "tilemap": "edf710a79ef4fc59c7949f7bc78d9bf7d617e29a",
+    "map-storage": "def28ccfc63eb057995f6e1fb95ee48cfeb8fd75"
+  },
+  "documentation_policy": "Complete source text; only relative inline Markdown link targets are rewritten."
+}

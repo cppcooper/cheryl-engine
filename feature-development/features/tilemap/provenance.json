@@ -1,0 +1,303 @@
+{
+  "source_feature": "tilemap",
+  "source_commit": "edf710a79ef4fc59c7949f7bc78d9bf7d617e29a",
+  "documents": [
+    {
+      "source_path": "feature-development/decisions.md",
+      "source_blob": "13a682c984eb59a717a086a79a040e5ced1ebf80",
+      "source_sha256": "155db4fa79b330e92a196132b7d9cb453a462d6d123e43936c031d7cb2871a5e",
+      "archived_path": "feature-development/features/tilemap/decisions.md",
+      "archived_sha256": "155db4fa79b330e92a196132b7d9cb453a462d6d123e43936c031d7cb2871a5e",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    },
+    {
+      "source_path": "feature-development/agent-notes.md",
+      "source_blob": "e786f9aeb4cfd13ea7e2861cd3f4f936bc80c2d6",
+      "source_sha256": "e5714366f026bb120b7aa70adb8cafccef405f4ef07bd6e098e7ec774680cc9c",
+      "archived_path": "feature-development/features/tilemap/agent-notes.md",
+      "archived_sha256": "7aaa4df75b8ec28e6e14d29ca25427f57d40cd4c822a2775be12caef4bf18b85",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": [
+        {
+          "from": "../projects/engine/include/cheryl/assets/definitions/grid.h",
+          "to": "../../../projects/engine/include/cheryl/assets/definitions/grid.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/definitions/grid.cpp",
+          "to": "../../../projects/engine/src/assets/definitions/grid.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/definitions/tileset.h",
+          "to": "../../../projects/engine/include/cheryl/assets/definitions/tileset.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/tileset-mgr.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/tileset-mgr.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/asset-management/tileset-mgr.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/asset-management/tileset-mgr.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/types/2d/tileset.h",
+          "to": "../../../projects/engine/include/cheryl/assets/types/2d/tileset.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/types/2d/tileset.cpp",
+          "to": "../../../projects/engine/src/assets/types/2d/tileset.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/selection/tile-selection.h",
+          "to": "../../../projects/engine/include/cheryl/assets/selection/tile-selection.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/selection/tile-selection.cpp",
+          "to": "../../../projects/engine/src/assets/selection/tile-selection.cpp"
+        },
+        {
+          "from": "../projects/engine/src/assets/geometry/grid-geometry.cpp",
+          "to": "../../../projects/engine/src/assets/geometry/grid-geometry.cpp"
+        },
+        {
+          "from": "../projects/engine/src/math/anchor.cpp",
+          "to": "../../../projects/engine/src/math/anchor.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/submission/draw2d.h",
+          "to": "../../../projects/engine/include/cheryl/assets/submission/draw2d.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/submission/draw2d.cpp",
+          "to": "../../../projects/engine/src/assets/submission/draw2d.cpp"
+        },
+        {
+          "from": "../projects/engine/src/core/rendering/draw-packet.cpp",
+          "to": "../../../projects/engine/src/core/rendering/draw-packet.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/rendering/render-frame.h",
+          "to": "../../../projects/engine/include/cheryl/core/rendering/render-frame.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/rendering/draw-packet.h",
+          "to": "../../../projects/engine/include/cheryl/core/rendering/draw-packet.h"
+        },
+        {
+          "from": "../projects/modules/graphics/opengl/src/backends/opengl/renderer.cpp",
+          "to": "../../../projects/modules/graphics/opengl/src/backends/opengl/renderer.cpp"
+        },
+        {
+          "from": "../projects/modules/graphics/opengl/src/backends/opengl/pipeline.cpp",
+          "to": "../../../projects/modules/graphics/opengl/src/backends/opengl/pipeline.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/definitions/pipeline.h",
+          "to": "../../../projects/engine/include/cheryl/assets/definitions/pipeline.h"
+        },
+        {
+          "from": "../projects/modules/graphics/opengl/src/backends/opengl/builtin-materials.cpp",
+          "to": "../../../projects/modules/graphics/opengl/src/backends/opengl/builtin-materials.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/asset-demo.cpp",
+          "to": "../../../projects/apps/demo/src/asset-demo.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/demo-game.cpp",
+          "to": "../../../projects/apps/demo/src/demo-game.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/all-tests/src/assets/submission.cpp",
+          "to": "../../../projects/engine/tests/all-tests/src/assets/submission.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tileset-selection.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tileset-selection.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/all-tests/src/assets/render-frame.cpp",
+          "to": "../../../projects/engine/tests/all-tests/src/assets/render-frame.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/math/collision.h",
+          "to": "../../../projects/engine/include/cheryl/math/collision.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/game-framework/abstract-game.h",
+          "to": "../../../projects/engine/include/cheryl/core/game-framework/abstract-game.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/maps/tilemap.h",
+          "to": "../../../projects/engine/include/cheryl/maps/tilemap.h"
+        },
+        {
+          "from": "../projects/engine/src/maps/tilemap.cpp",
+          "to": "../../../projects/engine/src/maps/tilemap.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/submission/tilemap2d.h",
+          "to": "../../../projects/engine/include/cheryl/assets/submission/tilemap2d.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/submission/tilemap2d.cpp",
+          "to": "../../../projects/engine/src/assets/submission/tilemap2d.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-submission.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-submission.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-demo.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-demo.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/demo-options.cpp",
+          "to": "../../../projects/apps/demo/src/demo-options.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/main.cpp",
+          "to": "../../../projects/apps/demo/src/main.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/demo-game.cpp",
+          "to": "../../../projects/apps/demo/src/demo-game.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/maps/tilemap.h",
+          "to": "../../../projects/engine/include/cheryl/maps/tilemap.h"
+        },
+        {
+          "from": "../projects/engine/src/maps/tilemap.cpp",
+          "to": "../../../projects/engine/src/maps/tilemap.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-editor.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-editor.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/demo-game.cpp",
+          "to": "../../../projects/apps/demo/src/demo-game.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/CMakeLists.txt",
+          "to": "../../../projects/engine/tests/unit/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/maps/terrain-map.h",
+          "to": "../../../projects/engine/include/cheryl/maps/terrain-map.h"
+        },
+        {
+          "from": "../projects/engine/src/maps/terrain-map.cpp",
+          "to": "../../../projects/engine/src/maps/terrain-map.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../projects/engine/src/assets/selection/tile-selection.cpp",
+          "to": "../../../projects/engine/src/assets/selection/tile-selection.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/definitions/tileset.h",
+          "to": "../../../projects/engine/include/cheryl/assets/definitions/tileset.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/maps/terrain-map.h",
+          "to": "../../../projects/engine/include/cheryl/maps/terrain-map.h"
+        },
+        {
+          "from": "../projects/engine/src/maps/terrain-map.cpp",
+          "to": "../../../projects/engine/src/maps/terrain-map.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-terrain-cases.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/terrain-consumer/main.cpp",
+          "to": "../../../projects/engine/tests/terrain-consumer/main.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-editor.h",
+          "to": "../../../projects/apps/demo/src/tilemap-editor.h"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-editor.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-editor.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-demo.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-demo.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        },
+        {
+          "from": "../docs/site/assets/asset-values-and-playback.md",
+          "to": "../../../docs/site/assets/asset-values-and-playback.md"
+        },
+        {
+          "from": "../docs/site/engine-systems/assets.md",
+          "to": "../../../docs/site/engine-systems/assets.md"
+        }
+      ]
+    },
+    {
+      "source_path": "feature-development/next.md",
+      "source_blob": "884b1b04152652ccc67c680bc40994ff6b95026f",
+      "source_sha256": "e677fd9107e525d2d24b2b7c5665e3beddb1fda163c3e197800fdd9e506dacdf",
+      "archived_path": "feature-development/features/tilemap/next.md",
+      "archived_sha256": "68125fffdf522e31749488024108ceff230d1e631790e8010beb8ffe333fd307",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": [
+        {
+          "from": "../projects/apps/demo/src/tilemap-editor.h",
+          "to": "../../../projects/apps/demo/src/tilemap-editor.h"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-editor.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-editor.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/tilemap-demo.cpp",
+          "to": "../../../projects/apps/demo/src/tilemap-demo.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/unit/src/tilemap-consumer.cpp",
+          "to": "../../../projects/engine/tests/unit/src/tilemap-consumer.cpp"
+        }
+      ]
+    }
+  ]
+}

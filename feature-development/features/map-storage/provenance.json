@@ -1,0 +1,274 @@
+{
+  "source_feature": "map-storage",
+  "source_commit": "def28ccfc63eb057995f6e1fb95ee48cfeb8fd75",
+  "documents": [
+    {
+      "source_path": "feature-development/decisions.md",
+      "source_blob": "b0c9e0252b017cb8617cffc51f79a6fd86cda297",
+      "source_sha256": "bb8238239f4d4fd0338481fa2657a8109bd4f09f27bbd8990b1a4967775444f9",
+      "archived_path": "feature-development/features/map-storage/decisions.md",
+      "archived_sha256": "bb8238239f4d4fd0338481fa2657a8109bd4f09f27bbd8990b1a4967775444f9",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    },
+    {
+      "source_path": "feature-development/agent-notes.md",
+      "source_blob": "46b8bf7e1293e14211a6b291e5ee98e3b28f3260",
+      "source_sha256": "a89e9bd2b1741614fd5512100194dbd26597e8698841e4782fe718bffa857e4b",
+      "archived_path": "feature-development/features/map-storage/agent-notes.md",
+      "archived_sha256": "f172cc47391b37fb86a13932a3bd9f0ccbaaa8e03c231490da45d10f32b65af1",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": [
+        {
+          "from": "../../../AGENTS.md",
+          "to": "../../../../../AGENTS.md"
+        },
+        {
+          "from": "../../../coordination/autonomy-policy.md",
+          "to": "../../../../../coordination/autonomy-policy.md"
+        },
+        {
+          "from": "../../../coordination/feature-briefs.md#map-storage",
+          "to": "../../../../../coordination/feature-briefs.md#map-storage"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/fileio/file-mgr.cpp",
+          "to": "../../../projects/engine/src/core/resources/fileio/file-mgr.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/asset-management/file-registry.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/asset-management/file-registry.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/file-registry.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/file-registry.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/asset-management/manifest-loader.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/asset-management/manifest-loader.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/graphics-manifest-loader.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/graphics-manifest-loader.cpp"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/manifest-loader.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/manifest-loader.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/asset-loader.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/asset-loader.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/definitions/tileset.h",
+          "to": "../../../projects/engine/include/cheryl/assets/definitions/tileset.h"
+        },
+        {
+          "from": "../projects/engine/src/assets/definitions/tileset.cpp",
+          "to": "../../../projects/engine/src/assets/definitions/tileset.cpp"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/asset-management/tileset-mgr.cpp",
+          "to": "../../../projects/engine/src/core/resources/asset-management/tileset-mgr.cpp"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/selection/tile-selection.h",
+          "to": "../../../projects/engine/include/cheryl/assets/selection/tile-selection.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/assets/types/2d/tileset.h",
+          "to": "../../../projects/engine/include/cheryl/assets/types/2d/tileset.h"
+        },
+        {
+          "from": "../projects/apps/first-game/src/first-game.cpp",
+          "to": "../../../projects/apps/first-game/src/first-game.cpp"
+        },
+        {
+          "from": "../projects/apps/tutorial-game/src/game.cpp",
+          "to": "../../../projects/apps/tutorial-game/src/game.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/asset-demo.cpp",
+          "to": "../../../projects/apps/demo/src/asset-demo.cpp"
+        },
+        {
+          "from": "../projects/apps/demo/src/audio-demo.cpp",
+          "to": "../../../projects/apps/demo/src/audio-demo.cpp"
+        },
+        {
+          "from": "../projects/engine/CMakeLists.txt",
+          "to": "../../../projects/engine/CMakeLists.txt"
+        },
+        {
+          "from": "../.gitmodules",
+          "to": "../../../.gitmodules"
+        },
+        {
+          "from": "../docs/STATUS.md",
+          "to": "../../../docs/STATUS.md"
+        },
+        {
+          "from": "../docs/planning/long-term/asset-manifest-metadata.md",
+          "to": "../../../docs/planning/long-term/asset-manifest-metadata.md"
+        },
+        {
+          "from": "../docs/site/assets/file-and-font-discovery.md",
+          "to": "../../../docs/site/assets/file-and-font-discovery.md"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/map-storage/snapshot.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/map-storage/snapshot.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/map-storage/codec.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/map-storage/codec.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/map-storage/codec.cpp",
+          "to": "../../../projects/engine/src/core/resources/map-storage/codec.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/codec-tests.cpp",
+          "to": "../../../projects/tests/map-storage/codec-tests.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/CMakeLists.txt",
+          "to": "../../../projects/tests/map-storage/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/map-storage/file-storage.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/map-storage/file-storage.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/map-storage/file-storage.cpp",
+          "to": "../../../projects/engine/src/core/resources/map-storage/file-storage.cpp"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/map-storage/file-operations.h",
+          "to": "../../../projects/engine/src/core/resources/map-storage/file-operations.h"
+        },
+        {
+          "from": "../projects/tests/map-storage/file-storage-tests.cpp",
+          "to": "../../../projects/tests/map-storage/file-storage-tests.cpp"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/map-storage/file-storage.cpp",
+          "to": "../../../projects/engine/src/core/resources/map-storage/file-storage.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/file-storage-tests.cpp",
+          "to": "../../../projects/tests/map-storage/file-storage-tests.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/cli.cpp",
+          "to": "../../../projects/tests/map-storage/cli.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/fixture.h",
+          "to": "../../../projects/tests/map-storage/fixture.h"
+        },
+        {
+          "from": "../projects/tests/map-storage/cli-diagnostics.h",
+          "to": "../../../projects/tests/map-storage/cli-diagnostics.h"
+        },
+        {
+          "from": "../projects/tests/map-storage/cli-diagnostics-tests.cpp",
+          "to": "../../../projects/tests/map-storage/cli-diagnostics-tests.cpp"
+        },
+        {
+          "from": "../projects/tests/map-storage/cli-checks.py",
+          "to": "../../../projects/tests/map-storage/cli-checks.py"
+        },
+        {
+          "from": "../projects/tests/map-storage/CMakeLists.txt",
+          "to": "../../../projects/tests/map-storage/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/resources/map-storage/codec.h",
+          "to": "../../../projects/engine/include/cheryl/core/resources/map-storage/codec.h"
+        },
+        {
+          "from": "../projects/engine/src/core/resources/map-storage/file-storage.cpp",
+          "to": "../../../projects/engine/src/core/resources/map-storage/file-storage.cpp"
+        },
+        {
+          "from": "../projects/engine/cmake/MapStorageCpu.cmake",
+          "to": "../../../projects/engine/cmake/MapStorageCpu.cmake"
+        },
+        {
+          "from": "../projects/engine/tests/map-storage-consumer/main.cpp",
+          "to": "../../../projects/engine/tests/map-storage-consumer/main.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/map-storage-consumer/CMakeLists.txt",
+          "to": "../../../projects/engine/tests/map-storage-consumer/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/CMakeLists.txt",
+          "to": "../../../projects/engine/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/export.h",
+          "to": "../../../projects/engine/include/cheryl/export.h"
+        },
+        {
+          "from": "../projects/engine/include/cheryl/core/rendering/camera.h",
+          "to": "../../../projects/engine/include/cheryl/core/rendering/camera.h"
+        },
+        {
+          "from": "../projects/engine/tests/map-storage-consumer/CMakeLists.txt",
+          "to": "../../../projects/engine/tests/map-storage-consumer/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/tests/map-storage-consumer/main.cpp",
+          "to": "../../../projects/engine/tests/map-storage-consumer/main.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/map-storage-consumer/check.cmake",
+          "to": "../../../projects/engine/tests/map-storage-consumer/check.cmake"
+        },
+        {
+          "from": "../cmake/CherylModules.cmake",
+          "to": "../../../cmake/CherylModules.cmake"
+        },
+        {
+          "from": "../cmake/CherylLibraries.cmake",
+          "to": "../../../cmake/CherylLibraries.cmake"
+        },
+        {
+          "from": "../projects/engine/CMakeLists.txt",
+          "to": "../../../projects/engine/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/tests/all-tests/src/assets/manifest.cpp",
+          "to": "../../../projects/engine/tests/all-tests/src/assets/manifest.cpp"
+        },
+        {
+          "from": "../projects/engine/tests/CMakeLists.txt",
+          "to": "../../../projects/engine/tests/CMakeLists.txt"
+        },
+        {
+          "from": "../projects/engine/tests/unit/CMakeLists.txt",
+          "to": "../../../projects/engine/tests/unit/CMakeLists.txt"
+        }
+      ]
+    },
+    {
+      "source_path": "feature-development/next.md",
+      "source_blob": "532da75c36d249a5697050f6fb2c8e0b18a5b211",
+      "source_sha256": "8ebc7c6ec807ea2b7e2927036f3fb6fe546315acfd284a21ff40833db8b3f73a",
+      "archived_path": "feature-development/features/map-storage/next.md",
+      "archived_sha256": "8ebc7c6ec807ea2b7e2927036f3fb6fe546315acfd284a21ff40833db8b3f73a",
+      "complete_content_preserved_except_link_targets": true,
+      "link_rewrites": []
+    }
+  ]
+}
