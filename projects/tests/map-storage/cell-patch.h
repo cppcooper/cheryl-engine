@@ -1,0 +1,88 @@
+#pragma once
+
+#include <cheryl/core/resources/map-storage/codec.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+// Branch-local application proof. No patch wire format or Engine API is selected.
+namespace CellPatches {
+    inline constexpr std::size_t max_base_cells = 65536;
+    inline constexpr std::size_t max_edits = 1024;
+    inline constexpr std::size_t max_witness_bytes = CE::Maps::max_document_bytes;
+    static_assert(max_base_cells <= CE::Maps::max_cells);
+
+    struct Edit {
+        std::string layer;
+        std::uint32_t x = 0;
+        std::uint32_t y = 0;
+        std::optional<std::string> tile; // nullopt clears; a key sets, including a no-op set.
+
+        [[nodiscard]] bool operator==(const Edit&) const = default;
+    };
+
+    struct Patch;
+
+    // Only capture() creates a valid witness: full validated canonical bytes, not
+    // a digest. Copies own their bytes. Default and moved-from witnesses reject.
+    class Witness {
+        std::string bytes_;
+        bool valid_ = false;
+
+        explicit Witness(std::string bytes);
+        friend Witness capture(const CE::Maps::Snapshot& base);
+        friend CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
+
+    public:
+        Witness() = default;
+        Witness(const Witness&) = default;
+        Witness& operator=(const Witness&) = default;
+        Witness(Witness&& other) noexcept;
+        Witness& operator=(Witness&& other) noexcept;
+
+        [[nodiscard]] std::string_view canonical_bytes() const noexcept;
+        [[nodiscard]] bool operator==(const Witness&) const = default;
+    };
+
+    struct Patch {
+        Witness witness;
+        std::vector<Edit> edits;
+
+        [[nodiscard]] bool operator==(const Patch&) const = default;
+    };
+
+    enum class Code { InvalidBase, InvalidWitness, BaseMismatch, InvalidEdit, LimitExceeded };
+
+    class Error final : public std::runtime_error {
+    public:
+        Code code;
+        std::string operation;
+        std::string location;
+        std::optional<CE::Maps::Error> cause; // Owned original codec context when available.
+
+        Error(Code code, std::string operation, std::string location, const std::string& detail,
+              std::optional<CE::Maps::Error> cause = {});
+    };
+
+    // Cheap shape/product admission precedes full public encode() validation.
+    // Up to 65,536 cells and 8 MiB canonical bytes; no file access or asset lookup.
+    [[nodiscard]] Witness capture(const CE::Maps::Snapshot& base);
+
+    // After count/witness admission, re-encode and compare the ENTIRE base before
+    // validating edit addresses/values. Only cell values change, addressed by
+    // stable layer identity and zero-origin finite 2D coordinates.
+    // At most 1,024 unique addresses; duplicate addresses reject even for no-ops.
+    // Validate the whole batch before one deep candidate copy, then validate its
+    // complete encoding (8 MiB cap). An empty batch still requires an exact match
+    // and returns an independent copy. No input/result aliasing, mutation or I/O.
+    // Anticipated rejections throw owning Error; bad_alloc/programming exceptions
+    // propagate. Failures preserve all inputs and the caller's held result. Caller
+    // synchronizes concurrent input mutation. Bounds describe logical storage,
+    // not an exact allocator/heap byte quota; the full witness is not compact.
+    [[nodiscard]] CE::Maps::Snapshot apply(const CE::Maps::Snapshot& base, const Patch& patch);
+}

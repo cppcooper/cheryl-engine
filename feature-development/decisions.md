@@ -4,10 +4,21 @@ U1's CPU values/codec and U2's private Linux file adapter are implemented.
 U2F corrects native path meaning across ancestor symlinks.
 U3 adds the private process CLI. U4 moves the same implementation into Engine-owned
 public CPU source and adds a source-tree consumer. U5 selects normal shared-Engine
-consumption of that same boundary. Executed checks/limits are in
+consumption of that same boundary. U6 adds a private exact-base cell-edit proof;
+it changes no public storage contract or wire format. Executed checks/limits are in
 [next.md](next.md). These are engineering choices, not user preference declarations.
 Full contracts, alternatives, provenance, confidence and
 reversal costs are in [agent-notes.md](agent-notes.md).
+
+## MS-011 Private exact-base cell patches
+
+Capture the complete canonical base bytes and re-encode/compare before applying
+cell-only edits into an independent Snapshot. Cap bases at 65,536 cells, batches
+at 1,024 unique addresses and encoded values at 8 MiB; reuse public validation.
+This prevents silent replay on changed cells, order or spawns. Full witnesses
+cost memory and are not compact saves or persisted recipes. Confidence is high
+in semantics, medium in workload caps; reversal affects private callers only.
+[Details](agent-notes.md#ms-011--private-exact-base-cell-patches-u6).
 
 ## MS-001 CPU boundary
 

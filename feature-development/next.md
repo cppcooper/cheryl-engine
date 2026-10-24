@@ -1,211 +1,169 @@
-# Map-storage U5 checkpoint and next action
+# Map-storage U6 checkpoint and next action
 
-U5 starts clean at accepted U4 `28617d0ab0789fe1309162319bc5e2871555f2e6`.
-The existing garden consumer now has an opt-in normal shared-Engine mode;
-its default standalone CPU mode is retained. **All three shared-Engine cases
-passed**, and all three shared import-mode header probes built. Revised static
-CPU probes also built in the preserved U4 configuration. Initial native failures
-came from LeakSanitizer's fatal runner diagnostic at process exit; passing checks
-use only `ASAN_OPTIONS=detect_leaks=0`, leaving normal Engine instrumentation and
-resource limits intact. Leak checking remains unverified.
+U6 starts clean at accepted U5 `48ad543a18ebacdb759bb5bf7bc1f5ed64202917`.
+The branch now implements a **private exact-base cell-patch application proof**.
+All **162/162** selected cases passed: every accepted 136 regression name plus
+24 new patch cases and two actual-process checks. No test was skipped; configure,
+build, discovery and execution exited 0. No production header, codec/file
+algorithm, format, dependency, pin, existing CLI or shared consumer changed.
+Coordinator acceptance remains separate from these local results.
 
-Only consumer CMake wiring/probe selection and these internal records change.
-No production source/header, garden main/harness, private CLI, format/limits,
-validation order, native path or publication behavior changed. No export/ABI
-implementation defect was exposed. The accepted 136 regressions and prior CPU
-native cases were therefore preserved, not repeated. Coordinator review of this
-coherent local checkpoint is next; publisher transport and later units remain
-with the coordinator.
-
-## Same public-header caller and producer choice
+## Small caller and private contract
 
 ```cpp
-#include <cheryl/core/resources/map-storage/file-storage.h>
-// Plus <sstream>; authored() is the existing complete garden:north literal.
-auto source = authored(); // 2x3, soil/markers, twelve cells/empties, two spawns
-try {
-    auto bytes = CE::Maps::encode(source);
-    std::istringstream input(bytes);
-    auto decoded = CE::Maps::parse(input, "memory:garden");
-    CE::Maps::save(path, decoded); // explicit path in a controlled directory
-    auto restored = CE::Maps::load(path);
-    const bool equal = restored == source;
-    static_cast<void>(equal);
-} catch (const CE::Maps::Error& error) {
-    auto owned = error; // code, operation, origin/location, offset, I/O/cleanup
-    static_cast<void>(owned);
-}
+// cell-patch.h is private to projects/tests/map-storage.
+CellPatches::Patch patch{CellPatches::capture(base), {
+    {"soil", 1, 0, "garden:sand"},
+    {"markers", 0, 1, "garden:flower"}
+}};
+auto edited = CellPatches::apply(base, patch);
+CE::Maps::save(path, edited);
+// Another process: Maps::load(path) == PatchFixture::expected(), a complete literal.
 ```
 
-`MAP_STORAGE_USE_SHARED_ENGINE=ON` includes the existing CherylModules.cmake and
-calls cheryl_prepare_module with module test setup off. Its existing scoped
-Engine-only bootstrap disables docs/SDK, startup/workers/native/graphics/UI/audio,
-apps and broad runners. The mode rejects static/imported/other-source Engine
-producers and an alternate CPU target, then links only Cheryl::Engine. Default
-OFF still links Cheryl::MapStorageCPU. No consumer visibility/import definitions,
-private includes or implementation source copies were added. MS-005/007/009/010
-in [both decision views](decisions.md) distinguish source ownership, current
-verification and deferred contexts; [agent notes](agent-notes.md) retain evidence,
-alternatives, confidence and reversal costs.
+`capture` validates and owns the complete deterministic public `encode(base)`
+bytes. `apply` revalidates/re-encodes the proposed base and compares those bytes
+exactly, including unrelated cells, layer/spawn order and identity. Map ID and
+shape alone are insufficient. No hash/digest or collision claim is involved.
+Only existing cell values can be set/cleared by stable layer ID and finite 2D
+coordinates. No topology, identity, shape, ordering or spawn change is applied.
+The helper performs no file access or input mutation.
 
-## Actual prerequisite preparation
+Chosen private bounds: 65,536 total base cells, 1,024 edits, public key/dimension/
+layer/spawn limits, and 8 MiB for both witness and candidate canonical encoding.
+Shape and products use divide-before-multiply admission. Batch size and witness
+validity precede base encoding/matching; each layer, coordinate, duplicate and key
+is checked before one deep candidate allocation. A constant one-cell public
+codec probe supplies key grammar validation. Complete output validation may
+reject an otherwise valid batch at the encoded-byte cap. The transient base
+encoding is released before copying the candidate; no candidate is copied per
+edit. Bookkeeping contains at most 1,024 addresses. These cap admitted logical
+storage/work, not allocator overhead or memory already allocated by a caller to
+an oversized aggregate input. A full witness may approach 8 MiB: this is safe
+edit semantics, **not compact storage, persisted patches or recipe replay**.
 
-Normal Engine configuration unconditionally embeds assets/fonts/DejaVuSans.ttf.
-This clone's assets were uninitialized. Following the coordinator's documented
-read-only object-transport method, preparation ran once from this clone:
+Empty batches require the same exact base match and return an independent copy.
+No-op sets/clears are valid, but repeated addresses reject even for no-ops;
+coordinates on different layers are independent. Opaque witnesses can only be
+captured from valid bases; default/moved-from witnesses reject, copies own bytes,
+and move invalidates its source explicitly. There is no arbitrary witness-byte
+import. Source, witness, edits and prior successful results survive all rejection
+paths. `CellPatches::Error` owns category, operation, field location and optional
+copied public codec context. Anticipated codec rejections translate; allocation
+and programming exceptions propagate unchanged. Shared input mutation requires
+caller synchronization. A rejected application never reaches caller save().
 
-```bash
-git init --quiet assets
-git submodule init -- assets
-git -C assets -c protocol.file.allow=always fetch --depth=1 file:///mnt/projects/cheryl-engine/assets/.git 98453b2a6e0edfcfba22eea3fde801526d72b861
-git -C assets checkout --quiet --detach 98453b2a6e0edfcfba22eea3fde801526d72b861
-git submodule absorbgitdirs -- assets
+These are engineering choices, not inferred user API taste. MS-011 in both
+[decisions.md](decisions.md) and [agent-notes.md](agent-notes.md) records provenance,
+alternatives, costs and the same contract. Confidence is high in exact-match/
+ownership semantics, medium in workload caps; changes affect private callers,
+tests and records only. The witness relies on current canonical wire behavior;
+it is not a stable cross-version retention identity.
+
+## Actual verification and saved artifacts
+
+Reused `build/map-storage-u1-debug`, GNU C++23 Debug/Ninja, with one build/test
+job through `/mnt/projects/cheryl-features/scripts/build --`. All native children
+stayed inside that wrapper's shared resource envelope. No resource refusal,
+download, dependency preparation, device/UI run or Engine campaign occurred.
+Complete logs and immediate exit files are under
+`build/map-storage-u1-debug/u6-logs/` (ignored clone-local output). Prior U5 next.md
+is also saved there as `accepted-u5-next.md`; its committed record is unchanged.
+
+Actual commands, all from this clone:
+
+```sh
+/mnt/projects/cheryl-features/scripts/build -- cmake \
+  -S projects/tests/map-storage -B build/map-storage-u1-debug \
+  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u1-debug \
+  --target map_storage_tests map_storage_patch_consumer map_storage_cli --parallel 1
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug \
+  --show-only=json-v1 -R '^map_storage\.'
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u1-debug \
+  -R '^map_storage\.' --no-tests=error --output-on-failure --verbose --parallel 1 \
+  --output-junit u6-logs/results.xml
 ```
 
-Init/fetch/checkout exited 0. Optional absorption exited 128 with exactly:
-`fatal: could not migrate git directory from '/mnt/projects/cheryl-features/projects/map-storage/assets/.git' to '/mnt/projects/cheryl-features/projects/map-storage/.git/modules/assets': Invalid cross-device link`.
-No migration retry or permission workaround followed: the clean pinned checkout
-keeps an independent nested .git and was immediately usable for Engine configure.
-The existing gitlink is unchanged. No remote was added/altered, dirty source
-worktree copied or output/cache borrowed. File transport used GIT_NO_LAZY_FETCH=1
-and GIT_OPTIONAL_LOCKS=0. There are no alternates, symlinked/shared objects or
-metadata references outside the owning clone. Protected asset HEAD/refs/config
-hashes match before/after. The fallback hash is
-`4a2438171a9144a2c698a36a64b10116c4c9db9112cd12361296f9eb0bd8cbed`.
+- `configure.log/.exit`: 0, reused Debug configuration; no pin/source acquisition.
+- `build.log/.exit`: 0, new prototype/test/consumer compiled without warnings.
+- `discovery.json`, `discovery.stderr/.exit`: 0; exactly 162 names. Static JSON
+  comparison with accepted `u4-logs/discovery.json` confirms all 136 names retained,
+  none removed and exactly 26 added (`discovery-comparison.json`).
+- `tests.log/.exit`, `LastTest.log`, `results.xml`: 0, 162 tests, zero failures,
+  skips or disabled cases, 9.89 seconds total. XML case names exactly equal the
+  discovered names. This single run includes both new cases and all regressions;
+  no redundant broad rerun was needed.
+- `compile-link-inputs.txt`: actual Ninja compile/link blocks show patch/consumer
+  compiling against only the declared public Engine include root, inheriting
+  `CE_ENGINE_STATIC` from Cheryl::MapStorageCPU, with no private JSON/FileOps
+  includes. The process consumer links only `libmap_storage_patches.a` and the
+  existing Engine-owned-source `libmap_storage_codec.a`, no gtest/Engine DSO or
+  native/graphics startup. Existing tests retain pinned gtest as before. The
+  prototype targets live after the tests-on guard; the tests-off CPU path is
+  unchanged and was not reconfigured/rerun.
+- `unchanged-public-and-accepted-consumers.diff/.exit`: empty / 0 against accepted
+  U5 for all Engine source (including shared consumer) and existing codec/file/
+  CLI checks. Source inspection plus prior accepted U5 evidence establish this
+  unchanged boundary; no new shared-Engine claim is inferred from the CPU run.
+- `commands.txt`: exact top-level native argv. Process-level `.command`, stdout,
+  stderr and `.exit` files are retained in the two unique child directories below.
 
-`build/map-storage-u5-shared-debug/u5-logs/assets-preparation.log` retains exact
-argv/output/per-command statuses; `assets-preparation.exit` is the genuine 128
-optional-migration outcome. `assets-verification.json` and before/after metadata
-hashes establish the usable checkout, rather than treating the preparation
-script's nonzero exit as a missing font. Existing ctti/backward/spdlog/glm/stb/JSON
-pins and system Freetype/Harfbuzz/ICU were reused; no network retrieval, system
-installation, pin change or source worktree modification was needed. Map codec
-and path loading perform no runtime asset lookup.
+New gtest coverage includes full literal two-cell reconstruction and unchanged
+metadata/order/spawns/empties; canonical witness bytes; source/witness/edit/result
+lifetime isolation; empty batches; clear/no-op behavior; duplicate and distinct-
+layer coordinates; missing/overlong layer, coordinate maxima, invalid/overlong/
+maximum keys; default/moved witness; invalid base/shape/count/product admission;
+exact 65,536-cell and 1,024-edit success; 1,025-edit refusal; overencoded base and
+candidate; owning diagnostic copies surviving all inputs. Exact-base mismatch
+cases include same-ID/same-shape unrelated cell changes, spawn-only coordinate/
+name changes and layer reordering, plus identity and reshaped values. Refusal
+checks compare every input and previously held successful result after failure.
+The near-limit case fills 63,200 cells with 128-byte keys, then attempts 1,024
+additional sets; it specifically reaches final encoded-output rejection.
 
-## Actual wrapped configure/build/native commands
+Actual independent process evidence (four invocations, each exit 0):
 
-Every configure/build/native check ran from this clone through the shared wrapper,
-one job. Existing outputs/logs remain intact. The new focused shared configuration
-is necessary to exercise the real producer/import boundary unavailable in the
-alternate CPU build. GNU C++ 16.2.1, Ninja, Debug and the normal Engine's sanitizer
-configuration were used.
+- `patch-checks/round_trip-fc80f94a0bf39d2a/`: author applied the two garden edits,
+  compared the full independent literal, checked-saved, destroyed/mutated source
+  and patch, and reloaded. Separate `fresh-verify` loaded and compared that literal
+  (all twelve cells/empties, both layers/order and both spawns) and checked two
+  independent loaded instances. Harness verified unchanged bytes during verify.
+- `patch-checks/preservation-fcc1f7e7fbdcad98/`: preserve seeded distinct valid
+  `garden:predecessor`, captured exact bytes, and attempted save(apply(...)) using
+  a same-ID/same-shape base with unrelated soil cell 4 changed. The expected
+  `BaseMismatch operation=apply location=$.base` was caught before save; exact
+  predecessor bytes and full reload were unchanged. Separate `fresh-predecessor`
+  verified the literal and the harness checked verify did not change bytes.
+  Expected refusal stderr is deliberate coverage, not a failed test/checkpoint.
 
-```bash
-/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/engine/tests/map-storage-consumer -B build/map-storage-u5-shared-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DMAP_STORAGE_BUILD_TESTS=OFF -DMAP_STORAGE_USE_SHARED_ENGINE=ON -DCHERYL_BUILD_SHARED_LIBS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u5-shared-debug --target map_storage_consumer map_storage_header_probes --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u5-shared-debug -R '^map_storage\.consumer\.' --show-only=json-v1 --no-tests=error --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u5-shared-debug -R '^map_storage\.consumer\.' --output-on-failure --no-tests=error --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- nm -D --defined-only --demangle build/map-storage-u5-shared-debug/engine/libcheryl-engine.so.4.0.0
-ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}detect_leaks=0" /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/map-storage-u5-shared-debug -R '^map_storage\.consumer\.' --output-on-failure --no-tests=error --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- readelf --dyn-syms --wide --demangle build/map-storage-u5-shared-debug/engine/libcheryl-engine.so.4.0.0
-/mnt/projects/cheryl-features/scripts/build -- readelf --dynamic --wide build/map-storage-u5-shared-debug/map_storage_consumer
-/mnt/projects/cheryl-features/scripts/build -- nm -D --demangle build/map-storage-u5-shared-debug/map_storage_consumer
-/mnt/projects/cheryl-features/scripts/build -- ldd build/map-storage-u5-shared-debug/map_storage_consumer
-/mnt/projects/cheryl-features/scripts/build -- cmake -S projects/engine/tests/map-storage-consumer -B build/map-storage-u4-consumer-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMAP_STORAGE_BUILD_TESTS=OFF -DMAP_STORAGE_USE_SHARED_ENGINE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-/mnt/projects/cheryl-features/scripts/build -- cmake --build build/map-storage-u4-consumer-debug --target map_storage_header_probes --parallel 1
-```
+The unchanged harness is
+`projects/engine/tests/map-storage-consumer/check.cmake`; it launches the new
+private executable, not a function pretending to be main. Existing CLI process
+regressions were retained in the 162-case run. No new fault knob or public patch
+API was introduced.
 
-Complete stdout/stderr and immediate returned statuses are retained under each
-build's `u5-logs/`, using configure/build/discovery, engine-nm/engine-dynsym,
-consumer-dynamic/consumer-nm/consumer-ldd, and CPU configure/headers names with
-matching `.exit`. Discovery has separate JSON/stderr. All of these exited 0
-except the first native CTest (exit 8). Its original all-tests log/exit and
-initial-lsan copies remain; the passing rerun is no-lsan-all-tests.log/exit.
-No truncated tool output prevents reviewing the full errors. There were no
-compiler warnings or wrapper exit 75. Live sessions waiting behind the normal
-shared lock were retained to completion, not cancelled/relaunched.
+## Boundaries and next concrete action
 
-## Observed source/link/export and runtime results
+No blockers remain for local U6 verification. Stop after the coherent local commit
+for coordinator source/evidence review of MS-011, the private helper and these
+162 outcomes. Publisher transport stays with the coordinator. Do not begin a
+new format, persisted recipe/patch, SDK export or sibling integration automatically.
 
-- Configure identifies this clone's normal cengine target, alias Cheryl::Engine,
-  SHARED_LIBRARY, source projects/engine, and actual libcheryl-engine.so.4.0.0.
-  The producer uses its normal CE_BUILDING_ENGINE and hidden visibility defaults.
-  `map-storage-producer.txt`, `compile-inputs.json` and `link-inputs.txt` retain
-  evidence. The graph has one Engine compile entry for each map .cpp, no alternate
-  CPU archive, no selected backend/module/app/test runner and no consumer source
-  copy or private JSON/FileOps/test include. Declared Engine public glm/ctti and
-  logging requirements are inherited normally. Necessary neutral Engine/text
-  sources and shared dependencies are built; this is the real Engine, not the
-  smaller CPU-only dependency graph or an unused Engine-linked stub.
-- All three self-contained shared header probes built with imports, CE_ENGINE_STATIC
-  and CE_BUILDING_ENGINE absent, and nonempty CE_API on this toolchain. Revised
-  CPU probes built with inherited CE_ENGINE_STATIC and empty CE_API, without a
-  consumer definition patch. CPU producer metadata remains STATIC_LIBRARY with
-  only public Engine includes and its declared static requirement. No CPU native
-  cases or the unchanged 136 accepted regressions were repeated for wiring alone.
-- Engine nm/readelf show nine dynamic map entries: four GLOBAL/DEFAULT functions,
-  two GLOBAL/DEFAULT ABI constructor aliases, and DEFAULT Error typeinfo,
-  typeinfo-name and vtable. Error data symbols are weak, as expected for this
-  emitted C++ type. Private CE::Maps::Detail does not appear in dynamic exports.
-  Consumer nm has undefined load/save/parse/encode references; link/NEEDED/RUNPATH
-  and ldd resolve libcheryl-engine.so.4 to this exact clone-build Engine. ASan and
-  UBSan runtimes also resolve normally. `map-exports.txt` preserves selected lines;
-  complete symbol/dependency dumps remain alongside it.
-- Nonempty discovery contains exactly memory, round_trip and preservation.
-  Initial execution was 0/3 passing: each first child completed its application
-  assertions/output but exited 1 on `LeakSanitizer has encountered a fatal error`,
-  with the hint `LeakSanitizer does not work under ptrace (strace, gdb, etc)`.
-  These are genuine failed checks, not deliberate rejection fixtures or evidence
-  of a detected leak. Restricted-runner incompatibility is the supported inference;
-  no source/export defect is indicated. Initial output/LastTest logs are saved.
-- Existing ASAN_OPTIONS was unset. The changed-condition rerun disables only
-  end-of-process leak detection for this invocation, without changing CMake,
-  Engine compilation/visibility, source or resource limits. All 3/3 cases then
-  passed, no skips, 0.34 seconds real/summed. Engine retains normal Debug ASan/UBSan
-  instrumentation and the consumer links their runtimes via Engine's interface.
-  Leak checking is excluded; this is not an all-source sanitizer or broad Engine
-  acceptance claim. No permanent sanitizer environment default was added.
-- Five successful independent executable invocations cover memory/error,
-  author/fresh-verify and preserve/fresh-predecessor. Source values/streams/bytes
-  are mutated/destroyed; independent decoded values and copies remain completely
-  equal. Engine throws CE::Maps::Error across the DSO; the consumer catches/copies
-  it and verifies owned code, parse operation, discarded origin, location/message
-  and known byte offset after original inputs disappear. Actual retained output
-  reports Malformed / parse / memory:discarded-origin / $[""] / byte 2.
-- Fresh verification compares every field, ordered layer, cell/empty and both
-  spawns against the same garden literal. Two load results remain independent.
-  The harness checks exact bytes around read-only verification. Saving invalid B
-  catches InvalidValue / encode / <snapshot> / $.layers[0].cells before staging,
-  with no I/O/cleanup/leftover, then compares exact predecessor bytes and full
-  reload; a separate process verifies literal A again. No native write fault is
-  newly claimed here; accepted U4 tests retain that coverage.
-- Exact bytes match U4: garden:north is 509 bytes, SHA-256
-  `ce8f5a705167332edf2b1791be94c314a59ba43647874b6d5ec3b37efbfe0308`;
-  garden:predecessor is 514 bytes, SHA-256
-  `035e663fd38c8115cafe667aff8ba3249e67e9bc12175f051672c4e605e2ea94`.
-  `published-files.json` retains actual fixture paths, identities, sizes/hashes.
+Future generated-base/recipe retention needs its own assigned semantic domain,
+algorithm/version/input provenance, exact identity/revision and old-version replay
+or migration/baking policy. This prototype retains full canonical bytes and saves
+only a complete ordinary snapshot; it proves none of that compact persistence.
+No procedural/cave code, N-D flattening, tilemap or lifecycle dependency exists.
 
-`consumer-checks/` contains only unique clone-build children, retaining each
-command/stdout/stderr/immediate exit. process-summary.json inventories eight
-actual invocations: the three initial LeakSanitizer exit-1 failures, then five
-successful exit-0 calls. Separate initial-lsan and no-lsan LastTest logs preserve
-both outcomes. Public/production files, the garden main and process harness were
-also compared unchanged against accepted U4. No implementation/ABI fix or
-regression-threshold weakening was necessary.
-
-## Limits and next concrete action
-
-Confidence is high for this Linux/GNU same-toolchain shared execution and exported
-boundary; medium for provisional CMake selector/target names, whose reversal
-changes only consumer wiring/probes and records. These are engineering choices,
-not inferred user taste. Full static Engine, non-Linux/toolchain/CRT ABI,
-installed SDK/relocation, leak checking, broader Engine feature acceptance and
-GUI/device behavior remain unverified. The existing Linux caller-controlled,
-stable-tree, regular-or-absent, single-writer profile, native ancestor-symlink/..
-meaning, leaf-link rejection, checked I/O/one-time close, owned cleanup and single
-rename commit remain unchanged. No fsync/durability, hostile-race, network-filesystem,
-multiwriter, slot/lifecycle or universal save-game guarantee is added.
-
-There is no unresolved U5 implementation/prerequisite/resource blocker. The
-optional absorption error leaves usable independent assets; LeakSanitizer's
-runner limitation is explicitly excluded from passing evidence. All native work
-used the wrapper's adaptive shared memory/worker limits, no swap and 4 GiB host
-admission floor, one job. The monitor controls caps/worker count; this worker
-changed neither. No subagent/external agent, OOM test, network fetch, system
-installation, protected worktree/cache change, pin/remote change, push or sibling
-integration occurred. U4's full handoff remains in accepted-u4-next.md and Git.
-
-**Next concrete action:** coordinator reviews this U5 shared-Engine checkpoint
-and saved exports/native evidence, including the leak-check limitation. Any full
-static Engine, other-platform or installed SDK work needs a later bounded
-assignment. Stop here; no later milestone, tutorial or integration is started.
+U5 evidence remains accepted: three actual shared-Engine consumer cases, three
+shared and three CPU self-contained header probes, exported public functions/
+Error RTTI and exact local DSO ownership. Its initial three LeakSanitizer ptrace
+failures and invocation-local `ASAN_OPTIONS=detect_leaks=0` rerun remain recorded
+in accepted U5 logs/commit. U6 uses the standalone CPU Debug target without Engine
+ASan/UBSan flags; it sets no global or invocation leak environment workaround and
+does not establish leak/sanitizer acceptance. Static Engine, non-Linux, other
+ABI/toolchains and installed SDK remain unverified. Linux caller-controlled,
+serialized directory/native-path/leaf-symlink/exclusive-stage/checked-I/O/one-rename
+contracts stay intact. No durability/fsync, hostile-directory race, network-FS or
+multiwriter guarantee is added; failures after a successful save are not rollback.

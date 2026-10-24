@@ -851,3 +851,79 @@ preserved separately. The passing rerun disabled only leak detection and retains
 normal Engine ASan/UBSan instrumentation/runtimes. Full static Engine, non-Linux,
 other-toolchain/CRT, installed SDK, leak checking and broader Engine behavior remain
 unverified; next.md owns exact commands, outcomes and coordinator review action.
+
+## MS-011 — Private exact-base cell patches (U6)
+
+Selected engineering contract, not an inferred personal preference: `CellPatches`
+under `projects/tests/map-storage` owns a full canonical `Maps::encode(base)`
+witness and at most 1,024 ordered cell edits. `capture` validates through the
+existing public codec. `apply` re-encodes the entire proposed base and compares
+exact bytes, including unrelated cells, map identity, dimensions, layer order and
+spawns. It then validates every edit, makes one deep candidate copy, applies only
+cell values and validates the complete candidate encoding before returning.
+The helper never writes files or mutates its inputs. The public API, codec,
+adapter and cheryl.map-fixture v1 bytes remain unchanged.
+
+Private caller, chosen before adding consumers:
+
+```cpp
+CellPatches::Patch patch{CellPatches::capture(base), {
+    {"soil", 1, 0, "garden:sand"},
+    {"markers", 0, 1, "garden:flower"}
+}};
+auto result = CellPatches::apply(base, patch);
+CE::Maps::save(path, result);
+// A separate process loads and compares against a full independent literal.
+```
+
+Addresses use stable existing layer IDs and finite zero-origin 2D cell coordinates.
+No map/layer/spawn identities, dimensions, order or topology may change. `nullopt`
+clears; valid keys set; no-op sets/clears are allowed. Repeated addresses reject
+even for identical edits; the same coordinates on distinct layers are distinct.
+An empty batch still requires exact base identity and returns a deep copy.
+Opaque witnesses can only be captured from valid bases; default/moved-from
+witnesses reject, copied witnesses own their bytes, and no byte-import or patch
+serialization API exists. All aggregate inputs are borrowed synchronously and
+require caller synchronization against concurrent mutation.
+
+Private admission is 65,536 total cells, 1,024 edits and the public 8 MiB encoded
+limit. Dimensions, layer/spawn counts and divide-before-multiply cell products
+are checked before snapshot allocation. Batch size and witness validity precede
+base revalidation/exact matching; layer/address/duplicate/key checks precede the
+candidate copy. Key grammar validation reuses a constant one-cell public codec
+probe; it neither forks grammar nor resolves assets. Final output encoding may
+still reject an otherwise valid batch for its byte budget. There is one bounded
+candidate, a full witness, one transient base/candidate encoding at a time,
+bounded address bookkeeping and one tiny key probe. These are logical storage
+caps, not a byte-exact allocator guarantee. Full witnesses can approach 8 MiB;
+this proves safe edit semantics, not compact persistent storage or recipe replay.
+
+Private owning `Error` reports category, `capture`/`apply`, field location and an
+optional copied public codec error with all original context. Anticipated codec
+rejections translate; allocation/programming failures propagate. Failure leaves
+base, witness, edits and a previously held caller result unchanged. No save occurs
+until the caller receives and elects to publish a valid complete result. A later
+save retains only the accepted Linux adapter guarantees (no durability, hostile
+race or multiwriter promise).
+
+Alternatives rejected for this proof: ID/dimensions alone miss unrelated changes;
+weak digests do not establish exact identity; a new digest dependency or persisted
+patch/recipe schema would choose long-term replay policy prematurely. Full bytes
+cost memory but make the exact-match rule transparent. The smaller private cell
+cap limits candidate copying without tightening the public codec. Confidence is
+high in safety semantics, medium in these workload caps; reversal costs are
+private tests/consumer/records only. The canonical-byte witness deliberately
+depends on this codec's wire behavior and is not a portable long-term identity.
+
+Provenance: coordinator U6 assignment and `coordination/generation-storage.md`
+(read 2026-10-23) explicitly distinguish optional recipe retention, exact-base
+edits and complete snapshots. Accepted U4/U5 public garden examples and owning
+codec contracts supply compatibility evidence, not user taste. Procedural cave
+data, N-D topology, tilemap binding and level lifecycle remain separate. Actual
+U6 checks and limitations are recorded in next.md after execution. Actual U6
+evidence is 162/162 passing cases (all 136 retained names, 24 patch tests, two
+process checks with four native invocations). Full literal garden reconstruction,
+unrelated-cell/spawn/order mismatch refusal, exact predecessor preservation and
+fresh-process comparison passed. Only private helper/tests/consumer/CMake and
+internal records changed; U5's shared consumer and all public algorithms remain
+identical. No broad shared-Engine rerun or new integration claim follows.
