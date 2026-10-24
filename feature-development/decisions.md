@@ -84,3 +84,5 @@ Ongoing U8+ records use a separate namespace after the reviewed WORLD-U1 promoti
 Historical feature archives and WINT-001–006 records above remain preserved.
 Current queued execution evidence:
 [U9 receipt](queue/feature-round-20261024-0500/PROCGEN-U9.json).
+[U10 receipt](queue/feature-round-20261024-0500/PROCGEN-U10.json) retains the initial
+test-only counter failure and successful affected recheck.

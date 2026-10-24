@@ -1,0 +1,41 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "PROCGEN-U10",
+  "starting_head": "dfeeeffd51249a4994e34c745bd143aed3a8f525",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u10/build-1.log",
+    "builds/procedural-generation/logs/u10/ctest-1.log",
+    "builds/procedural-generation/logs/u10/build-2.log",
+    "builds/procedural-generation/logs/u10/ctest-2.log"
+  ],
+  "executed": {
+    "initial_accumulated_passed": 99,
+    "initial_accumulated_failed": 1,
+    "corrected_limits_passed": 1,
+    "final_distinct_passed": 100,
+    "final_cases_passed": 92,
+    "final_assertions": 43544,
+    "consumers_passed": 8,
+    "spill_demonstrations_passed": 3,
+    "skipped": 0,
+    "resolved_failure": "Test-only literal work expectation1079->1080 includes stable insertion swap; production unchanged.",
+    "configuration": "GNU16.2.1/Linux Ninja Debug/C++23/UBSan; wrapper, one job, preserved incremental cache"
+  },
+  "contracts": {
+    "domain": "Finite checked positive2D signed32 heights, x-fast row-major original ticks/datum; nonempty distinct explicit outlets; outside absent; synchronous borrowed view only.",
+    "escape": "priority_flood v1 minimizes maximum ORIGINAL height along cardinal paths including cell/outlet; effective never lowers and outlet original heights remain unchanged.",
+    "forest": "One frontier discovery/push/pop per cell; key=(effective,index), neighbors x-/x+/y-/y+; parent already settled, unique ranks strictly decrease to explicit outlets across filled plateaus; not shortest-hop routing.",
+    "ownership": "Owned original/effective/depth/parent/rank/outlet records, Domain/options/budgets/usage; original values and parent-absent outlet set are exact input witness. U8/U9 unchanged.",
+    "resources": "Hard65536 cells/4MiB/8M work/65536 queue entries and pushes; Q<=C; requested payload12288+40*C+8*Q, not RSS; work1024+12*C+Q+charged heap extras, finite upper; checked depths/aggregate volume, no partial publication; allocation/programming exceptions propagate.",
+    "preservation": "All90 prior entries/case counts retained; twenty archive/shared/U8/U9 source/receipt witnesses unchanged; no Engine/map rerun or sibling integration."
+  },
+  "limitations": [
+    "Executed GNU/Linux Debug/UBSan only; other toolchains/OSes, ASan, broad performance and public Engine/SDK geography unverified.",
+    "Minimax fill/rank forest is semantic analysis, without physical hydrology, rainfall, erosion, connected lake groups or river network extraction.",
+    "Exact in-memory witness/algorithm version does not select a save/recipe format, migration, indefinite replay or production durability policy.",
+    "Existing WORLD visual/input/assets/leaks/fun, ABI/packaging and file-durability acceptance gaps remain."
+  ],
+  "next_action": "Stop idle for coordinator review/publisher transport; controller alone may select the next exact task after clean passing drain. Dependent work must inspect real source/evidence and compute contributions for its actual selected forest."
+}

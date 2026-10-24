@@ -82,3 +82,41 @@ eight generated fields agree with independent chain tracing. Seventeen preservat
 hashes match. Ready queue receipt reports worker execution; coordinator acceptance
 and later-task selection remain separate. No physical/platform/public integration
 claim or unchanged Engine/map rerun follows.
+
+## PROCGEN-039 — Explicit minimax escape levels
+
+**User requirement and engineering construction; high confidence locally.** Return
+the minimum, over cardinal paths to explicit outlets, of the greatest original
+height on that path. Outside is absent; missing/duplicate/bad outlets reject.
+Effective heights never lower original values; outlets keep their own heights.
+Priority flood v1 is deterministic, without RNG, sea inference, erosion or lake
+simulation. Filled area is a cell count; volume is summed cell-height ticks.
+
+## PROCGEN-040 — Plateau routing and exact provenance
+
+**User requirement plus private engineering choice; high confidence.** Frontier
+key is (effective height,index); discover once from a settled parent. Unique settle
+ranks strictly decrease along parents to actual declared outlets, including flats.
+Owned records retain original/effective/depth/parent/rank/outlet plus Domain/options/
+budgets. This supplies exact input evidence without a borrowed source or saved
+format. U9 remains strict original-height descent; its sink counts do not describe
+this separate forest. Paths minimize escape level, without shortest-hop promises.
+
+## PROCGEN-041 — Bounded charged frontier
+
+**Engineering choice; high locally, medium for API tradeoff.** Fixed binary heap
+has Q<=C slots, no stale/duplicate entries, C pushes/pops. Peak12288+40*C+8*Q bytes;
+minimum work1024+12*C+Q plus charged replacements/comparisons/swaps. Cap65536 cells,
+4MiB/8M work and65536 queue slots/pushes. Validate outlets before buffers, preflight
+depth/volume arithmetic, enforce runtime work/frontier limits and publish nothing
+on refusal. Sufficient budgets change admission/usage only; payload is not RSS.
+
+## PROCGEN-042 — Independent acceptance and finite stop
+
+**User requirement; executed GNU/Linux Debug/UBSan.** Accumulated99/100 plus a
+corrected1/1 limits recheck establish100 distinct passes:92 cases/43544 assertions,
+eight consumers. Test-only work expectation1079->1080 accounts for stable insertion
+order; production unchanged. Threshold BFS/chain oracles cover2187 small analyses,
+eight generated fields, extrema and refusals. All prior90 names/counts and20
+preservation hashes match. Receipt reports execution; controller alone selects
+subsequent work, with broader platform/physical/public acceptance still open.

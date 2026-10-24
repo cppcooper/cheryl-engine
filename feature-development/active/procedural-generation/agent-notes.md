@@ -474,3 +474,237 @@ performance/public Engine geography, physical rainfall/discharge, depression
 filling/spill/plateau routing, erosion, rendering and persistence formats remain
 unverified/unimplemented. Existing WORLD visual/input/assets/leaks/fun, ABI/
 packaging and file-durability gaps remain with their archived owners.
+
+## PROCGEN-U10 — Proposed caller before dependent APIs
+
+Starts at clean dfeeeffd51249a4994e34c745bd143aed3a8f525, not the old U8 head.
+Committed U9 receipt has exact batch/unit, ready/true and real nonempty logs;
+source, limits, records and saved90-test/34503-assertion evidence are inspected.
+This one assigned milestone leaves all older archives/receipts unchanged.
+
+```cpp
+auto bowls = analyze_spill({domain,literal_heights,outlets},budget).value();
+auto terrain = analyze_spill(
+    {field.descriptor().domain,field.heights(),chosen_outlets},budget).value();
+// Read cells' original/effective/depth; follow parent with decreasing rank.
+```
+
+Proposed engineering choices: minimax cardinal escape level to explicit nonempty
+outlets; stable priority flood (effective height,cell index), discovered once.
+Parents point to already-settled cells; decreasing ranks route equal-height fills.
+Owned records retain original heights and outlet membership (parent absent).
+Explicit bounded frontier capacity/push/work/payload budgets; no lake grouping,
+physical simulation or U9 strict-descent substitution. Names are compatibility/
+engineering choices, not personal taste. Implementation/acceptance pending here.
+
+## PROCGEN-039 — Implemented minimax height contract
+
+Owner: projects/tests/procedural-generation/spill.h/.cpp in the private standalone
+C++23 CPU target. Reuse only U9 DrainageInput's checked Domain/heights/outlets view;
+no call to its strict-descent analyzer. Exactly two positive axes, C heights and
+at least one distinct in-domain outlet are required. Unit axes/singleton valid.
+Domain owns zero/empty/extent/product checks. Outside is absent, with no wrap,
+diagonal, implicit perimeter/sea outlet or missing-outlet fallback. Accepted outlet
+order is irrelevant; duplicates reject before large buffers. No input mutation.
+
+For cell v, effective(v)=min over cardinal paths to any declared outlet of the
+maximum ORIGINAL height on that path, including v and the outlet. Thus effective
+cannot lower original; declared outlets have their original heights and no parent.
+All cells are traversable (no masks). Rectangular cardinal connectivity guarantees
+some finite path when an outlet exists. Signed32 heights use original abstract
+ticks/datum, x=axis0 fastest, index=x+width*y, positive y advances rows. Effective
+levels are original sampled levels, without epsilon gradients or float rounding.
+
+depth=u64(i64(effective)-original), max4294967295 for full signed32 endpoints.
+Measurements: cells/outlets, positive-depth filled_cells, maximum_depth, checked
+sum of depths volume, min/max effective. Area means number of unit cells; volume
+means cell-height ticks with abstract unit cell area, not physical cubic units or
+rainfall/discharge. No connected-lake IDs/groups or physical lake/erosion/weather
+model is reported. Original source and U8 interpolation/replay stay unchanged.
+
+## PROCGEN-040 — Single-discovery proof, forest and lifetime
+
+Priority_flood version1 seeds explicit outlets in ascending flat index order at
+their original heights. Fixed binary min heap key=(effective height,cell index).
+Pop minimum; assign increasing unique settle rank. Inspect x-,x+,y-,y+ neighbors.
+The first undiscovered neighbor receives max(its original,current effective),
+parent=current and current's actual outlet identity; mark discovered BEFORE push.
+Queued keys never change. Every cell queues/pops exactly once, with no stale
+entries, relax/reopen loop or recursion. Rank0..C-1 is globally unique; every
+parent was already settled, so parent rank is strictly smaller and effective
+height nonincreasing toward the root. This explicitly routes filled plateaus.
+
+Why first discovery gives the minimum escape level: any path at a lower level
+would have reached that neighbor through a lower-key frontier predecessor first.
+The neighbor's own original height is a fixed lower bound, so max(original,popped
+minimum) cannot improve via a later predecessor. Equivalently the frontier crosses
+every lower-threshold reachable set before a higher key. Seeds are exact outlet
+levels, not fabricated zero/sea. Stable heap ties and neighbor order choose one
+reproducible witness path among equal escape options; neither shortest hop count
+nor smallest-root-ID across all possible equal-level paths is promised.
+
+Spill owns one C-record vector: original/effective signed32 plus u64 depth,parent,
+rank,outlet (40 bytes/record). Parent absent exactly identifies original explicit
+outlet membership. Descriptor copies Domain/options/caller budgets, giving exact
+input meaning/witness without a probabilistic hash or retained input span. Caller
+can retain U8 recipe separately; a seed alone is not this analysis's identity.
+No persisted recipe/witness, migration or indefinite old-version policy is chosen.
+Logical content is deterministic for the same exact input/options; sufficient
+admission budgets may change initialization usage, not forest/heights/metrics.
+
+Borrowed inputs remain stable during the synchronous call only. Copies deep-copy;
+const views expire on owner destruction/move/assignment. Moved-from supports only
+destruction/assignment; cell() returns an independent record or invalid index.
+Later calls/refusals and dying input arrays cannot invalidate previous output.
+Only local Stop transport is caught. Allocation/programming exceptions propagate;
+no partial records/metrics or replacement are published on failure. U9 still
+reports strict original-height sinks; calling it on equal filled levels cannot
+substitute for this rank forest. Future contributing counts must use the actual
+chosen forest, rather than importing old raw-descent accumulation.
+
+## PROCGEN-041 — Payload, frontier and operation limits
+
+SpillBudgets carries cells,storage_bytes,work,queue_entries,queue_pushes. Hard
+ceilings65536 cells/4MiB payload/8M work/65536 queue entries and pushes, clamped
+against caller limits. Q=min(clamped queue_entries,C). Planning requires nonempty
+outlet_count<=C, Q>=outlet_count, checked vector capacities, index/byte/work sums
+and C*(2^32-1) maximum volume. Admission checks cells/storage/minimum work and
+known C pushes before input-height count/content. Then an8192-byte fixed bitset
+validates every outlet bound/duplicate before allocating cell buffers. Competing
+errors can therefore report planning/budget before span-content validation; callers
+must supply valid spans. Huge metadata-only checks never allocate giant buffers.
+
+Peak requested payload12288+40*C+8*Q: owned records, fixed-capacity heap slots,
+8192 bitset plus4096 metadata/return allowance. Static assertions verify record/
+metadata sizes. At C=Q=65536 this is3158016 bytes. Existing caller storage/results,
+allocator/runtime/exception/stack-runtime overhead are excluded: not exact RSS.
+Q>=outlets is necessary but not sufficient; a larger pending frontier can refuse
+at runtime. Every push checks capacity and push limit before its slot write.
+An unavailable slot refuses the whole local result, not mathematical feasibility.
+
+Work is deterministic counted operations, not machine instructions/time:
+bitset initialization1024, outlet validation O, buffer initialization C+Q,
+original/effective copy C, seed scan C, settle/measure C, neighbor attempts4*C
+(including outside/seen), first-discovery record C-O, pushes2*C (admission + slot
+write), pops C. Mandatory total1024+12*C+Q. Extra work counts root replacements,
+every key comparison including failed tests, and swaps. Sift-up costs<=2*ceil(log2Q)
+per push; sift-down<=3*ceil(log2Q) plus replacement per pop. Upper bound is minimum
++C+5*C*ceil(log2Q), checked before allocation. Overall O(C log(Q+1)+O) work and
+O(C+Q) payload plus fixed validation. No standard opaque queue hides comparisons
+or duplicates; counters record pushes/pops/peak/work/heap_extra_work. Successful
+work=minimum+heap_extra_work. Smaller sufficient Q can reduce zero-initialization
+work/storage without changing content. Runtime budget exhaustion publishes nothing.
+Constant-size metadata preflight is outside Work: existing Domain checks use at
+most16 axes; the work-bound calculation uses at most64 integer halving steps.
+
+Depth differences fit signed64; checked unsigned64 sums and maximum-volume planning
+guard aggregate arithmetic. No-lowering/settle/coverage invariants throw logic_error
+for programming failures. Distinct SpillFailure reasons distinguish invalid shape/
+outlets/overflow, unsupported algorithm/version and cells/storage/work/queue refusal.
+No universal framework or shared WORLD error/source change. Engineering choice
+confidence high locally, medium for fixed bitset/heap/private spelling; inherited
+64-bit Index/size_t/8-bit-byte contract, broader execution remains unverified.
+PROCGEN-002 retains intentional-v3/HyperMaze exact provenance/counterevidence; those
+sources do not settle spill algorithms/APIs. U8/U9 compatibility is not user taste.
+
+## PROCGEN-042 — Executed checks, correction and handoff
+
+Predecessor dfeeeffd51249a4994e34c745bd143aed3a8f525 is clean and its committed
+exact batch/U9 ready receipt, source/limits/records and90-test saved logs are
+inspected before dependent edits. Workspace/clone/operating/workstream/feature/
+generation-storage instructions apply. This is only the selected U10 task;
+old queue plans/receipts/provenance archives and WORLD sources remain preserved.
+
+Reused builds/procedural-generation GNU16.2.1/Linux Ninja Debug C++23/UBSan ON,
+strict warnings-as-errors/no recovery. Every configure/build/native check goes
+through /mnt/projects/cheryl-features/scripts/build -- with one job, adaptive
+limits/no swap/host floor. Original build95710 and correction92917 sessions are
+retained through completion. No resource75/allowance/auth refusal, queue relaunch,
+subagent/service, dependency/pin/install, sibling merge or publication occurred.
+
+Complete stdout/stderr, actual commands and immediate exits are saved under
+builds/procedural-generation/logs/u10/:
+
+| Executed command/check | Evidence | Outcome |
+| --- | --- | --- |
+| Wrapped clang-format -i on six new C++ files | format-1.log |0 |
+| Wrapped cmake --build builds/procedural-generation --parallel 1 | build-1.log |0; standalone auto-configure/build/link |
+| Wrapped ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1 | ctest-1.log |8;99 pass/1 fail/0 skip |
+| Wrapped cmake --build builds/procedural-generation --target procgen-spill-tests --parallel 1 | build-2.log |0; test-only correction |
+| Wrapped CTest same options, selection '^procgen[.]spill_limits$' | ctest-2.log |0;1 pass/0 fail/0 skip,55 assertions |
+| Lightweight preservation/count script, not native acceptance | source-evidence.log/source-exits.tsv/counts.json |0;20 hashes match; all prior90 names/83 case counts match |
+
+Resolved failure: ctest-1.log retains FAIL spill_limits line266, expected1079.
+The declared x-/x+/y-/y+ order inserts2 then1 from root3. Inserting1 performs a
+comparison AND swap, not the single failed comparison assumed in the literal
+expectation. Six heap extras are two insert comparisons/two swaps and two root
+replacements; mandatory1074 +6 =1080. Only expected test counter/comment changed;
+production and forest golden fixtures did not. Corrected limits recheck passes.
+All other99 successful entries were not repeated. No compiler/UBSan diagnostic.
+
+Final distinct coverage100 entries:92 cases/43544 assertions plus eight consumers
+(24 demonstrations). All prior90/34503 assertions and21 demos pass unchanged.
+Nine new cases add9041: literal40,saddles27,plateau34,extremes29,exhaustive8749,
+generated40,invalid51,limits55,ownership16. Threshold/chain oracle checks additionally
+execute without inflating harness assertion counts. New semantic consumer3/3.
+This is99/100 accumulated plus corrected1/1, not a claimed100/100 initial run.
+The failed attempt's five partial assertions are not counted as passing coverage.
+
+Independent oracle: sort unique ORIGINAL levels, perform plain cardinal BFS from
+only explicit outlets at or below each threshold, and record the first threshold reaching
+each cell. No production priority flood/heap/neighbor helper is reused. Check every
+effective value/depth, exact original witness, ranks/permutation, cardinal parents,
+nonincreasing levels, decreasing ranks, actual terminal outlet and maximum original
+height along every returned chain. Literal bowl/nested/saddles, plateaus, negative/
+flat/extreme/unit domains,729 ternary3x2 fields times three outlet sets=2187
+analyses and eight17x11 generated U8 fields match threshold connectivity exactly.
+
+Literal7x3 middle row[0,6,-2,3,-4,8,1], outer rows all9, outlets7/13: effective
+middle[0,6,6,6,6,8,1], depths8/3/10 at9/10/11, filled3/max10/volume21,peak14,
+work1469. Cell11 crosses the lower saddle6 to outlet7, while cell12 uses outlet13.
+Equal saddles[0,5,-3,5,0] outlets0/4: center effective5/depth8 chooses outlet0,
+volume8,peak2,work1098. Flat2x2 outlet3 has parents[1,3,3,none], ranks[2,1,3,0];
+U9 simultaneously reports three strict sinks. Full signed extrema yield depth
+4294967295 and two-cell volume8589934590 without narrow overflow. All-outlet,
+singleton and unit-axis results retain exact heights. All original inputs survive.
+
+Resource fixture C4/Q2:12464 accounted bytes, minimum1074, actual1080, peak2 and
+four pushes/pops. Exact cells/bytes/work/slots/pushes pass; one-short storage/cells/
+minimum-work/pushes refuse before buffers using scoped allocation denial. Q0 early
+refuses; Q1 runtime refuses. Work1074..1079 each exhausts with no partial value or
+prior-result mutation. Unit C1/Q1 has no heap extras and exact minimum work passes.
+Hard65536-cell flat case passes within finite work bound, not a pressure/OOM test.
+Cap+1 and metadata-only capacity/maximum-volume overflow refuse before allocation;
+invalid shapes/outlets/versions/indexes, copy/input lifetime and propagated bad_alloc
+also pass. No huge rejected-input allocation, generic exception catch or relaxation.
+
+Actual U8 key{42,0x67656f6772617068,7},17x11/pitch3/requested-80..120/outlets0/186:
+85 filled cells/max depth135/volume1964, effective-53..118,187 pushes/pops,peak46,
+work6439. Deepest cell6 follows a concrete21-cell parent path to outlet186 across
+levels59/51/42/35/12/-22/-26 with strictly decreasing ranks. Text reports original/
+effective/depth/parent/rank values and paths; full oracle checks every cell. No
+simulation, material/asset choice, rendering or claim about physical lake fidelity.
+
+Twenty before/after hashes preserve nine archives, five WORLD producer/header
+files, U8 elevation source/receipt and U9 drainage source/receipt. Only new private
+spill files, standalone CMake and active/queue records change. No unchanged shared
+Engine/map suite is rerun. Ready U10 receipt reports final worker execution with
+both failure and correction evidence, not automatic coordinator source acceptance.
+
+Staged review covers all12 task files: six new private C++ sources/headers,
+standalone CMake, three active records, root index link and required queue receipt.
+Whitespace checks pass; complete diff is saved as staged-review.diff. No unrelated
+or unfinished work is included. Since final native acceptance, only records and
+receipt changed; production matches the accumulated run, limits test matches its
+successful focused recheck. No additional native rerun is justified.
+
+Stop idle after the coherent checkpoint. Publisher handles assigned-branch backup;
+controller alone selects the next exact task after a clean passing drained run.
+Later river extraction must inspect this real source/receipt/logs and compute
+contributions for the selected raw or spill forest; these graphs are distinct.
+No next task/sibling integration/background worker starts here. Confidence high
+in specified tested contracts, medium in private API/future reuse. No blocker.
+Other toolchains/OSes, ASan, performance/public Engine geography, physical hydrology,
+lake groups, river extraction and saved formats remain unverified/unimplemented.
+Existing WORLD visual/input/assets/leaks/fun, ABI/packaging and file durability gaps
+remain with their archived owners.
