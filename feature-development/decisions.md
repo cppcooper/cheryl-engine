@@ -86,3 +86,5 @@ Current queued execution evidence:
 [U9 receipt](queue/feature-round-20261024-0500/PROCGEN-U9.json).
 [U10 receipt](queue/feature-round-20261024-0500/PROCGEN-U10.json) retains the initial
 test-only counter failure and successful affected recheck.
+[U11 receipt](queue/feature-round-20261024-0500/PROCGEN-U11.json) completes this
+worker's finite round with actual-forest accumulation and continuous channels.

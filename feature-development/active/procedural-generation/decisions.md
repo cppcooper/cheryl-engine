@@ -120,3 +120,42 @@ order; production unchanged. Threshold BFS/chain oracles cover2187 small analyse
 eight generated fields, extrema and refusals. All prior90 names/counts and20
 preservation hashes match. Receipt reports execution; controller alone selects
 subsequent work, with broader platform/physical/public acceptance still open.
+
+## PROCGEN-043 — Accumulate the actual accepted forest
+
+**User requirement and engineering boundary; high confidence locally.** Accept a
+finite ranked effective-height forest plus exact original heights/explicit outlets.
+Validate shape, matching heights/depths, cardinal parents, unique ranks and roots.
+Recompute own-inclusive units from those parents; external counts/opaque IDs are
+not accepted. Full owned graph witness identifies the actual input. This validates
+a supplied forest, without certifying arbitrary literals as U10 minimax output.
+The real caller supplies accepted Spill; U9 raw counts remain separate.
+
+## PROCGEN-044 — Continuous threshold networks with fill crossings
+
+**User requirement plus engineering representation; high confidence.** Positive
+inclusive unit threshold selects a downstream-closed mask; above total cells yields
+empty success. Compress one-in/one-out runs between selected source/junction/outlet
+nodes. Stable IDs are result-local, nodes sorted by cell, edges by upstream node.
+Inclusive cardinal paths copy every actual parent step, keeping positive-fill flags
+and per-edge counts. Isolated outlets remain nodes. These are semantic catchment
+proxies, without physical discharge, width, navigation or lake simulation.
+
+## PROCGEN-045 — Charged linear extraction and refusal
+
+**Engineering choice; high locally, API tradeoff medium.** threshold_runs v1 owns
+routing/units/mask/network. Peak12288+66*C+16*N+40*E+8*P bytes; known work minimum
+1024+14*C-O, exact adds2*L+3*N+2*E+2*P. Caps65536 cells/12MiB/2M work plus explicit
+node/edge/path budgets. Preflight base buffers, then exact network counts before
+output allocation. Rank validation proves acyclicity; runs partition selected links.
+Refusal publishes nothing and exceptions propagate. Payload is not RSS.
+
+## PROCGEN-046 — Verified finite-round checkpoint
+
+**User requirement; executed GNU/Linux Debug/UBSan.** All110 accumulated entries
+pass once:101 cases/44105 assertions plus nine consumers (28 demonstrations).
+All100 prior names/counts and23 preservation witnesses match. New fork/fill literals,
+independent tracing, generated threshold profiles, malformed graphs and exact resource
+boundaries pass. The worker's third milestone ends this finite lane; receipt records
+execution, not automatic source/platform acceptance. No further unit, public extraction
+or sibling integration is authorized by this completion.

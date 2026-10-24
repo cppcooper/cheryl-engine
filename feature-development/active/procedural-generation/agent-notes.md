@@ -708,3 +708,254 @@ Other toolchains/OSes, ASan, performance/public Engine geography, physical hydro
 lake groups, river extraction and saved formats remain unverified/unimplemented.
 Existing WORLD visual/input/assets/leaks/fun, ABI/packaging and file durability gaps
 remain with their archived owners.
+
+## PROCGEN-U11 — Proposed caller before dependent APIs
+
+Starts from clean8725d75b3d3839bef7b154ad3aa3e11419bfc439, with committed U10
+ready/true batch receipt, real source/meaning and saved99/100+corrected1/1 evidence
+inspected. This is the third/last assigned procedural milestone in this finite
+round. Earlier immutable plans/archives/receipts and WORLD producers stay unchanged.
+
+```cpp
+auto terrain = generate_elevation(extents,key,config,elevation_budget).value();
+auto route = analyze_spill({domain,terrain.heights(),outlets},spill_budget).value();
+auto rivers = extract_channels(
+    {domain,terrain.heights(),route.cells(),outlets},threshold,channel_budget).value();
+```
+
+Proposed engineering contract: supplied ranked effective-height forest, exact
+original heights/outlets checked against graph records. No external accumulation
+or opaque ID is accepted. Recompute units for ACTUAL parents, threshold inclusively,
+compress selected one-in/one-out runs between source/junction/outlet nodes. Keep
+filled cells in paths with explicit positive-depth flags/counts. Own exact graph
+witness/results. This validates the forest contract; it does not rerun/prove U10
+minimax optimality for arbitrary supplied literals. Real caller supplies accepted
+Spill. API spelling is engineering/compatibility, not personal taste evidence.
+Implementation and native acceptance pending at proposal time.
+
+## PROCGEN-043 — Actual graph, source meaning and accumulation
+
+Owner: projects/tests/procedural-generation/channels.h/.cpp, private standalone
+CPU C++23. ChannelInput copies checked positive2D Domain metadata and borrows C
+original signed32 heights, C SpillCell-shaped routing records and nonempty explicit outlets
+for the synchronous call. Source meaning is ranked_effective_forest=1, not a claim
+that arbitrary records came from a particular solver. Original values must match
+the supplied height array exactly; sizes/opaque IDs alone are never provenance.
+Each effective>=original, depth equals the full signed64 difference, and outlet
+label names a declared in-domain outlet. Parent absent must match explicit outlet
+membership exactly, with outlet=self/depth0 at roots. Duplicate/bad outlets reject.
+
+Every nonroot parent must be in-domain and cardinal under x=axis0 fastest,
+index=x+width*y (positive y advances rows), with nonincreasing effective height,
+same outlet label and strictly smaller rank. Ranks must be a permutation0..C-1.
+This independently validates acyclicity/actual outlet termination without trusting
+the label or blindly replaying producer summaries. Outside/diagonal/wrap/sink roots
+are unsupported; missing outlets reject. Unknown source meaning/algorithm/version
+reject explicitly. Finite rectangular domains retain original height ticks/datum.
+
+Invert the validated rank permutation. Initialize every contributing count to1;
+in descending rank, transfer each complete unit count to its actual parent. Check
+sums<=C and terminal sum=C. Complexity is linear, no repeated production chain
+walks or U9 raw-slope accumulation. There is NO external contributing array or
+ID-only graph binding in the API, so it cannot silently pair foreign counts with
+a same-size forest. Exact original/routing/outlet data are checked and copied.
+
+The view contract validates supplied forest consistency, not minimax optimality or
+the historical identity/tie order of an arbitrary upstream solver. Literals may
+provide such a valid forest directly. The real consumer uses the actual accepted
+U10 Spill, retaining its complete records as witness; it prints upstream U8/U10
+algorithm/version/parameters separately. No false relabeling as a priority-flood
+recipe. A seed alone is insufficient; full Domain/records/threshold/source meaning/
+channel algorithm version define this result's input. No saved format or indefinite
+old-algorithm/migration promise. Later changed geometry/routing requires new analysis.
+
+## PROCGEN-044 — Thresholds, nodes, paths and ownership
+
+Threshold is an exact positive u64 integer; zero invalid, no floating rounding.
+Select contributing>=threshold. A parent's count is at least its child's plus
+one, so selection is downstream closed. Threshold>C guarantees empty mask/network
+success; lesser thresholds can also be empty across multiple smaller catchments.
+Higher threshold cannot add selected cells for a FIXED forest. This is logical
+mask monotonicity, not a seed-to-seed or visual/physical quality claim.
+
+Mask flags:1=selected;2=selected through positive original-to-effective fill,
+thus values0/1/3. Unselected fill cells still exist in the complete routing witness.
+Count unique selected_filled_cells globally. No dropped/teleported lake crossings:
+all selected receiver steps, including equal-height fill plateaus, remain paths.
+No connected lake-region grouping, river width, rainfall/discharge or navigation.
+
+Selected incoming degree counts selected upstream cells whose parent is this
+cell. Sources have zero incoming selected links, junctions at least two, outlets
+are explicit roots.
+Roles may combine: a root merging channels is junction|outlet; a singleton selected
+outlet is source|outlet. One incoming plus one outgoing selected link is compressed
+as a degree-two run interior. Always retain selected outlets as endpoint nodes.
+Node IDs are dense vector indexes by ascending source cell index, scoped to this
+result/threshold. Edge IDs follow ascending non-outlet upstream node ID; one outgoing
+network edge per such node. These IDs are not globally persistent object identities.
+
+ChannelEdge from/to are NODE IDs, offset/count address its range in owned path_cells.
+Paths contain BOTH endpoint CELL indexes, at least2 points; every hop is exactly
+the source record's parent, in bounds and cardinal. Interior points are nonnodes.
+Runs stop at the next node. Runs partition selected links, so total traversal L
+is linear; P=L+E because each edge repeats its starting endpoint. Shared junction/
+outlet endpoints may appear in several paths. fill_points counts positive-depth
+points including both endpoints within THAT edge, and can double-count shared
+nodes across edges. Global selected_filled_cells stays unique. Isolated selected
+outlets need no edge/path points; node coverage represents them explicitly.
+
+Channels owns full routing witness, contributing values, mask, nodes, edges and
+flat paths. Descriptor owns Domain/threshold/meaning/options/requested budgets;
+measurements and charged usage are values. Copies deep-copy all vectors. Const
+views expire on destruction/move/assignment; moved-from only destruction/assignment.
+No input view survives return. Prior outputs cannot alias scratch or later calls.
+Invalid/unsupported/budget refusal publishes no partial mask/network/counts or
+mutation; only private expected-failure transport is caught. bad_alloc and internal
+logic exceptions propagate. Caller retains ownership and any upstream recipe policy.
+
+## PROCGEN-045 — Checked resources and actual work
+
+Here C=domain cells,O=declared outlets,L=selected links,N=network nodes,E=compressed
+edges,P=inclusive path points. Selected link count differs from compressed edges.
+
+Practical hard caps C65536,N65536,E65535,P131070,payload12MiB,work2M, clamped against
+ChannelBudgets. Planning checks2D/nonempty O<=C, container capacities, index/byte/work
+products and sums without allocating huge arrays. Validate source view lengths
+before buffers, all outlet indexes/duplicates using8192-byte fixed bitset. Admission
+checks cells, base payload and known minimum work first; competing errors may report
+resource/metadata before content. Callers must pass real spans, not fabricated ranges.
+
+Peak requested12288+66*C+16*N+40*E+8*P bytes. Base includes40*C owned routing,
+8*C owned units,1*C mask,8*C rank order,8*C cell-to-node map and1*C degree scratch;
+8192 bitset plus4096 metadata/return allowance. Static assertions check record sizes
+and metadata. Max N<=C,E<=C-O,P<=2*(C-O) yields<=9056200 bytes at C65536/O1, within
+12MiB. Existing input/old outputs and allocator/runtime/exception/stack overhead
+excluded: not exact RSS. After validation/accumulation/selection, determine exact
+N/E/P and refuse node/edge/path/storage budgets BEFORE final network allocations.
+An impossible base budget refuses before all C-sized buffers. No pressure/OOM test.
+
+Operation units, not instructions/time: bitset init1024, outlet validation O, six
+base copy/init passes6*C, validation C and parent validation C-O, accumulation C
+and C-O transfers, mask/degree reset C, selected-degree scan C and L records,
+node-plan scan C, final array init N+E+P, node-output scan C and N writes, edge-node
+scan N, E edge writes, L receiver inspections and P path copies. Exact total
+1024+14*C-O+2*L+3*N+2*E+2*P. Known minimum omits network-dependent terms; upper
+1024+25*C-9*O follows partition bounds. Constant metadata preflight (<=16 Domain
+axes) lies outside Work. All C/L/N/E/P loops, including skipped probes and refused
+attempts, charge before work. Runtime exhaustion aborts publication. Counts/indexes
+are u64 with checked additions; cardinal membership limits incoming degree to4.
+Overall O(C+N+E+P+O), no recursion or quadratic per-cell chain walks in production.
+
+Source/rank/member errors are invalid input; algorithm/source-kind/version are
+unsupported; cell/node/edge/path/storage/work are budget refusals. No silent
+truncation or automatic fallback. Sufficient budgets affect admission only. Empty
+selection still owns/validates its complete source and units, with zero node/edge/
+path budgets permitted and exact minimum work. Private helpers/types stay local;
+no World/graph framework, shared Engine error/source or U8/U9/U10 mutation.
+
+Engineering choices: recomputing inline prevents mismatched cached accumulation
+without inventing persistent IDs. Full record witness costs40*C bytes but makes
+later invalidation explicit. Rank inversion is smaller/simpler than another queue
+for already ranked forests. Confidence high in tested contracts, medium in private
+shape/roles/payload tradeoff. Archived PROCGEN-002 retains exact intentional-v3/
+HyperMaze provenance/confidence/counterevidence; those do not settle channel APIs.
+Recent agent APIs supply compatibility, not new personal taste evidence.
+
+## PROCGEN-046 — Executed verification and finite-round stop
+
+Required predecessor is clean8725d75b3d3839bef7b154ad3aa3e11419bfc439. Its committed
+U10 exact batch/ready receipt, source/meaning, decisions/next and real saved native
+logs are inspected. U10's test-only work-counter failure is resolved by its actual
+1/1 recheck; no unresolved prerequisite is treated as accepted. All100 retained
+procedural names/counts now pass together. This is only final U11 for this lane.
+
+Reused builds/procedural-generation GNU16.2.1/Linux Ninja Debug C++23/UBSan ON,
+strict warnings-as-errors/no recovery. Every native command uses shared wrapper,
+one job, preserved local outputs and adaptive/no-swap/host-floor policy. Original
+build71652 and targeted consumer19505 sessions complete without queue cancellation/
+relaunch. Source review adds explicit <algorithm> consumer include, then rebuilds
+only that target BEFORE the single accumulated run. No native failures, warnings,
+UBSan diagnostics, skips or resource75/allowance/auth refusal. No dependency/system/
+pin change, subagent/service, sibling merge/fetch, protected mutation or publication.
+
+Full diagnostics, commands and immediate exits in builds/procedural-generation/logs/u11/:
+
+| Executed operation | Evidence | Outcome |
+| --- | --- | --- |
+| Wrapped clang-format -i on six new C++ files | format-1.log |0 |
+| Wrapped cmake --build builds/procedural-generation --parallel 1 | build-1.log |0; standalone auto-configure/build/link |
+| Wrapped cmake --build builds/procedural-generation --target procgen-channel-consumer --parallel 1 | build-2.log |0; direct include only |
+| Wrapped ctest --test-dir builds/procedural-generation --no-tests=error --output-on-failure --verbose -R '^procgen[.]' --parallel 1 | ctest-1.log |0;110 pass/0 fail/0 skip |
+| Source-only count/hash verification, not native acceptance | source-evidence.log/source-exits.tsv/counts.json |0;23 matches/all100 prior names and92 case counts retained |
+
+Accumulated native suite ran ONCE:110 entries,101 cases/44105 assertions and nine
+consumers (28 demonstrations). Prior100/43544 passing-case assertions and24 demos
+remain. Nine cases add561 assertions: literal22,lake22,thresholds61,tiny49,
+generated120,malformed39,invalid44,limits186,ownership18. Independent trace/path
+oracle checks execute additionally without inflating harness counts. New consumer4/4.
+
+Independent oracle traces EVERY original source through actual receiver links,
+counts unit contributions per visited cell and verifies roots/conservation. Derive
+threshold mask/selected degrees/nodes separately; inspect each output path's exact
+receiver links, endpoints/interior nonnodes, offsets, fill counts, stable ordering,
+and once-only selected-link coverage plus isolated-node coverage. Every selected
+chain stays selected to an actual declared outlet. No production rank accumulation
+or compression algorithm is reused. Hand-worked fork and fill paths/units have
+literal expectations. Twenty generated extractions (four U8 seeds, five thresholds)
+match independent tracing, with original Elevation/Spill preserved.
+
+Fork3x3 outlet7: units[1,1,1,2,6,2,1,9,1], threshold1 has9 selected/8 links,
+7 nodes/6 edges/14 points. Nodes[0,1,2,4,6,7,8]; explicit path fixture includes
+[0,3,4],[1,4],[2,5,4],[4,7],[6,7],[8,7]. Junction4 and junction|outlet7 retain
+all merges. Threshold2 has4 selected/3 links/4 nodes/3 edges/6 points; threshold9
+retains one source|outlet node7, threshold10/UINT64_MAX is empty success.
+
+Fill5x1 original[5,0,0,0,0], effective all5/outlet0: actual units[5,4,3,2,1].
+Threshold2 mask[1,3,3,3,0], path[3,2,1,0], three selected fill cells/edge fill points,
+work1115/payload12722. The U9 raw slope result has four sinks/outlet_units1; this
+network correctly has outlet_units5 from actual parents. Vertical/unit/singleton,
+multiple isolated outlets, full signed32 depth and threshold equality also pass.
+
+Exact resource fixture C9/O1/threshold2: base12882 bytes, peak13114, work1185,
+minimum1149, N4/E3/P6. Exact budgets pass. One-short cells/nodes/edges/paths/peak
+storage/work refuse, and base-1/minimum-1 refuse before allocation under test-only
+allocation denial. Every work budget1149..1184 exhausts without changing held
+results. Empty selection accepts zero network budgets/base storage/minimum work.
+65536-cell unit-axis chain compresses to2 nodes/1 edge/65536 points within cap,
+without recursion/pressure. Huge metadata/cap+1/overflow reject before allocation.
+Malformed cycles/noncardinal/out-of-range/self parents, duplicate/invalid ranks,
+uphill effective steps, wrong roots, incompatible same-size original/depth data,
+shapes/outlets/threshold/source-kind/algorithm/version reject. Copies/input lifetime,
+prior-output refusal preservation and propagated bad_alloc pass.
+
+Actual height->U10->fresh units->channels: U8 key{42,0x67656f6772617068,7},17x11,
+pitch3/-80..120, explicit outlets0/186. Actual spill-parent units71+116=187 conserve
+all cells, unlike U9 raw-slope sink/outlet measurements. Text reports full statistics
+and samples of continuous paths, marking fill crossings; complete oracle covers all:
+
+| Threshold | Selected/links/fill cells | Nodes/edges/path points | Work/payload bytes |
+| --- | --- | --- | --- |
+|8 |47/45/32 |8/6/51 |3868/25406 |
+|24 |29/27/17 |6/4/31 |3782/25134 |
+|188 |0/0/0 |0/0/0 |3640/24630 |
+
+Before/after23 hashes preserve nine archived records, five shared WORLD producers,
+U8/U9/U10 sources and receipts. Only new private files, standalone CMake and active/
+queue records change. No unchanged Engine/map suite. Ready U11 receipt records
+worker execution, not automatic source acceptance or an unexecuted platform.
+
+Staged review covers all12 task files: six new private source/header files,
+standalone CMake, three active records, root index links and required queue receipt.
+Whitespace checks pass; complete diff is saved as staged-review.diff. No unrelated
+or unfinished changes are included. Only records/receipt changed after successful
+accumulated acceptance; no additional native run is justified.
+
+Stop idle after this third procedural checkpoint; no fourth unit, automatic public
+extraction or sibling integration follows. Coordinator reviews/publisher transports.
+No unresolved blocker. Other compilers/OSes, ASan, broad performance, public Engine
+geography, physical hydrology/width/navigation, lake-region grouping and persisted
+formats remain unverified/unimplemented. Existing visual/input/assets/leaks/fun,
+ABI/packaging and file durability gaps remain with WORLD/archived owners. Later
+retention/integration needs exact graph witnesses and a separately authorized caller;
+river/depression changes invalidate derived channels and any dependent geography/
+settlement layer rather than silently retaining foreign accumulation.

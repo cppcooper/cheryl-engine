@@ -1,0 +1,55 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "PROCGEN-U11",
+  "starting_head": "8725d75b3d3839bef7b154ad3aa3e11419bfc439",
+  "status": "ready",
+  "checks_passed": true,
+  "final_milestone_for_worker": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u11/build-1.log",
+    "builds/procedural-generation/logs/u11/build-2.log",
+    "builds/procedural-generation/logs/u11/ctest-1.log"
+  ],
+  "executed": {
+    "ctest_entries_passed": 110,
+    "retained_entries": 100,
+    "cases_passed": 101,
+    "assertions": 44105,
+    "new_cases": {
+      "channel_literal": 22,
+      "channel_lake": 22,
+      "channel_thresholds": 61,
+      "channel_tiny": 49,
+      "channel_generated": 120,
+      "channel_malformed": 39,
+      "channel_invalid": 44,
+      "channel_limits": 186,
+      "channel_ownership": 18
+    },
+    "new_assertions": 561,
+    "consumers_passed": 9,
+    "demonstrations_passed": 28,
+    "new_consumer_passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "preserved_hashes": 23,
+    "checks_passed": true,
+    "configuration": "GNU16.2.1/Linux Ninja Debug/C++23/UBSan; wrapper/one job/preserved cache; accumulated suite once"
+  },
+  "contracts": {
+    "input": "Finite positive2D x-fast signed-height ticks/datum; original array must exactly match graph records, explicit nonempty root outlets, ranked cardinal nonincreasing-effective forest. No external accumulation or opaque identity accepted.",
+    "counts": "Own-inclusive unit contributions recomputed from actual parents in descending validated rank; checked terminal totals conserve C; U9 raw counts never reused for spill routing.",
+    "network": "threshold_runs v1, positive inclusive threshold; downstream-closed selected mask, empty above total; result-scoped ascending cell/node ordering, inclusive cardinal paths partition actual selected links. Source/junction/outlet roles can combine.",
+    "fill": "Positive-depth selected cells retain flag2 and per-edge inclusive fill-point counts; no silent omission/disconnected crossing or physical lake/river-width/discharge claim.",
+    "ownership": "Own complete exact routing witness, counts/mask/nodes/edges/path points, Domain/threshold/meaning/options/budgets/usage; no borrow after synchronous return; allocation/programming exceptions propagate, no partial publication.",
+    "resources": "Hard65536 cells/65536 nodes/65535 edges/131070 points/12MiB/2M work; payload12288+66*C+16*N+40*E+8*P, not RSS; actual work1024+14*C-O+2*L+3*N+2*E+2*P, finite checked upper; dynamic output counts preflight before network allocation.",
+    "preservation": "All100 prior names/case counts retained,23 source/archive/receipt hashes match; WORLD/U8/U9/U10 semantics unchanged; no Engine/map rerun or sibling integration."
+  },
+  "limitations": [
+    "GNU/Linux Debug/UBSan only; other compilers/OSes, ASan, broad performance and public Engine/SDK geography unverified.",
+    "Supplied-view validation proves structural/source consistency, not upstream minimax optimality or solver history for arbitrary literals; real consumer supplies accepted U10 Spill with exact graph witness.",
+    "Unit catchments and fill-crossing paths are semantic data, not physical rainfall/discharge, width, navigation, hydrodynamics or connected-lake simulation.",
+    "Exact in-memory graph witness does not choose a persisted recipe/save/migration policy. Existing WORLD visual/input/assets/leaks/fun, ABI/packaging and file durability gaps remain."
+  ],
+  "next_action": "Remain idle for coordinator source/log review and publisher transport. This is the third/last procedural milestone of this finite batch; no fourth unit, automatic public extraction or sibling integration."
+}

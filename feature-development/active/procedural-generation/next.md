@@ -1,65 +1,68 @@
-# Procedural-generation U10 handoff
+# Procedural-generation U11 finite-round handoff
 
-PROCGEN-U10 is implemented/verified from clean U9
-dfeeeffd51249a4994e34c745bd143aed3a8f525 on feat/procedural-generation.
-Committed U9 batch/ready receipt, actual source/limits/records and passing90-test
-logs were inspected before dependent work. This is ONE exact assigned milestone
-in feature-round-20261024-0500. Older plans/receipts/source archives/WORLD parents
-and U8/U9 meanings/replay remain preserved; no sibling integration occurs.
+PROCGEN-U11 completes this lane's third/last assigned milestone in
+feature-round-20261024-0500, from clean8725d75b3d3839bef7b154ad3aa3e11419bfc439.
+Committed U10 ready/true receipt, real source/meaning and nonempty native logs
+were inspected, including its resolved test-only counter failure and passing
+focused recheck. No unresolved prerequisite was extended. Historical archives,
+WORLD sources, prior receipts and U8/U9/U10 meanings remain unchanged.
 
-Private priority_flood v1 analyzes supplied signed32 finite2D heights and explicit
-NONEMPTY distinct outlets. Effective height is minimum cardinal escape level:
-minimum across outlet paths of maximum ORIGINAL height including endpoints.
-Outside absent; no implicit sea/perimeter/outlet. Outlets retain own heights;
-no lowering. Depths/counts/checked summed cell-height volume are owned with original
-values, parent/rank/outlet forest, Domain/options/budgets and usage. Parent ranks
-strictly decrease even across equal filled plateaus, reaching real outlets.
-U9 strict original-height descent remains independently useful and unchanged.
+Private threshold_runs v1 now validates supplied ranked effective-height forests
+against exact original heights and explicit outlet membership, then recomputes
+own-inclusive unit counts from the ACTUAL parent graph. No foreign accumulation
+array/opaque ID is accepted. Mask selects positive inclusive contributing threshold;
+above total yields empty success. Selected source/junction/outlet nodes compress
+one-in/one-out runs into continuous cardinal paths. Fill cells remain in paths
+with flags/counts; isolated selected outlets remain nodes. Owned complete graph
+witness/counts/mask/network and stable result-local IDs survive caller lifetime.
 
-Actual acceptance: accumulated CTest99/100, then corrected limits1/1; final100
-DISTINCT entries pass,92 cases/43544 assertions plus eight consumers (24 demos).
-All prior90 names/83 case counts and21 demos pass unchanged. Nine cases add9041
-assertions; new consumer3/3. Initial test expected1079 work instead of1080: stable
-neighbor insertion2-before1 adds the omitted swap. Corrected only the test counter/
-comment, production unchanged. All logs and immediate exits preserve that failure
-and its resolution. No compiler warning/UBSan diagnostic or skip; no resource75/
-allowance/auth refusal. Original build95710/correction92917 sessions completed.
+The view contract certifies original/depth/rank/cardinality/outlet consistency,
+not an arbitrary upstream solver's minimax optimality/history. The real caller
+feeds actual accepted U10 Spill and retains its full graph values. U9 raw-slope
+counts are deliberately separate; fill5x1 has five units at its outlet while raw
+U9 reports one outlet unit/four sinks. No physical discharge, width/navigation,
+connected-lake grouping or saved recipe is inferred. Matching PROCGEN-043–046
+compact/detailed active records document contracts/confidence/reversal choices.
 
-Complete evidence: builds/procedural-generation/logs/u10/{commands.txt,exits.tsv,
-format-1.log,build-1.log,ctest-1.log,build-2.log,ctest-2.log,source-evidence.log,
-counts.json,preservation-*.json}. GNU16.2.1/Linux Ninja Debug C++23/UBSan, existing
-incremental cache, shared wrapper/one job throughout. No unchanged Engine/map rerun.
-Twenty archive/shared/U8/U9 source/receipt hashes match. Matching PROCGEN-039–042
-compact/detailed active records describe the contracts and reversal choices.
-Ready execution receipt:
-[PROCGEN-U10.json](../../queue/feature-round-20261024-0500/PROCGEN-U10.json).
-It records worker execution, not automatic coordinator source acceptance.
+Executed GNU16.2.1/Linux Ninja Debug C++23/UBSan checks: single accumulated CTest
+110/110 passes,0 failures,0 skips;101 cases/44105 assertions plus nine consumers
+(28 demos). All100 prior names/92 case assertion counts retained. Nine new cases
+add561 assertions; independent per-source/path oracles execute additionally. New
+consumer4/4;20 generated threshold extractions agree with independent tracing.
+Exact/one-short cells/nodes/edges/paths/storage/work, malformed/source mismatch,
+copies/lifetimes and bad_alloc propagation pass. No compiler/UBSan diagnostic.
+Preserved build71652/consumer19505 sessions completed; no resource75/auth/allowance
+refusal or queue cancellation/relaunch. Consumer direct <algorithm> include review
+caused only its targeted rebuild before the one full suite. No native failure/retry.
 
-Literal nested7x3 has filled3/max depth10/volume21 and uses saddle6 over8; equal
-saddles center fills8 with a stable outlet0 route. Flat2x2 has ordered outlet3
-parents while U9 reports three sinks. Actual U8 field17x11/key42/pitch3/-80..120,
-explicit outlets0/186:85 filled/max depth135/volume1964, effective-53..118, peak46,
-187 pushes/pops,work6439. Deepest-cell6's concrete21-cell path reaches outlet186.
-Threshold-connectivity BFS independently checks all levels, EVERY parent chain,
-depths/metrics/no lowering;2187 tiny analyses and eight generated fields pass.
+Complete commands/stdout/stderr/immediate exits under
+builds/procedural-generation/logs/u11/{commands.txt,format-1.log,build-1.log,
+build-2.log,ctest-1.log,exits.tsv,source-evidence.log,counts.json,preservation-*.json}.
+All native commands use shared wrapper/one job and preserved incremental cache.
+Twenty-three before/after hashes match archives/shared/U8/U9/U10 sources/receipts;
+no unchanged Engine/map campaign or sibling integration. Ready execution receipt:
+[PROCGEN-U11.json](../../queue/feature-round-20261024-0500/PROCGEN-U11.json).
+This reports worker execution, not automatic coordinator source acceptance.
 
-Resource contract: Q=min(clamped queue_entries,C), payload12288+40*C+8*Q, not RSS.
-Minimum work1024+12*C+Q plus charged heap replacements/comparisons/swaps; finite
-upper adds C+5*C*ceil(log2Q). Hard65536 cells/4MiB/8M work/65536 entries and pushes.
-No duplicates/stale queue entries. Actual C4/Q2 fixture12464 bytes/1080 work,
-minimum1074; exact/one-short admission and runtime work/queue refusals pass. No
-partial output or input mutation; exceptions other than explicit expected-failure
-transport propagate. Owned copies/input lifetimes and full signed32 depths pass.
+Actual U8 key{42,0x67656f6772617068,7},17x11/pitch3/-80..120 -> U10 outlets0/186:
+actual-forest unit totals71+116=187. Threshold8 selects47 cells/45 links/32 fill
+cells,8 nodes/6 edges/51 points; threshold24 selects29/27/17,6 nodes/4 edges/31
+points. Threshold188 is empty while preserving187 validated input units. Positive
+fill crossings are marked rather than dropped. Graph-specific counts conserve
+all supplied cells and keep selected chains continuous to actual outlets.
 
-Next action: stop idle for coordinator source/log review and publisher transport.
-Finite controller alone may select the next exact task after clean successful
-drain and committed passing receipt. Dependent channel work must inspect these
-actual source/receipt/logs and derive contributing counts from its selected raw
-or spill forest, with explicit graph identity. No later task is started here.
+Bounds: hard65536 cells/65536 nodes/65535 edges/131070 path points/12MiB/2M work.
+Peak12288+66*C+16*N+40*E+8*P bytes is not RSS; known work1024+14*C-O plus
+2*L+3*N+2*E+2*P. Dynamic network budgets refuse before final network allocation;
+base admission precedes all C buffers. Runtime refusal publishes no partial output
+and preserves older results; allocation/programming exceptions propagate. A65536
+cell unit-axis chain compresses to2 nodes/1 edge with all65536 path points retained.
 
-Confidence high in tested mathematics/replay/ownership/resource contracts, medium
-in private API/heap tradeoffs/future reuse. No unresolved blocker. Other compilers/
-OSes, ASan, broad performance/public Engine geography, physical lake/water/rainfall,
-river extraction and persisted recipe/save format remain unverified/unimplemented.
-Existing visual/input/assets/leaks/fun, ABI/packaging and file durability gaps remain
-with WORLD/archived owners.
+Next action: remain idle for coordinator source/log review and publisher transport.
+This finite lane authorizes no fourth unit, automatic public extraction or sibling
+integration. Any later retained-layer/public caller must be separately assigned,
+compare exact graph/source witnesses and invalidate derived channels when geometry/
+routing changes. Confidence high in tested contracts, medium in private API tradeoffs;
+no unresolved blocker. Other toolchains/OSes, ASan, broad performance/public Engine
+geography, physical hydrology and persistence formats remain unverified. Existing
+visual/input/assets/leaks/fun, ABI/packaging and durability gaps stay with owners.
