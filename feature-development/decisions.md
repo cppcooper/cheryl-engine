@@ -305,3 +305,43 @@ internals and previously owned ferry storage remain separate allowances. Execute
 the actual private console and retained regressions. Confidence is high in tested
 boundaries, medium in caps; expansion requires resource review, with fun and wider
 platforms still unverified.
+
+## ST-029 — Compose a finite bargain with substantive decisions
+
+Combine shared manual request, intent, information, response and approved-meaning
+ingredients into eight acyclic nodes. Request, terms and proposal each offer
+meaningful alternatives; learning terms enables a smaller promise. Ramp/shelter
+rules change mechanics while flavours change prose only. This trades a planner
+for explicit reusable composition. Confidence is high in tested agency, medium
+in pacing/shape; private changes require identity/revision review, not inferred
+personal preference.
+
+## ST-030 — Record obligations without granting fulfillment
+
+Stage bounded resources, learned terms, resolution, pending plank quantity and
+requester observation/attitude on one serialized owner. Immediate help, payment,
+ordinary/negotiated promises and refusal remain distinct after closing. Promises
+grant no fulfillment reward; earlier observers/facts stay separate. This trades
+social simulation for inspectable consequences. Confidence is high in tested
+sequencing, medium in costs/reactions; later payoff requires its own selected
+contract, not callback routing or silent completion.
+
+## ST-031 — Own meaning and resume completed boundaries
+
+Deep-copy sets, catalogue, pick and context into a privately constructed const
+artifact retaining its frozen definition and completed watch origin. Validate
+location and source state; resume paired bargain values before nonthrowing adoption.
+Failures preserve existing artifacts/tokens. This trades authenticated/durable
+history for a small owned handoff. Confidence is high in exercised ownership,
+medium in strict source policy; reversal needs private context/identity checks
+without changing existing snapshot formats.
+
+## ST-032 — Bound explicit composition and prove the real caller
+
+Apply lower-only ingredient, candidate, text, requested-payload, work and graph
+allowances before growth or charged operations. Return owned typed refusals;
+allocation exceptions propagate. The actual headless consumer and retained tests
+exercise literal state and output. Accounting excludes compiler, allocator/transient
+overhead and previous shared storage. Confidence is high in tested boundaries,
+medium in caps; expansion needs resource review. Seeded selection, fulfillment and
+participant fun remain outside this unit.

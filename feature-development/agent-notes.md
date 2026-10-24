@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-028` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-032` IDs;
 [next](next.md) records the next coordinator review action.
 
 U10 now proves private offline creative candidate validation/projection with two
@@ -25,6 +25,11 @@ U11 adds a playable, consequence-sensitive watch continuation composed from
 shared manual ingredients. All 176 regressions passed; the 18 new checks have
 passing execution after correcting one new authority-test expectation. See
 ST-025 through ST-028 and next.md for actual attempts, limits and idle handoff.
+
+U12 now composes a playable eight-node relief bargain from shared manual sets.
+All 211 focused checks pass once, retaining all 194 prior names and 75 old child
+transcripts. ST-029 through ST-032 record agency, pending obligations, retained
+meaning and resource boundaries; next.md owns actual commands and queue handoff.
 
 ## Authority, scope and evidence limits
 
@@ -1348,6 +1353,147 @@ automatic scene loop. Unknown/missing commands exit 2 before play, live denial
 exits 3, completed scenarios 0. Tests use independent literal state/text expectations.
 Actual attempts, original assertion failure/correction, retained transcript proof
 and remaining visual/leak/platform/durability/fun gaps are recorded in next.md.
+
+## U12 multi-beat relief bargain from shared sets
+
+U12 begins at clean accepted U11 `6f3b9caaaa1a6b71f10fa97f8b7d25e57847b905`.
+Its committed receipt and complete 193/194 accumulated plus corrected 1/1 evidence
+were inspected; that original failure is preserved, not relabeled green. The
+feature-round-20261024-0500 policy/plan selects this unit only. Workspace/clone
+instructions, autonomy/memory policy, feature brief, story-generation.md and
+private candidate/continuation/owner contracts were read. Current agent contracts
+are compatibility evidence, not personal API taste. No new v3 inference is made.
+
+**ST-029 — Shared composition with real agency.** The caller proposed before APIs
+is now implemented privately in story-offline/src/bargain.h/.cpp and its caller case:
+
+```cpp
+const auto content = compose_bargain(sets, catalogue, context, {"ramp-quay", 0}, limits).value();
+auto scene = BargainEncounter::start(content, {"relief-01"}).value();
+const auto offered = scene.view().value();
+scene.choose(offered.choices[0].selection).value(); // Ask Terms; real issued authority.
+const auto paired = scene.capture().value();
+scene.restore(paired).value();                    // New incarnation, no repeated information.
+scene.choose(scene.view().value().choices[1].selection).value(); // Negotiate.
+```
+
+Manual sets own 18 two-flavour text ingredients, seven typed intents and four
+location/request bindings. The host catalogue owns two actors, two cost rules
+and supported operation/condition names. Ramp/shelter reuse wording, information,
+responses and consequence semantics; they differ in actual costs and obligations.
+Four bindings mean two rules on two banks, not four independent story handlers.
+There is one owner/graph template, no provider schema/parser or universal planner.
+BargainPick is an explicit owned request ID/flavour, never live Selection authority.
+
+| Node | Actual issued alternatives / fixed targets |
+| --- | --- |
+| request | Ask Terms -> terms; Help Now -> helped; Pay -> paid; Promise -> promised; Negotiate -> proposal (disabled until terms); Refuse -> refused |
+| terms | Help Now -> helped; Negotiate -> proposal; Refuse -> refused |
+| proposal | Commit -> promised; Help Now -> helped; Refuse -> refused |
+| helped / paid / promised / refused | One Close -> closing, after showing a distinct NPC response |
+| closing | Terminal, retaining distinct resolution/resources/obligation |
+
+The eight authored nodes and sixteen forward edges are independently checked as
+a DAG, all entry-reachable with a terminal route. Request/terms/proposal contain
+substantive alternatives, not padded Continue chains; each chosen outcome has one
+closing step. Ask Terms changes information and enables negotiation. Negotiation
+itself is a no-effect move to another decision, not an automatic commitment.
+Every target is frozen before effects; callbacks neither route nor generate.
+Confidence is high in exercised agency, medium in pacing and private shape. A
+general planner would add unselected search/meaning policy; reversal is local
+with identity/revision and participant review. Headless checks do not prove fun.
+
+**ST-030 — Typed costs, pending obligations and observed reactions.** The only
+application operations are learn_terms, give_material, pay_relief, record_promise,
+record_negotiated and decline_relief. Supported conditions recheck Open state,
+resources or learned terms synchronously. Intents' IDs/keys/claimed resolutions
+must match these host meanings; data cannot introduce operations/rewards. The
+catalogue supplies positive bounded costs (1..10), ordinary due 2..10 and a
+positive strictly smaller negotiated due. Prose may lie; it cannot deliver its claim.
+
+| Rule, after paid tide ferry/watch | Immediate | Payment | Ordinary promise | Negotiated promise after information |
+| --- | --- | --- | --- | --- |
+| ramp, initially 5 coins/3 planks | 1 plank, 5/2 left | 2 coins, 3/3 left | 2 planks due; 5/3 retained | 1 plank due; 5/3 retained |
+| shelter, initially 5 coins/3 planks | 2 planks, 5/1 left | 3 coins, 2/3 left | 3 planks due; 5/3 retained | 2 planks due; 5/3 retained |
+
+Refusal preserves supplies with zero due. The requester witnesses help/payment,
+hears a promise/refusal, or discusses terms; this knowledge is distinct from
+resolution/factual costs and from attitude (+3 help, +1 payment, 0 promise, -1
+refusal). Promises record a positive pending quantity only, with no fulfillment
+operation/field/reward. U14 owns any later payoff. The original crossing/licensing,
+Mara/Ivo/Lena knowledge/beliefs/attitudes remain unchanged. The new requester
+learns only this conversation, not private ferry/watch history. Nera is at the
+quay; Oren is on the original bank. Declined passage requires the bank binding,
+with no teleport or invented crossing. Flavours change text, not mechanical branches.
+
+One serialized BargainEncounter retains the artifact and uses actual Session
+view/choose_with_transition. Availability is pure and rechecked after presentation.
+It stages/validates the complete scalar ReliefState, then assigns nonthrowingly;
+Engine retains preparation-before-effect and allocation-free cursor/result commit.
+The effect counter is unsaved instrumentation. Host resource changes are allowed
+only while Open, within bounds; old enabled rows can reject without spending or
+progress. Confidence is high in tested sequencing, medium in costs/reactions.
+There is no global reputation, durable effect delivery, random callback outcome,
+observer omniscience or new application flag hidden in Engine.
+
+**ST-031 — Retained accepted meaning and paired resume.** BargainArtifact has a
+private constructor, deleted copies and is allocated as an actual const object.
+It deep-copies sets/catalogue/pick/context and retains the immutable watch source
+and compiled Definition; no mutable producer alias survives. Definition identity
+includes sets/catalogue/request IDs, catalogue revision, source definition and
+flavour; definition revision is the set revision. Revision discipline is the
+host's responsibility, not a content hash/authenticated history. Both flavours,
+unused requests and all structured ingredients are eagerly validated. Unknown
+actors/rules/keys, duplicates, conflicting roles/consequences/costs, missing intents
+and impossible location/source context return owned failures; compile diagnostics
+remain owned if compilation rejects. No partial artifact is published.
+
+Preparation reuses WatchEncounter start/restore to validate the supplied source
+pair without effects, then requires a terminal source node. The input world and
+live owners remain unchanged on preparation/refusal. A bargain checkpoint owns
+Snapshot and ReliefState (resources, terms, resolution, due and requester state).
+Restore checks coherent application values and exact Engine identity/revision/node,
+constructs fresh state, then adopts idle session/state nonthrowingly. Failure
+preserves previous pair/token; success renews incarnation. Same/fresh-owner resume
+after information or cost/obligation boundaries neither recharges resources nor
+replays ferry/watch effects. An edited cursor alone conveys no terms knowledge;
+a promised state with zero due is rejected. Bounds/coherence do not authenticate
+edited history, rollback or arbitrary external transactions. Existing Snapshot,
+watch/ferry types and all console formats stay unchanged; this is a new private
+in-memory pair, not a new save schema. Confidence is high in tested ownership,
+medium in strict origin policy; expanding compatibility requires bounded review.
+
+**ST-032 — Explicit finite selection and honest allowances.** Hard lower-only
+ceilings: 40 two-flavour texts, 7 intents, 8 requests/candidates, 2 actors, 4 rules,
+8 names per supported domain, 8 nodes/16 choices, 1024 bytes per source/generated
+string, 32768 counted string bytes, 256 KiB requested payload and 1 Mi work units.
+IDs cap at 64 lowercase ASCII/digit/hyphen/underscore bytes; source snapshot IDs
+are opaque, nonempty and cap at 512 bytes each. Counts precede traversal/copy;
+lengths precede scans/concatenation; remaining-budget arithmetic precedes growth.
+At most eight request candidates are examined; there is no random regeneration.
+
+Usage charges new owned sets/catalogue/context objects/slots, string bytes with
+terminators, Draft/OperationKeys payload, generated fields, rows, comparison byte
+reservations, scalar checks and copy work. Subsequent graph-reference lookup work
+is charged before each lookup/copy. Conservative reserves include unused reply
+copy allowance and bounded source-factory lookup work. It is requested payload,
+not peak memory: previous shared watch/ferry storage, Engine factory/compiler/
+frozen-definition internals, allocator capacity/rounding/control blocks, temporary
+copy/concatenation overhead, stack/diagnostics and RSS are excluded. All underlying
+inputs/graph sizes remain independently hard-capped. Normal allocation/programming
+exceptions propagate without mutating caller-owned live values or publishing a
+partial artifact. Work units are a model, not instructions/time. Confidence is
+high in tested refusals, medium in caps/model; extension needs resource review.
+
+The existing default-OFF executable gains only explicit
+`--bargain ramp|shelter pay|repair|decline immediate|pay|promise|negotiate|refuse
+[0|1 [none|restore|drain]]`. It plays one ferry, one watch and one finite bargain
+through real issued choices, prints actual terms/replies/state separately from
+manual prose, and optionally restores a completed boundary. Default and older
+modes remain byte-identical. Invalid usage exits 2 before play, live refusal 3,
+normal completion 0. There are no callbacks doing I/O, automatic scene loops,
+provider calls, seeded selection, extra parsers, public Engine changes or sibling
+imports. Exact execution and the finite-controller handoff are in next.md.
 
 ## Verification environment
 

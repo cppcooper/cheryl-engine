@@ -235,3 +235,126 @@ TEST(story_continuation_transcript, refusal) {
         EXPECT_NE(bad.error.find("Usage: story-offline --watch"), std::string::npos);
     }
 }
+
+TEST(story_bargain_transcript, routes) {
+    const auto immediate = child({"--bargain", "ramp", "pay", "immediate", "0", "restore"});
+    ASSERT_EQ(immediate.code, 0);
+    EXPECT_TRUE(immediate.error.empty());
+    EXPECT_NE(immediate.output.find("Bargain [manually authored; no model/provider]: ramp-quay"), std::string::npos);
+    EXPECT_NE(immediate.output.find("help-now: Provide material help now [available]"), std::string::npos);
+    EXPECT_NE(immediate.output.find("promise: Promise the full later bundle [available]"), std::string::npos);
+    EXPECT_NE(immediate.output.find("negotiate: Negotiate a smaller later bundle [unavailable]"), std::string::npos);
+    EXPECT_NE(
+        immediate.output.find("Restored outcome boundary; old token rejected; no repeated source or cost effect."), std::string::npos
+    );
+    EXPECT_NE(
+        immediate.output.find(
+            "End: closing/helped\nRelief actual: coins=5 planks=2 terms=0 resolution=helped due_planks=0 requester=saw-help attitude=3"
+        ),
+        std::string::npos
+    );
+    EXPECT_TRUE(immediate.output.ends_with("Effects: ferry=1 watch=1 relief=1\n"));
+    const auto negotiated = child({"--bargain", "ramp", "pay", "negotiate", "0", "restore"});
+    ASSERT_EQ(negotiated.code, 0);
+    EXPECT_TRUE(negotiated.error.empty());
+    EXPECT_NE(negotiated.output.find("Bargain node: terms"), std::string::npos);
+    EXPECT_NE(negotiated.output.find("negotiate: Negotiate a smaller later bundle [available]"), std::string::npos);
+    EXPECT_NE(negotiated.output.find("Learned smaller_due=1"), std::string::npos);
+    EXPECT_NE(
+        negotiated.output.find("Restored information boundary; old token rejected; no repeated source or information effect."),
+        std::string::npos
+    );
+    EXPECT_NE(
+        negotiated.output.find(
+            "End: closing/negotiated\nRelief actual: coins=5 planks=3 terms=1 resolution=negotiated due_planks=1 requester=heard-promise attitude=0"
+        ),
+        std::string::npos
+    );
+    EXPECT_TRUE(negotiated.output.ends_with("Effects: ferry=1 watch=1 relief=2\n"));
+    const auto promise = child({"--bargain", "shelter", "pay", "promise", "0", "restore"});
+    ASSERT_EQ(promise.code, 0);
+    EXPECT_TRUE(promise.error.empty());
+    EXPECT_NE(promise.output.find("A pending obligation is recorded. No material or future reward has been delivered."), std::string::npos);
+    EXPECT_NE(
+        promise.output.find(
+            "End: closing/promised\nRelief actual: coins=5 planks=3 terms=0 resolution=promised due_planks=3 requester=heard-promise attitude=0"
+        ),
+        std::string::npos
+    );
+    const auto refused = child({"--bargain", "ramp", "decline", "refuse"});
+    ASSERT_EQ(refused.code, 0);
+    EXPECT_TRUE(refused.error.empty());
+    EXPECT_NE(refused.output.find("Requester: oren; source=original bank"), std::string::npos);
+    EXPECT_NE(
+        refused.output.find(
+            "End: closing/refused\nRelief actual: coins=8 planks=3 terms=0 resolution=refused due_planks=0 requester=heard-refusal attitude=-1"
+        ),
+        std::string::npos
+    );
+    EXPECT_NE(refused.output.find("passage=0 licensed=0 paid=0 repaired=0 declined=1"), std::string::npos);
+    EXPECT_EQ(refused.output.find("On the harbor quay."), std::string::npos);
+    EXPECT_TRUE(refused.output.ends_with("Effects: ferry=1 watch=0 relief=1\n"));
+}
+
+TEST(story_bargain_transcript, configurations) {
+    const auto shelter = child({"--bargain", "shelter", "pay", "immediate", "1", "restore"});
+    ASSERT_EQ(shelter.code, 0);
+    EXPECT_TRUE(shelter.error.empty());
+    EXPECT_NE(shelter.output.find("Rain is coming through the shelter roof."), std::string::npos);
+    EXPECT_NE(
+        shelter.output.find("Relief actual: coins=5 planks=1 terms=0 resolution=helped due_planks=0 requester=saw-help attitude=3"),
+        std::string::npos
+    );
+    const auto negotiated = child({"--bargain", "shelter", "pay", "negotiate", "1", "restore"});
+    ASSERT_EQ(negotiated.code, 0);
+    EXPECT_TRUE(negotiated.error.empty());
+    EXPECT_NE(
+        negotiated.output.find(
+            "Relief actual: coins=5 planks=3 terms=1 resolution=negotiated due_planks=2 requester=heard-promise attitude=0"
+        ),
+        std::string::npos
+    );
+    const auto paid = child({"--bargain", "ramp", "pay", "pay", "0", "restore"});
+    ASSERT_EQ(paid.code, 0);
+    EXPECT_TRUE(paid.error.empty());
+    EXPECT_NE(
+        paid.output.find(
+            "End: closing/paid\nRelief actual: coins=3 planks=3 terms=0 resolution=paid due_planks=0 requester=saw-payment attitude=1"
+        ),
+        std::string::npos
+    );
+    const auto bank = child({"--bargain", "ramp", "decline", "immediate"});
+    ASSERT_EQ(bank.code, 0);
+    EXPECT_TRUE(bank.error.empty());
+    EXPECT_NE(bank.output.find("On the original bank. The relief ramp needs a sound brace before nightfall."), std::string::npos);
+    EXPECT_NE(
+        bank.output.find("Relief actual: coins=8 planks=2 terms=0 resolution=helped due_planks=0 requester=saw-help attitude=3"),
+        std::string::npos
+    );
+    EXPECT_NE(bank.output.find("Observer ivo: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+    EXPECT_NE(bank.output.find("Observer lena: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+}
+
+TEST(story_bargain_transcript, refusal) {
+    const auto drained = child({"--bargain", "ramp", "pay", "immediate", "0", "drain"});
+    ASSERT_EQ(drained.code, 3);
+    EXPECT_TRUE(drained.error.empty());
+    EXPECT_NE(drained.output.find("help-now: Provide material help now [available]"), std::string::npos);
+    EXPECT_NE(
+        drained.output.find(
+            "Bargain choice rejected: unavailable\nRelief actual: coins=0 planks=0 terms=0 resolution=open due_planks=0 requester=unaware attitude=0"
+        ),
+        std::string::npos
+    );
+    EXPECT_TRUE(drained.output.ends_with("Effects: ferry=1 watch=1 relief=0\n"));
+    for (const auto& options :
+         {std::vector<std::string>{"--bargain", "unknown", "pay", "immediate"},
+          std::vector<std::string>{"--bargain", "ramp", "teleport", "promise"},
+          std::vector<std::string>{"--bargain", "ramp", "pay", "fulfill"},
+          std::vector<std::string>{"--bargain", "ramp", "pay", "promise", "7"}, std::vector<std::string>{"--bargain"}}) {
+        const auto bad = child(options);
+        EXPECT_EQ(bad.code, 2);
+        EXPECT_TRUE(bad.output.empty());
+        EXPECT_NE(bad.error.find("Usage: story-offline --bargain"), std::string::npos);
+    }
+}

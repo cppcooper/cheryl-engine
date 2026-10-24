@@ -1,0 +1,34 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "STORYTELLING-U12",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u12-prerequisite-audit.log",
+    "builds/storytelling-u1-debug/u12-configure.log",
+    "builds/storytelling-u1-debug/u12-build-1.log",
+    "builds/storytelling-u1-debug/u12-registration.log",
+    "builds/storytelling-u1-debug/u12-registration-audit.log",
+    "builds/storytelling-u1-debug/u12-ctest-1.log",
+    "builds/storytelling-u1-debug/u12-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u12-results-audit.log",
+    "builds/storytelling-u1-debug/u12-demo-transcripts.log",
+    "builds/storytelling-u1-debug/u12-boundary-rules.log"
+  ],
+  "implemented_contracts": [
+    "Shared manually authored proposition/request, intent, information, response and host-approved meaning ingredients compose an ordinary eight-node/sixteen-edge acyclic Definition; all nodes are reachable, with substantive request/terms/proposal decisions rather than padded continuation chains.",
+    "Ramp and shelter configurations differ in immediate material, approved payment and ordinary/negotiated pending quantities; flavours change prose without changing mechanics. Learning terms enables a smaller pending promise. Quay/bank actors respect the actual declined-ferry location.",
+    "Typed bounded resources, player information, resolution, pending due and requester observation/attitude remain separate. Immediate aid/payment/promise/refusal retain distinct literal consequences after closing. Promises grant no future fulfillment reward; this unit has no fulfillment operation.",
+    "Private actual const artifacts deeply own sets/catalogue/pick/context and retain immutable source/definition meaning. Unsupported/conflicting/missing ingredients, operations, source state and exact resource-boundary refusals expose no partial usable artifact and preserve existing live values.",
+    "Real Session-issued choices recheck pure conditions. Complete scalar staging precedes nonthrowing reference-state adoption, preserving Engine preparation-before-effect/nonthrowing commit. Same/fresh paired resume after information/cost/obligation boundaries neither recharges resources nor replays ferry/watch effects; rejected restores retain tokens and old markers reject after success.",
+    "211/211 focused cases pass in one accumulated run, retaining all 194 prior names/order and 75 byte-identical old child blocks. Seventeen new cases include fourteen actual inherited-envelope child outcomes (8 exit 0, 5 exit 2, 1 exit 3). All native exits are zero, with no skips or ASan/UBSan diagnostics."
+  ],
+  "limitations": [
+    "Leak detection remains unverified under ST-008's command-local detect_leaks=0 tracing accommodation. Native evidence covers GNU/Linux Debug shared Engine, not other platforms/Release, visual acceptance, installed SDK or wider runtime integration.",
+    "Resource allowances model new requested payload/work, not peak memory or CPU time. Previous shared storage, Engine factory/compiler/frozen-definition internals, allocator capacity/rounding/control blocks, temporary copy/concatenation overhead, stack/diagnostics and RSS are excluded; normal allocation exceptions propagate.",
+    "Manual offline prose is not actual model output or proven truthful/Unicode-valid. Participant fun/comprehension and provider quality remain unverified; no provider, free-text parser, public story/reputation framework or sibling/magic integration is added.",
+    "Paired state is an in-memory completed-boundary reference checkpoint, not authenticated history, a new disk format, production transaction, external rollback or durable exactly-once effect delivery.",
+    "Selection is explicit only; seeded recombination belongs to U13. Obligations remain pending with no fulfillment/payoff in U12; U14 supplies a later selected continuation."
+  ],
+  "next_action": "Controller/coordinator checks the clean committed U12 receipt and drained run before selecting exact U13; its next invocation must inspect this source/receipt/evidence. Worker stays idle and starts no next unit or background service."
+}

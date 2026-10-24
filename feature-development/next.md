@@ -1,3 +1,155 @@
+# U12 shared-set multi-beat relief bargain
+
+Starts clean on feat/storytelling at accepted U11
+`6f3b9caaaa1a6b71f10fa97f8b7d25e57847b905`. Source, committed U11 receipt and
+complete saved evidence agree: 193/194 accumulated plus corrected 1/1 recheck,
+not one green 194 run. Existing source/contracts and current workspace/clone,
+autonomy/memory, feature/workstream and finite-round policy/plan were inspected.
+No prerequisite blocker. Older history/receipts remain unchanged.
+
+U12 implementation and focused acceptance are complete: **211/211 pass in one
+accumulated invocation**, **all 194 prior registered names/order retained**,
+14 new private bargain cases and three new transcript cases. All **75 prior full
+child blocks are byte-identical** (54 original console, nine U10, twelve U11).
+Fourteen new actual bargain children have expected exits: 8 normal 0, 5 usage 2,
+1 live refusal 3. No skips/unrun cases or ASan/UBSan diagnostics. Configure/build/
+registration/CTest immediate exits are all **0**, with no rerun or source fix.
+This receipt reports worker execution, not automatic coordinator source acceptance.
+
+## Implemented small caller and agency
+
+```cpp
+const auto content = compose_bargain(sets, catalogue, context, {"ramp-quay", 0}, limits).value();
+auto scene = BargainEncounter::start(content, {"relief-01"}).value();
+const auto offered = scene.view().value();
+scene.choose(offered.choices[0].selection).value(); // Ask Terms, effect learns information only.
+const auto paired = scene.capture().value();
+scene.restore(paired).value();                    // Fresh live marker, no repeated information.
+scene.choose(scene.view().value().choices[1].selection).value(); // Negotiate a smaller offer.
+```
+
+Eight ordinary compiled nodes and sixteen forward edges form a finite DAG:
+request -> terms/proposal/outcome replies -> closing. Request, terms and proposal
+are substantive decisions, each with multiple meaningful simultaneous alternatives
+in the supported fixture. Ask Terms enables negotiation; the proposal offers a
+smaller pending commitment, immediate help instead, or refusal. Each distinct
+outcome has only one Close after its NPC reply; no dummy unreachable nodes or
+automatic traversal. Every edge has a fixed target. State effects never route,
+generate, perform I/O or choose random outcomes.
+
+Two host rules recombine the same 18 two-flavour text ingredients and seven
+typed intents: ramp costs one plank now/two coins, ordinary due two planks or
+negotiated due one; shelter costs two planks/three coins, ordinary due three or
+negotiated due two. Four request bindings place each rule at the quay (Nera) or
+original bank (Oren). The declined ferry route stays on the original bank, with
+no crossing or omniscient requester. Flavours change prose without new mechanics.
+Immediate help, payment, ordinary/negotiated pending promises and refusal retain
+different literal resources, due quantities, resolutions and requester knowledge/
+attitude after the common closing. A promise grants **no fulfillment reward**;
+positive due cannot be restored as zero under that resolution. U14 owns payoff.
+
+`ReliefState` owns bounded world resources, learned terms, resolution, pending due,
+requester observation and attitude. Original crossing/license facts and Mara/Ivo/
+Lena information/attitude/beliefs stay separate and unchanged. Pure conditions
+recheck live resources/knowledge; complete scalar staging precedes nonthrowing
+adoption. Actual Session handles authority and its unchanged pre-effect preparation/
+nonthrowing commit. Capture/restore pairs owned state and Snapshot on one serialized
+owner. Fresh values validate before nonthrowing adoption; failure preserves old
+pair/token, success invalidates old tokens without replaying information, costs,
+ferry/watch effects or inventing completion. Structural cursor/step conveys no
+information by itself. Edited state is not authenticated history.
+
+ST-029/030/031/032 match both decision views. Source sets/catalogue/context/pick
+are deeply copied into a private actual const BargainArtifact retaining frozen
+Definition and watch origin. Unknown/conflicting/unbounded content cannot register
+actors/operations/rewards; failures expose no partial artifact or mutate live
+values. Ordinary allocation exceptions propagate. Public Engine APIs, existing
+snapshots/formats, old caller modes/default output, root options and pins stay
+unchanged; additions belong to the private app and its focused registration.
+
+Actual caller: `story-offline --bargain ramp|shelter pay|repair|decline
+immediate|pay|promise|negotiate|refuse [0|1 [none|restore|drain]]`. It explicitly
+plays one finite bargain after the existing ferry/watch through issued selections.
+`restore` demonstrates an information or outcome boundary; `drain` withdraws live
+resources after presentation. Usage errors exit 2 before play; live refusal exits
+3, completion 0. No automatic scene loop, provider, parser or seeded selection.
+
+## Actual commands, counts and complete logs
+
+Reused builds/storytelling-u1-debug, Debug/shared Engine and prior OFF options/pins/
+incremental outputs. All configure/build/discovery/native checks used the shared
+one-job wrapper under existing adaptive/no-swap/4GiB admission policy. Existing
+sessions were retained through completion. No resource/auth/allowance refusal or
+cancellation. ASan/UBSan and halt-on-error remain active; command-local
+detect_leaks=0 is ST-008's tracing accommodation. Leaks remain unverified.
+
+Executed from clone root, all immediate exits **0**:
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+```
+
+| Saved files under builds/storytelling-u1-debug/ | Observed result |
+| --- | --- |
+| u12-prerequisite-audit.log | Committed U11 receipt and full original 193/194 + corrected 1/1 evidence verified, without rewriting its exit 8. |
+| u12-configure.log, .exit; u12-build-1.log, .exit | 0/0; private model/caller/tests compile/link/discover against actual shared Engine; existing Debug/OFF choices preserved. |
+| u12-registration.log, .exit; u12-registration-audit.log | 0; 211 unique names, all 194 old names/order, exactly 17 new source cases. |
+| u12-ctest-1.log, .exit; u12-ctest-details-1.log | 0; 211/211 in 27.31 seconds, complete LastTest.log, 209 matching GoogleTest RUN/OK pairs plus both retained allocation probes. |
+| u12-results-audit.log | Exact executed/discovered counts, all 75 old child blocks byte-identical, 14 new expected outcomes, no skips/unrun cases or ASan/UBSan diagnostics. |
+| u12-demo-transcripts.log | Complete actual 14 new child arguments/stdout/stderr/immediate exits extracted unchanged; no extra native execution. |
+| u12-boundary-rules.log | Six instrumented private compile rules, actual shared Engine links, public Engine/old console unchanged, resource-accounting exclusions and existing OFF selections verified. |
+
+| New passing checks | Meaningful evidence |
+| --- | --- |
+| caller, graph, routes, information_agency | Literal ordered alternatives, independent eight-node/sixteen-edge DAG/entry reachability, multiple substantive simultaneous options, information-gated negotiated commitment, distinct costs/knowledge/due/ending resolution for two rules. |
+| flavours_location, ownership_pure | Flavour mechanics identical, declined passage stays ashore, producer/catalogue/context destruction or mutation cannot alter accepted values; retained definition/view and pure preparation/inspection/start/view/capture. |
+| live_authority, paired_resume, restore_refusal, moves_boundaries | Rechecked resource refusal before mutation, stale/foreign/incarnation and max-step/move boundaries, same/fresh paired information/cost/promise resume with no replay, failed restore keeps old pair/token and cannot erase pending due. |
+| ingredient_refusal, context_refusal, limits, text_authority | Unsupported/duplicate/conflicting roles/keys/costs/references, impossible source/location, owned diagnostics, exact/one-short/zero budgets, above-cap/size_t-max, 1024/1025 text, 64/65 IDs, 512/513 source IDs, raw NUL, prose cannot grant fulfillment/rewards. |
+| Three bargain transcript cases | Fourteen real inherited-envelope children: immediate help, learned/negotiated pending promise, ordinary promise, refusal, payment, two configurations/flavour, declined-bank help, information/outcome restore, live denial and five usage errors. |
+
+Logs/statuses remain ignored, nonempty and clone-local. Children inherit the native
+resource/sanitizer envelope without reacquiring the build lock. Format/whitespace,
+matching decision IDs/word counts and receipt/evidence paths are checked before
+commit. No broad test campaign, system install/download, SDK/docs build, GUI/device,
+subagent/external agent, protected/sibling files/caches/processes or transport used.
+
+## Limits, confidence and precise queue handoff
+
+No U12 execution blocker remains. ST-032 records hard lower-only ceilings and
+accounting: requested new payload/work, not peak memory or CPU-time guarantees.
+Prior shared storage, Engine internal allocation, allocator/transient overhead,
+stack/diagnostics/RSS remain excluded; normal allocation exceptions propagate.
+Inputs and graph are independently capped. Confidence is high in tested ownership,
+mechanical agency and checked adoption; medium in caps, private ingredient shape,
+costs and social pacing. These are reversible engineering choices with identity/
+revision/resource review, not new personal-taste evidence.
+
+Manual prose is not proven truthful/Unicode-valid or actual model output. Fun/
+participant comprehension, visual acceptance, other platforms/Release, SDK/runtime,
+provider quality, LSan and durable/external transactions remain unverified. Existing
+snapshot formats are unchanged; no authenticated history, external rollback or
+exactly-once crash promise is claimed. Pending obligations are not fulfilled here.
+
+Next action: **controller/coordinator checks this clean committed U12 receipt and
+drained run before selecting exact U13. The next worker invocation must inspect
+U12 source/receipt/evidence before dependent work.** Worker is idle after this
+checkpoint; it does not launch U13, payoff, providers or background services.
+
+---
+
+Historical records follow; U12 above owns the current outcome and handoff.
+
 # U11 playable consequence-sensitive continuation
 
 Starts on the requested clean feat/storytelling HEAD

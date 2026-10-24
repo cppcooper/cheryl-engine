@@ -1,0 +1,75 @@
+#include "bargain.h"
+
+namespace OfflineStory {
+    ReliefCatalogue relief_catalogue() {
+        return {
+            "harbor-relief",
+            1,
+            {{"nera", "Nera the quay steward", ReliefLocation::Quay}, {"oren", "Oren the bank steward", ReliefLocation::Bank}},
+            {{"ramp", 1, 2, 2, 1}, {"shelter", 2, 3, 3, 2}},
+            {"learn_terms", "give_material", "pay_relief", "record_promise", "record_negotiated", "decline_relief"},
+            {"can_ask", "can_help", "can_pay", "can_promise", "can_negotiate", "can_refuse"}
+        };
+    }
+    BargainSets manual_bargain_sets() {
+        return {
+            Origin::Manual,
+            "relief-sets",
+            1,
+            {{"ramp-request",
+              ReliefTextRole::Proposition,
+              {"The relief ramp needs a sound brace before nightfall.", "A loose ramp keeps the relief carts waiting."}},
+             {"shelter-request",
+              ReliefTextRole::Proposition,
+              {"The relief shelter needs boards before the rain.", "Rain is coming through the shelter roof."}},
+             {"terms",
+              ReliefTextRole::Information,
+              {"An interim repair covers the urgent gap, so a smaller later bundle is acceptable.",
+               "The urgent work is small; staged help can reduce the later promise."}},
+             {"proposal",
+              ReliefTextRole::Information,
+              {"Choose the smaller pending obligation, help now instead, or walk away.",
+               "The revised offer waits for your explicit commitment; nothing is delivered yet."}},
+             {"closing",
+              ReliefTextRole::Closing,
+              {"The relief conversation closes on this bank.", "The steward returns to the work on this bank."}},
+             {"ask-word", ReliefTextRole::Wording, {"Ask for the exact terms", "Hear what the repair really needs"}},
+             {"help-word", ReliefTextRole::Wording, {"Provide material help now", "Put boards into the work today"}},
+             {"pay-word", ReliefTextRole::Wording, {"Pay the approved relief cost", "Fund today's work with coins"}},
+             {"promise-word", ReliefTextRole::Wording, {"Promise the full later bundle", "Take on the original obligation"}},
+             {"negotiate-word",
+              ReliefTextRole::Wording,
+              {"Negotiate a smaller later bundle", "Use the learned terms to revise the promise"}},
+             {"commit-word", ReliefTextRole::Wording, {"Commit to the smaller pending promise", "Accept the revised obligation"}},
+             {"refuse-word", ReliefTextRole::Wording, {"Refuse the bargain", "Keep your supplies and make no promise"}},
+             {"ask-reply", ReliefTextRole::Reply, {"The steward explains the need.", "The steward shares the practical details."}},
+             {"help-reply",
+              ReliefTextRole::Reply,
+              {"The steward puts your material to work immediately.", "Your boards join the work today."}},
+             {"pay-reply", ReliefTextRole::Reply, {"The steward accepts the approved payment.", "Your coins fund today's work."}},
+             {"promise-reply",
+              ReliefTextRole::Reply,
+              {"A pending obligation is recorded. No material or future reward has been delivered.",
+               "The steward records your word, not a completed delivery. The reward must wait."}},
+             {"negotiate-reply",
+              ReliefTextRole::Reply,
+              {"With the details known, a revised bargain is possible.", "The new information opens a smaller commitment."}},
+             {"refuse-reply",
+              ReliefTextRole::Reply,
+              {"The steward is disappointed but accepts your refusal.", "You part without a delivery or a debt."}}},
+            {{"ask-terms", "ask-word", "ask-reply", "learn_terms", "can_ask", ReliefIntent::Ask, ReliefResolution::Open},
+             {"help-now", "help-word", "help-reply", "give_material", "can_help", ReliefIntent::Help, ReliefResolution::Helped},
+             {"pay", "pay-word", "pay-reply", "pay_relief", "can_pay", ReliefIntent::Pay, ReliefResolution::Paid},
+             {"promise", "promise-word", "promise-reply", "record_promise", "can_promise", ReliefIntent::Promise,
+              ReliefResolution::Promised},
+             {"negotiate", "negotiate-word", "negotiate-reply", "", "can_negotiate", ReliefIntent::Negotiate, ReliefResolution::Open},
+             {"commit", "commit-word", "promise-reply", "record_negotiated", "can_negotiate", ReliefIntent::Commit,
+              ReliefResolution::Negotiated},
+             {"refuse", "refuse-word", "refuse-reply", "decline_relief", "can_refuse", ReliefIntent::Refuse, ReliefResolution::Refused}},
+            {{"ramp-quay", "nera", "ramp", "ramp-request", "terms", "proposal", "closing", ReliefLocation::Quay},
+             {"ramp-bank", "oren", "ramp", "ramp-request", "terms", "proposal", "closing", ReliefLocation::Bank},
+             {"shelter-quay", "nera", "shelter", "shelter-request", "terms", "proposal", "closing", ReliefLocation::Quay},
+             {"shelter-bank", "oren", "shelter", "shelter-request", "terms", "proposal", "closing", ReliefLocation::Bank}}
+        };
+    }
+}
