@@ -203,3 +203,17 @@ foreach(case IN ITEMS regional_soil regional_drying regional_supply regional_res
 endforeach()
 add_test(NAME procgen.regional_consumer COMMAND procgen-regional-consumer)
 set_tests_properties(procgen.regional_consumer PROPERTIES TIMEOUT 30)
+
+# Standalone U16 pre-migration witness. Never substitutes for engine-backed
+# runtime acceptance; kept opt-in so the Debug/UBSan cache stays unchanged.
+option(PROCGEN_RUNTIME_BASELINE "Build bounded predecessor timing witness" OFF)
+if(PROCGEN_RUNTIME_BASELINE)
+    if(PROCGEN_UBSAN OR NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" OR NOT UNIX)
+        message(FATAL_ERROR "The POSIX baseline requires a separate optimized configuration without sanitizers")
+    endif()
+    add_executable(procgen-runtime-baseline runtime-baseline.cpp)
+    target_link_libraries(procgen-runtime-baseline PRIVATE procgen-private procgen-checks)
+    target_compile_features(procgen-runtime-baseline PRIVATE cxx_std_23)
+    set_target_properties(procgen-runtime-baseline PROPERTIES CXX_EXTENSIONS OFF)
+    target_compile_options(procgen-runtime-baseline PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
+endif()

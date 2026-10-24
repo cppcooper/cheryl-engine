@@ -2030,3 +2030,220 @@ WORLD input/assets/ABI/durability gaps remain. Next action: idle for coordinator
 source/log review and publisher transport. This fourth milestone ends the finite
 climate batch. Any later runtime profiling, storage integration, physical refinement
 or graphical observation needs a separately selected task; no fifth unit starts.
+
+## CLIMATE-009 — U16 actual runtime path and measured boundary
+
+U16 starts from exact clean aacfa6a55b2944068882b6c8ca4d39bc681a6ec0,
+feat/procedural-generation. The committed U15 ready/true receipt, actual regional/
+weather sources, saved U15 checks and coordinator review
+`coordination/reviews/climate-runtime-predecessors-20261024.md` establish the
+prerequisite. U16 is standalone; older finite plans/receipts remain immutable.
+The user now requires real Engine memory/object services and useful real-time
+weather. Merely making slow computation asynchronous is insufficient. Provisional
+reference-host targets are foreground p95<=2ms and complete coarse update observed
+max<=50ms; the user's explicit unacceptable update is500ms. No portable deadline
+or personal API preference is inferred from these engineering thresholds.
+
+Concrete caller before dependent API changes, now executed in
+`projects/tests/procedural-generation/runtime-baseline.cpp`:
+
+```cpp
+auto owner = setup(case_parameters); // actual U8 -> U12 -> U14 -> U15 owner
+auto next = advance_regional(owner, ticks, regional_hard_limits);
+// Check complete candidate, adopt matching state, retain model tick.
+owner = std::move(next->state);
+auto region = observe_region(owner, explicit_window_and_frame, regional_hard_limits);
+```
+
+The executable implements the complete optional-owner move/destruction path and
+checks both overlapping windows, not just this illustrative spelling. It uses the
+same unchanged production solver as U15, including surface thermal memory, soil,
+finite/replenished supply, forcing, numerical admission and water ledger. Two4x4
+windows at(0,0) and(2,0) agree on eight cells/time. `sample_age_ms` is steady wall
+time since move adoption until read completion; it is not a render/cadence lag or
+an inferred physical wall-clock timestamp. No new cadence, early interactive
+admission, background computation or publication protocol is implemented.
+
+## PROCGEN-053 — Bounded baseline and exact workload meaning
+
+Private opt-in `PROCGEN_RUNTIME_BASELINE` requires a separate POSIX optimized
+Release/RelWithDebInfo configuration with UBSan off. All prior Debug targets and
+CTest names stay unchanged. `runtime-baseline.py` records one native child under
+the wrapper with a40s whole-process watchdog; no agent, scheduler or service.
+Predeclared C++ campaign bounds:30s between bounded requests and600M accumulated
+charged UPDATE work, one cold sample, one warmup and three warm samples/case.
+Fixed five cases and the existing request caps bound setup, reads and checks too;
+their work is not mislabeled as included in the charged-update total. Stop further
+repetitions of a case immediately after a candidate exceeds50ms. Never drop that
+sample or infer warm percentiles from an incomplete set. Cold means the first
+update of a fresh owner, not cleared OS/allocator caches. Percentiles use nearest
+rank; n=1 cold percentiles equal that single observation and estimate no tail.
+
+Initial setup is separately timed and includes actual elevation/frame/baseline,
+weather and soil construction. U8 key{42,0x67656f6772617068,7},pitch7,ticks[-80,120],
+explicit10m/tick/datum0,1000m cells,40N,southward rows and initial tick36.
+West x0 cells explicitly replenish water; roughness.01m there/.8m elsewhere;
+land/water responses3600/14400s. Wet x1 pulse is9mm vapour+.5mm cloud; one finite
+pool starts.02mm, wind east1m/s,soil capacity2mm,drying.000001mm/s. The real
+generated terrain supplies relief, rather than a painted rainout map. Semantic
+forcing key{42,0x77696e64,7},origin(10000,20000)m; configured scales
+(wavelength cells,period ticks,potential m2/s2)=(16,8,.25),(32,16,.1),(64,32,.05),
+(128,64,.02), with first two or all four enabled. Model seconds are unchanged
+physical parameters, not reduced after seeing timings.
+
+| Case | Grid | Ticks / seconds per tick | Actual substeps/tick | Scales | Charged work/request | Setup ms | Cold complete candidate ms | Warm candidate p50 / p95 / max ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| small |32x32|1 /60|4|2|180772|1.994572|1.057329|.766715 /.829412 /.829412|
+| representative |64x48|1 /120|8|2|922012|1.877683|5.195341|4.027616 /4.462149 /4.462149|
+| stress |128x128|1 /1000|64|4|33411092|8.070501|165.894619|not executed: stopped after cold|
+| expensive admitted |128x128|2 /1000|64|4|66658024|6.337127|277.497040|not executed: stopped after cold|
+| refused |128x128|1 /1000|required64,allowed63|4|197245 refused|6.153414|.720178 refusal|not applicable|
+
+Small and representative each execute cold1/warmup1/warm3; stress/expensive each
+execute cold1 only:12 accepted evolving updates plus1 genuine refusal. Refusal
+checks the prior owner's checksum unchanged. Outputs are independently checked
+with the existing scalar regional water/soil checker; full-state checksum and
+regional observations consume actual results. Checksum14967335.747224323; total
+charged work105780281. Native campaign499.622994ms includes all cases/setup/checks,
+and is NOT a500ms update. No larger unchanged campaign follows the failed target.
+
+Update timer measures complete `advance_regional` candidate construction including
+internal copying/scratch/reports, not a kernel-only loop. Independent checks and
+checksum formatting/printing are outside it. `update_only_ms` is null because
+kernel instrumentation was not added. Separate move adoption, two owned regional
+reads and their destruction, old-state destruction, report destruction and final
+owner drain are all retained in raw samples. Synchronous total sums candidate,
+adoption,reads,old-state and report destruction; validation/checksum is separately
+outside this definition. Warm synchronous p95 small=.834662ms,representative=
+4.466067ms. Cold stress/expensive synchronous totals166.168552/277.994511ms.
+Final-owner drain per case=.165730,.224871,1.545472,.257241,.462806ms. Deferring
+destruction does not erase these costs. No unbounded snapshot history is retained
+in the benchmark; earlier bounded-history ownership remains separately tested.
+
+Monotonic wall `steady_clock` and `CLOCK_THREAD_CPUTIME_ID` are used. Thread CPU
+cold small/representative/stress/expensive=.971912,5.058362,163.765047,276.226874ms.
+Thread CPU versus wall is evidence of total CPU work, not function-level profiling
+or cache-hit measurement. No hot function, flat-versus-segmented benefit, allocation
+gain or optimizer choice is asserted without the missing instrumentation.
+
+Reference host AMD Ryzen7 7840HS/Radeon780M,16 admitted logical CPUs,
+Linux7.2.6-arch2-1/glibc2.44,GNU16.2.1,/usr/bin/c++,C++23,Ninja. Release compile
+flags `-O3 -DNDEBUG -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror
+-std=c++23`; Release link `-O3 -DNDEBUG`,no sanitizer/fast-math/unsafe floating
+transformation. Debug retains `-g`,same warnings and
+`-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer`, link
+UBSan with no recovery. Complete cache/compile/link rule snapshots are in log
+build-evidence JSON files. No claim that Debug timing predicts Release timing.
+
+Before load averages3.053711/2.140137/1.824707; full before/after CPU affinity,
+host MemAvailable/meminfo and admitted cgroup limits are saved. Worker memory max
+8589934592bytes; aggregate max9130999808/high8057257984,swap0. Worker current
+251936768->251957248bytes,shared5196349440->5195522048bytes are context, not
+weather allocation measurements. Recorded worker/shared memory.events deltas
+are all zero; parent CPU throttle deltas are zero. Historical shared high/oom
+counters predate this run and are not attributed to it. Dynamic cap/admission is
+controlled by the wrapper/monitor; no cap,cache or live manager was reset. Python,
+context/hash/printing/independent checking overhead lies outside update timers;
+runner total=.517428270s. Sparse samples/context variability do not establish
+portable p95/deadlines, leak freedom or production durability.
+
+## PROCGEN-054 — Engine allocation prerequisite, source-only inspection
+
+At exact starting revision, inspect actual
+`projects/engine/include/cheryl/core/resources/memory/{mem-mgr.h,mem-mgr.hpp,
+managed-block.hpp,allocators/default-allocator.hpp,allocators/object-allocator.hpp}`
+and `objects/{pool.h,pool.hpp,object-reservation.hpp,factory.hpp,
+object-construction.hpp}`. Manager provides byte checkout/return/preallocation and
+Stats backing/range counts. `make_managed_block` retains ByteReleaseContext but
+does not construct T. Typed Pool/Reservation/Factory/Constructor supply class
+storage and tracked lifetimes, not array allocation or user-content locking.
+Byte adapters require deallocation before singleton teardown; retained class-pool
+release contexts have a different lifetime. These are existing services, not a
+new v3 allocator design or personal-taste inference. U15 APIs establish caller
+compatibility; existing intentional v3 evidence/counterevidence stays unchanged.
+
+DefaultAllocator/ObjectAllocator inherit std::allocator, are final and define
+program allocator_traits specializations inheriting standard defaults. Rebind/
+copy selection, converting construction, generic-U lifetime hooks, equality/
+propagation,count overflow,alignment/zero-count and teardown require actual
+primary-traits/container proof before migration. No source-only conformance claim
+is made. `templates/singleton.h` includes ctti/name.hpp; block/logger/exception/
+diagnostic paths need actual configured Engine dependency/link closure. An
+engine-owned narrow CPU target is possible later, not implemented here with fake
+dependencies or copied allocator bodies.
+
+The one authorized clone-local pinned retrieval
+`scripts/build -- git submodule update --init -- extern/ctti extern/backward-cpp
+extern/spdlog` exits1: all three GitHub URLs fail `Could not resolve host:
+github.com`. The Git updater itself schedules retries and aborts backward-cpp's
+second failure; no second invocation, sibling/cache import, system substitute,
+pin change or network bypass follows. Pins remain ctti081f283b7d183aaec8c6b0a8649dbd31ba151f45,
+backward51f0700452cf71c57d43c2d028277b24cde32502,
+spdlogdec6a3f61ffee56377f0d32d0d7d6397c899c854.
+
+No production/allocator/Engine source changes occur. All legacy baseline/state/
+scratch/observation vectors still use their original standard allocation; no
+engine-migration claim follows from this witness. New fixture setup uses fixed
+2.25MiB inline arrays, and sample storage is fixed3 entries. Python logging/control
+is cold instrumentation, not a weather allocator. Measured allocation calls/bytes,
+copy bytes, Engine backing/reuse/cache high-water, metadata/control-block costs and
+instrumentation overhead are explicitly unavailable, not zero. Modeled state and
+candidate payloads are separately labeled: maximum-grid4917248 and12328968bytes,
+plus existing input4917248 gives17246216bytes modeled simultaneous payload before
+caller/instrumentation/RSS exclusions. These formulas are not actual allocations
+or shared-manager per-feature caps. No second allocator domain, PMR/global-new
+override, service reset, segmented grid or concurrency implementation is added.
+
+## PROCGEN-055 — Exact checks, failure history and blocked handoff
+
+All native commands use the shared one-job wrapper. New separate
+`builds/procedural-generation-release-u16` preserves
+`builds/procedural-generation` Debug/UBSan. Configure Release passes. Initial
+optimized all-target build exits1 in retained `traversal-tests.cpp` with GNU16
+`-Werror=maybe-uninitialized` diagnostics for SearchResult optional/path accesses
+in route_unit/weighted/ownership. Full diagnostics remain in build-release.log;
+no warning suppression or unrelated traversal-test rewrite is made. Focused
+`procgen-runtime-baseline` builds and runs exit0 under the same strict flags.
+This is not a successful optimized build of every predecessor test.
+
+Existing Debug build regenerates CMake and reports no production recompilation.
+Discovery finds exactly161 retained names; one accumulated verbose CTest run with
+`--no-tests=error --parallel 1` passes161/161,0 failures/skips:148 cases/48017
+assertions,thirteen consumers/49 demonstrations. This re-executes conservation,
+thermal/forcing,split/grouped/checkpoint-resume,regions/host adoption,old snapshots
+and refusal contracts; no new interactive-profile or allocator tests are claimed.
+Discovery's wrapper prefix initially defeated the local JSON parser (native
+discovery itself exited0); parsing the already saved JSON body fixes it without
+repeating native discovery. Final setup-comment and CPU-context-label corrections
+do not change native behavior: focused rebuild produces a byte-identical timed
+binary, recorded in binary-equivalence.json; no timing campaign is repeated.
+
+Evidence under `builds/procedural-generation/logs/u16`: commands.txt,exits.tsv,
+dependencies.log,configure-release.log,build-release.log,build-baseline.log,
+baseline-run.log,baseline-raw.jsonl,baseline.stderr.log,baseline-native-exit.txt,
+context-before.json,context-after.json,context-deltas.json,timing-summary.json,
+build-debug.log,discovery-debug.log/.json,ctest-debug.log,counts.json,
+build-baseline-comment.log,binary-equivalence.json,prerequisite.json,
+tested-source.json,current-source.json,preservation.json and both build-evidence
+JSON files. Original failures/raw outputs are preserved, not overwritten by a
+later success. Tested-source hashes identify exact compiled inputs; final diffs
+identify only the corrected comment/context wording. All old procedural source,
+Engine/WORLD sources,archives,receipts and pins remain unchanged; only opt-in
+CMake wiring plus new witness/runner/current records/standalone receipt change.
+
+Worker receipt `feature-development/continuation/PROCGEN-U16.json` is
+**blocked/checks_passed=false**. Representative foreground misses2ms; stress
+exceeds50ms; no supported profile or total-regional cadence is admitted. Engine
+container/object integration, actual allocation/copy measurements, hot-path
+optimization and same-workload post-change proof remain unexecuted. No500ms update
+was observed, which is not a guarantee for every admitted combination. No leak,
+ASan/platform/SDK/GUI/fun/physics/forecast or public integration claim follows.
+Confidence high in raw evidence and preservation,medium in baseline usefulness,
+low in sparse-tail portability; choices are reversible and not user API taste.
+Next concrete action after coordinator/environment resolution: populate exact
+pinned dependencies with working DNS, build actual Engine CPU services, correct/
+prove allocator/container and object lifetime boundaries, instrument and migrate
+the measured owner/scratch path, then optimize/profile the SAME workloads and
+implement/test bounded interactive admission/cadence. Diagnose optimized old-test
+warnings separately without weakening warnings. This checkpoint launches no U17,
+queue/service,unchanged dependency retry or sibling integration; it remains idle.

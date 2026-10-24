@@ -1,82 +1,81 @@
-# Procedural-generation handoff after PROCGEN-U15
+# Procedural-generation handoff after blocked PROCGEN-U16
 
-Completed fourth/final CLIMATE-P4 on feat/procedural-generation, from clean passing
-U14 7c022e3f489b027b07070c9b5e59b4cf79828b41 after actual source/receipt/log review.
-Private outer_tick_soil_weather schema/soil_model/numerics1 owns U14 weather plus
-explicit per-cell soil water/capacity/infiltration/drying. Each completed tick
-adopts rain into soil or overflow export; bounded drying returns soil water to
-next-tick vapour. The full regional ledger counts rain internally once, retaining
-finite depletion and reported replenishment. No changed U8/U11/U12/U13/U14 meaning.
+U16 starts from exact clean aacfa6a55b2944068882b6c8ca4d39bc681a6ec0 on
+feat/procedural-generation. Actual committed U15 ready/true source/receipt/logs and
+the coordinator climate-runtime-predecessors review were checked. This is one
+standalone follow-up; older plans, receipts, archives and WORLD sources remain
+unchanged. No U17, new queue, integration or background service starts.
 
-Typed owned checkpoints retain exact source/frame/calendar/model/forcing/clock,
-all prognostic weather arrays and surface reservoirs, plus soil parameters and
-versions. Resume compares full baseline values, not just size/IDs. Unknown versions
-or malformed soil refuse; raw malformed weather images are prevented by U14's
-immutable validated owner, not a new parser/wire format. History admits1..4 strictly
-ordered same-source snapshots under aggregate limits. Two independently described
-region windows sample one authoritative owner with exact overlap/time. Sleeping
-regions freeze old observations until explicit current sampling, without seeded
-regeneration. Distributed halo exchange remains future.
+Implemented/executed subset: an opt-in Release baseline caller uses actual U8
+terrain -> physical baseline -> U14 weather -> U15 regional owner -> bounded
+advance -> complete move adoption -> two overlapping regional reads with tick/
+sample age -> separately measured old/report/final-owner destruction. Production
+algorithms, replay versions, owned buffers and all old test names remain unchanged.
+No simplified substitute solver, optimizer, new allocator domain or worker thread.
 
-Small application saves its last-applied interval marker/alert count beside the
-checkpoint and adopts weather+soil+marker together. An old observation/report cannot
-repeat its chosen wet alert on restore. This is an in-memory trusted-producer
-example, without arbitrary external exactly-once/durability/authentication claims.
-Its alert granularity follows the host's chosen adoption intervals; model trajectory
-grouping does not promise batching-invariant application effects.
-Capacity/fog/dryness/wind/fire signals are game proxies; application owns fuel,
-ignition,roads,crops,NPC/story consequences. No ecology/fire/flood or event framework.
+Observed GNU16.2.1/Linux Release baseline, strict warnings, no sanitizer/fast-math:
 
-Executed GNU16.2.1/Linux/C++23/Ninja Debug/UBSan: one accumulated161/161 CTest
-passes,0 failures/skips,148 cases/48017 assertions,thirteen consumers/49 demos.
-New thirteen cases/1503 assertions and six demonstrations retain every147 old
-name and135 cases/46514 assertions. Literal soil/drying/overflow/full-balance,
-resumed/grouped trajectories, stage isolation, source/version/nonfinite refusal,
-exact/one-short field/cell/storage/work/checkpoint/history/ticks/substeps,
-allocation/numeric exhaustion, ownership, shared regions/sleep and host marker
-checks pass. Staged review adds explicit duplicate-adoption rejection; affected
-host/caller2/2 rechecks pass, with production unchanged. Current counts combine
-those checks with the single accumulated run. No native failures, compiler/UBSan
-diagnostic or resource75/
-auth/allowance refusal. Two builds preceded the single suite: review tightened
-rejected-header charging without changing successful totals. Original queued
-sessions were kept/drained, never canceled/relaunched.
+| Case | Ticks / seconds per tick / substeps / scales | Cold candidate ms | Warm candidate p50 / p95 / max ms | Warm synchronous p95 ms |
+| --- | --- | --- | --- | --- |
+|32x32|1 /60 /4 /2|1.057329|.766715 /.829412 /.829412|.834662|
+|64x48|1 /120 /8 /2|5.195341|4.027616 /4.462149 /4.462149|4.466067|
+|128x128 stress|1 /1000 /64 /4|165.894619|not executed after50ms stop|not measured|
+|128x128 expensive admitted|2 /1000 /64 /4|277.497040|not executed after50ms stop|not measured|
 
-Caller retains dry pre-storm36 and wet after-storm46 images. At tick76 cloud sum
-is below1e-6mm while soil sum is5.4302383797mm; bounded10-tick drying reduces it
-to5.3222383798mm. Eight overlap cells agree exactly at tick76; sleeping observation
-remains tick36 until refresh. Final host marker86 retains two alerts, with no
-repeat from old impact or restored completed save. Full logs/commands/immediate
-exits/counts/current-source witnesses are under builds/procedural-generation/logs/u15.
-47/50 preservation hashes match; three necessary U14 access-wrapper files change,
-with its layout/equations/order/charges and all prior cases preserved. Archives,
-earlier receipts,WORLD sources and sibling work remain untouched.
+Cold is one fresh-owner update, not an OS-cache reset. Small/representative each
+have cold1,warmup1,warm3; stress/expensive have cold1 only. Twelve accepted evolving
+updates plus one genuine63-versus-required64 substep refusal execute; refusal
+.720178ms/197245 work preserves the prior state. Total update work105780281 within
+predeclared600M/30s bound, with40s runner watchdog. Full campaign499.622994ms is
+not one500ms update. Raw samples/setup/read/adoption/destruction and absent warm
+percentiles remain explicit. No observed update reaches500ms, but representative
+synchronous p95 misses2ms and stress misses50ms. No interactive profile or total
+regional cadence/admission is certified.
 
-Caps128x128/32MiB accounted payload/4M eight-byte field slots/100M work blocks,
-1..10 ticks/64 inner substeps,max4 history snapshots. Maximum-grid state4917248
-bytes,advance12328968 bytes,history4 output19668992 bytes. Payload includes copies,
-scratch/reports/child weather; excludes preexisting owners/caller copies/allocator/
-RSS. Capture/resume/history preflight exact copied payload and validate before
-allocation. Runtime exhaustion refuses the entire candidate and preserves old
-state/images/reports. Allocation/programming exceptions propagate. Detailed
-formulas and units are in CLIMATE-007/008 and PROCGEN-051/052 matching records.
+BLOCKER: the one wrapped pinned submodule retrieval exits1 with
+`Could not resolve host: github.com` for ctti/backward-cpp/spdlog. Git's own
+scheduled retry is retained in the complete log; no second invocation or sibling/
+protected-cache/system substitution follows. Actual Engine services were inspected:
+Manager/managed blocks for bytes and typed objects Pool/Reservation/Factory/
+Constructor for tracked class lifetimes. Existing allocator-traits/rebind/final/
+count/lifetime gaps remain uncorrected/unverified. No allocator/Engine source
+changes or actual allocation/copy/bookkeeping/reuse/high-water measurements occur.
+All production legacy buffers retain their original standard allocation; fixed
+benchmark setup/sample arrays add no heap adapter. Payload formulas are not RSS
+or measured allocation counts. This is a prerequisite-boundary stop, not acceptance.
 
-No unresolved blocker. Reversible engineering assumptions: linear capacity-limited
-infiltration,constant-rate drying after outer ticks,typed images,small ordered
-history,one-owner window sampling and observation-freeze sleep. Confidence high
-in checked water/accounting/ownership/limits and medium in API/game usefulness.
-Intentional v3 typed-setup evidence remains medium with recorded counterevidence;
-agent-written APIs are compatibility, not personal taste. Same model/numerics/
-build/platform/libm/order and full state are needed for replay; a seed is insufficient.
-Other platforms/ASan/leaks/broad performance and interactive runtime profile,
-physical/energy/soil/hydraulic calibration,visual attractiveness/fun,distributed
-exchange,public Engine/SDK/formats/durable delivery and prior WORLD input/assets/
-ABI/durability gaps stay unverified.
+Separate limitation: the optimized all-target predecessor build exits1 on existing
+traversal-tests.cpp maybe-uninitialized diagnostics under Werror. Warnings were not
+suppressed and unrelated tests were not rewritten. Focused Release baseline builds/
+runs0. Original failure logs remain. Existing Debug/UBSan cache is preserved;
+one accumulated161/161 CTest run passes,0 failures/skips:148 cases/48017 assertions,
+thirteen consumers/49 demonstrations. Conservation/thermal/forcing/grouped/resume/
+regions/snapshot/host/refusal contracts re-execute. Comment/context-label correction
+rebuild yields the identical timed binary, without another timing campaign.
 
-Ready worker execution receipt:
-[PROCGEN-U15.json](../../queue/procgen-climate-20261024-0615/PROCGEN-U15.json).
-Next action: remain idle for coordinator source/log review and publisher transport.
-This final finite-batch milestone authorizes no fifth unit, new queue/service,
-sibling integration or automatic public extraction. Later runtime profiling,
-physical refinement, persistence integration or visual observation requires a
-separately selected task. No further job is launched here.
+Evidence: builds/procedural-generation/logs/u16/{commands.txt,exits.tsv,
+dependencies.log,build-release.log,build-baseline.log,baseline-raw.jsonl,
+context-before.json,context-after.json,context-deltas.json,timing-summary.json,
+build-debug.log,discovery-debug.json,ctest-debug.log,counts.json,
+binary-equivalence.json,current-source.json,preservation.json}, plus full build/
+flag manifests. Detailed contracts/evidence: CLIMATE-009 and PROCGEN-053..055 in
+matching decisions.md/agent-notes.md. Standalone execution receipt:
+[PROCGEN-U16.json](../../continuation/PROCGEN-U16.json), blocked/checks_passed=false.
+A successful baseline process or correctness suite cannot certify U16 runtime.
+
+Assumptions are reversible engineering choices: flat x-fast baseline, sparse
+finite samples, synchronous measurement, two small owned observations, cold meaning
+fresh owner. Confidence high in raw samples/preservation, medium in baseline
+usefulness, low in tail/platform inference. Existing typed APIs establish
+compatibility, not personal taste. Broader platforms/ASan/leaks/durability/GUI/fun/
+physics/forecast/public Engine gaps remain; no cache locality gains are claimed.
+
+Next concrete action AFTER coordinator/environment resolution: make exact pinned
+Engine dependencies available with working DNS; build the actual narrow CPU service
+link closure; correct/prove primary allocator_traits/container routing and typed
+object lifetime; instrument actual allocations/copies/bookkeeping and migrate the
+measured owner/scratch path. Optimize from that evidence and repeat the SAME bounded
+workloads, then implement/test interactive grid/tick/substep/forcing/total-work
+admission and fixed cadence. Resolve optimized predecessor warning diagnostics
+without weakening warnings. Remain idle now for coordinator review/publisher
+transport; no unchanged retrieval retry or next job is launched.

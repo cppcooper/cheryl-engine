@@ -1,0 +1,235 @@
+{
+  "milestone_id": "PROCGEN-U16",
+  "starting_head": "aacfa6a55b2944068882b6c8ca4d39bc681a6ec0",
+  "status": "blocked",
+  "checks_passed": false,
+  "evidence": [
+    "builds/procedural-generation/logs/u16/dependencies.log",
+    "builds/procedural-generation/logs/u16/configure-release.log",
+    "builds/procedural-generation/logs/u16/build-release.log",
+    "builds/procedural-generation/logs/u16/build-baseline.log",
+    "builds/procedural-generation/logs/u16/baseline-run.log",
+    "builds/procedural-generation/logs/u16/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u16/context-before.json",
+    "builds/procedural-generation/logs/u16/context-after.json",
+    "builds/procedural-generation/logs/u16/context-deltas.json",
+    "builds/procedural-generation/logs/u16/timing-summary.json",
+    "builds/procedural-generation/logs/u16/build-debug.log",
+    "builds/procedural-generation/logs/u16/discovery-debug.json",
+    "builds/procedural-generation/logs/u16/ctest-debug.log",
+    "builds/procedural-generation/logs/u16/counts.json",
+    "builds/procedural-generation/logs/u16/binary-equivalence.json"
+  ],
+  "implemented_contracts": [
+    "Private opt-in finite optimized timing witness calls unchanged real U8/U12/U14/U15 regional production owner and advance; complete candidate construction is timed.",
+    "Actual evolving samples, complete move adoption, two matching owned regional reads/model tick/adoption-relative sample age, and old/report/final-owner destruction are measured separately.",
+    "Cold1/warmup1/warm3 planned per admitted workload;30s/600M charged-update-work campaign and40s child watchdog; repetitions stop after a candidate exceeds50ms; raw missing warm samples remain explicit.",
+    "Twelve accepted updates and one actual substep refusal validate output/overlap/water/soil and refusal preserves the prior owner.",
+    "All161 registered predecessor Debug/UBSan names pass once:148 cases/48017 assertions and13 consumers/49 demonstrations; production versions and ownership/replay unchanged."
+  ],
+  "measured_profile": {
+    "backend": "unchanged standard-allocation U15 predecessor; pre-migration baseline only",
+    "supported_interactive_profile": null,
+    "reference_targets": {
+      "foreground_p95_ms": 2,
+      "coarse_complete_update_observed_max_ms": 50,
+      "user_unacceptable_update_ms": 500
+    },
+    "compiler": "GNU16.2.1 C++23 Release -O3 -DNDEBUG; strict warnings/Werror; no sanitizer or unsafe FP flags",
+    "host": "AMD Ryzen7 7840HS; Linux7.2.6-arch2-1/glibc2.44;16 admitted logical CPUs",
+    "timer": "std::chrono::steady_clock; CLOCK_THREAD_CPUTIME_ID",
+    "raw_accepted_samples": 12,
+    "raw_refused_requests": 1,
+    "workloads": [
+      {
+        "kind": "summary",
+        "case": "small",
+        "phase": "cold",
+        "actual_samples": 1,
+        "planned_samples": 1,
+        "complete": true,
+        "candidate_p50_ms": 1.057329,
+        "candidate_p95_ms": 1.057329,
+        "candidate_max_ms": 1.057329,
+        "sync_p95_ms": 1.0914329999999999,
+        "setup": {
+          "kind": "setup",
+          "case": "small",
+          "ms": 1.994572,
+          "modeled_state_bytes": 369152,
+          "modeled_peak_candidate_bytes": 894984
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "small",
+        "phase": "warm",
+        "actual_samples": 3,
+        "planned_samples": 3,
+        "complete": true,
+        "candidate_p50_ms": 0.766715,
+        "candidate_p95_ms": 0.829412,
+        "candidate_max_ms": 0.829412,
+        "sync_p95_ms": 0.834662,
+        "setup": {
+          "kind": "setup",
+          "case": "small",
+          "ms": 1.994572,
+          "modeled_state_bytes": 369152,
+          "modeled_peak_candidate_bytes": 894984
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "representative",
+        "phase": "cold",
+        "actual_samples": 1,
+        "planned_samples": 1,
+        "complete": true,
+        "candidate_p50_ms": 5.195341,
+        "candidate_p95_ms": 5.195341,
+        "candidate_max_ms": 5.195341,
+        "sync_p95_ms": 5.249521999999999,
+        "setup": {
+          "kind": "setup",
+          "case": "representative",
+          "ms": 1.877683,
+          "modeled_state_bytes": 975744,
+          "modeled_peak_candidate_bytes": 2420232
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "representative",
+        "phase": "warm",
+        "actual_samples": 3,
+        "planned_samples": 3,
+        "complete": true,
+        "candidate_p50_ms": 4.027616,
+        "candidate_p95_ms": 4.462149,
+        "candidate_max_ms": 4.462149,
+        "sync_p95_ms": 4.466067,
+        "setup": {
+          "kind": "setup",
+          "case": "representative",
+          "ms": 1.877683,
+          "modeled_state_bytes": 975744,
+          "modeled_peak_candidate_bytes": 2420232
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "stress",
+        "phase": "cold",
+        "actual_samples": 1,
+        "planned_samples": 1,
+        "complete": true,
+        "candidate_p50_ms": 165.894619,
+        "candidate_p95_ms": 165.894619,
+        "candidate_max_ms": 165.894619,
+        "sync_p95_ms": 166.168552,
+        "setup": {
+          "kind": "setup",
+          "case": "stress",
+          "ms": 8.070501,
+          "modeled_state_bytes": 4917248,
+          "modeled_peak_candidate_bytes": 12328968
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "stress",
+        "phase": "warm",
+        "actual_samples": 0,
+        "planned_samples": 3,
+        "complete": false,
+        "candidate_p50_ms": null,
+        "candidate_p95_ms": null,
+        "candidate_max_ms": null,
+        "sync_p95_ms": null,
+        "setup": {
+          "kind": "setup",
+          "case": "stress",
+          "ms": 8.070501,
+          "modeled_state_bytes": 4917248,
+          "modeled_peak_candidate_bytes": 12328968
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "expensive",
+        "phase": "cold",
+        "actual_samples": 1,
+        "planned_samples": 1,
+        "complete": true,
+        "candidate_p50_ms": 277.49704,
+        "candidate_p95_ms": 277.49704,
+        "candidate_max_ms": 277.49704,
+        "sync_p95_ms": 277.994511,
+        "setup": {
+          "kind": "setup",
+          "case": "expensive",
+          "ms": 6.337127,
+          "modeled_state_bytes": 4917248,
+          "modeled_peak_candidate_bytes": 12328968
+        }
+      },
+      {
+        "kind": "summary",
+        "case": "expensive",
+        "phase": "warm",
+        "actual_samples": 0,
+        "planned_samples": 3,
+        "complete": false,
+        "candidate_p50_ms": null,
+        "candidate_p95_ms": null,
+        "candidate_max_ms": null,
+        "sync_p95_ms": null,
+        "setup": {
+          "kind": "setup",
+          "case": "expensive",
+          "ms": 6.337127,
+          "modeled_state_bytes": 4917248,
+          "modeled_peak_candidate_bytes": 12328968
+        }
+      }
+    ],
+    "refusal": {
+      "kind": "refusal",
+      "case": "refused",
+      "grid": [
+        128,
+        128
+      ],
+      "ticks": 1,
+      "model_seconds_per_tick": 1000,
+      "forcing_scales": 4,
+      "allowed_substeps": 63,
+      "required_substeps": 64,
+      "work": 197245,
+      "ms": 0.720178,
+      "prior_state_preserved": true
+    },
+    "total_charged_update_work": 105780281,
+    "small_warm_synchronous_p95_ms": 0.834662,
+    "representative_warm_synchronous_p95_ms": 4.466067,
+    "stress_cold_synchronous_ms": 166.168552,
+    "expensive_cold_synchronous_ms": 277.994511,
+    "complete_candidate_observed_max_ms": 277.49704,
+    "timing_targets_met": false,
+    "observed_update_at_least_500ms": false,
+    "actual_allocations_bytes_copies_and_engine_bookkeeping": null,
+    "post_optimization_measurements": null,
+    "context": "No new worker/shared memory.events or recorded parent CPU throttling deltas during the bounded campaign; prior shared high/oom counters are historical, not attributed to this run."
+  },
+  "limitations": [
+    "One wrapped pinned ctti/backward-cpp/spdlog retrieval fails exit1: Could not resolve host: github.com. No unchanged independent retry or substitute dependency/domain follows.",
+    "Actual Engine CPU service linkage, allocator boundary correction/container tests, typed object-service ownership, migration, measured allocation/copy/control-block/high-water/reuse evidence and optimization remain unexecuted.",
+    "Representative synchronous p95 exceeds2ms;128x128 high-substep candidates exceed50ms. No certified interactive profile, early admission, fixed gameplay cadence, total-regional work policy or publication mechanism is implemented.",
+    "Initial optimized all-target build fails old traversal-tests.cpp -Werror=maybe-uninitialized diagnostics. Focused timing target builds; all retained tests pass only in the preserved Debug/UBSan configuration.",
+    "Sparse cold1/warm3 samples are descriptive, not portable tail/hard real-time guarantees; stress/expensive warm samples are not run after50ms stop.",
+    "Payload formulas are not actual allocations or RSS. Kernel-only timer/allocation/copy measurements are null. Source checking/printing/context recording are outside candidate timers.",
+    "Cross-platform/compiler/ASan/leaks/production durability, GUI/attractiveness/fun, physics/forecast accuracy and public Engine integration remain unverified."
+  ],
+  "next_action": "Remain idle for coordinator/environment resolution. With exact pinned dependencies available, build actual Engine CPU services, correct/prove allocator and object lifetime boundaries, instrument/migrate the same runtime path, optimize from measurements and verify same-workload interactive admission/cadence. Diagnose optimized old-test warnings without suppressions. Publisher handles this checkpoint; no U17 or automatic retry."
+}

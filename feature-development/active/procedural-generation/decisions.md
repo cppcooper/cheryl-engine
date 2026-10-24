@@ -341,3 +341,49 @@ name/count.47/50 source/archive/receipt hashes match; only three U14 access-wrap
 files intentionally change, leaving its layout/equations/charges intact. Ready
 receipt reports worker execution, pending coordinator review. This fourth unit
 ends the finite batch; no fifth job, integration or public extraction starts.
+
+## CLIMATE-009 — Measured predecessor runtime; interactive acceptance blocked (U16)
+
+**User requirement; partial executed evidence.** The opt-in Release witness times
+the actual U15 regional advance, complete candidate, move adoption, two regional
+reads and old-state/report destruction. Small32x32 warm candidate p95=.829412ms;
+64x48 p95=4.462149ms;128x128/64-substep cold one/two-tick candidates take
+165.894619/277.497040ms. The representative synchronous path misses2ms and stress
+misses50ms. No500ms update occurs in these samples. No supported interactive
+profile/cadence, optimization or background publisher is implemented or certified.
+Confidence high in saved samples, low in portable latency or sparse-tail inference.
+
+## PROCGEN-053 — Finite real-owner baseline caller
+
+**Engineering choice; implemented/executed.** Preserve flat x-fast production
+storage, algorithms and replay. One cold, one warmup and three warm samples are
+planned per admitted case, with30s/600M charged-update-work campaign bounds and a
+40s child watchdog. Stop a case's repetitions above50ms; retain every raw sample
+and report missing warm percentiles explicitly. Twelve evolving accepted updates
+and one genuine substep refusal execute. Fixed setup/sample arrays add no runtime
+heap domain. Tradeoff: a reproducible baseline, not statistical tail certification
+or a replacement engine-backed runtime. Exact allocation/copy counts are unmeasured.
+
+## PROCGEN-054 — Required Engine boundary remains unverified
+
+**User allocation direction; inspected, not implemented.** Actual Manager byte
+checkout/reuse, retained managed blocks and typed Pool/Reservation/Factory/
+Constructor are the selected services. Existing final allocator adapters and
+program traits specializations require correction and real container/domain tests
+before adoption. Pinned ctti/backward-cpp/spdlog retrieval exits1 with
+`Could not resolve host: github.com`; no independent retry or substitute domain
+follows. No allocator/header/Engine change or allocation-migration claim is made.
+Confidence high in the prerequisite boundary; service/container runtime proof,
+bookkeeping/copy instrumentation and optimization remain pending.
+
+## PROCGEN-055 — Blocked standalone checkpoint
+
+**User execution/reporting requirement.** All161 retained Debug/UBSan entries pass
+once:148 cases/48017 assertions,thirteen consumers/49 demonstrations,0 failures/
+skips. Optimized predecessor all-target compilation separately fails existing
+traversal-test maybe-uninitialized diagnostics under Werror; the focused Release
+baseline builds/runs without suppressions. Full logs preserve both failures.
+Receipt is blocked/false because correctness and baseline timings do not satisfy
+engine-backed interactive acceptance. Next action requires resolved pinned-dependency
+availability, then actual service/conformance/migration work and same-workload
+post-change measurements; no automatic follow-up is launched.
