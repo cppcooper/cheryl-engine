@@ -3,6 +3,7 @@
 #include <core/resources/asset-management/manifest-loader.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <array>
@@ -59,11 +60,24 @@ void DemoTilemaps::load(const std::filesystem::path& root, CE::Rendering::Resour
                      "Two 3x2 maps, cells 64x48; west {48,240}, east {328,208}; detail alpha 0.5\n"
                      "Submission: west ground/detail, east ground/detail; ID 7 -> target 0, ID 0 -> empty\n"
                      "Editor: 1/2 west/east, G/T ground/detail, 3..6 brown/black/grey/red\n"
+                     "V literal (initial), B semantic terrain; terrain 3..6 choose opaque labels 1..4\n"
+                     "Modes keep separate maps/brushes; semantic layers start empty; mask N/E/S/W -> target mask%4 -> IDs 7..10\n"
+                     "Terrain click runs publish atomically (32 requests, 6 affected cells, 256 work units); no held brush\n"
                      "Left paint, right erase, middle sample (including empty); WASD pan 32 world units per press\n"
                      "Wheel zoom at pointer (4 notches doubles); R reset view; initial west/ground/brown\n"
                   << std::flush;
     } catch (const std::exception& error) {
         throw std::runtime_error("Required tilemap display atlas 'tileset:tileset' (" + source.string() + "): " + error.what());
+    }
+}
+
+void DemoTilemaps::update(const std::span<const CE::Input::Events::Record> records, const DemoTilemapEditor::Sizes sizes) {
+    try {
+        editor_.consume(records, sizes);
+    } catch (const CE::Exceptions::bad_request& error) {
+        // Engine preserved the refused run. Earlier boundary-completed runs
+        // remain; report the rejection without aborting ordinary demo updates.
+        std::cerr << "Tilemap input batch rejected: " << error.what() << '\n';
     }
 }
 

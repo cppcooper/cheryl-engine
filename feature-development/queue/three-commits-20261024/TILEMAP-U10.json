@@ -1,0 +1,20 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "TILEMAP-U10",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/tilemap-u4-display-debug/u10-demo-build.log",
+    "build/tilemap-u1-debug/u10-cpu-build.log",
+    "build/tilemap-u1-debug/u10-ownership.log",
+    "build/tilemap-u1-debug/u10-registration.log",
+    "build/tilemap-u1-debug/u10-ctest.log"
+  ],
+  "limitations": [
+    "Demo is compiled/linked only. Real display/input, app asset decode/upload, capture and graphical teardown remain unverified; unchanged X11 :1 failure is not retried.",
+    "ASan/UBSan pass with command-local detect_leaks=0 for the recorded LSan tracing limitation; leaks remain unverified.",
+    "GNU/Linux source-tree Debug/shared checks only; installed SDK, static, Release, Windows and other-toolchain ABI remain unverified.",
+    "Four diagnostic colors alias masks/labels; no 16-frame terrain artwork, held-pointer history, per-event resize history or whole-tick rollback is promised.",
+    "The app bad_request logging catch is source/compile checked; synthetic tests execute the exact shared CPU editor helper, not graphical update/input."
+  ]
+}

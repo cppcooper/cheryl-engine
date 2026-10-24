@@ -1281,3 +1281,366 @@ TEST(tilemap_consumer, terrain_batch_rejection) {
         fixture.calls->expect_cpu();
     }
 }
+
+namespace {
+    std::vector<TerrainLabel> editor_terrain_labels(const DemoTilemapEditor& editor) {
+        std::vector<TerrainLabel> result;
+        for (std::size_t instance = 0; instance < 2; ++instance)
+            for (std::int64_t layer = 0; layer < 2; ++layer) {
+                const auto values = terrain_labels(editor.terrain(instance, {layer}));
+                result.insert(result.end(), values.begin(), values.end());
+            }
+        return result;
+    }
+
+    std::vector<Maps::TileId> editor_terrain_tiles(const DemoTilemapEditor& editor) {
+        std::vector<Maps::TileId> result;
+        for (std::size_t instance = 0; instance < 2; ++instance)
+            for (std::int64_t layer = 0; layer < 2; ++layer)
+                for (std::int64_t row = 0; row < 2; ++row)
+                    for (std::int64_t column = 0; column < 3; ++column)
+                        result.push_back(editor.terrain(instance, {layer}).tiles().get({layer}, {column, row}));
+        return result;
+    }
+
+    // Independent full-board reference: literal adjacency comparisons and bit
+    // weights, no Engine selector, batch traversal or cached visual connectivity.
+    std::vector<Maps::TileId> diagnostic_tiles(const std::vector<TerrainLabel>& labels) {
+        std::vector<Maps::TileId> result(24);
+        for (std::size_t board = 0; board < 4; ++board)
+            for (std::size_t row = 0; row < 2; ++row)
+                for (std::size_t column = 0; column < 3; ++column) {
+                    const auto index = board * 6 + row * 3 + column;
+                    const auto center = labels.at(index);
+                    if (!center.value)
+                        continue;
+                    const unsigned mask =
+                        (row > 0 && labels.at(index - 3) == center ? 1 : 0) + (column < 2 && labels.at(index + 1) == center ? 2 : 0) +
+                        (row < 1 && labels.at(index + 3) == center ? 4 : 0) + (column > 0 && labels.at(index - 1) == center ? 8 : 0);
+                    result[index] = {7 + mask % 4};
+                }
+        return result;
+    }
+}
+
+TEST(tilemap_consumer, editor_terrain_events) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    const std::array literal{cells(editor.map(0)), cells(editor.map(1))};
+    EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Literal);
+    EXPECT_EQ(editor_terrain_labels(editor), std::vector<TerrainLabel>(24));
+    edit(
+        editor, {key(Key::B),
+                 key(Key::Digit3),
+                 click(Mouse::Left, {40, 128}),
+                 click(Mouse::Left, {72, 128}),
+                 click(Mouse::Left, {104, 128}, Events::ButtonPhase::Release),
+                 click(Mouse::Left, {104, 128}, Events::ButtonPhase::Repeat),
+                 {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Pointer{399, 199}},
+                 {0, {}, 2, CE::Input::DeviceKind::Mouse, Events::Axis{1, 399}}}
+    );
+    std::vector<TerrainLabel> expected(24);
+    expected[0] = expected[1] = {1};
+    EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Terrain);
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    Render::Frame joined;
+    prepare_editor(joined, editor, fixture);
+    const std::array pair{ExpectedDraw{8, 64, 204}, ExpectedDraw{0, 128, 204}};
+    expect_draws(joined, pair); // The first cell changes its target when its east neighbor is painted.
+
+    edit(editor, {click(Mouse::Right, {72, 128}), click(Mouse::Middle, {40, 128}), key(Key::Digit4), click(Mouse::Left, {72, 128})});
+    expected[1] = {2};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected)); // Different labels, both isolated visual ID 7.
+    EXPECT_EQ(editor.terrain_brush(), (TerrainLabel{2}));
+    edit(editor, {key(Key::Digit6), click(Mouse::Middle, {72, 128}), click(Mouse::Left, {104, 128})});
+    EXPECT_EQ(editor.terrain_brush(), (TerrainLabel{2})); // Sample the label, never drawable ID 7.
+    expected[2] = {2};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    edit(editor, {click(Mouse::Middle, {104, 144}), click(Mouse::Left, {40, 128})});
+    expected[0] = {0};
+    EXPECT_EQ(editor.terrain_brush(), (TerrainLabel{0}));
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    EXPECT_EQ(cells(editor.map(0)), literal[0]);
+    EXPECT_EQ(cells(editor.map(1)), literal[1]);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{7}));
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_terrain_modes) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(editor, {key(Key::Digit6), click(Mouse::Left, {72, 144})});
+    auto west_literal = cells(editor.map(0));
+    const auto east_literal = cells(editor.map(1));
+    Render::Frame literal;
+    prepare_editor(literal, editor, fixture);
+    const auto before = literal.passes()[0].draws;
+    edit(
+        editor, {key(Key::B), key(Key::Digit2), key(Key::T), key(Key::Digit5), click(Mouse::Left, {180, 140}),
+                 click(Mouse::Middle, {212, 156}), key(Key::Digit1), key(Key::G), key(Key::Digit4), click(Mouse::Left, {40, 128}),
+                 key(Key::T), click(Mouse::Left, {72, 144}), key(Key::V), click(Mouse::Left, {104, 144})}
+    );
+    std::vector<TerrainLabel> expected(24);
+    expected[0] = expected[10] = {2};
+    expected[18] = {3};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    west_literal[11] = {10}; // Literal west detail (2,1), using its separate retained brush.
+    EXPECT_EQ(cells(editor.map(0)), west_literal);
+    EXPECT_EQ(cells(editor.map(1)), east_literal);
+    EXPECT_EQ(editor.brush(), (Maps::TileId{10}));
+    EXPECT_EQ(editor.terrain_brush(), (TerrainLabel{2}));
+    EXPECT_EQ(editor.selected_map(), 0u);
+    EXPECT_EQ(editor.selected_layer(), detail);
+    edit(editor, {key(Key::B)});
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    Render::Frame semantic;
+    prepare_editor(semantic, editor, fixture);
+    const std::array draws{ExpectedDraw{0, 64, 204}, ExpectedDraw{0, 128, 156}, ExpectedDraw{0, 344, 172}};
+    expect_draws(semantic, draws); // West ground/detail, then east detail; explicit caller ordering.
+    const auto& packets = semantic.passes()[0].draws;
+    EXPECT_FLOAT_EQ(std::get<float>(packets[0].parameters.at("alpha")), 1);
+    EXPECT_FLOAT_EQ(std::get<float>(packets[1].parameters.at("alpha")), 0.5);
+    EXPECT_FLOAT_EQ(std::get<float>(packets[2].parameters.at("alpha")), 0.5);
+    expect_packets(literal, before);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_terrain_view) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    edit(
+        editor, {key(Key::B), click(Mouse::Left, {56, 136}), click(Mouse::Left, {24, 120}), click(Mouse::Left, {120, 144}),
+                 click(Mouse::Left, {40, 152}), key(Key::V, Events::ButtonPhase::Repeat)}
+    );
+    std::vector<TerrainLabel> expected(24);
+    expected[0] = expected[4] = {1}; // Unequal 2x/3x framebuffer scale, exact internal edge and inclusive top-left.
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    const auto lower = [](const double n) { return std::nextafter(n, -std::numeric_limits<double>::infinity()); };
+    const auto upper = [](const double n) { return std::nextafter(n, std::numeric_limits<double>::infinity()); };
+    EXPECT_EQ(editor.pick({lower(56), 128}), (Maps::Point{0, 0}));
+    EXPECT_EQ(editor.pick({upper(56), 128}), (Maps::Point{1, 0}));
+    Render::Frame older;
+    prepare_editor(older, editor, fixture);
+    const auto old = older.passes()[0].draws;
+    ASSERT_TRUE(editor.set_view({112, 144}, 2));
+    ASSERT_EQ(editor.pick({0, 199}), (Maps::Point{1, 1}));
+    edit(editor, {key(Key::Digit4), click(Mouse::Left, {0, 199})});
+    expected[4] = {2};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    Render::Frame culled;
+    prepare_editor(culled, editor, fixture);
+    const std::array visible{ExpectedDraw{0, 128, 156}};
+    expect_draws(culled, visible); // Col0 is exactly outside the camera-derived visible region.
+    EXPECT_FLOAT_EQ(culled.passes()[0].view[0][0], 2);
+    EXPECT_FLOAT_EQ(culled.passes()[0].view[3][0], -224);
+    EXPECT_FALSE(editor.set_view({0, 0}, 0));
+    EXPECT_FALSE(editor.set_view({std::numeric_limits<double>::infinity(), 0}, 1));
+    const std::array attempted{key(Key::V), key(Key::Digit2), click(Mouse::Left, {40, 128})};
+    for (const auto size :
+         {DemoTilemapEditor::Sizes{{0, 200}, {800, 600}}, DemoTilemapEditor::Sizes{{400, 200}, {0, 600}},
+          DemoTilemapEditor::Sizes{{400, 200}, {800, 0}}, DemoTilemapEditor::Sizes{{-1, 200}, {800, 600}}}) {
+        editor.consume(attempted, size);
+        EXPECT_EQ(editor.mode(), DemoTilemapEditor::Mode::Terrain);
+        EXPECT_EQ(editor.selected_map(), 0u);
+        EXPECT_EQ(editor_terrain_labels(editor), expected);
+        Render::Frame suspended;
+        prepare_editor(suspended, editor, fixture);
+        EXPECT_TRUE(suspended.passes().empty());
+    }
+    edit(editor, {key(Key::R), wheel(4, {40, 128}), click(Mouse::Left, {40, 128})});
+    expected[0] = {2};
+    EXPECT_EQ(editor_terrain_labels(editor), expected);
+    EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(expected));
+    EXPECT_DOUBLE_EQ(editor.zoom(), 2);
+    EXPECT_DOUBLE_EQ(editor.pan().x, 40);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 108);
+    edit(editor, {wheel(-4, {104, 144}), key(Key::V), key(Key::B)});
+    EXPECT_DOUBLE_EQ(editor.zoom(), 1);
+    EXPECT_DOUBLE_EQ(editor.pan().x, -64);
+    EXPECT_DOUBLE_EQ(editor.pan().y, 24);
+    expect_packets(older, old);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_terrain_failures) {
+    const Fixture fixture;
+    const std::array paint{
+        key(Key::B),
+        click(Mouse::Left, {40, 128}),
+        click(Mouse::Left, {72, 128}),
+        click(Mouse::Left, {104, 128}),
+        click(Mouse::Left, {40, 144}),
+        click(Mouse::Left, {72, 144}),
+        click(Mouse::Left, {104, 144})
+    };
+    for (const auto failure : {0, 1, 2}) {
+        auto palette = DemoTilemapEditor::diagnostic_terrain();
+        if (failure == 0)
+            palette.rule.cases.erase(2);
+        else if (failure == 1)
+            palette.rule.cases[2] = std::numeric_limits<CE::Assets::Grids::CellIndex>::max();
+        else {
+            palette.rule.cases[2] = 4;
+            palette.target_to_id.push_back({0});
+        }
+        DemoTilemapEditor editor(palette);
+        editor.consume(paint, editor_sizes); // Full initial masks never need case2; complete setup succeeds.
+        const auto semantic = editor_terrain_labels(editor);
+        const auto visual = editor_terrain_tiles(editor);
+        ASSERT_EQ(semantic[0].value, 1u);
+        Render::Frame older, after;
+        prepare_editor(older, editor, fixture);
+        const auto packets = older.passes()[0].draws;
+        ASSERT_EQ(packets.size(), 6u);
+        try {
+            edit(editor, {click(Mouse::Right, {40, 128}), click(Mouse::Right, {104, 144})});
+            ADD_FAILURE() << "Expected a late semantic input batch refusal";
+        } catch (const bad_request& error) {
+            EXPECT_NE(std::string(error.what()).find("(0,1)"), std::string::npos);
+        }
+        EXPECT_EQ(editor_terrain_labels(editor), semantic);
+        EXPECT_EQ(editor_terrain_tiles(editor), visual);
+        prepare_editor(after, editor, fixture);
+        expect_packets(older, packets);
+        expect_packets(after, packets);
+    }
+    for (const auto limits : {Maps::TerrainBatchLimits{1, 6, 256}, {2, 4, 256}, {2, 6, 24}}) {
+        DemoTilemapEditor editor(DemoTilemapEditor::diagnostic_terrain(), limits);
+        edit(editor, {key(Key::B), key(Key::Digit2), key(Key::T), click(Mouse::Left, {180, 140}), key(Key::Digit1), key(Key::G)});
+        const auto semantic = editor_terrain_labels(editor); // Earlier completed sibling/layer run is retained.
+        const auto visual = editor_terrain_tiles(editor);
+        const std::array literal{cells(editor.map(0)), cells(editor.map(1))};
+        Render::Frame older, after;
+        prepare_editor(older, editor, fixture);
+        const auto packets = older.passes()[0].draws;
+        ASSERT_EQ(packets.size(), 1u);
+        EXPECT_THROW(edit(editor, {click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128})}), bad_request);
+        EXPECT_EQ(editor_terrain_labels(editor), semantic);
+        EXPECT_EQ(editor_terrain_tiles(editor), visual);
+        EXPECT_EQ(cells(editor.map(0)), literal[0]);
+        EXPECT_EQ(cells(editor.map(1)), literal[1]);
+        prepare_editor(after, editor, fixture);
+        expect_packets(older, packets);
+        expect_packets(after, packets);
+    }
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_terrain_palette) {
+    const Fixture fixture;
+    auto palette = DemoTilemapEditor::diagnostic_terrain();
+    DemoTilemapEditor owned(palette);
+    palette.rule.cases.clear();
+    palette.target_to_id.clear();
+    edit(owned, {key(Key::B), click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128})});
+    EXPECT_EQ(editor_terrain_tiles(owned), diagnostic_tiles(editor_terrain_labels(owned)));
+
+    auto aliases = DemoTilemapEditor::diagnostic_terrain();
+    aliases.target_to_id.assign(4, {7});
+    aliases.rule.cases.erase(2);
+    DemoTilemapEditor shared_visual(aliases);
+    edit(shared_visual, {key(Key::B), click(Mouse::Left, {40, 128}), key(Key::Digit4), click(Mouse::Left, {72, 128})});
+    const auto semantic = editor_terrain_labels(shared_visual);
+    const auto visual = editor_terrain_tiles(shared_visual);
+    EXPECT_EQ(semantic[0], (TerrainLabel{1}));
+    EXPECT_EQ(semantic[1], (TerrainLabel{2}));
+    EXPECT_EQ(visual[0], (Maps::TileId{7}));
+    EXPECT_EQ(visual[1], (Maps::TileId{7}));
+    EXPECT_THROW(edit(shared_visual, {key(Key::Digit3), click(Mouse::Left, {72, 128})}), bad_request); // Equal label now needs mask2.
+    EXPECT_EQ(editor_terrain_labels(shared_visual), semantic);
+    EXPECT_EQ(editor_terrain_tiles(shared_visual), visual);
+    edit(shared_visual, {click(Mouse::Middle, {72, 128})});
+    EXPECT_EQ(shared_visual.terrain_brush(), (TerrainLabel{2}));
+
+    for (const auto missing_rule : {false, true}) {
+        auto missing = DemoTilemapEditor::diagnostic_terrain();
+        missing.target_to_id.clear();
+        if (missing_rule)
+            missing.rule.cases.clear();
+        DemoTilemapEditor empty(missing);
+        const std::array literal{cells(empty.map(0)), cells(empty.map(1))};
+        edit(empty, {key(Key::B), click(Mouse::Left, {40, 128}), click(Mouse::Right, {40, 128})}); // Cancel before any selection.
+        EXPECT_EQ(editor_terrain_labels(empty), std::vector<TerrainLabel>(24));
+        Render::Frame frame;
+        prepare_editor(frame, empty, fixture);
+        ASSERT_EQ(frame.passes().size(), 1u);
+        EXPECT_TRUE(frame.passes()[0].draws.empty());
+        EXPECT_THROW(edit(empty, {click(Mouse::Left, {40, 128})}), bad_request);
+        EXPECT_EQ(editor_terrain_labels(empty), std::vector<TerrainLabel>(24));
+        EXPECT_EQ(editor_terrain_tiles(empty), std::vector<Maps::TileId>(24));
+        EXPECT_EQ(cells(empty.map(0)), literal[0]);
+        EXPECT_EQ(cells(empty.map(1)), literal[1]);
+    }
+    auto invalid = DemoTilemapEditor::diagnostic_terrain();
+    invalid.target_to_id[0] = {99};
+    EXPECT_THROW(static_cast<void>(DemoTilemapEditor(invalid)), invalid_args);
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_terrain_frames) {
+    const auto calls = std::make_shared<Calls>();
+    Render::Frame literal, painted, erased, returned;
+    std::vector<Render::DrawPacket2D> original, changed, remaining;
+    std::weak_ptr<Geometry> geometry;
+    std::weak_ptr<Image> image;
+    const std::array expected_painted{
+        ExpectedDraw{8, 64, 204}, ExpectedDraw{0, 128, 204}, ExpectedDraw{0, 128, 204}, ExpectedDraw{0, 344, 172}
+    };
+    const std::array expected_erased{ExpectedDraw{0, 64, 204}, ExpectedDraw{0, 128, 204}, ExpectedDraw{0, 344, 172}};
+    {
+        const Fixture fixture(calls);
+        geometry = fixture.geometry;
+        image = fixture.image;
+        DemoTilemapEditor editor;
+        edit(editor, {});
+        prepare_editor(literal, editor, fixture);
+        original = literal.passes()[0].draws;
+        ASSERT_EQ(original.size(), 15u);
+        edit(
+            editor, {key(Key::B), click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128}), key(Key::T), click(Mouse::Left, {72, 128}),
+                     key(Key::Digit2), key(Key::G), click(Mouse::Left, {180, 140})}
+        );
+        const auto painted_labels = editor_terrain_labels(editor);
+        EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(painted_labels));
+        prepare_editor(painted, editor, fixture);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(painted, expected_painted));
+        changed = painted.passes()[0].draws;
+        edit(editor, {key(Key::Digit1), key(Key::G), click(Mouse::Right, {72, 128})});
+        auto erased_labels = painted_labels;
+        erased_labels[1] = {0};
+        EXPECT_EQ(editor_terrain_labels(editor), erased_labels);
+        EXPECT_EQ(editor_terrain_tiles(editor), diagnostic_tiles(erased_labels));
+        prepare_editor(erased, editor, fixture);
+        ASSERT_NO_FATAL_FAILURE(expect_draws(erased, expected_erased));
+        remaining = erased.passes()[0].draws;
+        edit(editor, {key(Key::V)});
+        prepare_editor(returned, editor, fixture);
+        expect_packets(returned, original);
+        expect_packets(literal, original);
+        expect_packets(painted, changed);
+        calls->expect_cpu();
+    } // All literal/semantic owners, events, bindings and provider gone.
+    expect_packets(literal, original);
+    expect_packets(returned, original);
+    expect_packets(painted, changed);
+    expect_packets(erased, remaining);
+    EXPECT_FALSE(geometry.expired());
+    EXPECT_FALSE(image.expired());
+    literal.recycle();
+    painted.recycle();
+    erased.recycle();
+    returned.recycle();
+    original.clear();
+    changed.clear();
+    EXPECT_FALSE(geometry.expired());
+    remaining.clear();
+    EXPECT_TRUE(geometry.expired());
+    EXPECT_TRUE(image.expired());
+    calls->expect_cpu();
+}

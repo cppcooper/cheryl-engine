@@ -1,5 +1,6 @@
 #include "tilemap-editor.h"
 
+#include <internals/exceptions.h>
 #include <ext/matrix_clip_space.hpp>
 
 #include <cmath>
@@ -25,7 +26,32 @@ namespace {
     }
 }
 
-DemoTilemapEditor::DemoTilemapEditor() {
+DemoTilemapEditor::TerrainPalette DemoTilemapEditor::diagnostic_terrain() {
+    namespace Tiles = CE::Assets::Tilesets;
+    TerrainPalette result;
+    result.rule.type = Tiles::BitmaskType::FourNeighbor;
+    result.rule.bit_order = {Tiles::Direction::North, Tiles::Direction::East, Tiles::Direction::South, Tiles::Direction::West};
+    for (std::uint32_t mask = 0; mask < 16; ++mask)
+        result.rule.cases.emplace(mask, mask % 4);
+    result.target_to_id = {{7}, {8}, {9}, {10}};
+    return result;
+}
+
+DemoTilemapEditor::DemoTilemapEditor()
+: DemoTilemapEditor(diagnostic_terrain()) {}
+
+DemoTilemapEditor::DemoTilemapEditor(TerrainPalette palette, const Maps::TerrainBatchLimits limits)
+: terrain_limits_(limits) {
+    for (const auto id : palette.target_to_id)
+        if (id.value != 0 && (id.value < 7 || id.value > 10))
+            throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
+    const Maps::Map empty({3, 2}, 2);
+    const std::array<Maps::TerrainLabel, 6> labels{};
+    for (auto& instance : terrain_)
+        for (std::size_t layer = 0; layer < instance.size(); ++layer)
+            instance[layer] = std::make_unique<Maps::TerrainMap>(
+                empty, Maps::LayerIndex{static_cast<std::int64_t>(layer)}, labels, palette.rule, palette.target_to_id
+            );
     constexpr std::array<std::array<std::uint32_t, 6>, 4> ids{
         {{7, 8, 9, 10, 0, 7}, {0, 10, 0, 9, 0, 0}, {9, 7, 0, 8, 10, 9}, {10, 0, 10, 0, 7, 0}}
     };
@@ -98,6 +124,13 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
     geometry_ = geometry(sizes_, pan_, zoom_);
     if (!geometry_)
         return;
+    std::vector<Maps::TerrainEdit> pending;
+    const auto flush = [&] {
+        if (!pending.empty()) {
+            static_cast<void>(terrain_[selected_map_][selected_layer_.value]->edit_batch(pending, terrain_limits_));
+            pending.clear();
+        }
+    };
     for (const auto& record : records) {
         if (!record.to_gameplay)
             continue;
@@ -105,8 +138,15 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
             if (button->phase != Events::ButtonPhase::Press)
                 continue;
             if (record.device_kind == CE::Input::DeviceKind::Keyboard) {
+                flush(); // Selection, modes, brushes and view changes affect only later records.
                 using Key = CE::Input::KeyboardKey;
                 switch (button->key) {
+                    case Key::B:
+                        mode_ = Mode::Terrain;
+                        break;
+                    case Key::V:
+                        mode_ = Mode::Literal;
+                        break;
                     case Key::Digit1:
                         selected_map_ = 0;
                         break;
@@ -120,16 +160,28 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                         selected_layer_ = {1};
                         break;
                     case Key::Digit3:
-                        brush_ = {7};
+                        if (mode_ == Mode::Terrain)
+                            terrain_brush_ = {1};
+                        else
+                            brush_ = {7};
                         break;
                     case Key::Digit4:
-                        brush_ = {8};
+                        if (mode_ == Mode::Terrain)
+                            terrain_brush_ = {2};
+                        else
+                            brush_ = {8};
                         break;
                     case Key::Digit5:
-                        brush_ = {9};
+                        if (mode_ == Mode::Terrain)
+                            terrain_brush_ = {3};
+                        else
+                            brush_ = {9};
                         break;
                     case Key::Digit6:
-                        brush_ = {10};
+                        if (mode_ == Mode::Terrain)
+                            terrain_brush_ = {4};
+                        else
+                            brush_ = {10};
                         break;
                     case Key::A:
                         static_cast<void>(set_view({pan_.x - 32, pan_.y}, zoom_));
@@ -155,6 +207,17 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                     continue;
                 auto& map = maps_[selected_map_];
                 using Mouse = CE::Input::MouseButton;
+                if (mode_ == Mode::Terrain) {
+                    if (button->mouse_button == Mouse::Middle) {
+                        flush();
+                        terrain_brush_ = terrain_[selected_map_][selected_layer_.value]->label(*cell);
+                    } else if (button->mouse_button == Mouse::Left || button->mouse_button == Mouse::Right) {
+                        if (pending.size() == terrain_limits_.requests)
+                            throw CE::Exceptions::bad_request(CE_HERE, "Private terrain input run exceeds request cap");
+                        pending.push_back({*cell, button->mouse_button == Mouse::Left ? terrain_brush_ : Maps::TerrainLabel{0}});
+                    }
+                    continue;
+                }
                 switch (button->mouse_button) {
                     case Mouse::Left:
                         map.set(selected_layer_, *cell, brush_);
@@ -176,6 +239,7 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
             if (!std::isfinite(pointer.x) || !std::isfinite(pointer.y) || pointer.x < 0 || pointer.y < 0 ||
                 pointer.x >= sizes_.logical.width || pointer.y >= sizes_.logical.height)
                 continue;
+            flush();
             const auto factor = std::exp2(scroll->y / 4);
             const auto zoom = zoom_ * factor;
             if (!std::isfinite(zoom) || zoom <= 0)
@@ -186,6 +250,7 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
             static_cast<void>(set_view({pan_.x + x / zoom_ - x / zoom, pan_.y + y / zoom_ - y / zoom}, zoom));
         }
     }
+    flush();
 }
 
 void DemoTilemapEditor::write(
@@ -201,7 +266,9 @@ void DemoTilemapEditor::write(
     overlay.alpha = 0.5f;
     // Explicit west ground/detail, east ground/detail, then each vector's row/column order.
     for (std::size_t i = 0; i < maps_.size(); ++i) {
-        pass.add(Submit::resolve_tilemap_layer(maps_[i], {0}, bindings, geometry_->maps[i], images, context));
-        pass.add(Submit::resolve_tilemap_layer(maps_[i], {1}, bindings, geometry_->maps[i], overlay, context));
+        const auto& ground = mode_ == Mode::Terrain ? terrain_[i][0]->tiles() : maps_[i];
+        const auto& detail = mode_ == Mode::Terrain ? terrain_[i][1]->tiles() : maps_[i];
+        pass.add(Submit::resolve_tilemap_layer(ground, {0}, bindings, geometry_->maps[i], images, context));
+        pass.add(Submit::resolve_tilemap_layer(detail, {1}, bindings, geometry_->maps[i], overlay, context));
     }
 }

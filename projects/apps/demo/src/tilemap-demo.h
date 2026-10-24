@@ -16,6 +16,6 @@ class DemoTilemaps final {
 
 public:
     void load(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider);
-    void update(std::span<const CE::Input::Events::Record> records, DemoTilemapEditor::Sizes sizes) { editor_.consume(records, sizes); }
+    void update(std::span<const CE::Input::Events::Record> records, DemoTilemapEditor::Sizes sizes);
     void write(CE::Rendering::FrameWriter& frame, const CE::Rendering::DrawStyle2D& images) const;
 };

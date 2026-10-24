@@ -5,8 +5,10 @@
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
 #include <core/rendering/render-frame.h>
+#include <maps/terrain-map.h>
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <span>
 
@@ -15,6 +17,15 @@
 // No input/window/resource provider or borrowed tick/frame view is retained.
 class DemoTilemapEditor final {
 public:
+    enum class Mode { Literal, Terrain };
+
+    // Diagnostic colors only: authored N/E/S/W masks select original targets,
+    // mapped explicitly to the four retained logical IDs. Zero entries are holes.
+    struct TerrainPalette {
+        CE::Assets::Tilesets::BitmaskRule rule;
+        std::vector<CE::Tilemaps::TileId> target_to_id;
+    };
+
     struct Sizes {
         CE::Platform::Dimensions<int> logical{0, 0};
         CE::Platform::FramebufferSize framebuffer{0, 0};
@@ -28,6 +39,10 @@ private:
     };
 
     std::array<CE::Tilemaps::Map, 2> maps_{CE::Tilemaps::Map{{3, 2}, 2}, CE::Tilemaps::Map{{3, 2}, 2}};
+    std::array<std::array<std::unique_ptr<CE::Tilemaps::TerrainMap>, 2>, 2> terrain_;
+    CE::Tilemaps::TerrainBatchLimits terrain_limits_;
+    Mode mode_ = Mode::Literal;
+    CE::Tilemaps::TerrainLabel terrain_brush_{1};
     Sizes sizes_;
     CE::Tilemaps::LocalPoint pan_{0, 0};
     double zoom_ = 1;
@@ -40,9 +55,18 @@ private:
 
 public:
     DemoTilemapEditor();
+    explicit DemoTilemapEditor(TerrainPalette palette, CE::Tilemaps::TerrainBatchLimits limits = {32, 6, 256});
+    DemoTilemapEditor(const DemoTilemapEditor&) = delete;
+    DemoTilemapEditor& operator=(const DemoTilemapEditor&) = delete;
+    DemoTilemapEditor(DemoTilemapEditor&&) = delete;
+    DemoTilemapEditor& operator=(DemoTilemapEditor&&) = delete;
+    [[nodiscard]] static TerrainPalette diagnostic_terrain();
     // Records are already in publication order. Use this tick's copied sizes;
     // they are not per-event historical resize samples. Invalid sizes suspend
     // edits/preparation until a valid sample, preserving maps/view/selection.
+    // Terrain paint/erase runs flush atomically at keyboard Press, valid wheel,
+    // middle sample and call end. Refusals propagate; earlier runs stay applied.
+    // Release/repeat, final pointer axes and misses neither edit nor invent history.
     void consume(std::span<const CE::Input::Events::Record> records, Sizes sizes);
     // Checked whole-view replacement; invalid candidates preserve the old view.
     bool set_view(CE::Tilemaps::LocalPoint pan, double zoom);
@@ -53,7 +77,12 @@ public:
         const CE::Rendering::DrawStyle2D& images
     ) const;
 
-    [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return maps_.at(index); }
+    [[nodiscard]] const CE::Tilemaps::Map& map(std::size_t index) const { return maps_.at(index); } // Literal storage, in either mode.
+    [[nodiscard]] const CE::Tilemaps::TerrainMap& terrain(std::size_t index, CE::Tilemaps::LayerIndex layer) const {
+        return *terrain_.at(index).at(static_cast<std::size_t>(layer.value));
+    }
+    [[nodiscard]] Mode mode() const { return mode_; }
+    [[nodiscard]] CE::Tilemaps::TerrainLabel terrain_brush() const { return terrain_brush_; }
     [[nodiscard]] std::size_t selected_map() const { return selected_map_; }
     [[nodiscard]] CE::Tilemaps::LayerIndex selected_layer() const { return selected_layer_; }
     [[nodiscard]] CE::Tilemaps::TileId brush() const { return brush_; }

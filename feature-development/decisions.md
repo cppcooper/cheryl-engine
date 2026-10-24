@@ -1,24 +1,23 @@
 # Tilemap milestone decisions
 
-U1–U8 establish CPU maps/picking, retained submission/editor consumers and Engine
-cardinal terrain ownership. U9 adds one bounded atomic batch operation. These
-are engineering choices under delegation, not user API preferences. Stable IDs
-TM-001–011 match [agent-notes.md](agent-notes.md); [next.md](next.md) records exact
-contracts, caller, executed checks and remaining limits.
+U1–U9 establish CPU maps/picking, retained submission, a private literal editor,
+Engine terrain ownership and bounded atomic batches. U10 adds an optional
+semantic mode to that same private helper/demo. Engineering choices under
+delegation are not user API preferences. Stable TM-001–012 IDs match
+[agent-notes.md](agent-notes.md); [next.md](next.md) records actual checks/limits.
 
-U9 starts clean at completed U8 `79c02fb` (64/64 Debug ASan/UBSan cases plus
-public header/link checks). U7's older 61-name evidence remains an initial 60/61
-plus assertion-only correction and 1/1, not a green 61-case invocation.
-U9 builds/exports and registers all 64 retained names plus nine new cases.
-One accumulated invocation passes 73/73, zero failed/skipped, 42.53s. Header/link
-checks pass; both builds have no warnings or errors. Post-test formatting corrects
-only a trailing comment and its alignment; all C++/assertion tokens remain
-identical. Full diagnostics and command exits are retained.
+U10 starts clean at completed U9 `bdead05` (73/73 Debug ASan/UBSan). Both demo
+and CPU runner compile/link without warnings. One accumulated invocation passes
+79/79, zero failed/skipped, 45.48s, retaining all 73 prior names. Public Engine
+header/export checks and same-private-source proof pass. There are no code or
+comment corrections after execution. Prior U7 evidence remains an initial 60/61
+plus correction/1-case rerun; U8/U9 have their separately recorded green runs.
 
-The source-tree GNU/Linux Debug/shared checks do not establish installed SDK,
-Windows/cross-toolchain, static, Release, leaks or graphics acceptance. No demo
-input, dependency/pin, backend or sibling changes are selected. The unchanged
-X11 failure is not retried; publisher and finite queue controller own progression.
+No public Engine/backend/input API, dependency pin or asset changes. The native
+app is compiled, not executed. Real input/display, app decode/upload, graphical
+teardown, leaks, installed SDK and wider ABI remain unverified. X11 :1 is not
+retried. This is the last pinned tilemap unit in the finite batch; publisher owns
+transport, and coordinator review owns any subsequent assignment.
 
 ## TM-001
 
@@ -73,13 +72,13 @@ cases; actual visual order remains unobserved.
 
 ## TM-006
 
-Consume ordered gameplay events in the shared private editor; selection acts
-immediately and each click/wheel uses its captured pointer. Press edits, middle
-samples empty too, and frames retain copied output. U7/U9 separately resolve all
-invalidated semantic-neighbor results before publishing an edit or bounded batch;
-failures preserve labels and tiles. Neither operation promises tick/frame
-rollback. This costs repeated resolution and private state. Engineering confidence
-is high; naming/controls remain reversible local choices, with low taste confidence.
+Consume ordered captured events in the same private editor. Literal edits apply
+immediately; semantic paint/erase runs use Engine batches, flushing before
+keyboard/sample/wheel or call end. A refusal preserves its run; earlier runs
+survive. This preserves pointer ownership and final semantics without tick/frame
+rollback, but adds explicit barriers and separate stores. Engineering confidence
+is high; controls and grouping are reversible private choices with low user-taste
+confidence.
 
 ## TM-007
 
@@ -105,13 +104,13 @@ actual native results and leak/visual limits are recorded in next.md.
 
 ## TM-009
 
-Use private --tilemap-display: 1/2 select maps, G/T layers, 3–6 colors;
-left/right/middle paint/erase/sample; WASD pan, wheel zoom, R resets view.
-Retain required atlas diagnostics and platform loading/cleanup. Acquire Events
-before early return; simulation serializes update/preparation. Private unit
-requirements compile the same app source, trading a small app/test coupling for
-one algorithm. Engineering confidence is high; UI taste confidence low, reversal
-local. Compiled wiring leaves real input/display unverified.
+Keep --tilemap-display's literal default; B/V select separate semantic/literal
+stores and brushes. Shared map/layer selection and view persist. Reuse required
+atlas diagnostics, platform loading/capture and cleanup; simulation serializes
+updates/preparation. The unit runner compiles the same private app source,
+trading small test/app coupling and four tiny terrain owners for exact consumer
+coverage. Engineering confidence is high; controls have low taste confidence and
+local reversal cost. Real display/input remains unverified.
 
 ## TM-010
 
@@ -131,3 +130,12 @@ units, cancellations invalidate nothing. Owned overlays/results precede publicat
 avoiding partial strokes without full-map copies. Ordered lookups cost logarithmic
 work beyond logical budget units. Engineering confidence is high; spelling/budget
 granularity has low taste confidence and public source/relink reversal cost.
+
+## TM-012
+
+Use opaque labels in private terrain mode, mapping N/E/S/W masks through mask%4
+to explicit IDs 7–10. Start four isolated semantic layers empty; preserve literal
+cells across switches. Bound click runs to 32 requests, six affected cells and
+256 logical work units; sample labels after flushing. This proves editing without
+new art or label inference, but colors alias masks and errors skip the remaining
+tick. Confidence is high in contracts, low in UI taste; reversal is private.

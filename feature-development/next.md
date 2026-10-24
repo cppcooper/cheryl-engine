@@ -1,131 +1,154 @@
-# U9 bounded atomic terrain batches and next action
+# U10 private semantic editor checkpoint and finite-batch handoff
 
-TILEMAP-U9 starts clean at completed U8
-`79c02fbc7f903e7e87e5afc2dbf4b70fa1797032`, after inspecting its ready receipt,
-public contract, shared ownership and saved 64/64 passing checks. It adds one
-Engine batch operation, preserves all 64 prior names and passes one accumulated
-73/73 selection, zero failed/skipped, 42.53s, exit 0. Header-first compilation and
-six-operation import/export checks pass. This is CPU/shared-link evidence, not
-coordinator source acceptance or graphics acceptance. U7's older evidence stays
-61 unique passes across an initial 60/61 and correction/1-case rerun.
+TILEMAP-U10 starts clean at completed U9
+`bdead055f0d4a9667093e10df8abfc500bb1f7ff`, after inspecting its ready receipt,
+Engine batch contract and saved 73/73 checks. It adds optional semantic editing
+to the same private helper used by demo and synthetic consumers. Demo and CPU
+runner build/link without warnings; one accumulated invocation passes 79/79,
+zero failed/skipped, 45.48s. All 73 prior names, public header/export checks and
+same-private-source proof pass. There are no post-test source corrections.
+This receipt is execution evidence, not automatic coordinator source review or
+graphical acceptance. U7's older two-run result remains separately historical.
 
-## Public caller and selected contract
+## Small private caller and controls
 
 ```cpp
-#include <cheryl/maps/terrain-map.h> // first include; link only Cheryl::Engine
-const std::array stroke{
-    CE::Tilemaps::TerrainEdit{{0, 0}, {1}},
-    CE::Tilemaps::TerrainEdit{{1, 0}, {1}},
-    CE::Tilemaps::TerrainEdit{{0, 0}, {2}},
-};
-auto affected = terrain.edit_batch(
-    stroke, {.requests = 3, .affected_cells = 6, .work = 64});
-// On the same serialized owner, resolve terrain.tiles() and add to the usual pass.
+#include "tilemap-editor.h" // first in the existing synthetic consumer
+DemoTilemapEditor editor;
+// Existing synthetic record factories; the real demo forwards tick.input.records().
+const std::array events{key(Key::B), key(Key::Digit3),
+                        click(Mouse::Left, {40, 128}), click(Mouse::Left, {72, 128})};
+editor.consume(events, {{400, 200}, {800, 600}});
+editor.write(frame, bindings, image_style);
 ```
 
-The [public header](../projects/engine/include/cheryl/maps/terrain-map.h) adds
-TerrainEdit, TerrainBatchLimits and TerrainMap::edit_batch. The
-[Engine source](../projects/engine/src/maps/terrain-map.cpp) owns implementation;
-constructor/single-edit/batch share one derivation routine using the existing
-Selection::select(BitmaskRule). No app terrain meanings, new error family,
-World, storage or backend service appears. Existing edit() keeps exactly its
-center/N/E/S/W order and preservation contract. New naming, last-wins duplicate
-policy and budget units are delegated engineering choices with high behavioral
-confidence, low user-taste confidence and public source/relink reversal cost.
-Matching TM-006/007/011 in [decisions.md](decisions.md) and
-[agent-notes.md](agent-notes.md) separate these choices from inferred preferences.
+The [header](../projects/apps/demo/src/tilemap-editor.h) and
+[implementation](../projects/apps/demo/src/tilemap-editor.cpp) remain private.
+No duplicate event/transform algorithm is added to tests. Real demo forwarding,
+required atlas loading, error reporting and pass preparation stay in
+[tilemap-demo](../projects/apps/demo/src/tilemap-demo.cpp), reached by the existing
+--tilemap-display mode and platform/simulation lifecycle. The initial mode remains
+literal, retaining every original map/brush/control behavior.
 
-Validate every signed point before proposal construction; request-cap refusal
-precedes scanning. Duplicate points are last-write-wins but no overwritten
-request hides invalid coordinates. All uint32 TerrainLabels remain valid,
-including zero empty and UINT32_MAX; there is no representable invalid label.
-Coalesce owned final labels, prune centers equal to their original label, then
-resolve the unique center/cardinal union against final semantics. Intermediate
-masks need not exist if final masks resolve. No cached visual ID infers semantic
-equality; equal visual output still invalidates when labels change.
+| Control | Literal mode | Semantic terrain mode |
+| --- | --- | --- |
+| V / B | Select literal / terrain without converting cells | Same, preserving independent content/brushes |
+| 1 / 2, G / T | West/east map, ground/detail layer | Same shared selection |
+| 3–6 | Logical IDs 7–10, existing diagnostic colors | Opaque labels 1–4, not sprite IDs |
+| Left / right Press | Paint ID / erase immediately | Append label / zero to the current bounded run |
+| Middle Press | Sample literal ID, including zero | Flush then sample semantic label, including zero |
+| WASD / wheel / R | Pan 32 units / anchor zoom to event pointer / reset view | Same shared view, no content reset |
 
-Result ordering is stable: first request occurrence of each net changed center,
-visit center/N/E/S/W, append each in-bounds cell on its first encounter. A later
-center may already have appeared as a neighbor. No diagonals or out-of-bounds
-points. Positive uint32-bounded coordinates plus +/-1 fit int64; extreme signed
-inputs reject before neighbor arithmetic. X-right/Y-down, metadata bit order,
-1..4 unique cardinal directions, empty outside fallback, original selection
-targets and explicit copied target-to-logical mapping stay unchanged.
+These controls, names and grouping are delegated engineering choices with high
+contract confidence, low user-taste confidence and private/local reversal cost.
+TM-006/009/012 match [decisions.md](decisions.md) and [agent-notes.md](agent-notes.md).
 
-## Caps, ownership and publication
+## Ownership, palette and mode boundaries
 
-Every call supplies explicit maxima; zero caps are legal. requests counts every
-record, including duplicates/no-ops/cancellations. affected_cells limits the
-unique returned/recomputed union, including empty neighbors. Work units charge:
+Two literal Maps keep their original finite 3x2/two-layer seed. Four independent
+Engine TerrainMaps (two instances times two layers) start empty. Each owns a
+3x2/two-layer base, derives only its selected layer and leaves its complementary
+layer empty. Rendering resolves the selected owner for each layer, without an
+extra merged-map cache. map(index) always observes literal storage; terrain(index,
+layer) borrows that semantic owner. Both modes retain separate brushes while
+sharing view/selection. No literal ID is ever relabelled; switching modes never
+reinterprets unrelated cells. The private helper is noncopyable/nonmovable.
 
-- one per admitted request, including no-op/duplicate/cancellation;
-- one per net changed center and each of its four cardinal candidate visits,
-  including outside/duplicate candidates;
-- one per unique affected cell resolution, even empty (including selection if
-  nonempty), plus one per actual selector sample, even outside.
+The diagnostic palette explicitly declares N/E/S/W weights 1/2/4/8, mask%4 ->
+selection targets 0..3 -> copied logical table {7,8,9,10}. Existing retained
+bindings map those IDs to original atlas targets 0..3. Nonzero ID 7 draws target
+zero; semantic/literal zero is empty. Four colors intentionally alias masks and
+labels, without game/mountain meanings or new artwork. Palette inputs are copied
+by Engine owners; changing/destroying caller config cannot affect them. The
+private table accepts only IDs 7–10 or unmapped zero; invalid nonzero IDs reject
+construction. Missing cases/targets/holes reject when needed, while empty owners
+with empty cases/tables safely prepare zero packets. Engine contracts are unchanged.
 
-For a successful call W=R+5*C+A+k*F, where R=input records, C=net changed centers,
-A=affected union, F=nonempty final affected cells and k=authored cardinal bit count.
-The implementation debits before each unit instead of computing that product or
-sum, avoiding size_t overflow. Empty input costs nothing; all-no-op/cancelling
-input needs only R units, no affected budget and no selection. Selection calls
-are bounded by A, sampling by k*F<=4*A. Work units are logical visits, not allocator
-bytes/comparison instructions/time; ordered lookups add logarithmic factors in
-bounded request/affected sets. Scratch/output are O(R+A), never sized from cap
-values or a full-map copy. SIZE_MAX caps with tiny real input stay tiny; no OOM
-or fake huge-span probe is used. Allocation errors propagate before publication.
+Each admitted gameplay Press uses its own captured pointer; Release/Repeat,
+unsupported/unadmitted records, missing pointers, final Pointer/Axis samples and
+misses do not edit. No held-pointer history is invented. Collect semantic left/
+right requests in order and flush before a keyboard Press, middle sample,
+finite-delta wheel with valid pointer, and call end. Keyboard selection/mode/brush/
+view changes act after successful flush. A wheel can flush before rejecting a
+derived invalid zoom. Ignored records are not barriers. Middle sampling sees
+completed prior edits, never a rendered ID.
 
-Complete owned label overlay, visual results and returned points precede any
-assignment. A later coordinate, mask, mapping or cap refusal preserves every
-semantic label and every visual layer. Commit uses prevalidated fixed private
-storage, no remaining allocations or refusals. No caller span or sampler survives.
-Input buffers may be changed/destroyed after return, and output owns its points.
-Serialize reads/edits/preparation; retained old frames own copied packets/resources,
-with observation outside writer/recycle scopes. This is atomicity for one terrain
-batch, without undo, tick/frame rollback, concurrent publication or thread service.
+Default run caps are 32 requests, six affected cells and 256 logical work units.
+The helper checks count before growing pending input; Engine edit_batch then
+validates/coalesces final labels and atomically publishes complete label/visual
+results. Left/right cancellation in one run can succeed with empty rule/table,
+where sequential edits would refuse the intermediate state. A failed run leaves
+all its values unchanged. Earlier completed runs remain; there is no whole-tick/
+frame rollback. Helper bad_request propagates. DemoTilemaps::update logs the
+rejection to stderr and drops the rest of that tick; later ticks can continue.
+That app catch is compiled/source-inspected, not executed by graphical input.
+Allocation/other failures keep existing runtime handling; no error service is added.
 
-## Focused evidence and exact execution
+Pointer conversion reuses independent logical-to-framebuffer scales, top-left to
+Y-up flip, full viewport, inverse finite pan/positive zoom, map origin and Engine
+computed-edge pick_cell. Sizes are captured together per tick, not historical per
+event. Invalid/minimized sizes suspend all records/preparation, preserving data,
+selection, mode and view until valid sizes resume. Invalid view candidates preserve
+the old view. Platform constructs/loads/captures before the existing early return;
+simulation serializes updates/preparation. Platform cleanup follows simulation/
+frame completion. No records/spans/samplers/window/provider/frame views are retained.
+Prepared frames own copied matrices/ranges/resources after owners/modes disappear.
+Binding metadata stability through every alias remains the coordinator-selected
+engineering contract, not an explicit user preference.
 
-Six new tilemap_terrain cases check literal overlap/final-label results, stable
-first occurrence including an initial no-op request, all uint32 labels, sparse
-rules that reject sequential intermediates but accept final adjacent states,
-exact/one-short request/affected/work limits, subset/outside sample charges,
-empty/cancelling/no-op budgets, late mask/target/mapping/bounds refusals, and 320
-batches versus independent full-grid semantic-mask and Manhattan-union oracles.
-The reference calls neither incremental helpers nor the production selector.
-Domains include 5x3, 1x4, 4x1, 1x1, reordered bits and shared visual IDs.
+## Focused executed evidence
 
-Two new [retained-frame cases](../projects/engine/tests/unit/src/tilemap-consumer.cpp)
-prove a 9-to-8 packet edit with explicit authored order, input destruction, full
-sibling/other-layer independence and retained old/new matrices/ranges/resources.
-Seven initially valid refusal fixtures cover request/affected/work caps, a later
-invalid point, missing mask, SIZE_MAX target and an unused unmapped target. No
-partially painted stroke enters new frames. Weak resources expire only after
-last frames/vectors release. Native bind/draw/upload counters remain zero.
+Six new cases in the [existing consumer](../projects/engine/tests/unit/src/tilemap-consumer.cpp):
 
-The [normal Engine consumer](../projects/engine/tests/terrain-consumer/main.cpp)
-retains values/errors/refusal names and adds batch. It includes the public header
-first, links only Cheryl::Engine, exercises owned labels/output/late bounds errors
-and imports the new operation. Its existing neutral header probe compiles first
-without GL/GLFW. No consumer macro patch, private implementation copy, app/JSON
-policy or alternate archive is used. The broad consumer family stays OFF; this
-narrow shared-only check remains under CHERYL_BUILD_TESTS.
+- editor_terrain_events: two different pointers in one tick, Release/Repeat/final
+  axis filtering, changed cardinal neighbor range, erase/sample/empty brush,
+  labels sharing visual IDs, full 24-label/24-tile oracle and literal isolation.
+- editor_terrain_modes: interleaved selection/layers/brushes and B/V transitions;
+  separate stored content, complete semantic/prepared output, authored ground/
+  detail order/alpha and retained literal frame.
+- editor_terrain_view: unequal 2x/3x scales, exact internal/outer computed edges,
+  nextafter neighbors, pan/zoom/reset/camera culling, invalid view/sizes suspension,
+  shared mode/view and unchanged old frame. No live platform state is queried.
+- editor_terrain_failures: initially valid full board, then two erases; earlier
+  candidates resolve before missing mask/SIZE_MAX target/unmapped target refuses.
+  Request/affected/work caps preserve entire current run; sibling/layer/literal
+  snapshots and prepared old/new frames remain exact.
+- editor_terrain_palette: copied configs, distinct labels sharing one visual ID,
+  connectivity failure rather than visual inference, zero/cancelling empty owners,
+  missing cases/tables and invalid private logical IDs.
+- editor_terrain_frames: literal -> semantic paint -> erase -> literal, exact
+  ranges/placements/order and complete semantic/tile oracle, old/new resource
+  ownership through destruction and weak release only after last frame/vector.
 
-Preserve build/tilemap-u1-debug: GNU 16.2.1 Debug/shared/WARN/tests, policy minimum
-3.5, previous optional/native/demo/aggregate/acceptance/consumer OFF selections,
-sanitizer flags and all incremental outputs. Only tests-engine and the narrow
-consumer/dependencies build, one job. All native work uses scripts/build with the
-normal shared queue, adaptive monitor, no swap and 4 GiB admission floor. There
-is no admission refusal, resource bypass, download, new dependency/pin or display
-attempt. Only invocation-local detect_leaks=0 applies for the recorded LSan
-tracing failure; ASan/UBSan/halt_on_error stay enabled without diagnostics.
+The independent full-board reference uses literal neighbor comparisons/bit
+weights; it calls neither Engine selection/batch nor cached visual connectivity.
+Synthetic native bind/draw/upload counters stay zero. This proves CPU data/input
+and prepared-packet contracts, without observing actual rendered pixels.
+All previous literal-editor, terrain, map, packet/pass and public caller cases
+remain selected and pass.
+
+## Actual commands and results
+
+Preserve build/tilemap-u1-debug: GNU 16.2.1 Debug/shared/WARN/tests/policy-3.5,
+previous native/OpenGL/startup/demo/aggregate/acceptance/consumer OFF selections
+and sanitizer flags unchanged. Preserve build/tilemap-u4-display-debug: its
+existing Debug/shared/WARN, NativeGLFW/OpenGL/Startup/demo ON, tests/optional UI/
+audio/workers/docs/other apps OFF, X11 ON/Wayland OFF. No fresh directory, cache
+borrow, new module configuration, dependency/pin, download or install occurs.
+Only demo and tests-engine/tests-terrain-consumer with needed dependencies build.
+All native operations use scripts/build, one job, normal shared queue, adaptive
+monitor/no swap/4 GiB admission floor. No resource refusal or limit bypass occurs.
 
 ```sh
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u4-display-debug \
+  --target demo --parallel 1
+ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
+UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- cmake --build build/tilemap-u1-debug \
   --target tests-engine tests-terrain-consumer --parallel 1
-/mnt/projects/cheryl-features/scripts/build -- python3 build/tilemap-u1-debug/u9-check-ownership.py
+/mnt/projects/cheryl-features/scripts/build -- python3 build/tilemap-u1-debug/u10-check-ownership.py
 ASAN_OPTIONS="${ASAN_OPTIONS:+${ASAN_OPTIONS}:}detect_leaks=0:halt_on_error=1" \
 UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir build/tilemap-u1-debug -N \
@@ -137,49 +160,45 @@ UBSAN_OPTIONS="${UBSAN_OPTIONS:+${UBSAN_OPTIONS}:}halt_on_error=1" \
   -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.)'
 ```
 
-| Operation | Immediate exit | Result / complete local log |
+| Operation | Immediate exit | Actual result / full local log |
 | --- | --- | --- |
-| Initial formatting | 0 | u9-format.log |
-| Build | 0 | u9-build.log: Engine/runners link; neutral header compiles; no warnings |
-| Added duplicate/cancellation cap assertion build | 0 | u9-build-cap-check.log; no warnings |
-| Actual ownership check | 0 | u9-ownership.log: six Engine operations, diagnostic RTTI, sole source producer |
-| Discovery | 0 | u9-registration.log: 73 unique names, exact 64-name retention |
-| Accumulated tests | 0 | u9-ctest.log: 73 pass / 0 fail / 0 skip, 42.53s |
-| Format checks before correction | 1 / 1 | u9-format-check-initial.log (overlong trailing comment), u9-format-check-shortened.log (adjacent comment alignment) |
-| Comment-only format correction / final check | 0 / 0 | u9-format-correction.log / u9-format-check.log |
+| App/case formatting | 0 / 0 | u10-format-app.log / u10-format-cases.log |
+| Demo build | 0 | build/tilemap-u4-display-debug/u10-demo-build.log: compiled/linked, no warnings |
+| CPU build | 0 | u10-cpu-build.log: runners/private source compiled/linked, no warnings |
+| Final format check | 0 | u10-format-check.log: all five changed code files |
+| Header/export/shared-source proof | 0 | u10-ownership.log, complete nm/readelf dumps |
+| Discovery | 0 | u10-registration.log: 79 unique names, exact 73-name retention |
+| Accumulated tests | 0 | u10-ctest.log: 79 pass / 0 fail / 0 skip, 45.48s |
 
-After execution only a trailing comment loses one word and adjacent comment
-alignment changes. u9-comment-correction.log verifies normalized C++/assertion
-tokens and line count unchanged; no behavior is changed or extra runtime pass
-claimed. Formatter checks all changed C++ inputs. Full formatter/build/native
-argv and immediate-exit summaries are in u9-commands.sh/u9-results.json. Saved
-u9-LastTest.log preserves complete test output, registration correspondence JSON
-compares exact names, and nm/readelf/link dumps retain actual ABI evidence.
-All artifacts are ignored clone-local build/tilemap-u1-debug/u9-*.
+Registration corresponds to 26 tilemap_consumer + 15 tilemap_submission + 14
+tilemap_terrain + 20 tilemap = 75 unit names, plus four public caller modes = 79.
+Exact name sets match prior/discovered/executed output. ASan/UBSan/halt_on_error
+remain enabled without diagnostics; only invocation-local detect_leaks=0 applies
+for the recorded LSan tracing fatal error. No global sanitizer settings change;
+leaks remain unverified. No source changes follow the all-green invocation.
 
-Registration: 20 tilemap_consumer + 15 tilemap_submission + 14 tilemap_terrain +
-20 tilemap = 69 unit names, plus four public consumer modes = 73. Engine exports
-constructor/destructor/label/tiles/edit/edit_batch; unit executable and consumer
-object import all six. Diagnostic RTTI/destructors remain Engine-owned; GNU PIE
-loader COPY relocations for Engine-provided RTTI/vtables are the recorded U8 ABI
-behavior, not an alternative source producer. readelf records libcheryl-engine.so.4;
-normal Ninja linkage and compile requirements contain no test-owned terrain
-source or private app paths. New method/aggregates require matching rebuilt
-Engine/consumer versions; TerrainMap data fields/layout are unchanged.
+All argv, immediate exits, native symbol dumps, shared source SHA256/compile
+commands, registration correspondence, results and full LastTest copy are saved
+under ignored build/tilemap-u1-debug/u10-*, with the demo build log in its preserved
+graphics output. Six Engine operations/diagnostic RTTI remain normal shared
+exports/imports. Both compile databases use the exact same private editor source;
+nm finds its consume in both binaries. Public consumer uses only Engine usage
+requirements; no macro patch or implementation archive. Existing GNU PIE
+RTTI/vtable COPY-relocation behavior and matching STL/toolchain requirements
+remain; no installed SDK, Windows/other-toolchain/static/Release ABI is inferred.
 
-## Limits and next bounded action
+## Limits and next action
 
-The unchanged U4 X11 :1 probe exited 255, `Error: unable to open display :1`.
-It is not retried. Real input/display, app asset decode/upload, capture, graphical
-teardown and leaks remain unverified. Installed SDK/export-manifest, Windows/
-other compiler/STL, static and Release ABI acceptance are also unverified.
-Source API comments are checked against implementation; no reference rendering
-or public-guide campaign is run. No demo compiled input changes; no demo rebuild.
+No U10 CPU/build prerequisite remains. The ready committed execution receipt is
+conditional on the observed checks above, not automatic source review or full
+feature acceptance. Real input/display, app atlas decode/upload, capture,
+graphical cleanup and leaks remain unverified. U4's probe exited 255 with
+`Error: unable to open display :1`; no unchanged display probe/run is repeated.
+No public guide/reference-generation campaign or hardware acceptance occurs.
 
-U9 has no unresolved CPU/build/link prerequisite. Commit its ready execution
-receipt with the coherent implementation and records, then stop. Next is
-coordinator review and finite-controller selection of pinned U10 private demo
-terrain mode after this run drains. That later unit can consume this batch API
-under existing editor ownership/caps; it is not started here. Preserve outputs,
-leave branch transport to publisher, and perform no sibling integration,
-resizing/chunking, undo, storage, backend or recurring-unit work.
+This is the third and last pinned tilemap milestone in the finite batch, after
+U8 79c02fb and U9 bdead05. Next action is coordinator source/batch review. A later
+bounded owned-window/input/capture observation requires changed display access
+and a separate assignment. No further worker unit, scheduler, sibling integration,
+backend/storage/undo/chunking or recurring work starts here. Preserve all outputs
+and checkpoints; publisher alone owns assigned-branch transport.
