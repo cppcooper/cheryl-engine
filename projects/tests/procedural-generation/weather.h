@@ -78,11 +78,15 @@ namespace ProcGen {
         Index work, storage_bytes, substeps_per_tick, substeps;
     };
     struct WeatherAdvance;
+    namespace WeatherDetail {
+        struct RegionalAccess;
+    }
     // Owned baseline, water, flow and integer clock. Potential is an artificial
     // m2/s2 wave/thermal-driving surrogate, neither hPa nor projection pressure.
     // Views expire on owner move/assignment/destruction; moved-from assign/destroy
     // only. No borrowed source or seed-only checkpoint; copies deep-copy.
     class WeatherState {
+        friend struct WeatherDetail::RegionalAccess;
         ClimateBaseline baseline_;
         std::vector<MoistureCell> water_;
         std::vector<FlowCell> flow_;

@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp spill.cpp channels.cpp climate.cpp moisture.cpp moisture-kernel.cpp weather.cpp weather-kernel.cpp weather-forcing.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp spill-checks.cpp channel-checks.cpp climate-checks.cpp moisture-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp spill.cpp channels.cpp climate.cpp moisture.cpp moisture-kernel.cpp weather.cpp weather-kernel.cpp weather-forcing.cpp regional.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp spill-checks.cpp channel-checks.cpp climate-checks.cpp moisture-checks.cpp regional-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -69,13 +69,17 @@ add_executable(procgen-weather-tests weather-tests.cpp)
 target_link_libraries(procgen-weather-tests PRIVATE procgen-private procgen-checks)
 add_executable(procgen-weather-consumer weather-consumer.cpp)
 target_link_libraries(procgen-weather-consumer PRIVATE procgen-private procgen-checks)
+add_executable(procgen-regional-tests regional-tests.cpp)
+target_link_libraries(procgen-regional-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-regional-consumer regional-consumer.cpp)
+target_link_libraries(procgen-regional-consumer PRIVATE procgen-private procgen-checks)
 
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
                         procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer
                         procgen-elevation-tests procgen-elevation-consumer procgen-drainage-tests procgen-drainage-consumer
                         procgen-spill-tests procgen-spill-consumer procgen-channel-tests procgen-channel-consumer
                         procgen-climate-tests procgen-climate-consumer
-                        procgen-moisture-tests procgen-moisture-consumer procgen-weather-tests procgen-weather-consumer)
+                        procgen-moisture-tests procgen-moisture-consumer procgen-weather-tests procgen-weather-consumer procgen-regional-tests procgen-regional-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -192,3 +196,10 @@ endforeach()
 
 add_test(NAME procgen.weather_consumer COMMAND procgen-weather-consumer)
 set_tests_properties(procgen.weather_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS regional_soil regional_drying regional_supply regional_resume regional_history regional_regions regional_signals regional_generated regional_invalid regional_limits regional_failure regional_ownership regional_host)
+    add_test(NAME procgen.${case} COMMAND procgen-regional-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.regional_consumer COMMAND procgen-regional-consumer)
+set_tests_properties(procgen.regional_consumer PROPERTIES TIMEOUT 30)

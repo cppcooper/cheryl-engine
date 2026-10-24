@@ -1,0 +1,67 @@
+{
+  "batch_id": "procgen-climate-20261024-0615",
+  "milestone_id": "PROCGEN-U15",
+  "starting_head": "7c022e3f489b027b07070c9b5e59b4cf79828b41",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u15/build-2.log",
+    "builds/procedural-generation/logs/u15/discovery.json",
+    "builds/procedural-generation/logs/u15/ctest-1.log",
+    "builds/procedural-generation/logs/u15/build-review.log",
+    "builds/procedural-generation/logs/u15/ctest-review.log"
+  ],
+  "executed": {
+    "ctest_entries": 161,
+    "passed": 161,
+    "failed": 0,
+    "skipped": 0,
+    "cases": 148,
+    "assertions": 48017,
+    "retained_entries": 147,
+    "retained_case_assertions": 46514,
+    "new_cases": {
+      "regional_soil": 48,
+      "regional_drying": 38,
+      "regional_supply": 22,
+      "regional_resume": 9,
+      "regional_history": 13,
+      "regional_regions": 16,
+      "regional_signals": 9,
+      "regional_generated": 1265,
+      "regional_invalid": 23,
+      "regional_limits": 29,
+      "regional_failure": 7,
+      "regional_ownership": 11,
+      "regional_host": 13
+    },
+    "new_assertions": 1503,
+    "consumers": 13,
+    "consumer_demonstrations": 49,
+    "new_consumer_demonstrations": 6,
+    "accumulated_runs": 1,
+    "native_rechecks": 2,
+    "configuration": "GNU16.2.1/Linux/C++23/Ninja Debug/UBSan; existing cache/shared wrapper/one job; all immediate exits0; no compiler/UBSan diagnostic or resource75/auth/allowance refusal.",
+    "full_suite_assertions": 48014,
+    "current_source_selection": "ctest-1 accumulated161/161 once, then ctest-review host/consumer2/2 after explicit duplicate-adoption proof. Production unchanged by review; all other cases unchanged."
+  },
+  "contracts": {
+    "identity": "outer_tick_soil_weather schema1/soil_model1/numerics1; full owned validated U14 WeatherState and explicit soil values/parameters. Exact U12 physical frame/calendar/heights/surfaces/versions and U8 replay retained. No inferred ocean, reservoir from U10 fill or discharge from U11 counts.",
+    "water": "Each outer tick runs real U14, then rain R infiltrates min(capacity-W,R*fraction), overflow exports R-I, and min(W,rate*seconds) evaporates into next-tick vapour. Rain is regional INTERNAL transfer, not double-counted U14 export. Finite depletion/replenishment remain distinct; residual final+overflow-initial-replenished uses1e-10*max(1,initial+replenished+overflow)m3 tolerance.",
+    "checkpoint": "Typed in-memory complete weather/soil/clock/forcing/boundary image; no raw-weather parser or wire format. Soil/version fields revalidate before copying; exact source compares full baseline values, not labels/size.1..4 same-source strictly ordered snapshots, no silent truncation. No source remap or seed-only resume; usage metadata/request reports are not prognostic state.",
+    "regions": "Half-open windows in exact parent physical frame sample one authoritative owner/time. Owned selected inputs+signals retain exact overlap; sleep freezes an old observation until explicit refresh. No partitioned/global solver or distributed halo guarantee.",
+    "host_policy": "Caller saves checkpoint+last-applied-tick+wet-alert count and adopts accepted interval/state together. Chosen alert threshold infiltration>1m3; repeated old observations/impact reports do not redeliver. Trusted in-memory application policy, not external exactly-once/durability/authentication. Explicit duplicate completed adoption rejects without changing restored state or alert count.",
+    "limits": "128x128/32MiB accounted payload/4M eight-byte array field slots/100M charged blocks;1..10 outer ticks/64 inner steps;max4 snapshots. State65536+280*C+8*F bytes and35*C+F slots; advance131072+688*C+24*F+8*V and86*C+3*F+V. Copy work64+9*C+F; advance64+8*C+F+sum_ticks(1+8*C+Wi), actual nested U14 Wi. History sums copied payload and64+sum(copy_work); observation n cells32768+336*n bytes/42*n slots/64+8*n work. Includes candidate/scratch/reports, excludes preexisting owners/caller copies/runtime/RSS.",
+    "failure": "Invalid/version/source/budget/underlying numeric refusals charge rejected work, preserve older inputs/results/images and publish no partial candidate. Allocation/programming exceptions propagate, tested by bounded allocation denial. Same version/build/platform/order floating replay only.",
+    "preservation": "All147 prior names/counts and46514 assertions pass.47/50 source/archive/receipt witnesses unchanged; only weather.h/.cpp/weather-kernel.h add necessary internal matching/injection access, with old layout/equations/order/charges unchanged. No WORLD/archives/old receipts/sibling integration."
+  },
+  "limitations": [
+    "GNU16.2.1/Linux Debug/UBSan only; other toolchains/OSes, ASan/leaks and broad/interactive runtime performance unverified. Floating replay requires same version/build/platform/libm/order.",
+    "Game reservoir/capacity/fog/fire-susceptibility proxies, not physical soil/percolation/hydraulic flow, latent heat/atmospheric energy/mass, measured RH/dew point, fire propagation or a forecast.",
+    "Typed in-memory checkpoints only; no persisted wire/save format, authenticity of edited images, arbitrary external exactly-once delivery or durability guarantee. Caller copies and preexisting input images excluded from per-request payload.",
+    "Host wet alerts use a per-adoption-interval threshold. Changing application batching can change effect granularity; model trajectory grouping and coherent saved-marker deduplication do not imply batching-invariant arbitrary host effects.",
+    "One finite regional owner, closed/periodic U14 boundaries and observation-freeze sleep; no distributed halo exchange, partitioned/global pressure solver or seam guarantee for independent simulations.",
+    "No public Engine/SDK extraction/integration. Graphical correctness/attractiveness/fun and earlier WORLD input/assets/ABI/file durability acceptance remain separate unexecuted boundaries."
+  ],
+  "next_action": "Remain idle for coordinator source/log review and publisher transport. Fourth/final milestone completes this finite batch; no fifth unit, new queue/service, sibling integration or automatic public extraction. Any runtime/physical/visual/persistence continuation needs a separately selected task."
+}

@@ -1744,3 +1744,289 @@ step is idle for review/publisher; only controller may assign U15. If selected,
 inspect U14 receipt/source/evidence before consuming rain exports through an
 explicit surface-store/runoff contract; do not reinterpret U10 fill/U11 counts as
 reservoirs or reapply an old interval without identity/clock semantics.
+
+## PROCGEN-U15 — Authorized final unit and proposed caller
+
+CLIMATE-P4 begins at clean `7c022e3f489b027b07070c9b5e59b4cf79828b41`, the
+passing U14 descendant. Read committed exact-batch PROCGEN-U14 ready/true receipt,
+actual source/limits and every nonempty saved evidence path, including147-pass
+accumulated log and12-pass final recheck. No unresolved conservation/ownership
+prerequisite remains. Workspace/clone instructions, autonomy policy, procedural
+brief/workstream, climate-weather CLIMATE-001..008/P4 and the four-unit plan govern
+this final task. Archives, WORLD records and earlier receipts remain unchanged.
+No sibling integration, question, service, new queue or fifth unit is selected.
+
+Proposed before dependent interfaces (engineering spelling, not user preference):
+
+```cpp
+auto region = start_regional(weather, soil, limits);
+auto before = capture_regional(region.value(), limits);
+auto storm = advance_regional(region.value(), 4, limits);
+auto resumed = resume_regional(before.value(), baseline, limits);
+auto west = observe_region(storm->state, west_window, limits);
+```
+
+Private implementation is regional.h/.cpp; checks/caller are regional-checks.h/.cpp,
+regional-tests.cpp, regional-host.h and regional-consumer.cpp, with only standalone
+CMake wiring. Necessary U14 access extension: friend RegionalAccess injects soil
+vapour into unpublished candidate water; internal check_source wraps the existing
+exact match authority. No duplicate matcher or changed U14 layout/equation/ordering/
+charge is introduced. All147 retained names/counts pass. Production remains stdlib
+only, independent of Engine/SDK/Runtime/rendering/dependency setup.
+
+Intentional taste evidence stays archived v3 squash
+`eb3f81c219e779b0200c1e82e5bc7239386528e8`,
+`include/abstracts/singleton.h::ConcreteSingleton::construct`: medium-confidence
+support for typed explicit setup, with singleton ownership and tentative imports
+as counterevidence against architectural imitation. New soil/checkpoint/API choices
+are engineering decisions. Agent-written predecessors establish compatibility,
+not personal preference. U8 height ticks supply no metres/ocean; U10 fill is minimax
+analysis, not available water; U11 unit contribution is not rainfall/discharge.
+No implicit interpretation changes or soil inferred from those numeric fields.
+
+## CLIMATE-007 — Implemented reservoir and full regional ledger
+
+RegionalState owns WeatherState plus SoilCell per parent x-fast cell. SoilCell
+contains water_mm[0,capacity], capacity_mm[0,1000], infiltration_fraction[0,1],
+evaporation_mm_per_second[0,.1], all finite. Depths are per WHOLE horizontal-cell
+area, independent of U13 finite-water reservoir and replenished-source fractions.
+Capacity0 is valid and retains no water. Callers select these explicit values,
+including cells also carrying water fractions; no soil texture/material is inferred.
+Domain remains U12 finite positive2D with dx/dy metres, north sign, tick-metres/
+datum, geographic/calendar context and all source/algorithm versions owned.
+
+Every completed outer tick runs the actual U14 model for ONE tick, using its
+unchanged internal admitted substeps and shared U13 water/phase kernel. Let rain R
+be that tick's U14 cloud-to-precipitation amount. Infiltration I=min(capacity-W,
+R*fraction), overflow O=R-I; add I to W. Then E=min(W,evaporation_rate*seconds_per_tick)
+is removed from soil and added to vapour AFTER this weather tick. It is available
+for transport/phase processing on the NEXT tick. Rate0 disables drying; depleted
+soil emits no water. Initial dry soil plus no clouds/supply cannot invent rain.
+No latent-heat/energy feedback, conductivity/percolation or hydraulic runoff solver.
+
+At the regional boundary R is INTERNAL, not another exported loss. U13's inner
+report closes before the soil adapter; only overflow is regional export. Finite
+reservoir depletion, replenished external supply and soil evaporation stay distinct.
+RegionalReport owns interval[from_tick,to_tick], seconds/tick, per-cell cumulative
+precipitation/infiltration/overflow/evaporation and a ledger. Total includes vapour,
+cloud, finite surface water AND soil. Uniform area conversion is dx*dy/1000 m3/mm.
+Residual=final+overflow-initial-replenished; tolerance1e-10*
+max(1,initial+replenished+overflow)m3. There is no residual repair or rain counted
+both as export and as retained infiltration. Phase transfers remain in U13; they
+are internal to the whole water balance. Soil evaporation can fail the U13 vapour
+numeric envelope; that refuses the entire regional candidate, never partial rain.
+
+This is outer_tick_soil_weather schema1/soil_model1/numerics1 composed with U14
+rusanov_regional_weather model/numerics1 and the original U12/U13 meanings.
+Reference-air lapse is unchanged and applied once. WeatherState usage describes
+its last inner weather request; RegionalState usage covers the WHOLE composite
+request. No claim of observed rainfall, soil physics, calibrated fog or hydrology.
+
+## CLIMATE-007 — Checkpoint, ownership and bounded retention
+
+RegionalCheckpoint is a typed owned in-memory image: full invariant-preserving
+WeatherState plus soil values/parameters and explicit schema/model/numerics.
+The contained U14 owner retains exact ClimateBaseline/physical frame/calendar,
+terrain heights, surface water fractions/roughness/response, U8 replay when present,
+water/temperature/potential/flow arrays, finite reservoir, integer clock, model/
+semantic and cosmetic forcing options, boundary and latest sampled curl faces.
+Current prognostic arrays and absolute tick, not a seed/timestamp, resume evolution.
+Held solar targets are recomputed deterministically at the next tick; no hidden
+spin-up or missing external boundary schedule is required in the selected modes.
+
+WeatherState prevents malformed raw weather arrays by construction; its public
+const views cannot edit an image. This is not a new raw-byte/parser/file boundary.
+Mutable soil/version fields in the image are untrusted: validate size, finite/range
+values and supported versions before copying. Resume compares expected complete
+baseline descriptor/context/revisions AND actual cells using U14's existing matcher;
+same IDs or dimensions cannot admit changed heights, water availability, roughness
+or metric/calendar. Soil parameters are checkpoint data, not externally inferred
+metadata. A well-formed manually edited image is not authenticated proof of its
+history; no provenance security or arbitrary external delivery credential is claimed.
+Changed terrain needs an explicitly selected new initialization through existing
+constructors, never silent remapping by resume.
+
+State, checkpoint, history, observations and reports deep-own returned values.
+No synchronous input view escapes. Copy/move/adoption obey existing owner rules:
+views expire on assignment/move/destruction; moved-from supports assign/destroy
+only; caller synchronizes adoption. Ordinary C++ caller copies are outside a
+utility request's budget. Usage/request reports are diagnostics, not prognostic
+history, and update on resume/copy requests. Semantic state/forcing/tick match
+exactly across grouped adequate-budget advances on the declared build/order.
+Float replay requires the same model/numerics/build/platform/libm/order; integer
+stream identities imply no cross-platform floating bit guarantee.
+
+Capture/resume admit one checkpoint slot. retain_regional_history accepts1..4
+strictly increasing completed-tick images with the same exact source; preflight
+aggregate output fields/bytes/work, validate all images, then copy. No silent trim,
+eviction, seed regeneration or unbounded time travel. Caller retains two checkpoints
+(pre-storm36 and after-storm46); constructing history peaks at four images (two
+already-owned inputs plus two outputs), then retains exactly two. For its48-cell
+example, output history is159712 bytes/3580 field slots. Generic maximum full-grid
+four-image output is19668992 accounted bytes, excluding preexisting input images.
+No persisted wire format, strict-map-v1 extension, repository save policy or public
+Engine extraction is selected.
+
+## CLIMATE-007/008 — Shared regions, sleeping and application adoption
+
+RegionWindow specifies a half-open parent-cell rectangle and exact parent physical
+frame. Bounds, checked sums/products and frame must match; it is NOT a separately
+seeded or reprojected simulation. observe_region copies current selected cells in
+local x-fast order, retaining parent indexes, exact per-cell source/water/flow/soil,
+full source descriptor/context, WeatherModel, versions and authoritative tick.
+Derived signals own the exact relevant sampled inputs; no borrowed owner is needed
+to read an old observation. Overlap from one owner/time uses identical inputs and
+operation order and agrees exactly.
+
+Signals are local temperature plus bounded column-capacity saturation proxy,
+cloud/(1+cloud) fog proxy, dryness=1-W/capacity (capacity0=>1), wind norm in m/s,
+and dryness*wind/(1+wind) fire-susceptibility proxy. Saturation is clamped Q/capacity;
+capacity0 gives1 for positive Q, otherwise0. None is measured RH/dew point, resolved
+gusts, fuel/ignition/fire spread, road closure, flooding, crop/story/NPC policy or
+U11 discharge. These inexpensive observations make memory useful without an event
+framework. The application chooses consequences.
+
+Sleep policy is explicit observation freeze: retain the old materialized observation
+with its old tick while the authoritative owner continues; on wake explicitly sample
+current state. There is no per-region catch-up or regenerated seed. Two caller
+windows west[0,5)x[0,6),east[3,8)x[1,5) overlap eight exact parent cells at tick76;
+sleeping eastern observation still owns tick36. This demonstrates one-owner sampling,
+not partitioned/global pressure, halo exchange or a fixed-buffer seam guarantee.
+Distributed exchange remains future work.
+
+regional-host.h is APPLICATION example code linked only by caller/checks, not
+production weather. Save pairs RegionalCheckpoint with last_applied_tick and wet
+alert count. Its chosen effect is one wet alert for an adopted interval whose total
+infiltration>1m3; every accepted interval advances the marker even without an alert.
+Adopt checks interval endpoints, prepares the new state/soil/marker/count and moves
+them together. Restore requires the saved marker equal the completed checkpoint's
+clock. Repeated observations and historical impact reports cannot apply another
+alert; a future report must enter through coherent adoption with state. Explicit
+rollback restores the corresponding host timeline/count, not an external delivery
+history. This in-memory trusted-producer policy does not provide arbitrary external
+exactly-once delivery, authentication, transaction durability or an event service.
+Reports remain observations. The threshold is per host-selected adoption interval:
+changing host batching may change alert granularity. Only the model state, not
+arbitrary application effects, has the fixed-tick grouping guarantee.
+
+## PROCGEN-051 — Resource, numeric and refusal contract
+
+Regional caps:128x128/16384 cells,32MiB accounted payload,4M field slots,100M work
+blocks per request,1..10 outer ticks,1..64 U14 substeps/tick,max4 history snapshots.
+Field slots count eight-byte C/face-sized array payload words, including struct
+padding; fixed metadata has separate byte allowance. Cells apply per owner/domain,
+fields/bytes/work aggregate across output/scratch/history of the request. Existing
+inputs/held snapshots/caller copies/allocator/runtime/RSS are excluded. No deliberate
+memory pressure, install or dependency changes occur. Required byte arithmetic is
+checked before allocation. Typed WeatherState already enforces finite domain/axes.
+Window endpoint sums and clock addition use checked u64 Index arithmetic.
+
+Let C=cells,F=(w+1)*h+w*(h+1),V=(w+1)*(h+1). State/copy payload
+65536+280*C+8*F bytes,35*C+F field slots. Includes baseline184*C,weather water32*C,
+flow32*C,soil32*C,latest curl8*F. Copy/capture/resume work64+9*C+F: header64,
+exact-source matchingC,soil validation4*C,copy4*C+F. Header/admission work is charged
+also on rejected requests. Scalar/shape/version/source checks precede large copies.
+Allocation/programming exceptions propagate; only private expected refusal is caught.
+
+Advance peak131072+688*C+24*F+8*V bytes;86*C+3*F+V slots. Accounts copied current
+weather+soil, report32*C, evaporation scratch8*C and the FULL nested U14 candidate/
+traversal/forcing/report scratch, not just the final output. Maximum-grid advance
+is12328968 bytes/1524737 slots; state4917248 bytes. Every child is budgeted from
+remaining global work, and its successful OR failed spent work is charged back.
+One weather tick at a time preserves fixed-tick grouping and soil causality.
+
+Exact successful advance work64+8*C+F+sum_ticks(1+8*C+Wi), with Wi actual U14
+one-tick usage, including its schedule trials/wave/transport/source/copies. The
+regional8*C per tick is6*C soil/report blocks plus2*C vapour injection/validation.
+Preflight uses U14 model/numerics1's known one-substep minimum Wi (recorded in U14
+CLIMATE-006); actual admitted n may cost more and exhaust remaining work during
+an unsuccessful request. Do not infer mathematical impossibility from that resource
+refusal. Future U14 numerics changes must update this lower-bound compatibility
+helper. Existing equations/charges remain unchanged in U15.
+
+History output payload/slots=sum(state copies), work64+sum(copy_work); max4 count
+checked before iteration/copy. Observe n selected cells:32768+336*n bytes,42*n
+slots,64+8*n work; exact selected inputs/derived values are counted. Expected
+invalid/version/source/region, budget and underlying numeric/unsupported-weather
+refusals preserve prior state/images/reports and expose consumed work, with nested
+WeatherFailure retained. No partial replacement/infiltration/overflow report publishes,
+no hidden step clamping, partial time, retry loop, resampling or mutable global RNG.
+
+## PROCGEN-052 — Executed final-batch evidence and handoff
+
+Existing GNU16.2.1/Linux/C++23/Ninja Debug/UBSan cache, shared build wrapper, one
+job. First build passed; source review then charges rejected header/admission work
+without altering successful totals. Second build/discovery and ONE accumulated
+CTest run passes161/161,0 failures/skips:148 cases/48014 assertions plus thirteen
+consumers/49 demonstrations at that source. Staged review strengthens duplicate
+adoption after restore; only host/caller code changes. Build-review and affected
+CTest2/2 pass. Current combined evidence is148 cases/48017 assertions. New
+thirteen cases/1503 assertions and six consumer demonstrations retain all147 prior names and135 cases/46514 assertions, including
+U1 logical replay and every U11/U12/U13/U14 fixture. No native failure or unchanged
+full-suite rerun,compiler/UBSan diagnostic or resource75/auth/allowance refusal occurred in U15.
+Original queued sessions47699(format),84472(discovery),53546(CTest) were retained
+and drained normally, with progress; build sessions40019/95781 also completed.
+No queue cancellation/relaunch or unchanged Engine/map campaign.
+
+New assertions: soil48,drying38,supply22,resume9,history13,regions16,signals9,
+generated1265,invalid23,limits29,failure7,ownership11,host13. Meaningful checks:
+
+- Literal unit: cloud4mm,soil.25/cap1mm,half rain2mm; I=.75,O=1.25,E=.1 gives
+  cloud2,Q=.1,W=.9. Volume42.5m3 becomes30+12.5 export, no double-counted rain.
+  Next overflow.9; capacity0 exports all; infiltration fraction.25 gives.5 of2.
+- Independent bounded drying depletes.3mm into vapour and emits nothing later;
+  finite.075mm depletion,replenished.1mm and soil.2mm combine toQ=.375, with
+  separate reported transfers. Independent reductions compare every measured
+  amount, per-cell soil deltas, nonnegativity and full water balance.
+- Generated6 ticks direct versus2/checkpoint/resume4 match exact soil/water/flow/
+  forcing/time; interval amounts sum within declared tolerance. Stage/cosmetic
+  changes only to unused key leave actual wetness and semantic transfers unchanged.
+- Deep ownership survives input destruction/copies/later ticks and failed restore/
+  advance. Test-only allocation denial proves bad_alloc propagates; impossible
+  field admission rejects before allocation without creating memory pressure.
+- Unknown schema/soil/numerics,wrong soil size/nonfinite/ranges,changed exact frame/
+  height/water availability/roughness/revision despite same labels,window/clock
+  overflow reject. Exact/one-short cell/field/storage/work/checkpoint/history/tick/
+  substep budgets pass/refuse. Numeric vapour exhaustion after one acceptable
+  tick refuses a two-tick candidate while old soil/snapshot remain intact.
+- Exact eight-cell overlap/time, frozen sleeping observation, literal signal values,
+  application once-only marker/restored count and repeated-observation behavior pass. Explicit replay of the old completed
+  adoption also rejects without changing restored state or alert count.
+
+Consumer retains real U8 8x6/pitch3/-80..120/key{42,0x67656f6772617068,7}, explicit
+10m/tick/datum0,2000m cells/40N/southward rows and caller-specified coast/finite
+pool/soil. Surface memory/wind/forcing are the SAME U14 model. Initial cloud pulse
+is1mm at x1; capacity proxy100 and cloud re-evaporation0 isolate moved/raining
+clouds from newly created clouds. Soil cap2mm,evaporation.000001mm/s. Pre-storm
+snapshot tick36 is dry; after-storm46 has summed soil5.8176412378mm, cloud.0068155340mm.
+At tick76 soil sum5.4302383797mm while cloud sum<1e-6mm; ten more ticks dry soil to
+5.3222383798mm, with total water retained/supplied/exported consistently. Sums are
+sums of whole-cell depths, not a single site's radius or rainfall-rate measurement.
+The after-storm interval has23972.7378641519m3 internal rain/infiltration,
+702.1729130102m3 soil-to-air,1440m3 external,80m3 finite-to-air and0 overflow;
+initial24080 becomes25520m3. All residuals meet the recorded tolerance.
+
+At final tick86 host marker86 retains two alerts under the application's >1m3
+threshold. Restoring the completed after-storm save and rereading the old impact
+twice does not add another; a wrong saved marker rejects. Two-region/evolution/
+resume/after-storm/drying and literal demonstrations all pass6/6. No visual scene,
+subjective attractiveness/fun or physical weather validation was executed.
+
+Logs live in builds/procedural-generation/logs/u15:
+commands.txt,exits.tsv,format-1.log,build-1.log,format-2.log,format-tests.log,
+build-2.log,discovery.json,ctest-1.log,build-review.log,ctest-review.log,counts.json,source-evidence.json,
+prerequisite.json,preservation-before.json,preservation-after.json.47/50 witnesses
+remain identical; only weather.h/.cpp/weather-kernel.h add necessary internal access
+and matching wrapper. Earlier producer sources, archives, receipts and WORLD data
+remain intact. Required U15 ready receipt reports execution, not automatic source
+acceptance or proof of another platform. Current source hashes match native inputs.
+
+No unresolved blocker. Confidence high in checked discrete water/state/ownership/
+limits and source matching; medium in API/model usefulness. Other toolchains/OSes,
+ASan/leaks,broad performance/interactive runtime profile, physical soil/latent heat/
+atmospheric mass-energy/hydraulic/forecast calibration,distributed exchange,
+visuals/fun,public Engine/SDK/serialization/durable external delivery and earlier
+WORLD input/assets/ABI/durability gaps remain. Next action: idle for coordinator
+source/log review and publisher transport. This fourth milestone ends the finite
+climate batch. Any later runtime profiling, storage integration, physical refinement
+or graphical observation needs a separately selected task; no fifth unit starts.

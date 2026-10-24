@@ -155,6 +155,16 @@ namespace ProcGen {
         static_assert(sizeof(FlowCell) == 32 && sizeof(MoistureCell) == 32);
         static_assert(4 * sizeof(WeatherState) + 4096 <= weather_fixed_storage);
     }
+    WeatherResult<void> WeatherDetail::check_source(const ClimateBaseline& a, const ClimateBaseline& b, Work& work) {
+        try {
+            match(a, b, work);
+            return {};
+        } catch (const Stop& s) {
+            auto e = s.failure;
+            e.work = work.used();
+            return std::unexpected(e);
+        }
+    }
     std::string_view weather_reason_text(WeatherReason r) {
         switch (r) {
             case WeatherReason::dimensions:

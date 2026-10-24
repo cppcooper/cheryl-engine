@@ -299,3 +299,45 @@ without production changes. Saved diagnostics retain the failure. Necessary U13
 step extraction shares the exact kernel;39/40 preservation hashes match, with
 only moisture.cpp deliberately changed. Ready receipt reports execution, not
 coordinator source acceptance. Controller alone may select U15; no next job runs.
+
+## CLIMATE-007 — Soil memory and typed regional checkpoints (U15)
+
+**User mechanism; implemented private choice.** Composite ownership retains U14
+weather and an explicit soil reservoir. Per completed tick, rain infiltrates up
+to configured capacity; overflow exports, while bounded drying returns soil water
+to next-tick vapour. Typed checkpoints retain full source/model/clock/forcing and
+soil parameters; resume compares exact baseline values. Bounded history and one
+owner serving two windows preserve memory. Tradeoff: simple soil and full copies;
+confidence high in checked accounting/ownership, medium in game usefulness.
+
+## CLIMATE-008 — Independent state and host-policy proof (U15)
+
+**User acceptance; executed discrete checks.** Literal water/overflow/drying
+oracles, resumed trajectories and independent reductions verify the mechanism.
+Two region windows share exact overlapping cells/time; sleep freezes observations
+until explicit refresh. The small application saves its interval marker beside
+state and adopts both together, preventing old reports from repeating its wet
+alert. Reports remain observations, without arbitrary external exactly-once,
+fire/flood or visual guarantees. Confidence high locally; those broader claims
+remain unverified.
+
+## PROCGEN-051 — Bounded copies, observations and refused advances
+
+**Engineering limits; implemented.** Caps128x128/32MiB/100M charged blocks,
+1..10 ticks/64 inner steps and max4 ordered snapshots. Preflight state/field/copy
+payload, validate soil/version/source before copying, and charge each nested U14
+request into one regional work budget. Complete publication preserves older
+owners on refusal. Field slots count eight-byte array-payload words; payload
+excludes preexisting inputs/caller copies/RSS. Tradeoff: conservative peak model
+and small history. Confidence high in tested exact/one-short bounds.
+
+## PROCGEN-052 — Completed finite climate checkpoint
+
+**User execution requirement; GNU/Linux Debug/UBSan.** One accumulated161/161
+pass plus2/2 affected host/caller rechecks establish148 cases/48017 current
+assertions and thirteen consumers/49 demos,0 failures/skips.
+New thirteen cases/1503 assertions and six demonstrations retain every147 prior
+name/count.47/50 source/archive/receipt hashes match; only three U14 access-wrapper
+files intentionally change, leaving its layout/equations/charges intact. Ready
+receipt reports worker execution, pending coordinator review. This fourth unit
+ends the finite batch; no fifth job, integration or public extraction starts.
