@@ -83,3 +83,10 @@ are in agent-notes.md and the standalone continuation receipt. Completed queued
 receipts remain immutable. The worker finishes idle for coordinator review;
 rendering/human clarity/fun, production physics, leak/platform and durability
 acceptance remain outside this proof.
+
+Standalone M7 selects four new witnesses and two stretches in
+[the owned batch plan](magic/batches/M7-plan.json), independently of completed queues.
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M7-031 | Add typed absorption wards and an Attack intent restriction, each standalone through normal live spoken authority. Four records each retain actual plans, actor generations, monotonic identities and exact onset/expiry. Shared damage resolution serves Fire and an actual trusted-owner3dp attack. Restrictions gate that action, not arbitrary AI. Whole transitions/checkpoints retain capacity; no stacking, refunds or engraving. High confidence in deterministic behavior, medium in fixture costs/API. |

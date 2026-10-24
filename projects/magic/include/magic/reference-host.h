@@ -86,7 +86,11 @@ namespace Magic::Reference {
         InstanceLimit,
         WitnessLimit,
         NoDisguise,
-        UnsupportedComposition
+        UnsupportedComposition,
+        ActiveWard,
+        RestrictedIntent,
+        MechanicLimit,
+        InvalidIntent
     };
     struct Failure {
         Error code;
@@ -176,6 +180,8 @@ namespace Magic::Reference {
         std::uint64_t max_fact_id = 1'000'000'000;
         std::size_t objects = object_capacity, disguises = disguise_capacity, witnesses = witness_capacity;
         std::uint64_t max_instance = 1'000'000;
+        std::size_t wards = 4, restrictions = 4;
+        std::uint64_t max_mechanic_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
     struct ItemId {
@@ -244,6 +250,38 @@ namespace Magic::Reference {
         std::array<Witness, witness_capacity> witnesses;
         std::size_t count = 0;
     };
+    struct WardView {
+        std::uint64_t instance = 0, action = 0;
+        ActorId actor;
+        std::uint32_t remaining_dp = 0;
+        std::uint64_t until_tick = 0, onset_tick = 0;
+        bool operator==(const WardView&) const = default;
+    };
+    struct RestrictionView {
+        std::uint64_t instance = 0, action = 0;
+        ActorId actor;
+        Intent intent = Intent::Attack;
+        std::uint64_t until_tick = 0, onset_tick = 0;
+        bool operator==(const RestrictionView&) const = default;
+    };
+    struct MechanicsSnapshot {
+        std::uint32_t version = 1;
+        std::array<WardView, 4> wards;
+        std::array<RestrictionView, 4> restrictions;
+        std::uint64_t instances_issued = 0;
+        bool operator==(const MechanicsSnapshot&) const = default;
+    };
+    struct DamageResolution {
+        std::uint32_t requested_dp = 0, prevented_dp = 0, health_lost = 0;
+        bool operator==(const DamageResolution&) const = default;
+    };
+    struct AttackObservation {
+        Snapshot before, after;
+        MechanicsSnapshot mechanics_before, mechanics_after;
+        ActorId attacker, target;
+        DamageResolution damage;
+    };
+    using AttackObserved = std::shared_ptr<const AttackObservation>;
     struct Usage {
         std::size_t work = 0;
         std::size_t selector_work = 0;
@@ -324,6 +362,8 @@ namespace Magic::Reference {
             ItemSnapshot items;
             std::array<PlanHandle, item_capacity> inscriptions;
             PerceptionSnapshot perception;
+            MechanicsSnapshot mechanics;
+            std::array<PlanHandle, 4> ward_plans, restriction_plans;
             std::array<PlanHandle, disguise_capacity> disguise_plans;
         };
         struct Prepared {
@@ -359,6 +399,12 @@ namespace Magic::Reference {
             State& state,
             Meter& meter
         ) const;
+        void mechanical(const PlanHandle& plan, const std::array<bool, actor_capacity>& selected, State& state, Meter& meter) const;
+        DamageResolution damage(ActorId target, std::uint32_t amount, State& state, Meter& meter) const;
+        std::optional<std::uint64_t> mechanic_due(const State& state, std::uint64_t target, Meter& meter) const;
+        void expire_mechanics(State& state, std::uint64_t tick, Meter& meter) const;
+        void check_mechanics(const State& state, Meter& meter) const;
+        void forget_actor_mechanics(State& state, ActorId actor, Meter& meter) const;
         void continuation(const State& state, std::uint64_t tickets, Meter& meter) const;
         [[nodiscard]] const Prepared& authorize(const Ticket& ticket) const;
         [[nodiscard]] StepResult adopt(State&& next, Observation observation);
@@ -373,6 +419,9 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<PerceptionSnapshot, Failure> inspect_perception() const;
         [[nodiscard]] std::expected<Perceived, Failure> perceive(ActorId observer, ObjectId subject) const;
         [[nodiscard]] std::expected<KnowledgeView, Failure> knowledge(ActorId observer) const;
+        [[nodiscard]] std::expected<MechanicsSnapshot, Failure> inspect_mechanics() const;
+        // Trusted native-owner action, fixed3dp/contact50mm; intent restrictions and wards are real gates.
+        [[nodiscard]] std::expected<AttackObserved, Failure> try_attack(ActorId attacker, ActorId target);
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

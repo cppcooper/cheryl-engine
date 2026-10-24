@@ -1,4 +1,5 @@
 #include <magic/reference-host.h>
+#include "reference-meter.h"
 
 #include <algorithm>
 #include <limits>
@@ -18,14 +19,13 @@ namespace Magic::Reference {
                    actor.health <= actor.max_health && actor.mana <= 1'000'000 && actor.base_speed_mm_per_s <= 1'000'000;
         }
         bool catalog_valid(const Catalog& catalog) {
-            if (catalog.operations.size() > 5)
+            if (catalog.operations.size() > primitive_count)
                 return false;
             for (std::size_t i = 0; i < catalog.operations.size(); ++i) {
                 const auto& schema = catalog.operations[i];
                 if (schema.key.empty() || schema.key.size() > 64 || schema.max_quantity == 0 || schema.max_quantity > 1'000'000 ||
                     schema.max_duration_ticks > 8'640'000 || schema.appearances > 3 ||
-                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow &&
-                     schema.primitive != Primitive::Disguise && schema.primitive != Primitive::Discern))
+                    static_cast<unsigned>(schema.primitive) >= primitive_count)
                     return false;
                 for (char c : schema.key)
                     if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-'))
@@ -43,7 +43,8 @@ namespace Magic::Reference {
                    l.max_action <= c.max_action && l.max_ticket <= c.max_ticket && l.max_revision <= c.max_revision &&
                    l.max_generation <= c.max_generation && l.items <= c.items && l.touch_receipts <= c.touch_receipts &&
                    l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id && l.objects <= c.objects &&
-                   l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance;
+                   l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance && l.wards <= c.wards &&
+                   l.restrictions <= c.restrictions && l.max_mechanic_instance <= c.max_mechanic_instance;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -106,35 +107,6 @@ namespace Magic::Reference {
             return true;
         }
     }
-
-    struct ReferenceHost::Meter {
-        const HostLimits& limits;
-        Usage usage;
-        std::uint64_t action = 0;
-        std::uint64_t tick = 0;
-        explicit Meter(const HostLimits& value)
-        : limits(value) {
-            spend(244); // Old fixed state80 + new objects4/instances8*(16 audience+metadata+plan)/witnesses16 =164.
-        }
-        [[noreturn]] void fail(Error code) const { throw Failure{code, action, tick}; }
-        void spend(std::size_t count = 1) {
-            if (count > limits.work - usage.work)
-                fail(Error::WorkLimit);
-            usage.work += count;
-        }
-        void visit() {
-            spend();
-            if (usage.selector_work == limits.selector_work)
-                fail(Error::SelectorLimit);
-            ++usage.selector_work;
-        }
-        void select() {
-            spend();
-            if (usage.selected_targets == limits.selected_targets)
-                fail(Error::TargetLimit);
-            ++usage.selected_targets;
-        }
-    };
 
     namespace {
         bool form_valid(Appearance form) {
@@ -424,6 +396,7 @@ namespace Magic::Reference {
                     next.disguise_plans[i].reset();
                 }
             }
+            forget_actor_mechanics(next, id, meter);
             state_ = std::move(next);
             return {};
         } catch (Failure failure) {
@@ -518,12 +491,22 @@ namespace Magic::Reference {
             const bool perception = effect.primitive == Primitive::Disguise || effect.primitive == Primitive::Discern;
             if (perception && meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
+            if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict) && meaning.effects.size() != 1)
+                meter.fail(Error::UnsupportedComposition);
             bool supported = false;
             for (const auto& schema : catalog_.operations) {
                 meter.spend(effect.key.size() + 1);
                 if (effect.key != schema.key || effect.primitive != schema.primitive)
                     continue;
-                if (auto d = std::get_if<VisualDisguise>(&effect.payload)) {
+                if (auto ward = std::get_if<Absorption>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Ward && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                ward->capacity_dp > 0 && ward->capacity_dp <= schema.max_quantity && ward->duration_ticks > 0 &&
+                                ward->duration_ticks <= schema.max_duration_ticks;
+                } else if (auto restriction = std::get_if<IntentRestriction>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Restrict && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                restriction->intent == Intent::Attack && restriction->duration_ticks > 0 &&
+                                restriction->duration_ticks <= schema.max_duration_ticks;
+                } else if (auto d = std::get_if<VisualDisguise>(&effect.payload)) {
                     const auto form = static_cast<unsigned>(d->form);
                     supported = effect.primitive == Primitive::Disguise && effect.quantity == 0 && effect.duration_ticks == 0 &&
                                 d->subject == SubjectRole::CapturedObject && form < 2 && (schema.appearances & (1u << form)) &&
@@ -547,7 +530,8 @@ namespace Magic::Reference {
         const auto& m = plan->meaning();
         for (const auto& e : m.effects) {
             meter.spend(); // Count the added envelope scan, including legacy inscriptions.
-            if (e.primitive == Primitive::Disguise || e.primitive == Primitive::Discern)
+            if (e.primitive == Primitive::Disguise || e.primitive == Primitive::Discern || e.primitive == Primitive::Ward ||
+                e.primitive == Primitive::Restrict)
                 meter.fail(Error::UnsupportedEntry);
         }
         if (m.entry.kind != EntryKind::Engraved || m.entry.mode != CastingMode::Release || m.entry.trigger != Trigger::ItemTouch ||
@@ -613,6 +597,10 @@ namespace Magic::Reference {
             if (!any)
                 meter.fail(Error::EmptySelection);
         }
+        if (meaning.effects[0].primitive == Primitive::Ward || meaning.effects[0].primitive == Primitive::Restrict) {
+            mechanical(plan, selected[meaning.effects[0].binding], state, meter);
+            return;
+        }
         if (meaning.effects[0].primitive == Primitive::Disguise || meaning.effects[0].primitive == Primitive::Discern) {
             perceptual(plan, *subject, selected[meaning.effects[0].binding], state, meter);
             return;
@@ -668,7 +656,7 @@ namespace Magic::Reference {
                     std::min<std::uint64_t>(data.data.max_health, static_cast<std::uint64_t>(data.data.health) + write.quantity)
                 );
             else if (write.health == -1)
-                data.data.health = write.quantity >= data.data.health ? 0 : data.data.health - write.quantity;
+                static_cast<void>(damage(data.id, write.quantity, state, meter));
             if (write.slow)
                 data.slow = {write.permille, write.until};
         }
@@ -803,6 +791,9 @@ namespace Magic::Reference {
                     if (d.instance && d.until_tick <= target && (!due || d.until_tick < *due))
                         due = d.until_tick;
                 }
+                const auto mechanics_due = mechanic_due(next, target, meter);
+                if (mechanics_due && (!due || *mechanics_due < *due))
+                    due = mechanics_due;
                 if (!due)
                     break;
                 next.world.tick = *due;
@@ -821,6 +812,7 @@ namespace Magic::Reference {
                         next.disguise_plans[i].reset();
                     }
                 }
+                expire_mechanics(next, *due, meter);
                 while (true) {
                     std::optional<std::size_t> index;
                     for (std::size_t i = 0; i < pending_capacity; ++i) {
@@ -1080,8 +1072,7 @@ namespace Magic::Reference {
             validate(state.plans[i], Request{p.caster, std::nullopt, p.aim, p.subject}, state, meter, false);
             for (const auto& effect : state.plans[i]->meaning().effects) {
                 meter.spend();
-                const auto* d = std::get_if<VisualDisguise>(&effect.payload);
-                static_cast<void>(later(p.due_tick, d ? d->duration_ticks : effect.duration_ticks, limits_));
+                static_cast<void>(later(p.due_tick, effect_duration_ticks(effect), limits_));
             }
         }
         for (std::size_t i = 0; i < item_capacity; ++i) {
@@ -1199,6 +1190,7 @@ namespace Magic::Reference {
                 check(ps.witnesses[j].observer != v.observer || ps.witnesses[j].instance != v.instance);
             }
         }
+        check_mechanics(state, meter);
     }
     std::expected<Checkpoint, Failure> ReferenceHost::checkpoint() const {
         try {
@@ -1293,6 +1285,10 @@ namespace Magic::Reference {
             MAGIC_ERROR(WitnessLimit);
             MAGIC_ERROR(NoDisguise);
             MAGIC_ERROR(UnsupportedComposition);
+            MAGIC_ERROR(ActiveWard);
+            MAGIC_ERROR(RestrictedIntent);
+            MAGIC_ERROR(MechanicLimit);
+            MAGIC_ERROR(InvalidIntent);
         }
 #undef MAGIC_ERROR
         return "InvalidError";

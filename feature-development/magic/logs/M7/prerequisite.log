@@ -1,0 +1,11 @@
+Exact clean M6 gate accepted on feat/magic. Receipts/source are committed inputs, not assumed APIs.
+feature-development/magic/logs/M6/configure-01.log bytes=315 sha256=18ebfce30ddd2624594351d4edc89ebe3a79e7f87a1f51ebbb5ca1cbb214e191 exit_status=0
+feature-development/magic/logs/M6/build-01.log bytes=2238 sha256=8ae49f28fe69fd52aac7cebad46a2b8601ea21e2e03c48186671e35800249d32 exit_status=2
+feature-development/magic/logs/M6/build-02.log bytes=2397 sha256=ff76e4beeb45ec0315ca8a863003b6b34861dcc835380c40b28f8abe7d4ef3cc exit_status=0
+feature-development/magic/logs/M6/build-03.log bytes=2892 sha256=27c731e183af6f8b9c4810acc7626bb33f21acf7edc6e9e4ac261528ce47d69a exit_status=0
+feature-development/magic/logs/M6/accumulated-01.log bytes=42419 sha256=eb9720dd8a7f6b067d9e009e540c9b306946dad69df784947586d4c543a29a8f exit_status=8
+feature-development/magic/logs/M6/build-04.log bytes=725 sha256=5326ecd28da2ffdba1ce790ecd6f022da7991fb87bac444131fd89c64f267bbc exit_status=0
+feature-development/magic/logs/M6/affected-01.log bytes=7596 sha256=a75de06876338c9d9773e967c4dbae4bae8aa7cdb482fdd5784fa9dc5f79c726 exit_status=0
+feature-development/magic/logs/M6/build-05.log bytes=1400 sha256=5dffed4d85e981ce76de976f2c0e7b5ed68011a2ee3e647ee577e829b5982566 exit_status=0
+feature-development/magic/logs/M6/affected-02.log bytes=13206 sha256=0a553ed052795de51c04cf86dfdb540869f96fc53ca11023fa81bd35705a84d4 exit_status=0
+Complete nine logs reviewed: original build and setup failures preserved;19 unique names have passing final accumulated/focused evidence. Source reviewed: typed compiler, staged host/payload validation, actual checkpoint and M4 learning consumer. No baseline native rerun.

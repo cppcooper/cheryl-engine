@@ -1,0 +1,53 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_(contracts|caller)$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 20
+    Start 20: magic_mechanics_contracts
+
+20: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_checks
+20: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+20: Test timeout computed to be: 30
+20: PASS ward and restriction exact typed meanings Common and concept requirements
+20: PASS capacity5 hits3 then4 absorbs3 then2 and passes2 exactly once
+20: FAIL attack intent restriction gates actual action and exact expiry: unexpected refusal
+20: FAIL ward and restriction interact without changing unrelated state: unexpected refusal
+20: PASS current symbolic keys primitive quantities duration permission recheck
+20: FAIL overlap refuses and refused action leaves valid earlier ticket usable: unexpected refusal
+20: PASS new actor generations do not inherit expired or removed contributions
+20: PASS pending audience and capacity resolve at activation paid failure preserved
+20: PASS exact4 ward slots and one-short activation rollback
+20: PASS new identity horizon exhaustion refuses without wrapping
+20: FAIL owned checkpoints retain partially spent wards and restrictions: unexpected refusal
+20: PASS source dimensions ranges unsupported bundles owned diagnostics
+20: PASS default foreign stale repeated normal live tickets still gate mechanics
+20: PASS new finite cap expansion refuses and exact mana9 versus10
+20: 10 M7 mechanics cases passed; 4 failed.
+1/2 Test #20: magic_mechanics_contracts ........***Failed    0.01 sec
+test 21
+    Start 21: magic_mechanics_caller
+
+21: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_demo
+21: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+21: Test timeout computed to be: 30
+21: caller refusal
+2/2 Test #21: magic_mechanics_caller ...........***Failed    0.01 sec
+
+0% tests passed, 2 tests failed out of 2
+
+Total Test time (real) =   0.03 sec
+
+The following tests FAILED:
+	 20 - magic_mechanics_contracts (Failed)
+	 21 - magic_mechanics_caller (Failed)
+Errors while running CTest
+Output from these tests are in: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/Testing/Temporary/LastTest.log
+Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
+
+exit_status=8

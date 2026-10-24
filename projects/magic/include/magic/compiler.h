@@ -53,7 +53,18 @@ namespace Magic {
         std::string message;
     };
 
-    enum class Primitive { Heal, Fire, Slow, Disguise, Discern };
+    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict };
+    inline constexpr std::size_t primitive_count = 7;
+    enum class Intent { Attack };
+    struct Absorption {
+        std::uint32_t capacity_dp = 0, duration_ticks = 0;
+        bool operator==(const Absorption&) const = default;
+    };
+    struct IntentRestriction {
+        Intent intent = Intent::Attack;
+        std::uint32_t duration_ticks = 0;
+        bool operator==(const IntentRestriction&) const = default;
+    };
     enum class Appearance : std::uint8_t { OpenArch, StoneWall };
     enum class SubjectRole { CapturedObject };
     struct VisualDisguise {
@@ -66,7 +77,7 @@ namespace Magic {
         SubjectRole subject = SubjectRole::CapturedObject;
         bool operator==(const Discernment&) const = default;
     };
-    using Payload = std::variant<std::monostate, VisualDisguise, Discernment>;
+    using Payload = std::variant<std::monostate, VisualDisguise, Discernment, Absorption, IntentRestriction>;
     [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
@@ -105,6 +116,17 @@ namespace Magic {
         bool operator==(const Effect&) const = default;
     };
 
+    [[nodiscard]] inline std::uint32_t effect_duration_ticks(const Effect& effect) noexcept {
+        return std::visit(
+            [&](const auto& payload) -> std::uint32_t {
+                if constexpr (requires { payload.duration_ticks; })
+                    return payload.duration_ticks;
+                else
+                    return effect.duration_ticks;
+            },
+            effect.payload
+        );
+    }
     struct Meaning {
         Entry entry;
         Delivery delivery = Delivery::Contact;
@@ -126,13 +148,15 @@ namespace Magic {
         CinderSlow,
         AnnularTarget,
         CommonDisguise,
-        CommonDiscern
+        CommonDiscern,
+        CommonWard,
+        CommonRestrict
     };
-    using RuleMask = std::uint16_t;
-    inline constexpr RuleMask all_rules = 2047;
+    using RuleMask = std::uint32_t;
+    inline constexpr RuleMask all_rules = 8191;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 11 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 13 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {

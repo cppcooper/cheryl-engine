@@ -41,6 +41,10 @@ namespace Magic {
                     return "show";
                 case Primitive::Discern:
                     return "discern";
+                case Primitive::Ward:
+                    return "ward absorb";
+                case Primitive::Restrict:
+                    return "forbid attack";
             }
             return "invalid";
         }
@@ -370,6 +374,15 @@ namespace Magic {
                         expect("speed");
                         expect("by");
                         effect.primitive = Primitive::Slow;
+                    } else if (operation.text == "ward" || operation.text == "forbid") {
+                        effect.primitive = operation.text == "ward" ? Primitive::Ward : Primitive::Restrict;
+                        if (effect.primitive == Primitive::Ward) {
+                            expect("absorb");
+                            effect.quantity = quantity();
+                        } else
+                            expect("attack");
+                        expect("for");
+                        effect.duration = quantity();
                     } else if (operation.text == "show" || operation.text == "discern") {
                         effect.primitive = operation.text == "show" ? Primitive::Disguise : Primitive::Discern;
                         const auto role = take();
@@ -403,7 +416,8 @@ namespace Magic {
                             Code::UnknownPhrase, operation.span,
                             "Unknown Common primitive; use heal, fire damage or multiply speed by. Host support is checked separately."
                         );
-                    if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern) {
+                    if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
+                        effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -467,15 +481,14 @@ namespace Magic {
             return syntax;
         }
         void catalog() {
-            if (catalog_.operations.size() > 5)
-                fail(Code::InvalidCatalog, {}, "Catalog has more than five registered primitive schemas.");
+            if (catalog_.operations.size() > primitive_count)
+                fail(Code::InvalidCatalog, {}, "Catalog exceeds the finite registered primitive set.");
             for (std::size_t i = 0; i < catalog_.operations.size(); ++i) {
                 const auto& schema = catalog_.operations[i];
                 spend(1);
                 if (schema.key.empty() || schema.key.size() > max_key || schema.max_quantity == 0 || schema.max_quantity > max_quantity ||
                     schema.max_duration_ticks > max_time || schema.appearances > 3 ||
-                    (schema.primitive != Primitive::Heal && schema.primitive != Primitive::Fire && schema.primitive != Primitive::Slow &&
-                     schema.primitive != Primitive::Disguise && schema.primitive != Primitive::Discern))
+                    static_cast<unsigned>(schema.primitive) >= primitive_count)
                     fail(
                         Code::InvalidCatalog, {},
                         "Catalog needs valid unique primitive schemas, 1..64-byte symbolic keys and bounded positive quantities."
@@ -726,7 +739,21 @@ namespace Magic {
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (perception) {
+                if (raw.primitive == Primitive::Ward || raw.primitive == Primitive::Restrict) {
+                    if (syntax.effects.size() != 1)
+                        fail(
+                            Code::UnsupportedComposition, raw.span,
+                            "New mechanics are standalone operations; mixed bundles are not selected."
+                        );
+                    if (meaning.entry.kind != EntryKind::Spoken ||
+                        (meaning.delivery != Delivery::Contact && meaning.delivery != Delivery::Burst))
+                        fail(Code::UnsupportedCombination, raw.span, "New actor mechanics require spoken contact or burst delivery.");
+                    const auto duration = value(raw.duration, Dimension::Time, true, operation.max_duration_ticks);
+                    if (raw.primitive == Primitive::Ward)
+                        effect.payload = Absorption{value(raw.quantity, Dimension::Damage, true, operation.max_quantity), duration};
+                    else
+                        effect.payload = IntentRestriction{Intent::Attack, duration};
+                } else if (perception) {
                     if (syntax.effects.size() != 1)
                         fail(
                             Code::UnsupportedComposition, raw.span,
@@ -773,11 +800,13 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Disguise  ? Rule::CommonDisguise
-                                          : raw.primitive == Primitive::Discern ? Rule::CommonDiscern
-                                          : raw.primitive == Primitive::Heal    ? Rule::CommonHeal
-                                          : raw.primitive == Primitive::Fire    ? Rule::CommonFire
-                                                                                : Rule::CommonSlow;
+                const auto concept_rule = raw.primitive == Primitive::Ward       ? Rule::CommonWard
+                                          : raw.primitive == Primitive::Restrict ? Rule::CommonRestrict
+                                          : raw.primitive == Primitive::Disguise ? Rule::CommonDisguise
+                                          : raw.primitive == Primitive::Discern  ? Rule::CommonDiscern
+                                          : raw.primitive == Primitive::Heal     ? Rule::CommonHeal
+                                          : raw.primitive == Primitive::Fire     ? Rule::CommonFire
+                                                                                 : Rule::CommonSlow;
                 auto production = concept_rule;
                 if (raw.language.text == "Mend")
                     production = raw.primitive == Primitive::Heal ? Rule::MendHeal : Rule::MendSlow;
@@ -827,7 +856,17 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (auto disguise = std::get_if<VisualDisguise>(&effect.payload)) {
+                if (auto ward = std::get_if<Absorption>(&effect.payload)) {
+                    append(output, "ward absorb ");
+                    number(output, ward->capacity_dp);
+                    append(output, " dp for ");
+                    number(output, static_cast<std::uint64_t>(ward->duration_ticks) * 10);
+                    append(output, " ms");
+                } else if (auto restriction = std::get_if<IntentRestriction>(&effect.payload)) {
+                    append(output, "forbid attack for ");
+                    number(output, static_cast<std::uint64_t>(restriction->duration_ticks) * 10);
+                    append(output, " ms");
+                } else if (auto disguise = std::get_if<VisualDisguise>(&effect.payload)) {
                     append(output, "show subject captured at release rechecked at activation as ");
                     append(output, appearance_name(disguise->form));
                     append(output, " for ");
@@ -881,8 +920,7 @@ namespace Magic {
                 append(inspection, " (");
                 append(inspection, meaning.bindings[effect.binding].name);
                 append(inspection, ") duration ");
-                const auto* disguise = std::get_if<VisualDisguise>(&effect.payload);
-                number(inspection, disguise ? disguise->duration_ticks : effect.duration_ticks);
+                number(inspection, effect_duration_ticks(effect));
                 append(inspection, " ticks (10 ms each); grammar ");
                 append(inspection, plan.provenance_[i].grammar);
                 append(inspection, "@1 span ");
@@ -967,6 +1005,10 @@ namespace Magic {
                 return "common.disguise@1";
             case Rule::CommonDiscern:
                 return "common.discern@1";
+            case Rule::CommonWard:
+                return "common.ward@1";
+            case Rule::CommonRestrict:
+                return "common.restrict-attack@1";
         }
         return "invalid-rule";
     }

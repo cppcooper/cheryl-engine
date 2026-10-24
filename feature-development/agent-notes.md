@@ -1139,3 +1139,67 @@ correction; standalone receipt ready/true. Staged/static review verifies source
 hashes, preserved predecessor receipt/evidence bytes, old case names, formatting,
 final pass coverage of19 unique CTest names across justified runs, and no unrelated
 changes. No subagent/provider/service/push/dependency change or new unit follows.
+
+# MAGIC-M7 varied standalone batch
+
+## Initial gate, selection and caller before APIs
+
+Exact clean M6 a01a5f76592ed1f851de3a43a4b6462aa516a072, feat/magic. Committed M6
+ready/true receipt has exact base c4dbffe; all nine complete native logs are
+nonempty/committed and preserve original failures. Source inspection covers typed
+compiler, first-effect guards, staged host, distinct checkpoint and M4 consumers.
+Prior evidence19 unique final names/196 contract cases is retained, not rerun as a
+baseline. Workspace policy, brief/backlog, design/decisions/effect-coverage,
+assignment README and clone guides are read. Run20261024T074451Z-a19837bc5076 uses
+inherited configured login/model, explicit ultra, admitted12380MiB/floor4096 and
+adaptive no-swap scope. No personal taste is inferred from agent-authored APIs;
+intentional v3 evidence above remains historical provenance.
+
+Before new APIs, magic/batches/M7-plan.json selects Ward/Intent/Relocate/Shatter
+across protection, mental restriction, movement and object destruction, plus
+Transmute/Create stretches. Proposal: cast ward5, native hit3 then Fire4 absorbs3
+then2 and passes2; seal an attack; break a blocking wall and relocate through the
+freed destination. Book edits keep last accepted revision. Physical transmutation
+and fresh owned creation are bounded stretch candidates, not implemented claims.
+No catalogue sweep, generic VM, sibling integration or task controller is added.
+
+## M7-031 first checked capability checkpoint
+
+Implemented Ward and Restrict typed payloads have independent capacity/duration
+or registered Attack intent/duration; old hp/permille fields stay zero. Common
+roundtrips complete Meaning. Catalog cap explicitly grows5->7; new operation
+concept bits are exact and owned. RuleMask widens to32 bits for the selected finite
+batch, while numeric source/token/clause/effect/retention ceilings stay unchanged.
+New mechanics remain standalone spoken contact/burst; perception bundles and all
+new mechanics engraving remain refused. Keys AND primitives/quantities/durations
+are rechecked, not enum-dispatched alone. Four Ward and four Restriction slots
+have actor generation, action, shared checked mechanical instance, onset/until and
+retained plan; max mechanical identity1000000 is caller-tightenable. No replacement/
+stacking. Native trusted-owner try_attack is fixed3dp, contact50mm and no mana;
+it checks alive identities and restrictions then resolves real damage through the
+same absorption stage as Fire. This is not a network authority surface or combat AI.
+
+Ward5, hit3, Fire4 independently verifies capacity5->2->absent, hp50->50->48 and
+old owned report immutability. Restriction blocks that actual attack until exact
+expiry, while leaving unrelated state unchanged. Selection and slot allocation
+are whole-step staged; failed delayed activation preserves paid queue/clock and
+explicit cancellation does not refund. Removal clears only captured generations.
+Checkpoint owns partially spent capacity, restriction and actual immutable plans,
+validating current schemas, unique references/identity, horizon and full duration.
+Restore creates fresh authority using the existing distinct Checkpoint; observational
+Snapshot is not restorable. Shared private reference-meter.h serves actual split
+mechanics.cpp implementation, not a public general framework.
+
+Evidence: configure-01/build-01 exit0. Initial core-01 exit8 is a test-fixture
+eligibility error: attacker was ineligible to receive a willing contact spell.
+Correct fixture makes it eligible; the exact4 area-capacity test separately marks
+it ineligible to retain four intended members. build-02/03 exit0 also adds explicit
+onset stamps for complete lifetime validation. core-02 passes2/2 entries:14 new
+mechanics contract cases and1 independent real caller, with actual M4 add/edit/
+failed-draft/revision2 plus old revision1 casting, checkpoint and resumed attack.
+Complete saved commands/immediate exits remain under logs/M7. No accumulated prior
+campaign yet; existing measured-cost expectations await final batch reconciliation.
+Fixed logical copy rises244->260 for8 records/8 retained handles; work/selector/
+actor/pending/item/disguise/witness quotas are unchanged. This first checkpoint
+completes2/4 cores only. Continue the same assigned invocation through Relocate/
+Shatter and feasible preselected stretches; no ready M7 receipt is claimed here.

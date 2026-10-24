@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "starting_head": "a01a5f76592ed1f851de3a43a4b6462aa516a072",
+  "core": [
+    {
+      "id": "M7-WARD",
+      "family": "wards/protection",
+      "proposed_caller": "compile ward5dp/2s; release on ally; attack3 then fire4: prevent3,2 and pass2",
+      "actual_expected_world_change": "Ward capacity5->2->0; hp50->50->48, no replacement/stacking",
+      "bounds": "four ward records, fixed actor generations, checked shared new-instance horizon",
+      "support_needed": "typed Absorption payload, shared staged incoming-damage resolution, expiry/checkpoint",
+      "rough_effort_minutes": 10,
+      "status": "focused-checked"
+    },
+    {
+      "id": "M7-INTENT",
+      "family": "mental/action restriction",
+      "proposed_caller": "seal attack intent for2s on attacker; real owner attack refuses, movement remains available, expiry reallows attack",
+      "actual_expected_world_change": "a registered attack operation is rejected while seal active; no invented AI state",
+      "bounds": "four restriction records; Attack only; fixed generations",
+      "support_needed": "typed AttackRestriction, actual finite attack operation, lifecycle/checkpoint",
+      "rough_effort_minutes": 8,
+      "status": "focused-checked"
+    },
+    {
+      "id": "M7-RELOCATE",
+      "family": "movement/spatial relations",
+      "proposed_caller": "book edits relocation destination; contact ally relocates only when destination vacant and physical object passable",
+      "actual_expected_world_change": "actor centre moves10,0->300,0 without tracing intermediate space",
+      "bounds": "one selected actor, G0 integer mm +/-1000000, scan16 actor/4 object centres",
+      "support_needed": "typed WorldPoint, exact coordinates, explicit point-occupancy fixture policy",
+      "rough_effort_minutes": 9,
+      "status": "selected"
+    },
+    {
+      "id": "M7-SHATTER",
+      "family": "destruction/object removal",
+      "proposed_caller": "spell shatters captured stone wall, retires its disguise, then relocation into freed destination succeeds",
+      "actual_expected_world_change": "generation-checked real object becomes absent; wall no longer blocks destination; no health-stat alias",
+      "bounds": "existing four object slots, one subject role, standalone immediate/delayed spoken subject delivery",
+      "support_needed": "typed object binding/delivery, current object schema, retained pending subject",
+      "rough_effort_minutes": 8,
+      "status": "selected"
+    }
+  ],
+  "stretch": [
+    {
+      "id": "M7-TRANSMUTE",
+      "family": "transformation/material",
+      "proposed_caller": "temporarily open physical wall without changing identity; relocation succeeds; expiry restores only selected physical fields; shatter/owner edits cannot resurrect",
+      "actual_expected_world_change": "object form/passability changes on same ID; later destruction remains destruction",
+      "bounds": "four transient records; explicit owner-edit supersession; no full snapshot restoration",
+      "support_needed": "typed form/duration, subject lifecycle/checkpoint",
+      "rough_effort_minutes": 7
+    },
+    {
+      "id": "M7-CREATE",
+      "family": "creation",
+      "proposed_caller": "contact owner receives fresh temporary registered stone wall at vacant point; wrong owner dismissal refuses; expiry removes only captured generation",
+      "actual_expected_world_change": "new real object ID/placement/owner/lifetime, not relocation of old object",
+      "bounds": "four creation records and existing four objects; actor16 remains",
+      "support_needed": "typed registered form/point/duration, atomic allocation and owner-checked dismissal/checkpoint",
+      "rough_effort_minutes": 7
+    }
+  ],
+  "estimated_total_minutes": "45-60 uncertain, no padding; resource/3600s boundary takes precedence",
+  "status": "two cores focused-checked, batch continues",
+  "assumptions": [
+    "Private native owner, no personal API taste inference beyond recorded v3 evidence.",
+    "Each new operation standalone only; old multi-effects unchanged; perception composition not selected.",
+    "Native attack is fixed3dp, contact50mm, no mana; spell release remains10mana/effect.",
+    "Destination collision means exact occupied actor/object centre only, not physics/pathfinding.",
+    "One whole staged transition per release/advance/native action.",
+    "Keep old numeric quotas; charge new scans/slots/retained plans."
+  ]
+}
