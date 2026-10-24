@@ -88,3 +88,10 @@ Current queued execution evidence:
 test-only counter failure and successful affected recheck.
 [U11 receipt](queue/feature-round-20261024-0500/PROCGEN-U11.json) completes this
 worker's finite round with actual-forest accumulation and continuous channels.
+
+PROCGEN-U12 continues private climate work with explicit regional physical inputs
+and derived solar/seasonal targets. Matching [active decisions](active/procedural-generation/decisions.md),
+[contracts and evidence](active/procedural-generation/agent-notes.md),
+[current handoff](active/procedural-generation/next.md) and
+[U12 execution receipt](queue/procgen-climate-20261024-0615/PROCGEN-U12.json)
+preserve all earlier archives and receipts; no WORLD/public integration is implied.

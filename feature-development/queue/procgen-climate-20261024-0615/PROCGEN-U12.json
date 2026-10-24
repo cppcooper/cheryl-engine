@@ -1,0 +1,67 @@
+{
+  "batch_id": "procgen-climate-20261024-0615",
+  "milestone_id": "PROCGEN-U12",
+  "starting_head": "9517333ca3570de1fc3da6212726e23b5281093f",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/procedural-generation/logs/u12/build-1.log",
+    "builds/procedural-generation/logs/u12/build-2.log",
+    "builds/procedural-generation/logs/u12/build-3.log",
+    "builds/procedural-generation/logs/u12/ctest-1.log",
+    "builds/procedural-generation/logs/u12/ctest-2.log",
+    "builds/procedural-generation/logs/u12/discovery.json"
+  ],
+  "executed": {
+    "ctest_entries_passed": 122,
+    "retained_entries": 110,
+    "accumulated_run": {
+      "passed": 122,
+      "failed": 0,
+      "skipped": 0
+    },
+    "affected_recheck": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    "cases_passed": 112,
+    "assertions": 44568,
+    "new_cases": {
+      "climate_sun": 36,
+      "climate_seasons": 17,
+      "climate_calendar": 27,
+      "climate_frame": 48,
+      "climate_ridge": 22,
+      "climate_surface": 22,
+      "climate_generated": 21,
+      "climate_invalid": 179,
+      "climate_projection": 39,
+      "climate_limits": 36,
+      "climate_ownership": 16
+    },
+    "new_assertions": 463,
+    "consumers_passed": 10,
+    "demonstrations_passed": 33,
+    "new_consumer_passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "configuration": "GNU16.2.1/Linux Ninja Debug/C++23/UBSan; shared wrapper/one job/preserved cache; accumulated suite once, climate-only recheck after explicit-context correction"
+  },
+  "contracts": {
+    "identity": "regional_solar_baseline model1/numerics1/surface1; exact source/context/revisions/tick/options/budgets owned, optional actual U8 ElevationReplay; no retained borrowed view or climate RNG.",
+    "frame": "Mandatory explicit dx/dy, tick-metres/datum, east/row-north, restricted sphere6371000m cell-centred projection, latitude/longitude and modular calendar. Missing context rejects. Domain/U8/U9/U10/U11 semantics unchanged.",
+    "sun": "Circular orbit/tilt, prograde rotation, ENU direction, horizon tolerance1e-14, polar point support; daily horizontal mean at fixed snapshot declination separate from instantaneous slope illumination.",
+    "baseline": "Absorbed solar/cooling produces reference-at-altitude and lapse-corrected daily air targets plus instantaneous response target; explicit finite/replenished water fractions/albedo/roughness/thermal times retained, no inferred ocean or evolving solver.",
+    "resources": "Hard128x128/16384 cells/8MiB/2M work; peak8192+184*C bytes, exact64+32*C block work; no C scratch. Source validation before cell allocation; refusal charges rejected work and publishes no partial result; bad_alloc/programming exceptions propagate. Payload is not RSS.",
+    "checks": "All110 prior names/counts retained; accumulated122/122 pass, then12/12 climate-only recheck after source-review explicit-context correction; current112 cases/44568 assertions and10 consumers/33 demos. All26 preservation witnesses match."
+  },
+  "limitations": [
+    "GNU16.2.1/Linux Debug/UBSan only; other compilers/OSes, ASan/leaks and broad performance remain unverified. Floating replay is same model/numerics/build/platform/operation order, not cross-platform bit identity.",
+    "Restricted <=256km local projection with centre latitude within60 degrees, no polar regional maps or dateline wrapping; scalar point sun separately handles poles/horizon. No cast shadows/refraction/eccentric orbit or calibrated climate normal.",
+    "Derived game reference/instant response targets and retained water thermal times are not evolving weather, available reservoir volumes, evaporation/rainfall, flow/transport or physical forecast proof. U13/U14 mechanisms require separate executed checks.",
+    "Caller revision labels do not certify source history; exact owned heights/surfaces/context must be compared by any future continuation. No saved recipe/checkpoint format or public Engine/SDK integration is selected.",
+    "Graphical correctness/attractiveness, fun, existing WORLD visual/input/assets/ABI and file-durability gaps remain unexecuted."
+  ],
+  "next_action": "Remain idle for coordinator source/log review and publisher transport. Only finite controller may select U13 after clean drain/committed passing receipt; separately prove bounded known-flow moisture transport from explicit reservoirs and exact baseline/frame/source values."
+}

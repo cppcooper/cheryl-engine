@@ -7,8 +7,8 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp spill.cpp channels.cpp)
-add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp spill-checks.cpp channel-checks.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp spill.cpp channels.cpp climate.cpp)
+add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp spill-checks.cpp channel-checks.cpp climate-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
 target_link_libraries(procgen-tests PRIVATE procgen-private procgen-checks)
@@ -55,10 +55,16 @@ target_link_libraries(procgen-channel-tests PRIVATE procgen-private procgen-chec
 add_executable(procgen-channel-consumer channel-consumer.cpp)
 target_link_libraries(procgen-channel-consumer PRIVATE procgen-private procgen-checks)
 
+add_executable(procgen-climate-tests climate-tests.cpp)
+target_link_libraries(procgen-climate-tests PRIVATE procgen-private procgen-checks)
+add_executable(procgen-climate-consumer climate-consumer.cpp)
+target_link_libraries(procgen-climate-consumer PRIVATE procgen-private procgen-checks)
+
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
                         procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer
                         procgen-elevation-tests procgen-elevation-consumer procgen-drainage-tests procgen-drainage-consumer
-                        procgen-spill-tests procgen-spill-consumer procgen-channel-tests procgen-channel-consumer)
+                        procgen-spill-tests procgen-spill-consumer procgen-channel-tests procgen-channel-consumer
+                        procgen-climate-tests procgen-climate-consumer)
     target_compile_features(${target} PRIVATE cxx_std_23)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -151,3 +157,11 @@ foreach(case IN ITEMS channel_literal channel_lake channel_thresholds channel_ti
 endforeach()
 add_test(NAME procgen.channel_consumer COMMAND procgen-channel-consumer)
 set_tests_properties(procgen.channel_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS climate_sun climate_seasons climate_calendar climate_frame climate_ridge climate_surface climate_generated
+                      climate_invalid climate_projection climate_limits climate_ownership)
+    add_test(NAME procgen.${case} COMMAND procgen-climate-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.climate_consumer COMMAND procgen-climate-consumer)
+set_tests_properties(procgen.climate_consumer PROPERTIES TIMEOUT 30)

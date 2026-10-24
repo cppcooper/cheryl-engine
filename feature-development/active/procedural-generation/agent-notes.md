@@ -959,3 +959,245 @@ ABI/packaging and file durability gaps remain with WORLD/archived owners. Later
 retention/integration needs exact graph witnesses and a separately authorized caller;
 river/depression changes invalidate derived channels and any dependent geography/
 settlement layer rather than silently retaining foreign accumulation.
+
+## PROCGEN-U12 — Proposed caller before dependent APIs
+
+Read-only prerequisite gate: exact clean9517333ca3570de1fc3da6212726e23b5281093f,
+committed U11 ready/true old-batch receipt and actual nonempty logs, exit0/110
+passes. U9 strictly downhill raw heights, U10 minimax escape/ordered plateau
+parents and U11 recomputed actual-forest unit counts are inspected; none supplies
+metres, latitude, an ocean, rainfall or available evaporatable water. New batch
+procgen-climate-20261024-0615 authorizes only this U12 turn. Historical archives,
+WORLD producers and all earlier receipts remain immutable.
+
+The following spelling was proposed in ordinary progress before adding APIs:
+
+```cpp
+auto summer = derive_climate(elevation, surfaces, revision, context, noon_tick, limits);
+auto winter = derive_climate(elevation, surfaces, revision, context, winter_tick, limits);
+```
+
+Reversible engineering selection: an explicitly restricted local east/north frame,
+owned source witnesses and separately named instantaneous versus daily solar
+quantities. Circular-orbit/tilt approximation and linear absorbed/cooling targets
+provide independently checkable seasonal/elevation effects without evolving weather.
+A synchronous Domain/heights/surface view also accepts honest literals. New
+private code is implemented; native acceptance is pending at this record point.
+
+## CLIMATE-001 — Implemented explicit regional adapter
+
+Private owner: projects/tests/procedural-generation/climate.h/.cpp,
+RegionalFrame, ClimateInput, ClimateDescriptor and derive_climate. User requires
+physical context; spelling, bounds and equirectangular approximation are our
+engineering choices. Domain remains the unchanged checked x-fast finite positive2D
+metadata; index=x+width*y. The supplied-view overload accepts literal height ticks,
+not a forged Elevation. The generated overload retains the ACTUAL owned Elevation
+values and its exact ElevationReplay including stream/config/version. Neither call
+mutates U8 or adds latitude/metres to Domain.
+
+Frame is at CELL CENTRES on selected sphere R=6371000m:
+
+```
+e = (x-(width-1)/2)*dx_metres
+n = row_sign*(y-(height-1)/2)*dy_metres
+latitude = centre_latitude + (n/R)*180/pi
+longitude = centre_longitude + e/(R*cos(centre_latitude))*180/pi
+z_metres = datum_metres + tick_metres*original_height_tick
+```
+
+Axis0 always east; row_sign is explicitly +1/increasing north or -1/decreasing.
+Require finite dx/dy in[1,10000]m, tick_metres in(0,1000], datum[-12000,12000]m,
+latitude[-90,90]/longitude[-180,180]deg and known row sign. Omitted frame/calendar
+and zero revision labels reject, rather than silently selecting Earth-like context.
+Regional support further restricts |centre_latitude|<=60deg, every sample<=65deg,
+whole width*dx and height*dy <=256000m and all longitudes in[-180,180]. No dateline
+wrapping, global grid, pole crossing, halo or projection accuracy claim. The
+point solar helper has broader polar support than this regional mapping.
+
+Validate all transformed heights in[-12000,12000]m and slope magnitudes<=10.
+Slopes are dz/de and dz/dn: centred opposite neighbors divided by2*spacing,
+one-sided edges, unit axes0. Original integer extrema are converted to double
+before differences; capped scale bounds all intermediates, even for rejected
+heights. No unsafe signed32 subtraction, normalization, resampling or clipping.
+A constant tick increase shifts z and lapse correction; an opposite datum shift
+can preserve the metric geometry without pretending the original source is equal.
+
+ClimateRevision has nonzero caller terrain/surface labels, required to equal
+context.expected_revision. Labels alone are not exact source identity or evidence
+of history. Result cells own EVERY original height and exact ClimateSurface,
+plus Domain/context/revisions/tick/versions/budgets and optional generated replay.
+Future continuation must compare complete relevant values, not only same-size
+arrays or revision labels. surface_version1 is explicit and other versions reject.
+All views are synchronous and never retained. Copies deep-copy the cell buffer;
+returned spans expire on owner destruction/move/assignment. Moved-from supports
+assignment/destruction only. Caller synchronizes adoption and any borrowed inputs.
+
+Surface1 admits finite/replenished water fractions separately in[0,1], sum<=1,
+albedo[0,1], roughness[0,100]m and land/water response time constants[1,1e8]s.
+The remainder is land fraction. Finite/replenished is a declared availability
+CATEGORY, with no water volume/reservoir supplied or consumed in U12. Fractions
+weight the retained response_seconds; albedo independently affects absorption.
+Roughness is retained for later flow, with no hidden effect on this baseline.
+U8 sea threshold, U10 depth/fill-volume and U11 unit-count/channel-crossing values
+are deliberately not used as ocean, available water or evaporation sources.
+
+Confidence high in explicit frame/source boundaries, medium in regional scale and
+private API tradeoffs. Intentional-v3 evidence re-inspected locally:
+eb3f81c219e779b0200c1e82e5bc7239386528e8/include/abstracts/singleton.h,
+CherylE::ConcreteSingleton::construct and SuperSingleton::construct explicitly
+describe typed constructor forwarding/checks. Medium confidence for typed setup,
+not a preference for this climate API. Counterevidence: singleton ownership and
+legacy imports do not settle geography, model parameters or numeric representation.
+Recent U8/U9/U10/U11 agent APIs establish compatibility, not personal taste.
+Coordination climate-weather.md CLIMATE-001..008/P1 is design evidence and scope;
+this private implementation does not certify those future dynamic stages.
+
+## CLIMATE-002 — Implemented sun and derived baseline
+
+Identity regional_solar_baseline, model_version1, numerics_version1. SolarCalendar
+requires day_seconds[60,1e6], year_days[4,4096] integer solar days, seconds_per_tick
+[1,1e6], signed64 epoch_seconds and finite tilt[0,60]deg. Epoch phase0 is northern
+spring equinox at Greenwich midnight. Tick is an explicit unsigned64 logical
+sample time, not wall time/frame count or an evolving checkpoint. Compute positive
+modulo epoch and reduce tick BEFORE multiplying, modulo year_seconds<=4096000000;
+the largest intermediate is<4.096e15. Full signed epoch and unsigned tick extremes
+are valid; never form epoch+tick*seconds in signed arithmetic.
+
+Model defines prograde rotation, circular orbit, no eccentricity/refraction:
+
+```
+season = 2*pi*phase/year_seconds
+D = asin(sin(tilt)*sin(season))
+H = 2*pi*((phase%day_seconds)/day_seconds-.5)+longitude_radians
+sun_east = -cos(D)*sin(H)
+sun_north = cos(latitude)*sin(D)-sin(latitude)*cos(D)*cos(H)
+sun_up = sin(latitude)*sin(D)+cos(latitude)*cos(D)*cos(H)
+```
+
+Sun vector points TOWARD sun in local ENU. |up|<=1e-14 snaps to horizon0. Point
+helper supports latitude[-90,90]/longitude[-180,180]. At exact poles cos(latitude)
+is explicitly0, so there is no vanishing-cosine division. Daily horizontal mean
+holds the SNAPSHOT declination fixed, integrating positive a+b*cos(H): full day a,
+night0, otherwise (a*h+b*sin(h))/pi with h=acos(-a/b). Daylight_fraction=h/pi;
+polar positive a>1e-14 gives1, polar horizon/night0. This is not a full evolving-day
+integration or annual climatological statistic. Zero tilt removes tilt seasons
+but retains day/night. Below horizon there is zero direct slope illumination.
+
+Instantaneous surface cosine is max(0,dot((-east_slope,-north_slope,1)/norm,sun)),
+clamped at1 and forced0 when up<=0. No cast shadows, horizon terrain occlusion,
+atmospheric scattering or integration over slope orientation through a day.
+Set gain=solar_w_m2*transmission*(1-albedo), then:
+
+```
+absorbed_w_m2 = gain * instantaneous_surface_cosine
+seasonal_reference_kelvin = cooling_floor + gain*daily_mean_cosine/cooling
+lapse = lapse_kelvin_per_metre*(z_metres-reference_metres)
+air_reference_kelvin = seasonal_reference_kelvin-lapse
+instant_target_kelvin = cooling_floor+absorbed_w_m2/cooling-lapse
+response_seconds = land_fraction*land_time+water_fraction*water_time
+```
+
+Source parameters are explicit bounded GAME coefficients: solar[0,2000]W/m2,
+transmission[0,1], cooling_floor[250,350]K, cooling[10,100]W/(m2 K), lapse[0,.01]K/m,
+reference_metres[-12000,12000]. These bounds keep derived fields/sums finite and
+targets positive without silent normalization. The reference temperature is at
+the stated reference altitude; air_reference applies the chosen lapse. Instant
+response target is not evolved air/surface temperature. Water response is an
+owned time constant for a later dynamical unit, not a claimed measured lag here.
+No moisture transport, pressure/wind, rainfall, equilibrium, observed climate
+normal or forecast validation is implemented. U12 proves baseline/state ownership;
+CPU transport/flow proof remains the separately assigned U13/U14 responsibility.
+
+Same model/numerics/source/context/order/budgets admitting success reproduce fields
+on the tested build/platform with double/libm arithmetic. Full source values and
+versions are retained; no cross-platform floating bit identity follows from
+integer stream keys. No climate RNG/seed/global registry exists. U8 integer replay
+is unchanged. No file format, storage/recipe policy or public extraction is chosen.
+Confidence high in tested equation/ownership semantics, medium in useful game
+response, unverified for calibrated physical or subjective outcomes.
+
+## PROCGEN-047 — Climate resource/refusal contract
+
+CaveBudgets is reused only as the existing generic cells/storage/work value triplet;
+no cave semantics/dependency is imposed. Hard ceiling128 per axis,16384 cells,
+8MiB accounted payload and2M work, below the batch ceiling. Checked requirements
+compute8192+sizeof(ClimateCell)*C (184*C on the statically admitted build) and
+64+32*C before any cell allocation; checked overflow/vector capacity rejects huge
+metadata without buffers. No C-sized scratch, frontier, recursive traversal,
+iterative solver, retries or random draws. Maximum accepted128x128 payload3022848
+bytes and work524352; these are not process RSS/performance promises.
+
+Work units are bounded operation blocks:64 for scalar/version/context handling,
+8 per inspected source cell (including a failing cell), C for output initialization
+before allocation,23 per output cell for exact copies/geometry/solar/reference/
+measurements. Physical geometry is computed during validation and derivation;
+both passes are covered. Metadata/shape/cap arithmetic is constant and reported0
+on preflight refusal. Runtime charges guard every loop; accepted work is known
+exactly, so one-short budget refuses before allocation instead of necessarily
+reaching a mid-derivation exhaustion. Scalar solar helper is a separate constant
+operation with no allocation/iteration; its per-cell use is charged in derivation.
+
+8192 fixed allowance covers in-flight metadata copies/locals; static assertions
+bound object metadata and record sizes. Model payload includes owned source
+copies, derived output and all scratch (none per cell); excludes preexisting
+inputs/held results, caller-requested copies, allocator overhead, runtime/exception
+machinery and other process memory. No rejected huge-buffer allocation or host
+pressure tests. Sufficient budgets affect admission/descriptors only, not content.
+
+Expected ClimateFailure distinguishes invalid_input (shape/revision/nonfinite/
+option/arithmetic), unsupported (version/projection/height-slope scope), and
+budget_refused (cells/axes/storage/work). It reports charged work before refusal.
+All source scalar/array values validate before output allocation. Only internal
+Stop is caught: bad_alloc and programming exceptions propagate. Complete local
+candidate publication leaves borrowed input and all earlier caller-owned results
+unchanged. The Elevation overload adds its exact fixed-size replay before return.
+Future weather advance/substep limits are not implemented or silently simulated.
+
+## PROCGEN-048 — Executed U12 evidence and review
+
+GNU16.2.1/Linux Ninja Debug/C++23/UBSan, existing build cache/options and shared
+wrapper/one job. Complete stdout/stderr, exact commands and immediate exits under
+builds/procedural-generation/logs/u12. format1/build1 pass; pre-suite source review
+adds polar-horizon consistency, named identity and nonfinite/zero-solar tests,
+format2/build2 pass. Nonempty discovery122 names preserves all110. Accumulated
+ctest-1 passes122/122 once (112 cases/44559 then assertions, ten consumers/33 demos).
+Final contract review removes valid implicit physical defaults, adds nine omitted-
+context assertions, format3/targeted build3 pass; affected ctest-2 passes12/12.
+Current distinct acceptance:112 cases/44568 assertions, eleven new cases/463 new
+assertions, ten consumers/33 demos.0 failures/0 skips, no compiler/UBSan diagnostics
+or native failure. This is a source-review correction, not a hidden failed test.
+No repeated unchanged campaign or Engine/map suite. All sessions drained normally;
+no resource75/auth/allowance refusal, queue cancellation/relaunch or model change.
+
+New assertion counts: sun36,seasons17,calendar27,frame48,ridge22,surface22,
+generated21,invalid179,projection39,limits36,ownership16. Source/copy/geometry/
+measurement checker runs in addition to the counted assertions. Exact point sun
+oracles use equinox longitude180 local noon, solstice latitude30, hemispheres,
+horizon/poles/zero tilt; a20000-midpoint positive-cosine integral independently
+checks the analytic daily mean. Calendar tests exercise signed epoch extrema,
+u64 tick maximum and periodic boundaries. Literal ridge has1000m centre height,
+6K lapse at.006K/m, centre noon solar1000W/m2, zero direct night illumination.
+Row orientation, unit axes, coordinate ordering, datum compensation, dark forcing,
+surface fractions/times, malformed arrays/revisions/versions and every floating
+scalar's nonfinite refusal pass. Allocation denial proves invalid cells and
+one-short budgets refuse before allocating and bad_alloc propagates on valid work.
+Full128x128 is bounded/accepted without deliberate memory pressure.
+
+Consumer5/5: literal equatorial3x1 coast/ridge noon/night, plus same retained U8
+17x11 key{42,0x67656f6772617068,7},pitch3/-80..120, explicit10m/tick/datum0,
+2km spacing/centre40N/0E/rows south. Caller selects44 replenished water cells and
+one finite pool independently of elevation/sea/fill/channels. Z=-760..1180m.
+Summer tick2172 mean absorbed658.5622W/m2/daily cosine.3668, centre seasonal
+reference278.3888K/air273.5788K. Winter tick6492 gives302.6980/.1105,
+reference265.5404K/air260.7304K. Winter midnight6480 gives0 direct absorbed and
+0 sunlit cells, retaining the separate daily seasonal target. Slight midnight/
+noon reference difference is continuous orbital phase, not evolved thermal memory.
+All three use6048 work/42600 accounted bytes. Water time constant432000s is retained.
+Three generated seeds pass source/field reductions and repeatability.
+
+counts.json, source-evidence.json, preservation-before/after.json, commands.txt,
+exits.tsv, discovery.json, build-{1,2,3}.log and ctest-{1,2}.log retain full evidence;
+26 archive/shared/U8/U9/U10/U11 source/receipt witnesses match. Existing110 names
+and101 prior case counts retained. No source-provenance archive, WORLD source,
+predecessor receipt or sibling was modified. New ready receipt reports execution,
+not coordinator source acceptance or a new platform/physical guarantee.

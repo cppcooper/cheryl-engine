@@ -159,3 +159,43 @@ independent tracing, generated threshold profiles, malformed graphs and exact re
 boundaries pass. The worker's third milestone ends this finite lane; receipt records
 execution, not automatic source/platform acceptance. No further unit, public extraction
 or sibling integration is authorized by this completion.
+
+## CLIMATE-001 — Explicit regional physical adapter (U12)
+
+**User boundary; implemented private choice.** Require a valid metric/height,
+row/north, restricted geographic and integer-calendar frame; omitted physical
+context rejects. Own exact heights/surfaces/revisions and the generated U8 replay
+when supplied. A <=256km local approximation excludes polar maps/dateline wrapping,
+while the point sun helper handles poles. This avoids invented geography at the
+cost of explicit caller setup. Confidence high in checked boundaries, medium in
+chosen regional scale; no personal API preference is inferred.
+
+## CLIMATE-002 — Derived targets, separate from weather (U12)
+
+**User boundary plus engineering model; implemented.** Circular-orbit/tilt sun
+geometry derives instantaneous slope illumination and daily horizontal seasonal
+targets. Explicit absorbed/cooling and lapse parameters distinguish reference-level,
+elevation-corrected and instantaneous response targets. Caller water fractions
+produce a retained thermal timescale; roughness stays input context. These are
+bounded game targets, with no evolved weather or measured normals. Confidence high
+in tested equations, medium in usefulness, unverified for physical calibration/fun.
+
+## PROCGEN-047 — Owned and charged climate candidates
+
+**Engineering choice; high locally.** regional_solar_baseline model/numerics1
+owns complete source/context/derived cells. Caps128x128/8MiB/2M work, actual
+peak8192+184*C and work64+32*C, no cell scratch. Validate source values before
+allocation and charge rejected cells. Expected invalid/unsupported/budget refusals
+publish nothing; allocation/programming exceptions propagate. Sufficient budgets
+affect admission only. Floating replay needs the same build/platform/order;
+integer stream keys imply no broader floating guarantee.
+
+## PROCGEN-048 — Independent U12 checkpoint
+
+**User requirement; executed GNU/Linux Debug/UBSan.** One accumulated122/122 pass
+and a source-review-driven12/12 climate recheck establish112 cases/44568 current
+assertions and ten consumers/33 demonstrations. All110 prior names/counts and26
+source/archive/receipt witnesses remain. Independent solar scalars/integral,
+ridge/coast, units/calendar/ownership and refusal checks pass. The receipt is
+execution evidence. Controller alone may select U13; transport, dynamics,
+physical/visual/platform/public acceptance remain separate.
