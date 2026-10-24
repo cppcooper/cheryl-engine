@@ -10,6 +10,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace CE::Dialogue {
@@ -193,6 +194,22 @@ namespace CE::Dialogue {
         bool operator==(const Snapshot&) const = default;
     };
 
+    /** Owned observation of one successful explicit choice, independent of Session/Definition lifetime.
+     * No incarnation/Selection is retained. These values are not replay credentials,
+     * authenticated history, durable delivery or proof of external transactional effects.
+     */
+    struct Transition {
+        DefinitionId definition;               ///< Exact authored definition identity.
+        std::uint64_t definition_revision = 0; ///< Exact revision, not content/history authentication.
+        SessionId session;                     ///< Logical session identity, not its live incarnation.
+        NodeId source;                         ///< Cursor before the successful choice.
+        NodeId target;                         ///< Cursor after the successful choice; may equal source in a cycle.
+        ChoiceId choice;                       ///< Authored choice scoped to source.
+        std::uint64_t old_step = 0;            ///< Completed-boundary step before this occurrence.
+        std::uint64_t new_step = 0;            ///< Exactly old_step + 1; never wraps.
+        bool operator==(const Transition&) const = default;
+    };
+
     /** Explicit ordinary rejections. Callback/allocation exceptions propagate separately. */
     enum class SessionError {
         InvalidDefinition, ///< A factory received an empty definition handle.
@@ -221,7 +238,7 @@ namespace CE::Dialogue {
     /** Explicit move-only CPU cursor retaining its frozen definition.
      * Serialize every operation with application state. Handler objects/captures
      * and supplied inputs must remain valid through the call; no handlers are stored.
-     * Reentrant view/choose/snapshot return Busy. Moving, assigning over/from or
+     * Reentrant view/choose/choose_with_transition/snapshot return Busy. Moving, assigning over/from or
      * destroying an active session (including from its callback) terminates.
      * Idle moves preserve incarnation and cannot throw; moved-from operations reject.
      */
@@ -237,6 +254,9 @@ namespace CE::Dialogue {
         Session(DefinitionHandle definition, SessionId id, std::size_t node, std::uint64_t step);
         [[nodiscard]] std::optional<SessionError> state_error() const noexcept;
         void take(Session& other) noexcept;
+        template <bool WithTransition>
+        std::expected<std::conditional_t<WithTransition, Transition, void>, SessionError>
+        choose_impl(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply);
 
     public:
         CE_API Session(Session&& other) noexcept;
@@ -250,6 +270,8 @@ namespace CE::Dialogue {
         [[nodiscard]] CE_API std::expected<View, SessionError> view(const ConditionHandler& test = {});
         [[nodiscard]] CE_API std::expected<void, SessionError>
         choose(const Selection& selection, const ConditionHandler& test = {}, const EffectHandler& apply = {});
+        [[nodiscard]] CE_API std::expected<Transition, SessionError>
+        choose_with_transition(const Selection& selection, const ConditionHandler& test = {}, const EffectHandler& apply = {});
         [[nodiscard]] CE_API std::expected<Snapshot, SessionError> snapshot();
     };
 }
@@ -310,6 +332,18 @@ namespace CE::Dialogue {
  * After its return only nonthrowing cursor/step changes and an allocation-free success return occur.
  * Guard exceptions preserve healthy progress. Effect exceptions fault the session, retain the source cursor and rethrow the original
  * failure; application changes may be partial. Faulted choices/views/snapshots reject; no rollback or automatic retry is supplied.
+ */
+
+/**
+ * @fn std::expected<CE::Dialogue::Transition, CE::Dialogue::SessionError> CE::Dialogue::Session::choose_with_transition(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply)
+ * @brief Apply the same checked choice as choose(), optionally returning an independently owned successful observation.
+ * @return Owned definition/revision, session, source/target, source-scoped choice and old/new steps, or the same ordered rejections as choose().
+ * All validation, condition evaluation, lookups, owning field copies and the complete expected success result are prepared before effect entry.
+ * After effect success only nonthrowing cursor/step commit, result movement and busy cleanup occur. Allocation/copy failure before the effect
+ * propagates with a healthy unchanged session and no effect. Guard exceptions and effect exceptions have choose()'s distinct consequences;
+ * an effect exception faults the unchanged source cursor, rethrows the original failure and can leave partial application mutations.
+ * No observation is returned on rejection/exception. Reentrancy rejects Busy; callback lifecycle restrictions and caller serialization still apply.
+ * Legacy choose() constructs no unused Transition. This observation supplies no live authority, replay, event dispatch or durable delivery.
  */
 
 /**

@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-018` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-020` IDs;
 [next](next.md) records the next coordinator review action.
 
 ## Authority, scope and evidence limits
@@ -216,7 +216,7 @@ session retains `shared_ptr<const Definition>` plus its own numeric cursor, step
 and status; releasing the original definition handle does not invalidate it.
 Application flags and callables are neither stored in that definition nor owned
 by the session. Each operation borrows its supplied handlers only until return.
-Handlers/captures must survive the call; reentering view/choose/snapshot returns
+Handlers/captures must survive the call; reentering view/either choice API/snapshot returns
 `Busy`. Idle move construction/assignment preserve incarnation and are noexcept;
 moved-from operations return `MovedFrom`. Active moves, replacement or destruction
 terminate before invalidating storage beneath a callback. This hard lifecycle
@@ -225,7 +225,8 @@ programming misuse; confidence in that policy is medium and reversal affects onl
 these initial callers. No operation supplies cross-thread synchronization.
 
 `view` returns copied node text and authored-order choices with availability and
-selection values. These values and snapshots retain their own strings and IDs;
+selection values. These values, snapshots and U9 Transition observations (ST-019)
+retain their own strings and IDs;
 they borrow neither draft storage, the session, handlers nor application state.
 They may be displayed after session destruction, but old selections gain no new
 authority. Definition sharing permits stable concurrent reads; operations on a
@@ -255,7 +256,8 @@ conditions repeatedly, so predicates cannot consume randomness or mutate flags.
 
 **ST-005 — Selection and commit (implemented U2).** Each selection carries private
 live incarnation plus session ID, source node, step and choice ID. These values
-scope a command; they are not a security token. `choose` checks those fields,
+scope a command; they are not a security token. `choose` and the optional
+`choose_with_transition` (ST-019/020) check those fields,
 terminal/fault/busy/moved-from state, membership and step
 capacity, then reevaluates the condition against current application state.
 A cached enabled row is insufficient. Rejections are explicit results such as
@@ -265,8 +267,11 @@ views/snapshots and maximum-step snapshots remain valid; choosing cannot advance
 a terminal or overflowed cursor.
 
 Complete all lookup, validation, allocation and success-result preparation before
-calling an effect. Success is `expected<void, SessionError>`, prepared before
-entry, with a statically checked nonthrowing copy and no owned result payload.
+calling an effect. Legacy success is `expected<void, SessionError>`, prepared
+before entry with statically checked nonthrowing copying and no owned payload.
+The optional U9 result is `expected<Transition, SessionError>`: all owned fields
+and that entire success value are prepared before entry, then moved without
+throwing (ST-019/020). Legacy choose constructs no unused observation.
 The selected effect key borrows retained storage, so argument preparation cannot
 introduce a later string copy. Once its handler returns, installing the numeric target cursor,
 incrementing the step and returning success must not allocate or throw. An effect
@@ -948,6 +953,101 @@ application-policy migration. These choices extend ST-014's bounded CPU discipli
 without changing inspect's work accounting or making a general budget framework.
 Actual checks, pass counts, limitations and receipt status belong to next.md.
 
+## U9 owned successful transition observations
+
+**ST-019 — Observe a successful checked choice, without delivery or replay authority.**
+The implemented and executed public caller is:
+
+```cpp
+#include <cheryl/core/game-framework/dialogue.h>
+const auto offered = session.view(test).value();
+const auto transition = session.choose_with_transition(offered.choices[0].selection, test, apply);
+if (transition) {
+    // Independently owned definition/revision, session, source/target,
+    // source-scoped choice and old/new completed-boundary steps.
+}
+```
+
+Transition owns DefinitionId, definition_revision, SessionId, source/target NodeIds,
+source-scoped ChoiceId and old_step/new_step. It retains neither DefinitionHandle
+nor Session, handlers, Selection/incarnation marker, application flags, operation
+meaning or a save format. Source equals target for a self-cycle; new_step is exactly
+old_step+1 after capacity validation, including max-1 to max. No observation exists
+on rejection or exception. Later copying/logging a returned observation may fail
+separately; that cannot reverse the already committed choice. The result can outlive
+source bytes/draft, definition,
+session and presentation; copied observations are independent values. Logical IDs
+and steps are not authenticated history or proof of one active process. Copying or
+editing this value cannot manufacture a live Selection, replay a path or validate
+an application snapshot. Structural routes likewise confer no selection authority.
+
+The explicit named opt-in returns std::expected<Transition, SessionError>, rather
+than changing choose's expected<void,SessionError> or allocating an unused receipt.
+Normal gameplay still requires a Selection actually issued by view and a current
+condition recheck. Both variants have identical error ordering, missing-handler,
+step/terminal, moved-from, busy/fault and stale/foreign/incarnation checks. Stable
+keys are borrowed synchronously. Start/view/snapshot/resume and result observation
+never invoke effects. There is no automatic publication/event bus, callback registry,
+durable delivery, external rollback or exactly-once crash protocol. Application
+persistence/flags/outcome routing remain outside Engine.
+
+The small real shared Engine consumer executes the new exported member, inspects
+fields, releases the final session/definition owner, and tests rejection of tokens
+from a prior resume incarnation. The header remains CPU/JSON-free, with no runtime
+module or private app include. Session object data layout and legacy source call
+syntax are unchanged; only the new member/type are exposed. Installed/mixed-version
+ABI and other platforms are not inferred from this local rebuild.
+
+Confidence is high in ownership/authority separation, medium in field/method
+spelling. These are engineering choices driven by the task and current compatibility,
+not additional evidence of personal taste. An optional callback/event would add
+failure and delivery policy; an always-owned choose result would charge every
+legacy caller. Changing this new shape is local to the new callers and needs no
+save migration, while adding durable effects would require a separate assignment.
+
+**ST-020 — Prepare the complete selected success before effects, share checks.**
+A private bool-template choose_impl has exactly two compiled variants, void legacy
+success or owned Transition success. Existing validation through pure condition
+recheck and target/next-step preparation stays in one path and in the previous
+order. Only the observation variant constructs owned fields and its complete
+expected success, before effect invocation. The result is non-const so return uses
+NRVO or implicit move; Transition and expected<Transition,SessionError> have static
+nothrow-move checks. Public wrappers return the matching result directly, without
+post-effect conversions or payload copying. No generic result/persistence framework
+or public template extension is introduced. A runtime nullable receipt pointer could
+share checks, but would split success construction/validation across wrapper and
+implementation; duplicated choice bodies would risk divergent rejection/fault rules.
+
+The existing BusyGuard covers validation callbacks and owned-result preparation.
+A guard throw or any copy/allocation failure before effect entry propagates, leaving
+a healthy unchanged cursor and no effect. An effect exception retains the source
+cursor, marks faulted and rethrows the original exception; app state may already
+be partial, and no receipt escapes. No rollback or retry is claimed. After effect
+success only numeric cursor/step installation, nonthrowing result movement and
+busy cleanup remain. Legacy choose has no receipt copies/allocations before or
+after effects. Callers must still serialize the session and app state and keep
+borrowed handlers/arguments valid during the call. Moving/replacing/destroying an
+active session, including in its callbacks, remains prohibited; reentrant normal
+operations predictably return Busy.
+
+The isolated Linux C++ allocation probe uses only bounded local failures: verify
+scalar/array/aligned rejection and shared Engine interposition, then sweep at most
+32 preparatory allocation positions on long-field observations. Each injected
+failure must precede effects, preserve the snapshot and leave the original token
+usable. A successful effect enables allocation denial itself; actual receipt return
+and a further result move must allocate nothing, with stable borrowed effect keys
+and committed cursor. Early unavailable/wrong-session rejection and legacy choose
+run under denial from entry, proving no unused observation cost. No exhaustion,
+OOM, generic failure framework, custom allocator or arbitrary C-allocation proof
+is claimed. Hooks never link into GoogleTest.
+
+Confidence is high in the shared sequencing and tested language move guarantees,
+medium in the private template spelling. Keeping the two variants together costs
+a small implementation instantiation and adds opt-in string-copy exceptions before
+effects; reversing that private arrangement requires validation-order, ownership,
+exception and allocation probes. Actual executed checks and portability/leak limits
+belong to next.md; no source/commit alone establishes acceptance.
+
 ## Verification environment
 
 **ST-008 — Keep the LSan accommodation local.** The unchanged generated discovery
@@ -1197,3 +1297,19 @@ match U7 byte for byte; no skips/unrun cases or ASan/UBSan diagnostics occurred.
 next.md preserves complete logs/statuses, the static premature-audit correction,
 limits and gaps. A ready U8 receipt reports this execution; source review and U9
 selection remain the queue controller/coordinator's next action after run drain.
+
+
+U9 has executed focused acceptance: **154/154** cases passed, with all **138 U8
+names/order retained**, 12 new Engine transition cases, three actual public Engine
+consumers and one isolated allocation probe. The probe exercises five preparatory
+allocation failures, preserving healthy snapshots and original tokens with no
+effects, then denies allocation inside an effect through receipt return and result
+movement. Legacy choose/early rejects run under denial from entry without unused
+receipt cost. Shared Engine hook controls and stable borrowed effect arguments
+are verified. Native exports include the new member and legacy choose; private
+templates stay hidden. All 54 complete child transcripts are byte-identical to U8,
+with no skips/unrun cases or ASan/UBSan diagnostics. Exact commands/statuses, full
+logs, corrected static link-rule audit and remaining leak/platform/SDK/runtime
+limits are in next.md. The ready U9 receipt reports execution only. This completes
+the third assigned milestone of the finite batch and stops for coordinator source
+review; no new unit, dispatch/persistence framework or publication is selected.

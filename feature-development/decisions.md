@@ -22,6 +22,9 @@ ST-016 indices; all 121 checks (112 retained plus nine new) passed, with 54 unch
 child transcripts and a verified allocation-denial probe. U8 adds ST-017/018; all
 138 checks passed, including 17 new cases and all 121 retained names. Its 54
 complete child transcripts remain byte-identical and public shared export executes.
+U9 executes ST-019/020 with 154/154 passes (all 138 retained), five preparatory
+allocation failures before effects, allocation-free result return and unchanged
+54 child transcripts. Full evidence is in next.md.
 
 ## ST-001 — Reusable dialogue, console first
 
@@ -46,7 +49,7 @@ global revision/identity discipline remains application-owned.
 ## ST-003 — Freeze definitions and retain their owners
 
 Compilation validates/deep-copies, then builds private ordinal indices (ST-016);
-const shared ownership alone is insufficient. Sessions retain definitions, while views/snapshots
+const shared ownership alone is insufficient. Sessions retain definitions, while views/snapshots/transition observations
 own strings and tokens retain only a small marker. Handlers are borrowed
 synchronously. Idle moves are nonthrowing for paired adoption; active
 moves/replacement/destruction terminate to prevent callback invalidation. This
@@ -67,14 +70,13 @@ preference evidence remains limited.
 
 ## ST-005 — Recheck selections and commit only after effects
 
-Check live incarnation, logical session/node/step, membership and current condition
-before effects. Prepare target, borrowed keys and expected<void,SessionError>
-success first; afterward commit only numeric cursor/step and return without
-allocation. Guard exceptions preserve healthy progress; effect exceptions rethrow
-and fault the source cursor because application state may be partial. Reentrancy
-returns Busy. This trades rollback/retry for an explicit failure boundary.
-Confidence is high in the control flow; native cases and the isolated allocation
-probe establish its focused evidence.
+Validate live incarnation, logical session/node/step, membership, capacity and
+current condition before effects. Prepare target, borrowed keys and complete
+success first; then commit numeric cursor/step and return allocation-free. Legacy
+choose stays void; optional observations use ST-019/020. Guard exceptions preserve
+healthy progress; effect exceptions rethrow and fault the source cursor because
+application mutations may be partial. Reentrancy returns Busy. Confidence is high;
+this trades rollback/retry for explicit failure boundaries.
 
 ## ST-006 — Validate complete definitions before play
 
@@ -204,3 +206,24 @@ console-sized graphs and hard ceilings permit larger CPU inputs. This trades
 conservative work accounting for predictable bounds. Confidence is high in
 mechanics, medium in ceilings; tuning requires public budget/usage and boundary
 review, without persistence changes.
+
+
+## ST-019 — Return owned successful observations without authority
+
+Opt-in choose_with_transition returns owned definition/revision, logical session,
+source/target, source-scoped choice and old/new steps. Rejects/exceptions return no
+observation. This preserves legacy source calls and keeps receipts independent of
+live owners, while charging opt-in string copies. Values grant no selection, replay,
+authenticated history, durable delivery or external rollback. Confidence is high
+in ownership, medium in spelling; changing this new shape affects a small consumer
+without save migration.
+
+## ST-020 — Share checks and prepare success before effects
+
+Use two private compile-time variants of one checked choice path. Prepare the
+complete selected expected result before effects; afterward commit numeric cursor
+and step, then move without throwing. Legacy choose constructs no observation.
+This trades two small instantiations for matching rejection/fault ordering without
+wrapper preparation gaps. Confidence is high in sequencing and move guarantees,
+medium in private spelling; changes require allocation, exception and authority
+checks, not persistence migration.

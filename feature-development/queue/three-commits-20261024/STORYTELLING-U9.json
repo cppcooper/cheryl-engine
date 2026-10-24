@@ -1,0 +1,21 @@
+{
+  "batch_id": "three-commits-20261024",
+  "milestone_id": "STORYTELLING-U9",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u9-build-1.log",
+    "builds/storytelling-u1-debug/u9-registration.log",
+    "builds/storytelling-u1-debug/u9-ctest-1.log",
+    "builds/storytelling-u1-debug/u9-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u9-exports.log",
+    "builds/storytelling-u1-debug/u9-results-audit.log",
+    "builds/storytelling-u1-debug/u9-boundary-rules.log"
+  ],
+  "limitations": [
+    "Leak detection remains unverified under the established ST-008 tracing accommodation; ASan/UBSan pass with command-local detect_leaks=0.",
+    "Native acceptance covers GNU/Linux Debug shared Engine; other platforms/custom allocators, installed SDK/mixed-version ABI and wider runtime integration remain unverified.",
+    "Allocation probe covers bounded C++ allocations on the serialized owner thread, not arbitrary C/custom allocators or exhaustive fault injection.",
+    "Transitions are owned observations, not live authority, authenticated history, durable delivery, application rollback or external exactly-once crash behavior."
+  ]
+}

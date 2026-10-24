@@ -1,4 +1,160 @@
-# U8 bounded advisory structural routes
+# U9 owned successful transition observations
+
+STORYTELLING-U9 starts from clean completed U8
+`66e1dfe6255e603b6395d58e046e4ab827a5016f`; its ready receipt/source and complete
+138-pass/54-child evidence were inspected before dependent work. Workspace/clone
+instructions, finite policy/plan and exact U9 task were read. U9 implementation and
+focused native acceptance are complete: **154/154 pass**, **all 138 U8 names/order
+retained**, 12 new Engine cases, three actual public Engine consumer cases and one
+new allocation probe. There are zero skips/unrun cases or ASan/UBSan diagnostics.
+All **54 complete child transcripts are byte-identical** (21 exit 0/15 exit 2/18
+exit 3). The ready receipt reports worker execution, not automatic source/platform
+acceptance. This is the final assigned milestone of worker-4's finite batch.
+
+## Implemented caller and owned observation
+
+```cpp
+#include <cheryl/core/game-framework/dialogue.h>
+const auto offered = session.view(test).value();
+const auto transition = session.choose_with_transition(offered.choices[0].selection, test, apply);
+if (transition) {
+    // Owns definition/revision, logical session, source/target, source-scoped
+    // choice and old/new steps; no live incarnation or replay authority.
+}
+```
+
+Transition owns five strings plus definition_revision and old_step/new_step. It
+retains no DefinitionHandle, Session, handler, Selection/incarnation or app flag.
+Copying or editing it cannot confer live authority, authenticate history, replay
+an effect or supply durable delivery. A caller's later copy/logging/adoption
+failure does not undo the committed choice. Definition/revision, logical session
+ID, source/target and the choice scoped to source identify the observed occurrence;
+new_step is old_step+1, including max-1 to max. Self-cycles keep equal endpoints
+but require a new live selection for the next occurrence.
+
+One private bool-template path performs both legacy and observing choices with
+identical state/authority/membership/overflow/missing-handler/error ordering.
+Validation through pure condition recheck and next-node/step preparation is
+byte-identical to U8 (u9-source-audit.log SHA256
+`be281af2eeffcefbf6d81254a9e331010ae925da24725cf29db79e4072d722e1`). Only the
+opt-in variant copies observation fields and constructs the complete expected
+success before effect entry. Non-const success returns by elision/implicit move;
+Transition and expected<Transition,SessionError> have static nothrow-move checks.
+After successful effect return only numeric cursor/step commit, result movement
+and nonthrowing busy cleanup remain. Legacy choose returns expected<void,...>
+without unused receipt allocation before or after effects.
+
+Guard/preparation exceptions propagate with healthy unchanged progress and no
+effect. Effect exceptions rethrow the original failure, fault the source cursor
+and may leave partial app mutations; no receipt escapes and no rollback/retry is
+claimed. Reentrant view/legacy choose/new choose/snapshot return Busy. Moved-from,
+foreign/stale/wrong-incarnation, unavailable, missing-handler, max-step and terminal
+cases retain their existing semantics. Borrowed handler arguments/keys remain
+stable; callback moves/replacement/destruction remain prohibited. Start/view/
+snapshot/resume never apply effects. Capture/adopt snapshots and app flags on the
+same serialized owner as before. Structural advice is never live authority.
+
+ST-003/005/019/020 in both decision views give contracts, confidence and alternatives.
+Private compile-time variants avoid divergent copies of checks and wrapper success
+preparation gaps, with no generic result framework. This is engineering judgment,
+not new personal-taste evidence. Public dialogue.h stays CPU/JSON-free and Session
+object data layout/legacy call syntax are unchanged. New Engine member/type and
+focused consumer/probe wiring are the entire runtime change. Definition indices,
+inspection/routes, private console/JSON/file logic, snapshot schema, pins and app
+operation semantics stay unchanged. No event bus, automatic playback, global
+registry, durable external-effect protocol or sibling dependency is added.
+
+## Actual native checks
+
+Reused builds/storytelling-u1-debug, preserving Debug/shared Engine, CMake policy
+minimum 3.5, prior OFF selections/pins and local incremental outputs. Every
+configure/build/native check used the shared one-job wrapper with unchanged adaptive
+monitor/no-swap/admission limits. Original build/test sessions were retained through
+completion. No native failure, resource refusal, cancellation/relaunch, sanitizer
+or build-flag adjustment occurred. ASan/UBSan and halt-on-error remained enabled;
+command-local detect_leaks=0 is the existing ST-008 tracing accommodation. Leak
+coverage remains **unverified**. No broad campaign, GUI/device, SDK/doc build,
+package download/install, protected/sibling cache, external agent or transport ran.
+
+Executed commands from clone root (all immediate exits **0**):
+
+```sh
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake -S . -B builds/storytelling-u1-debug
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- cmake --build builds/storytelling-u1-debug \
+  --target tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$)'
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir builds/storytelling-u1-debug \
+  --output-on-failure --no-tests=error --parallel 1 \
+  -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$)'
+/mnt/projects/cheryl-features/scripts/build -- nm -D --defined-only --demangle \
+  builds/storytelling-u1-debug/libcheryl-engine.so.4.0.0
+```
+
+The full suite ran once with final source. Registration/actual results agree:
+77 Engine GoogleTests, 11 independent public Engine consumer GoogleTests, 64 private
+console GoogleTests, and two isolated allocation probes = 154. No source change
+required a rerun or acceptance weakening.
+
+| Files under builds/storytelling-u1-debug/ | Observed result |
+| --- | --- |
+| u9-configure.log, .exit | 0; preserved existing Debug/OFF selections and pins. |
+| u9-build-1.log, .exit | 0; actual shared Engine, focused runners, public consumer and new standalone probe compile/link/discover. |
+| u9-registration.log, .exit; u9-registration-audit.log | 0; 154 nonempty unique names, all 138 U8 names/order and all 16 new source/probe names match. |
+| u9-ctest-1.log, .exit | 0; 154/154 pass in 18.15 seconds, zero skips/unrun cases. |
+| u9-ctest-details-1.log | Full preserved LastTest.log, 152 matching RUN/OK pairs plus both probes, 154 CTest pass records, full child arguments/stdin/stdout/stderr/immediate exits. |
+| u9-results-audit.log | Complete result/name/count agreement, all 54 child blocks exactly equal to U8, no ASan/UBSan diagnostics; new probe message records five preparatory failures and allocation-free commit/return/move/legacy path. |
+| u9-source-audit.log | Selection validation/rejection ordering through next-step preparation byte-identical to U8; exactly one shared checked path. |
+| u9-exports.log, .exit | Wrapped nm exit 0; new choose_with_transition and existing choose defined/exported by actual shared Engine; private choose_impl templates hidden. |
+| u9-boundary-rules.log | Engine owns dialogue-session.cpp, consumer/probe import without private/app/JSON includes or export patch, actual consumer links Engine and executes new API; ASan/UBSan retained. |
+| u9-audit-diagnostics.log | Static link-rule matcher initially raised StopIteration because CMake adds the discovery script as a second Ninja output; corrected matcher passes against the actual multi-output rule. No native check failed or reran. |
+
+Logs/statuses stay ignored and clone-local. New receipt evidence references actual
+nonempty regular native log files. Five changed C++ files pass clang-format dry-run
+with Werror and git whitespace checks. Complete diagnostics are preserved despite
+bounded tool output; no previous checkpoint/receipt is rewritten.
+
+| New passing cases | Proven boundary |
+| --- | --- |
+| dialogue_transition.caller, silent | Both gate endings; complete literal observation, no-effect silent/leave/pass transitions, unavailable pass leaves pair unchanged, one introduction effect. |
+| rejections, handler_order | Wrong session/incarnation/stale node/step/choice, unknown choice, missing handlers in old order, changed condition after available presentation; no effect or progress on rejection, legacy/new calls interleave. |
+| guards, effects, reentrant | Original guard exception preserves healthy cursor and runs no present effect; original effect failure faults with partial app mutation, rejects further operations; both callback phases reject nested view/legacy/new/snapshot Busy and borrow stable keys. |
+| moves, resume, cycles | Idle move construction/assignment preserve authority, replaced/moved-from/old-resume tokens reject, failed resume preserves original token, paired flags at gate resume/pass without repeated introduce, cycle needs fresh selection; edited observation fields grant no marker. |
+| boundaries, retained | max-1 to max success, terminal-before-membership/overflow rejection, max-step prompt refuses effect, owned long/NUL/high-byte IDs after draft/definition/session release and independent copy. |
+| dialogue_transition_consumer.caller, retained, authority | Actual public-header-first shared Engine call and owned fields, nothrow move contract, lifetime independence and same-field resume incarnation rejection/fresh success. |
+| tests-dialogue-transition.allocation | Bounded 0..31 allocation-position seam reaches five failures then success; each failure preserves healthy snapshot/token and no effect. Denial enabled inside effect permits actual receipt return and further result move without new attempts; legacy choose and typed early rejects require no unused allocations from entry. Scalar/array/aligned and actual Engine hook controls verified; no OOM/exhaustion or general failure framework. |
+
+## Final finite-batch receipt and next action
+
+Committed receipt:
+feature-development/queue/three-commits-20261024/STORYTELLING-U9.json,
+exact batch/milestone bindings, ready/true with actual nonempty native evidence.
+No unresolved assigned prerequisite/acceptance blocker remains. This is execution
+evidence, not automatic coordinator source review or proof of an unrun platform.
+
+The three assigned milestones are U7 (`dc946121`), U8 (`66e1dfe`) and this coherent
+U9 checkpoint. Previous unrelated history is not counted. Next concrete action:
+the finite controller verifies the drained clean final descendant/receipt and
+ends this lane; the coordinator reviews source/evidence and the publisher owns
+transport. No fourth unit is assigned or automatically selected. This worker
+stops after U9, without starting a consumer expansion, sibling integration,
+background/recurring task, publication or speculative outcome/event framework.
+
+Confidence is high in executed ownership/authority/exception sequencing and
+allocation-free post-effect movement, medium in new field/method spelling and
+private compile-time organization. Reversing these choices needs source consumer,
+error-order and allocation probes but no save migration. Broader platforms/custom
+allocators, installed SDK/mixed-version ABI, leak detection and wider runtime
+integration remain unverified. This probe covers C++ allocation on its serialized
+thread, not arbitrary C/custom allocators or all fault positions. Receipts provide
+no authenticated history, delivery guarantee, application rollback or external
+exactly-once crash behavior.
+
+## Retained U8 bounded advisory structural routes
 
 STORYTELLING-U8 starts from clean executed U7
 `dc94612134b11f03e3af9bdf91c8a442ca4eab29`; its committed ready receipt and saved

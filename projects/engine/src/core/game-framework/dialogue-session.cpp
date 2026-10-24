@@ -19,6 +19,8 @@ namespace CE::Dialogue {
         };
 
         static_assert(std::is_nothrow_copy_constructible_v<std::expected<void, SessionError>>);
+        static_assert(std::is_nothrow_move_constructible_v<Transition>);
+        static_assert(std::is_nothrow_move_constructible_v<std::expected<Transition, SessionError>>);
     }
 
     Session::Session(DefinitionHandle definition, SessionId id, const std::size_t node, const std::uint64_t step)
@@ -119,8 +121,10 @@ namespace CE::Dialogue {
         return result;
     }
 
-    std::expected<void, SessionError>
-    Session::choose(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply) {
+    template <bool WithTransition>
+    std::expected<std::conditional_t<WithTransition, Transition, void>, SessionError>
+    Session::choose_impl(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply) {
+        using Result = std::expected<std::conditional_t<WithTransition, Transition, void>, SessionError>;
         if (const auto error = state_error())
             return std::unexpected(*error);
         if (selection.session != id_)
@@ -147,7 +151,17 @@ namespace CE::Dialogue {
             return std::unexpected(SessionError::Unavailable);
         const auto next_node = static_cast<std::size_t>(definition_->find_node(choice->target) - definition_->nodes().data());
         const auto next_step = step_ + 1;
-        const std::expected<void, SessionError> success;
+        // Both branches prepare the complete success object before effects. The
+        // legacy instantiation has no owned fields or unused receipt allocations.
+        auto success = [&]() -> Result {
+            if constexpr (WithTransition)
+                return Result{
+                    std::in_place,
+                    Transition{definition_->id(), definition_->revision(), id_, node.id, choice->target, choice->id, step_, next_step}
+                };
+            else
+                return {};
+        }();
         if (choice->effect) {
             try {
                 apply(*choice->effect); // Stable borrowed key; no owning argument copy.
@@ -156,10 +170,20 @@ namespace CE::Dialogue {
                 throw;
             }
         }
-        // No callbacks, allocation, owned payloads or fallible work after effect return.
+        // No callbacks, allocation, owned copies or fallible work after effect return.
         node_index_ = next_node;
         step_ = next_step;
         return success;
+    }
+
+    std::expected<void, SessionError>
+    Session::choose(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply) {
+        return choose_impl<false>(selection, test, apply);
+    }
+
+    std::expected<Transition, SessionError>
+    Session::choose_with_transition(const Selection& selection, const ConditionHandler& test, const EffectHandler& apply) {
+        return choose_impl<true>(selection, test, apply);
     }
 
     std::expected<Snapshot, SessionError> Session::snapshot() {
