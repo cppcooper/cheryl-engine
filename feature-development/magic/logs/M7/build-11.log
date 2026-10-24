@@ -1,0 +1,9 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks --parallel 1
+[ 22%] Built target magic_compiler
+[ 44%] Built target magic_learning
+[ 77%] Built target magic_reference_host
+[ 88%] Building CXX object CMakeFiles/magic_mechanics_checks.dir/tests/mechanics.cpp.o
+[100%] Linking CXX executable magic_mechanics_checks
+[100%] Built target magic_mechanics_checks
+
+exit_status=0

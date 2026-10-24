@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "campaign": "accumulated-01.log",
+  "native_result": "22/22 entries pass,52 new+196 retained cases, separate callers",
+  "source_sha256": {
+    "projects/magic/CMakeLists.txt": "5ef47eaea3193d3eb60dd9d3f471356c66aa50d7b2f16db12c98544aa32fb7e3",
+    "projects/magic/include/magic/compiler.h": "d417c2e38205b339b5f6bb8d96ef27a58ba7a86d889a3310622efebb7c9a2404",
+    "projects/magic/include/magic/reference-host.h": "7bdf597d752b51d0da6c9938cbb16e3a171f97681ac086ebdbee4c4dea989dd8",
+    "projects/magic/src/compiler.cpp": "1b441e6a11353ec94cfe35eb597e59e4d6b5b4b421b1993e2160d7e447116427",
+    "projects/magic/src/reference-host.cpp": "b250312bd86d97dd0fc87917499b385f55c1048d31a844d7956155e653f055a4",
+    "projects/magic/src/reference-meter.h": "f104113b2d1438a1178f0887e02ac0142d5d2a9f7305406ba6ac08ec1495b7da",
+    "projects/magic/src/mechanics.cpp": "f4f890e459b87134a63928aed819d8f72ac54128e1f564e85509e70699d2dea3",
+    "projects/magic/src/main.cpp": "f1581fcff055351ceefdc3429ef2e25d1290826a59150fbf81866f594f90061d",
+    "projects/magic/src/mechanics-demo.cpp": "c68b8afe6af88a3574f48f44aad40b32ac4e57698d8374390e10ddd9b1008b51",
+    "projects/magic/src/material-demo.cpp": "79b9650fc2597b270e5bbd4bd9aabdeb9a65a1b9c6553c06535f0e548763e0c9",
+    "projects/magic/tests/mechanics.cpp": "5274a6ed8ada1aa9b0317aec4568ba5d756bbbef8420626e44cbd2ee7b5f0a68",
+    "projects/magic/tests/engraving.cpp": "c85b5f2a2f7a4172ff7a6e9dcae618af86676ef77b346a31ea7d6c81664e7dc1"
+  }
+}

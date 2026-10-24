@@ -1,0 +1,299 @@
+{
+  "version": 1,
+  "milestone_id": "MAGIC-M7",
+  "starting_head": "a01a5f76592ed1f851de3a43a4b6462aa516a072",
+  "status": "ready",
+  "checks_passed": true,
+  "selection_record": "feature-development/magic/batches/M7-plan.json",
+  "selected_core": [
+    {
+      "id": "M7-WARD",
+      "family": "wards/protection"
+    },
+    {
+      "id": "M7-INTENT",
+      "family": "mental/action restriction"
+    },
+    {
+      "id": "M7-RELOCATE",
+      "family": "movement/spatial relations"
+    },
+    {
+      "id": "M7-SHATTER",
+      "family": "destruction/object removal"
+    }
+  ],
+  "completed_core_ids": [
+    "M7-WARD",
+    "M7-INTENT",
+    "M7-RELOCATE",
+    "M7-SHATTER"
+  ],
+  "unfinished_core_ids": [],
+  "selected_stretch": [
+    {
+      "id": "M7-TRANSMUTE",
+      "family": "transformation/material"
+    },
+    {
+      "id": "M7-CREATE",
+      "family": "creation"
+    }
+  ],
+  "completed_stretch_ids": [
+    "M7-TRANSMUTE",
+    "M7-CREATE"
+  ],
+  "unfinished_stretch_ids": [],
+  "contracts": [
+    "M7-031: Typed absorption ward and Attack-only restriction use live symbolic key+primitive+capacity/duration checks, normal opaque prepare/release and10mana/effect. Four generation-bound records each own action/instance/onset/expiry/actual plans. Native contact attack3dp and Fire share real absorption; capacity5 prevents hits3 then2 of4 and passes2. Intent restricts the actual attack, not merely displayed prose.",
+    "M7-032: Checked immediate contact relocation owns exact signed G0 mm coordinates and refuses occupied actor/opaque object centres; it jumps without tracing intermediate cells. Typed captured-object binding/Subject delivery shatters the actual fixture object. Delayed subject/plan/due survives author/owner destruction and never retargets replacements. Native deletion retires only matching contributions.",
+    "M7-033: Four temporary physical transmutations change real form/passability on the same object identity; expiry restores only those fields, native edits supersede and destruction cannot resurrect. Four temporary creations allocate fresh placed objects and record selected owner/exact lifetime. Wrong/departed/replacement owners cannot dismiss; owner loss does not extend expiry, replacement objects survive old cleanup.",
+    "M7-034: Finite registry deliberately expands5->11 operations and17 exact concept bits. All new meanings have typed payloads and exact Common roundtrip. Host-owned schemas gate keys/primitive/forms/quantities/durations and downward-only absolute coordinate ceilings. Existing fifth aggregate field remains appearances. New operations are standalone spoken and refuse mixed bundles/engraving; old scalar bundles and perception refusals stay meaningful.",
+    "Shared target resolution and whole-transition staging prepare resources, finite writes, histories, queue and owned results before adoption. Failed delayed advance preserves previously paid pending state/clock, no refunds/automatic retries. Complete work and one-short, all record caps, instance/generation/time horizons and independent literal states/refusals pass.",
+    "Distinct owned checkpoint validates and retains all new plans/identities/objects/owners/capacity/lifetimes alongside M3 item/event ledger, M6 witnesses/disguises, slow and pending work. Restore gets a fresh incarnation and revokes live casting/event authority. Logical actor/object references intentionally survive; whole-world rewind is timeline-local, not durable/external exactly-once.",
+    "Two independent real callers use the compiler/host directly: the four-core scene also uses M4 book add/edit/failure/revision/old plan reuse and live authority; the material scene creates a physical wall, transmutes it while an illusion still shows a wall, relocates, restores, expires, checks ownership and fresh-generation cleanup. Knowledge never creates host/event tickets.",
+    "All19 predecessor CTest names/196 cases, old callers/fixtures/CLI and original receipts/failures remain. Final accumulated22/22 entries pass once with52 new cases and two new callers. Three substantive checkpoints cover two pairs of cores then the two stretches/final package."
+  ],
+  "measured_bounds": {
+    "unchanged": {
+      "source_bytes": 8192,
+      "tokens": 512,
+      "nesting": 8,
+      "bindings": 8,
+      "clauses": 4,
+      "effects": 4,
+      "compiler_work": 65536,
+      "plan_retained_bytes": 32768,
+      "actors": 16,
+      "pending": 8,
+      "items": 8,
+      "disguises": 8,
+      "witnesses": 16,
+      "statuses": 16,
+      "selected_targets": 128,
+      "selector_work": 1024,
+      "host_work": 16384
+    },
+    "new_downward_caps": {
+      "wards": 4,
+      "restrictions": 4,
+      "transmutations": 4,
+      "creations": 4,
+      "objects_existing_cap": 4,
+      "mechanical_instance_horizon": 1000000,
+      "payload_absolute_coordinate_mm": 1000000,
+      "registry_operations": 11,
+      "knowledge_concept_bits": 17
+    },
+    "fixed_state_copy_units": 280,
+    "empty_three_schema_checkpoint_work": 632,
+    "new_complete_transitions": {
+      "ward_two_targets": {
+        "work": 591,
+        "selector": 16,
+        "selected": 2
+      },
+      "restriction_two_targets": {
+        "work": 635,
+        "selector": 16,
+        "selected": 2
+      },
+      "relocate": {
+        "work": 477,
+        "selector": 21,
+        "selected": 1
+      },
+      "delayed_shatter": {
+        "work": 612,
+        "selector": 1,
+        "selected": 1
+      },
+      "delayed_transmute": {
+        "work": 611,
+        "selector": 1,
+        "selected": 1
+      },
+      "create": {
+        "work": 463,
+        "selector": 21,
+        "selected": 1
+      }
+    },
+    "retained_measured_work": {
+      "disk_activation": 584,
+      "annular_activation": 602,
+      "perception_activation": 555,
+      "touch": 369
+    },
+    "resource_model": "Logical fixed copies, visited slots, identity pairs, selected members, schemas/keys, plan payload/text and results; not exact CPU/RSS/allocator overhead. No old numeric quota rises."
+  },
+  "verification": {
+    "accumulated_entries": 22,
+    "accumulated_passed": 22,
+    "accumulated_runs": 1,
+    "retained_case_counts": {
+      "compiler": 35,
+      "host": 37,
+      "engraving": 34,
+      "learning": 25,
+      "annular": 25,
+      "perception": 40
+    },
+    "new_contract_cases": 52,
+    "total_contract_cases": 248,
+    "new_callers": 2,
+    "retained_file_fixtures": 6,
+    "retained_cli_scenarios": 9,
+    "native_invocations": 20,
+    "native_commands": [
+      {
+        "log": "feature-development/magic/logs/M7/accumulated-01.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-01.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-02.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-03.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-04.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-05.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-06.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-07.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo magic_material_demo magic_engraving_checks --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-08.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo magic_material_demo --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-09.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-10.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/build-11.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks --parallel 1"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/configure-01.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug -DMAGIC_SANITIZERS=ON"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/configure-02.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake -S projects/magic -B projects/magic/build -DCMAKE_BUILD_TYPE=Debug -DMAGIC_SANITIZERS=ON"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/core-01.log",
+        "exit_status": 8,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_(contracts|caller)$'"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/core-02.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_(contracts|caller)$'"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/core-03.log",
+        "exit_status": 8,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_(contracts|caller)$'"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/core-04.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_contracts$'"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/stretch-01.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_(mechanics_(contracts|caller)|material_caller|engraving_contracts)$'"
+      },
+      {
+        "log": "feature-development/magic/logs/M7/stretch-02.log",
+        "exit_status": 0,
+        "command": "$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_contracts$'"
+      }
+    ],
+    "configuration": "Existing GNU16/Linux C++23 Debug ASan+UBSan, one job, command-local ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1.",
+    "history": "core-01 eligibility setup failure and core-03 ineligible self-contact setup failure remain saved; corrected without weakening runtime laws. All configure/build commands exit0. Focused14/25/46/50 then final52 cases pass. One editing-helper spacing guard fails before writing and is resolved by structured line editing/actual five-field compatibility case. No native/sanitizer/resource/auth failure remains."
+  },
+  "evidence": [
+    "feature-development/magic/logs/M7/accumulated-01.log",
+    "feature-development/magic/logs/M7/build-01.log",
+    "feature-development/magic/logs/M7/build-02.log",
+    "feature-development/magic/logs/M7/build-03.log",
+    "feature-development/magic/logs/M7/build-04.log",
+    "feature-development/magic/logs/M7/build-05.log",
+    "feature-development/magic/logs/M7/build-06.log",
+    "feature-development/magic/logs/M7/build-07.log",
+    "feature-development/magic/logs/M7/build-08.log",
+    "feature-development/magic/logs/M7/build-09.log",
+    "feature-development/magic/logs/M7/build-10.log",
+    "feature-development/magic/logs/M7/build-11.log",
+    "feature-development/magic/logs/M7/configure-01.log",
+    "feature-development/magic/logs/M7/configure-02.log",
+    "feature-development/magic/logs/M7/core-01.log",
+    "feature-development/magic/logs/M7/core-02.log",
+    "feature-development/magic/logs/M7/core-03.log",
+    "feature-development/magic/logs/M7/core-04.log",
+    "feature-development/magic/logs/M7/stretch-01.log",
+    "feature-development/magic/logs/M7/stretch-02.log"
+  ],
+  "final_tested_source_hashes": {
+    "projects/magic/CMakeLists.txt": "5ef47eaea3193d3eb60dd9d3f471356c66aa50d7b2f16db12c98544aa32fb7e3",
+    "projects/magic/include/magic/compiler.h": "d417c2e38205b339b5f6bb8d96ef27a58ba7a86d889a3310622efebb7c9a2404",
+    "projects/magic/include/magic/reference-host.h": "7bdf597d752b51d0da6c9938cbb16e3a171f97681ac086ebdbee4c4dea989dd8",
+    "projects/magic/src/compiler.cpp": "1b441e6a11353ec94cfe35eb597e59e4d6b5b4b421b1993e2160d7e447116427",
+    "projects/magic/src/reference-host.cpp": "b250312bd86d97dd0fc87917499b385f55c1048d31a844d7956155e653f055a4",
+    "projects/magic/src/reference-meter.h": "f104113b2d1438a1178f0887e02ac0142d5d2a9f7305406ba6ac08ec1495b7da",
+    "projects/magic/src/mechanics.cpp": "f4f890e459b87134a63928aed819d8f72ac54128e1f564e85509e70699d2dea3",
+    "projects/magic/src/main.cpp": "f1581fcff055351ceefdc3429ef2e25d1290826a59150fbf81866f594f90061d",
+    "projects/magic/src/mechanics-demo.cpp": "c68b8afe6af88a3574f48f44aad40b32ac4e57698d8374390e10ddd9b1008b51",
+    "projects/magic/src/material-demo.cpp": "79b9650fc2597b270e5bbd4bd9aabdeb9a65a1b9c6553c06535f0e548763e0c9",
+    "projects/magic/tests/mechanics.cpp": "5274a6ed8ada1aa9b0317aec4568ba5d756bbbef8420626e44cbd2ee7b5f0a68",
+    "projects/magic/tests/engraving.cpp": "c85b5f2a2f7a4172ff7a6e9dcae618af86676ef77b346a31ea7d6c81664e7dc1"
+  },
+  "limitations": [
+    "Six specific private trusted headless witnesses, not full catalogue/edition D&D conformance, broad Engine integration, universal combat/AI/mind control, necromancy, general dispelling or arbitrary cross-domain composition.",
+    "Point occupancy means exact actor/object centres; no physics/pathfinding/occlusion/range trace or collision response when material closes on an occupant. Shatter removes a whole fixture object, without debris/partial material damage/energy/thermal/conservation simulation.",
+    "New operations remain standalone spoken; creation/relocation are immediate contact. No new engraving/event/charge policy, perception bundles, general triggers/rearm, recurring fields, providers or public Engine API.",
+    "Native attack/control and IDs are trusted-owner fixture operations, not network authentication/secrecy or a sandbox. Book knowledge remains distinct from live host permission.",
+    "Only owned current-runtime exact-schema/limit in-memory checkpoint continuation and intentional whole-world rewind. No disk/book/learner save, process/crash/power-loss/cross-version durability or external exactly-once guarantee.",
+    "No human learning/fun/balance/playtest/graphical/audio acceptance, other platforms/toolchains/ABIs, leak checking under known tracing restriction, allocator fault injection or exact CPU/heap/RSS verification."
+  ],
+  "next_action": "Remain idle for coordinator review of M7 source/standalone receipt/complete native logs/tested hashes and publisher backup on feat/magic. A presentation/prediction exercise for the two checked scenes is useful unselected evidence. No extra worker/controller/task, old-plan extension, sibling integration or automatic follow-on is scheduled."
+}

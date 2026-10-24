@@ -22,10 +22,118 @@ namespace Magic::Reference {
             ++world.revision;
         }
     }
+    void ReferenceHost::override_material(State& state, ObjectId subject, Meter& meter) const {
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend();
+            if (state.mechanics.transmutations[i].instance && state.mechanics.transmutations[i].subject == subject) {
+                state.mechanics.transmutations[i] = {};
+                state.transmutation_plans[i].reset();
+            }
+        }
+    }
+    void ReferenceHost::transmute(const PlanHandle& plan, ObjectId subject, State& state, Meter& meter) const {
+        if (subject.slot >= object_capacity || !subject.generation || !state.perception.objects[subject.slot].present ||
+            state.perception.objects[subject.slot].id != subject)
+            meter.fail(Error::MissingObject);
+        const auto& payload = std::get<Transmutation>(plan->meaning().effects[0].payload);
+        const auto until = expiry(state.world.tick, payload.duration_ticks, limits_);
+        if (state.mechanics.instances_issued == limits_.max_mechanic_instance)
+            meter.fail(Error::MechanicLimit);
+        std::optional<std::size_t> free;
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend();
+            const auto& t = state.mechanics.transmutations[i];
+            if (t.instance && t.subject == subject)
+                meter.fail(Error::Overlap);
+            if (!t.instance && i < limits_.transmutations && !free)
+                free = i;
+        }
+        if (!free)
+            meter.fail(Error::MechanicLimit);
+        auto& object = state.perception.objects[subject.slot];
+        const auto id = ++state.mechanics.instances_issued;
+        state.mechanics.transmutations[*free] = {id,           meter.action,     subject, object.data.form, object.data.passable,
+                                                 payload.form, state.world.tick, until};
+        state.transmutation_plans[*free] = plan;
+        object.data.form = payload.form;
+        object.data.passable = payload.form == Appearance::OpenArch;
+        object.fact_revision = state.world.revision;
+    }
+    void ReferenceHost::create_object(const PlanHandle& plan, ActorId owner, State& state, Meter& meter) const {
+        static_cast<void>(live(state.world, owner));
+        const auto& payload = std::get<Creation>(plan->meaning().effects[0].payload);
+        const auto until = expiry(state.world.tick, payload.duration_ticks, limits_);
+        if (state.mechanics.instances_issued == limits_.max_mechanic_instance)
+            meter.fail(Error::MechanicLimit);
+        for (const auto& a : state.world.actors) {
+            meter.visit();
+            if (a.present && a.data.position == payload.position)
+                meter.fail(Error::DestinationBlocked);
+        }
+        for (const auto& o : state.perception.objects) {
+            meter.visit();
+            if (o.present && o.data.position == payload.position)
+                meter.fail(Error::DestinationBlocked);
+        }
+        std::optional<std::size_t> free, object_slot;
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend(2);
+            if (i < limits_.creations && !state.mechanics.creations[i].instance && !free)
+                free = i;
+            if (i < limits_.objects && !state.perception.objects[i].present && !object_slot)
+                object_slot = i;
+        }
+        if (!free)
+            meter.fail(Error::MechanicLimit);
+        if (!object_slot)
+            meter.fail(Error::ObjectLimit);
+        auto& object = state.perception.objects[*object_slot];
+        if (object.id.generation == limits_.max_generation)
+            meter.fail(Error::GenerationLimit);
+        ++object.id.generation;
+        object.present = true;
+        object.data = {payload.form, payload.form == Appearance::OpenArch, payload.position};
+        object.fact_revision = state.world.revision;
+        const auto id = ++state.mechanics.instances_issued;
+        state.mechanics.creations[*free] = {id, meter.action, object.id, owner, state.world.tick, until};
+        state.creation_plans[*free] = plan;
+    }
+    std::expected<void, Failure> ReferenceHost::dismiss_created(ActorId owner, ObjectId object) {
+        try {
+            Meter meter(limits_);
+            const auto& actor = live(state_.world, owner);
+            if (!actor.data.health)
+                meter.fail(Error::Permission);
+            for (const auto& c : state_.mechanics.creations) {
+                meter.spend();
+                if (c.instance && c.object == object) {
+                    if (c.owner != owner)
+                        meter.fail(Error::Permission);
+                    auto next = state_;
+                    revise(next.world, limits_);
+                    erase_object(next, object, meter);
+                    state_ = std::move(next);
+                    return {};
+                }
+            }
+            meter.fail(Error::MissingObject);
+        } catch (Failure f) {
+            return std::unexpected(f);
+        }
+    }
+
     void ReferenceHost::erase_object(State& state, ObjectId subject, Meter& meter) const {
         if (subject.slot >= object_capacity || !subject.generation || !state.perception.objects[subject.slot].present ||
             state.perception.objects[subject.slot].id != subject)
             meter.fail(Error::MissingObject);
+        override_material(state, subject, meter);
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend();
+            if (state.mechanics.creations[i].instance && state.mechanics.creations[i].object == subject) {
+                state.mechanics.creations[i] = {};
+                state.creation_plans[i].reset();
+            }
+        }
         state.perception.objects[subject.slot] = ObjectView{subject};
         for (std::size_t i = 0; i < disguise_capacity; ++i) {
             meter.spend();
@@ -52,7 +160,7 @@ namespace Magic::Reference {
     std::expected<MechanicsSnapshot, Failure> ReferenceHost::inspect_mechanics() const {
         try {
             Meter meter(limits_);
-            meter.spend(8);
+            meter.spend(16);
             return state_.mechanics;
         } catch (Failure f) {
             return std::unexpected(f);
@@ -162,6 +270,8 @@ namespace Magic::Reference {
         };
         visit(state.mechanics.wards);
         visit(state.mechanics.restrictions);
+        visit(state.mechanics.transmutations);
+        visit(state.mechanics.creations);
         return due;
     }
     void ReferenceHost::expire_mechanics(State& state, std::uint64_t tick, Meter& meter) const {
@@ -174,6 +284,29 @@ namespace Magic::Reference {
             if (state.mechanics.restrictions[i].instance && state.mechanics.restrictions[i].until_tick <= tick) {
                 state.mechanics.restrictions[i] = {};
                 state.restriction_plans[i].reset();
+            }
+        }
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend(2);
+            const auto t = state.mechanics.transmutations[i];
+            if (t.instance && t.until_tick <= tick) {
+                auto& object = state.perception.objects[t.subject.slot];
+                if (object.present && object.id == t.subject) {
+                    object.data.form = t.original_form;
+                    object.data.passable = t.original_passable;
+                    object.fact_revision = state.world.revision;
+                }
+                state.mechanics.transmutations[i] = {};
+                state.transmutation_plans[i].reset();
+            }
+            const auto c = state.mechanics.creations[i];
+            if (c.instance && c.until_tick <= tick) {
+                if (state.perception.objects[c.object.slot].present && state.perception.objects[c.object.slot].id == c.object)
+                    erase_object(state, c.object, meter);
+                else {
+                    state.mechanics.creations[i] = {};
+                    state.creation_plans[i].reset();
+                }
             }
         }
     }
@@ -208,6 +341,10 @@ namespace Magic::Reference {
                 );
                 static_cast<void>(live(state.world, v.actor));
                 check(plan && plan->meaning().effects.size() == 1 && plan->meaning().effects[0].primitive == p);
+                check(
+                    catalog_.spoken && ((plan->meaning().delivery == Delivery::Contact && catalog_.contact) ||
+                                        (plan->meaning().delivery == Delivery::Burst && catalog_.burst))
+                );
                 payload_schema(plan, meter);
                 check(v.onset_tick <= state.world.tick && v.until_tick - v.onset_tick == effect_duration_ticks(plan->meaning().effects[0]));
             };
@@ -240,5 +377,70 @@ namespace Magic::Reference {
             if (w.instance && r.instance)
                 check(w.instance != r.instance);
         }
+        std::array<std::uint64_t, 16> identities{};
+        std::size_t count = 0;
+        auto identity = [&](std::uint64_t id) {
+            meter.spend();
+            if (id)
+                identities[count++] = id;
+        };
+        for (const auto& w : m.wards)
+            identity(w.instance);
+        for (const auto& r : m.restrictions)
+            identity(r.instance);
+        for (std::size_t i = 0; i < 4; ++i) {
+            meter.spend(2);
+            const auto& t = m.transmutations[i];
+            const auto& c = m.creations[i];
+            identity(t.instance);
+            identity(c.instance);
+            auto common = [&](const auto& v, const PlanHandle& plan, Primitive primitive, std::size_t cap) {
+                check(
+                    i < cap && v.instance <= m.instances_issued && v.action && v.action <= state.world.actions_issued &&
+                    v.onset_tick <= state.world.tick && v.until_tick > state.world.tick && v.until_tick <= limits_.max_tick
+                );
+                check(
+                    plan && plan->meaning().entry.kind == EntryKind::Spoken && plan->meaning().effects.size() == 1 &&
+                    plan->meaning().effects[0].primitive == primitive
+                );
+                payload_schema(plan, meter);
+                check(v.until_tick - v.onset_tick == effect_duration_ticks(plan->meaning().effects[0]));
+            };
+            if (t.instance) {
+                common(t, state.transmutation_plans[i], Primitive::Transmute, limits_.transmutations);
+                check(catalog_.spoken && catalog_.subject && t.subject.slot < limits_.objects);
+                const auto& o = state.perception.objects[t.subject.slot];
+                check(o.present && o.id == t.subject && o.data.form == t.form && o.data.passable == (t.form == Appearance::OpenArch));
+                check(
+                    (t.original_form == Appearance::OpenArch || t.original_form == Appearance::StoneWall) &&
+                    std::get<Transmutation>(state.transmutation_plans[i]->meaning().effects[0].payload).form == t.form
+                );
+                for (std::size_t j = 0; j < i; ++j) {
+                    meter.spend();
+                    check(!m.transmutations[j].instance || m.transmutations[j].subject != t.subject);
+                }
+            } else
+                check(t == TransmutationView{} && !state.transmutation_plans[i]);
+            if (c.instance) {
+                common(c, state.creation_plans[i], Primitive::Create, limits_.creations);
+                check(catalog_.spoken && catalog_.contact && c.object.slot < limits_.objects);
+                const auto& o = state.perception.objects[c.object.slot];
+                check(o.present && o.id == c.object);
+                check(
+                    c.owner.slot < limits_.actors && c.owner.generation &&
+                    c.owner.generation <= state.world.actors[c.owner.slot].id.generation
+                );
+                for (std::size_t j = 0; j < i; ++j) {
+                    meter.spend();
+                    check(!m.creations[j].instance || m.creations[j].object != c.object);
+                }
+            } else
+                check(c == CreationView{} && !state.creation_plans[i]);
+        }
+        for (std::size_t i = 0; i < count; ++i)
+            for (std::size_t j = 0; j < i; ++j) {
+                meter.spend();
+                check(identities[i] != identities[j]);
+            }
     }
 }

@@ -1,0 +1,34 @@
+$ git diff --cached --name-only
+feature-development/agent-notes.md
+feature-development/continuation/MAGIC-M7.json
+feature-development/decisions.md
+feature-development/magic/batches/M7-plan.json
+feature-development/magic/logs/M7/accumulated-01.log
+feature-development/magic/logs/M7/build-07.log
+feature-development/magic/logs/M7/build-08.log
+feature-development/magic/logs/M7/build-09.log
+feature-development/magic/logs/M7/build-10.log
+feature-development/magic/logs/M7/build-11.log
+feature-development/magic/logs/M7/configure-02.log
+feature-development/magic/logs/M7/static-review.log
+feature-development/magic/logs/M7/stretch-01.log
+feature-development/magic/logs/M7/stretch-02.log
+feature-development/magic/logs/M7/tested-source-hashes.json
+feature-development/next.md
+projects/magic/CMakeLists.txt
+projects/magic/include/magic/compiler.h
+projects/magic/include/magic/reference-host.h
+projects/magic/src/compiler.cpp
+projects/magic/src/main.cpp
+projects/magic/src/material-demo.cpp
+projects/magic/src/mechanics.cpp
+projects/magic/src/reference-host.cpp
+projects/magic/src/reference-meter.h
+projects/magic/tests/engraving.cpp
+projects/magic/tests/mechanics.cpp
+exit_status=0
+$ git diff --cached --check
+exit_status=0
+$ git diff --exit-code
+exit_status=0
+Staged source/records/evidence match reviewed bytes and final tested hashes. Review covers typed Common/catalog/counts, live key/schema/permission/resource checks, real damage/intent/physical movement/removal/material/creation, complete staged refusal, source ownership, fresh checkpoint authority, all prior names and unchanged quotas. Old five-field aggregate semantics retained; historical M3 budget name intentionally retained with632/631 assertion. Scope is only assigned clone/branch. Third substantive checkpoint completes the two stretches and final package; no native job or follow-on task remains.

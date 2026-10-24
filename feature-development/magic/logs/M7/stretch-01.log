@@ -1,0 +1,161 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_(mechanics_(contracts|caller)|material_caller|engraving_contracts)$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 12
+    Start 12: magic_engraving_contracts
+
+12: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_engraving_checks
+12: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+12: Test timeout computed to be: 30
+12: PASS literal armed/released/spent worlds and immutable report
+12: PASS accepted event binds actual toucher rather than installer/previous target
+12: PASS unwilling ineligible and dead admission stays usable after explicit correction
+12: PASS installation funds exactly10 once; nine and permission refuse
+12: PASS live key primitive quantity and capability changes refuse atomically
+12: PASS unknown owned key never dispatches solely by enum
+12: PASS default foreign copied and repeated capabilities
+12: PASS disabled refusal preserves admission; spent stays visible and inert
+12: PASS removed/reused item generation rejects old fact and never refunds
+12: PASS removed/reused toucher cannot retarget an old admission
+12: PASS item generation horizon refuses first-free reuse without mutation
+12: PASS item exact capacity eight and one-short zero
+12: PASS receipt exact sixteen and one-short admission limits; no eviction
+12: PASS nonce and fact horizons exact and one-short without wrap
+12: PASS installation refuses wrong envelope and missing plan
+12: PASS whole payload shares slow/health logic; conflicting bindings cannot partially heal
+12: PASS plan byte quota exact and one-short on installation
+12: touch exact work=369
+12: PASS touch work exact boundary and one-short preserve charge and receipt
+12: PASS touch selector and selected target one-short
+12: PASS owned armed checkpoint survives source catalog and original owner destruction
+12: PASS restore fresh authority rejects both old tickets and event copies; resume explicit
+12: PASS explicit whole-world rewind restores charges but not old live authority
+12: PASS checkpoint retains ledger tombstones across removal/replacement
+12: PASS default/incompatible schema/limits restore preserves old world and casting ticket
+12: PASS checkpoint rejects currently unsupported retained schema and departed pending caster
+12: PASS pending plan captured aim due tick active slow and expiry survive checkpoints
+12: PASS checkpoint state work bound refuses without changing caller outputs
+12: PASS one checkpoint coherently retains items receipts slow and pending spoken work
+12: PASS checkpoint refuses intrinsic pending duration beyond time horizon
+12: PASS checkpoint capture and restore work exact348 and one-short347
+12: PASS revision exhaustion preserves touch charge and admission
+12: PASS nonzero accepted aim remains fixed across owner movement and destruction
+12: PASS restoration retains issuance and generation exhaustion horizons
+12: PASS new limit ceilings refuse rather than raising storage
+12: 34 engraving/checkpoint cases passed; 0 failed.
+1/4 Test #12: magic_engraving_contracts ........   Passed    0.03 sec
+test 20
+    Start 20: magic_mechanics_contracts
+
+20: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_checks
+20: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+20: Test timeout computed to be: 30
+20: PASS ward and restriction exact typed meanings Common and concept requirements
+20: PASS capacity5 hits3 then4 absorbs3 then2 and passes2 exactly once
+20: PASS attack intent restriction gates actual action and exact expiry
+20: PASS ward and restriction interact without changing unrelated state
+20: PASS current symbolic keys primitive quantities duration permission recheck
+20: PASS overlap refuses and refused action leaves valid earlier ticket usable
+20: PASS new actor generations do not inherit expired or removed contributions
+20: PASS pending audience and capacity resolve at activation paid failure preserved
+20: PASS exact4 ward slots and one-short activation rollback
+20: PASS new identity horizon exhaustion refuses without wrapping
+20: PASS owned checkpoints retain partially spent wards and restrictions
+20: PASS source dimensions ranges unsupported bundles owned diagnostics
+20: PASS default foreign stale repeated normal live tickets still gate mechanics
+20: PASS new finite cap expansion refuses and exact mana9 versus10
+20: PASS relocation and shatter have exact typed roles and Common roundtrip
+20: PASS real wall blocks relocation until shatter removes object without injuring actor
+20: PASS relocation does not walk intermediate blockers and includes extreme coordinates
+20: PASS relocation refuses occupied actor and opaque wall but passable object is allowed
+20: PASS attack restriction permits actual relocation of the restricted actor
+20: PASS new role wrong dimension exact coordinates overflow and unsupported envelopes refuse
+20: PASS subject delivery live keys capabilities and current forms recheck before debit
+20: PASS captured delayed subject cannot retarget replacement or silently refund
+20: PASS pending shatter checkpoint owns source captured subject and exact due
+20: PASS shatter removes only its disguise and preserves other subjects history and health
+20: PASS relocation occupancy selector work exact21 and one-short20
+20: PASS material and creation typed meanings exact Common and independent parameters
+20: PASS physical transmutation exact identity passability onset and expiry
+20: PASS transmuted wall opens relocation while illusion still changes only perception
+20: PASS owner physical edit supersedes transmutation without restoring older fields
+20: PASS shatter during transmutation cannot resurrect or remove a replacement
+20: PASS creation adopts fresh real object owner lifetime payment atomically
+20: PASS only recorded living creation owner dismisses; replacement survives old cleanup
+20: PASS creation owner loss does not grant replacement control or extend absolute lifetime
+20: PASS created object shatter spends lifetime permanently and new generation survives
+20: PASS new object placement refuses occupied actors objects and full exact capacities
+20: PASS transmutation exact record slots overlap and generation expiry refusal
+20: PASS material creation schema keys form duration and knowledge remain separate
+20: PASS material and creation time horizons and identity exhaustion preserve complete state
+20: PASS material plus creation checkpoint retains actual plans and exact owned facts
+20: PASS late delayed material failure rolls back earlier expiry and new scratch writes
+20: PASS restriction capacity4 versus3 refuses the whole delayed selection
+20: M7 compiler primitive=5 tokens=38 work=2692 retained=2158
+20: M7 compiler primitive=6 tokens=36 work=2686 retained=2157
+20: M7 compiler primitive=7 tokens=40 work=2763 retained=2209
+20: M7 compiler primitive=8 tokens=36 work=2762 retained=2214
+20: M7 compiler primitive=9 tokens=40 work=2853 retained=2277
+20: M7 compiler primitive=10 tokens=47 work=2894 retained=2298
+20: PASS all six source contracts keep exact token work and retained budgets
+20: PASS new operations standalone bundles and engraving refusal remain complete
+20: PASS all new knowledge concepts are compiler metadata without live authority
+20: PASS checkpoint incompatibility and changed creation schema preserve live destination
+20: PASS creation live key primitive and form changes cannot mint a physical object
+20: 46 M7 mechanics cases passed; 0 failed.
+2/4 Test #20: magic_mechanics_contracts ........   Passed    0.04 sec
+test 21
+    Start 21: magic_mechanics_caller
+
+21: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_demo
+21: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+21: Test timeout computed to be: 30
+21: Shatter removes real wall; previously blocked relocation moves actor to(300,0), hp45, caster mana50.
+21: spoken release via contact after 0 ms {
+21:   bind hand = willing touched actor at release ;
+21:   together ordered {
+21:     on hand bridge Common@1 { ward absorb 5 dp for 2000 ms } ;
+21:   }
+21: }
+21: Ward5: hit3 prevents3, fire4 prevents2/passes2; attack seal refuses until100. Restored attack hp48->45, mana70; failed draft and old revision remain owned.
+21: 1 M7 mechanics caller passed.
+3/4 Test #21: magic_mechanics_caller ...........   Passed    0.01 sec
+test 22
+    Start 22: magic_material_caller
+
+22: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_material_demo
+22: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+22: Test timeout computed to be: 30
+22: spoken release via contact after 0 ms {
+22:   bind owner = willing touched actor at release ;
+22:   together ordered {
+22:     on owner bridge Common@1 { create stone-wall at G0 point 300 mm 0 mm for 4000 ms owned by this actor } ;
+22:   }
+22: }
+22: spoken release via subject after 0 ms {
+22:   bind object = object captured at release rechecked at activation ;
+22:   together ordered {
+22:     on object bridge Common@1 { transmute object to open-arch for 1000 ms } ;
+22:   }
+22: }
+22: 1 M7 material caller passed: created wall0:1, physical arch/perceived wall, relocation to300, restore/expiry100, owner-only dismissal, new0:2 survives old400 and expires500; hp50/mana50. Point occupancy is not collision physics.
+4/4 Test #22: magic_material_caller ............   Passed    0.01 sec
+
+The following tests passed:
+	magic_engraving_contracts
+	magic_mechanics_contracts
+	magic_mechanics_caller
+	magic_material_caller
+
+100% tests passed out of 4
+
+Total Test time (real) =   0.09 sec
+
+exit_status=0

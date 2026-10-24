@@ -8,13 +8,12 @@
 namespace {
     Magic::Catalog fixture_catalog() {
         Magic::Catalog catalog;
-        catalog.operations = {
-            {Magic::Primitive::Heal, "game.heal"},
-            {Magic::Primitive::Fire, "game.fire"},
-            {Magic::Primitive::Slow, "game.slow"},
-            {Magic::Primitive::Disguise, "game.disguise"},
-            {Magic::Primitive::Discern, "game.discern"}
-        };
+        catalog.operations = {{Magic::Primitive::Heal, "game.heal"},         {Magic::Primitive::Fire, "game.fire"},
+                              {Magic::Primitive::Slow, "game.slow"},         {Magic::Primitive::Disguise, "game.disguise"},
+                              {Magic::Primitive::Discern, "game.discern"},   {Magic::Primitive::Ward, "game.ward"},
+                              {Magic::Primitive::Restrict, "game.restrict"}, {Magic::Primitive::Relocate, "game.relocate"},
+                              {Magic::Primitive::Shatter, "game.shatter"},   {Magic::Primitive::Transmute, "game.transmute"},
+                              {Magic::Primitive::Create, "game.create"}};
         return catalog;
     }
 }

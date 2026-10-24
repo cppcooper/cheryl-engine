@@ -24,7 +24,7 @@ namespace Magic::Reference {
             for (std::size_t i = 0; i < catalog.operations.size(); ++i) {
                 const auto& schema = catalog.operations[i];
                 if (schema.key.empty() || schema.key.size() > 64 || schema.max_quantity == 0 || schema.max_quantity > 1'000'000 ||
-                    schema.max_duration_ticks > 8'640'000 || schema.appearances > 3 ||
+                    schema.max_duration_ticks > 8'640'000 || schema.max_coordinate_mm > 1'000'000 || schema.appearances > 3 ||
                     static_cast<unsigned>(schema.primitive) >= primitive_count)
                     return false;
                 for (char c : schema.key)
@@ -44,7 +44,8 @@ namespace Magic::Reference {
                    l.max_generation <= c.max_generation && l.items <= c.items && l.touch_receipts <= c.touch_receipts &&
                    l.max_event_nonce <= c.max_event_nonce && l.max_fact_id <= c.max_fact_id && l.objects <= c.objects &&
                    l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance && l.wards <= c.wards &&
-                   l.restrictions <= c.restrictions && l.max_mechanic_instance <= c.max_mechanic_instance;
+                   l.restrictions <= c.restrictions && l.transmutations <= c.transmutations && l.creations <= c.creations &&
+                   l.max_mechanic_instance <= c.max_mechanic_instance;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -101,7 +102,8 @@ namespace Magic::Reference {
                 const auto& x = a.operations[i];
                 const auto& y = b.operations[i];
                 if (x.key != y.key || x.primitive != y.primitive || x.max_quantity != y.max_quantity ||
-                    x.max_duration_ticks != y.max_duration_ticks || x.appearances != y.appearances)
+                    x.max_duration_ticks != y.max_duration_ticks || x.max_coordinate_mm != y.max_coordinate_mm ||
+                    x.appearances != y.appearances)
                     return false;
             }
             return true;
@@ -153,6 +155,7 @@ namespace Magic::Reference {
                 meter.fail(Error::InvalidObject);
             auto next = state_;
             revision(next.world, limits_);
+            override_material(next, id, meter);
             next.perception.objects[id.slot].data = data;
             next.perception.objects[id.slot].fact_revision = next.world.revision;
             state_ = std::move(next);
@@ -463,7 +466,8 @@ namespace Magic::Reference {
         }
         payload_schema(plan, meter);
         const bool perception = meaning.effects[0].primitive == Primitive::Disguise || meaning.effects[0].primitive == Primitive::Discern;
-        const bool object_effect = meaning.effects[0].primitive == Primitive::Shatter;
+        const bool object_effect =
+            meaning.effects[0].primitive == Primitive::Shatter || meaning.effects[0].primitive == Primitive::Transmute;
         if (perception || object_effect) {
             if ((perception && meaning.delivery != Delivery::Burst) || (object_effect && meaning.delivery != Delivery::Subject) ||
                 !request.subject)
@@ -473,7 +477,7 @@ namespace Magic::Reference {
                 id.generation == 0)
                 meter.fail(Error::MissingObject);
             meter.spend();
-            if (object_effect) {
+            if (meaning.effects[0].primitive == Primitive::Shatter) {
                 bool supported = false;
                 for (const auto& schema : catalog_.operations) {
                     meter.spend();
@@ -506,7 +510,8 @@ namespace Magic::Reference {
             if (perception && meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
             if ((effect.primitive == Primitive::Ward || effect.primitive == Primitive::Restrict ||
-                 effect.primitive == Primitive::Relocate || effect.primitive == Primitive::Shatter) &&
+                 effect.primitive == Primitive::Relocate || effect.primitive == Primitive::Shatter ||
+                 effect.primitive == Primitive::Transmute || effect.primitive == Primitive::Create) &&
                 meaning.effects.size() != 1)
                 meter.fail(Error::UnsupportedComposition);
             bool supported = false;
@@ -514,9 +519,27 @@ namespace Magic::Reference {
                 meter.spend(effect.key.size() + 1);
                 if (effect.key != schema.key || effect.primitive != schema.primitive)
                     continue;
-                if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
+                const auto in_coordinates = [&](Point point) {
+                    const auto bound = static_cast<std::int32_t>(schema.max_coordinate_mm);
+                    return point.x >= -bound && point.x <= bound && point.y >= -bound && point.y <= bound;
+                };
+                if (auto material = std::get_if<Transmutation>(&effect.payload)) {
+                    const auto form = static_cast<unsigned>(material->form);
+                    supported = effect.primitive == Primitive::Transmute && material->subject == SubjectRole::CapturedObject &&
+                                effect.quantity == 0 && effect.duration_ticks == 0 && form < 2 && (schema.appearances & (1u << form)) &&
+                                material->duration_ticks > 0 && material->duration_ticks <= schema.max_duration_ticks &&
+                                meaning.delivery == Delivery::Subject;
+                } else if (auto creation = std::get_if<Creation>(&effect.payload)) {
+                    const auto form = static_cast<unsigned>(creation->form);
+                    supported = effect.primitive == Primitive::Create && creation->owner == OwnershipRole::SelectedActor &&
+                                effect.quantity == 0 && effect.duration_ticks == 0 && form < 2 && (schema.appearances & (1u << form)) &&
+                                creation->duration_ticks > 0 && creation->duration_ticks <= schema.max_duration_ticks &&
+                                point_valid(creation->position) && in_coordinates(creation->position) &&
+                                meaning.delivery == Delivery::Contact;
+                } else if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
                     supported = effect.primitive == Primitive::Relocate && effect.quantity == 0 && effect.duration_ticks == 0 &&
-                                point_valid(relocation->destination) && meaning.delivery == Delivery::Contact;
+                                point_valid(relocation->destination) && in_coordinates(relocation->destination) &&
+                                meaning.delivery == Delivery::Contact;
                 } else if (auto shatter = std::get_if<ObjectShatter>(&effect.payload)) {
                     supported = effect.primitive == Primitive::Shatter && shatter->subject == SubjectRole::CapturedObject &&
                                 effect.quantity == 0 && effect.duration_ticks == 0 && meaning.delivery == Delivery::Subject;
@@ -552,8 +575,7 @@ namespace Magic::Reference {
         const auto& m = plan->meaning();
         for (const auto& e : m.effects) {
             meter.spend(); // Count the added envelope scan, including legacy inscriptions.
-            if (e.primitive == Primitive::Disguise || e.primitive == Primitive::Discern || e.primitive == Primitive::Ward ||
-                e.primitive == Primitive::Restrict)
+            if (e.primitive != Primitive::Heal && e.primitive != Primitive::Fire && e.primitive != Primitive::Slow)
                 meter.fail(Error::UnsupportedEntry);
         }
         if (m.entry.kind != EntryKind::Engraved || m.entry.mode != CastingMode::Release || m.entry.trigger != Trigger::ItemTouch ||
@@ -625,6 +647,25 @@ namespace Magic::Reference {
             }
             if (!any)
                 meter.fail(Error::EmptySelection);
+        }
+        if (meaning.effects[0].primitive == Primitive::Transmute) {
+            transmute(plan, *subject, state, meter);
+            return;
+        }
+        if (meaning.effects[0].primitive == Primitive::Create) {
+            std::optional<ActorId> owner;
+            for (std::size_t i = 0; i < actor_capacity; ++i) {
+                meter.spend();
+                if (selected[meaning.effects[0].binding][i]) {
+                    if (owner)
+                        meter.fail(Error::UnsupportedBinding);
+                    owner = state.world.actors[i].id;
+                }
+            }
+            if (!owner)
+                meter.fail(Error::EmptySelection);
+            create_object(plan, *owner, state, meter);
+            return;
         }
         if (meaning.effects[0].primitive == Primitive::Shatter) {
             erase_object(state, *subject, meter);

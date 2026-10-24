@@ -49,6 +49,10 @@ namespace Magic {
                     return "relocate";
                 case Primitive::Shatter:
                     return "shatter";
+                case Primitive::Transmute:
+                    return "transmute";
+                case Primitive::Create:
+                    return "create";
             }
             return "invalid";
         }
@@ -270,7 +274,7 @@ namespace Magic {
             else if (delivery.text == "item-event")
                 syntax.delivery = Delivery::ItemEvent;
             else
-                fail(Code::UnsupportedCombination, delivery.span, "Unsupported delivery; M1 knows contact, ray, burst and item-event.");
+                fail(Code::UnsupportedCombination, delivery.span, "Supported deliveries are contact, ray, burst, item-event and subject.");
             expect("after");
             syntax.onset = quantity();
             expect("{");
@@ -391,6 +395,27 @@ namespace Magic {
                         expect("speed");
                         expect("by");
                         effect.primitive = Primitive::Slow;
+                    } else if (operation.text == "transmute") {
+                        effect.primitive = Primitive::Transmute;
+                        expect("object");
+                        expect("to");
+                        effect.appearance = take();
+                        expect("for");
+                        effect.duration = quantity();
+                    } else if (operation.text == "create") {
+                        effect.primitive = Primitive::Create;
+                        effect.appearance = take();
+                        expect("at");
+                        expect("G0");
+                        expect("point");
+                        effect.x = quantity();
+                        effect.y = quantity();
+                        expect("for");
+                        effect.duration = quantity();
+                        expect("owned");
+                        expect("by");
+                        expect("this");
+                        expect("actor");
                     } else if (operation.text == "relocate") {
                         effect.primitive = Primitive::Relocate;
                         expect("to");
@@ -443,11 +468,12 @@ namespace Magic {
                     } else
                         fail(
                             Code::UnknownPhrase, operation.span,
-                            "Unknown Common primitive; use heal, fire damage or multiply speed by. Host support is checked separately."
+                            "Unknown Common operation; use heal, fire damage, multiply speed by, show, discern, ward absorb, forbid attack, relocate, shatter, transmute or create."
                         );
                     if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
                         effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict &&
-                        effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter) {
+                        effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter &&
+                        effect.primitive != Primitive::Transmute && effect.primitive != Primitive::Create) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -517,7 +543,7 @@ namespace Magic {
                 const auto& schema = catalog_.operations[i];
                 spend(1);
                 if (schema.key.empty() || schema.key.size() > max_key || schema.max_quantity == 0 || schema.max_quantity > max_quantity ||
-                    schema.max_duration_ticks > max_time || schema.appearances > 3 ||
+                    schema.max_duration_ticks > max_time || schema.max_coordinate_mm > max_quantity || schema.appearances > 3 ||
                     static_cast<unsigned>(schema.primitive) >= primitive_count)
                     fail(
                         Code::InvalidCatalog, {},
@@ -669,7 +695,14 @@ namespace Magic {
                 fail(Code::Range, quantity.number.span, "Quantity is outside the supported range for this role and host schema.");
             return static_cast<std::uint32_t>(n);
         }
-        std::int32_t coordinate(Quantity quantity) {
+        Appearance registered_appearance(Token token) {
+            if (token.text == "open-arch")
+                return Appearance::OpenArch;
+            if (token.text == "stone-wall")
+                return Appearance::StoneWall;
+            fail(Code::UnknownPhrase, token.span, "Unknown registered appearance; use open-arch or stone-wall.");
+        }
+        std::int32_t coordinate(Quantity quantity, std::uint32_t maximum) {
             if (quantity.unit.text == "px")
                 fail(
                     Code::UnsupportedUnit, quantity.unit.span,
@@ -678,7 +711,7 @@ namespace Magic {
             const bool negative = quantity.number.text.starts_with('-');
             if (negative)
                 quantity.number.text.remove_prefix(1);
-            const auto magnitude = value(quantity, Dimension::Length, false, max_quantity);
+            const auto magnitude = value(quantity, Dimension::Length, false, maximum);
             return negative ? -static_cast<std::int32_t>(magnitude) : static_cast<std::int32_t>(magnitude);
         }
         void lower(const Authored& syntax, Plan& plan) {
@@ -781,7 +814,8 @@ namespace Magic {
                         Code::UnknownBinding, raw.target.span,
                         "Bridge references an unbound target; add an explicit bind declaration in this activation."
                     );
-                if ((meaning.bindings[target].query == Query::CapturedObject) != (raw.primitive == Primitive::Shatter))
+                if ((meaning.bindings[target].query == Query::CapturedObject) !=
+                    (raw.primitive == Primitive::Shatter || raw.primitive == Primitive::Transmute))
                     fail(Code::RoleMismatch, raw.span, "This operation requires its exact actor/object target role.");
                 const auto& operation = schema(raw.primitive, raw.span);
                 Effect effect;
@@ -789,7 +823,30 @@ namespace Magic {
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (raw.primitive == Primitive::Relocate || raw.primitive == Primitive::Shatter) {
+                if (raw.primitive == Primitive::Transmute || raw.primitive == Primitive::Create) {
+                    if (syntax.effects.size() != 1)
+                        fail(Code::UnsupportedComposition, raw.span, "Material and creation operations are standalone.");
+                    if (meaning.entry.kind != EntryKind::Spoken)
+                        fail(Code::UnsupportedCombination, raw.span, "Material/creation operations require spoken authority.");
+                    const auto form = registered_appearance(raw.appearance);
+                    if (!(operation.appearances & (1u << static_cast<unsigned>(form))))
+                        fail(Code::UnsupportedOperation, raw.appearance.span, "Current schema disables this registered form.");
+                    const auto duration = value(raw.duration, Dimension::Time, true, operation.max_duration_ticks);
+                    if (raw.primitive == Primitive::Transmute) {
+                        if (meaning.delivery != Delivery::Subject)
+                            fail(Code::RoleMismatch, raw.span, "Transmutation needs the captured object binding.");
+                        effect.payload = Transmutation{SubjectRole::CapturedObject, form, duration};
+                    } else {
+                        if (meaning.delivery != Delivery::Contact)
+                            fail(Code::UnsupportedCombination, raw.span, "Creation needs one willing contact owner.");
+                        effect.payload = Creation{
+                            form,
+                            {coordinate(raw.x, operation.max_coordinate_mm), coordinate(raw.y, operation.max_coordinate_mm)},
+                            duration,
+                            OwnershipRole::SelectedActor
+                        };
+                    }
+                } else if (raw.primitive == Primitive::Relocate || raw.primitive == Primitive::Shatter) {
                     if (syntax.effects.size() != 1)
                         fail(Code::UnsupportedComposition, raw.span, "Object and relocation operations are standalone.");
                     if (meaning.entry.kind != EntryKind::Spoken)
@@ -797,7 +854,8 @@ namespace Magic {
                     if (raw.primitive == Primitive::Relocate) {
                         if (meaning.delivery != Delivery::Contact)
                             fail(Code::UnsupportedCombination, raw.span, "Relocation needs one willing contact actor, immediately.");
-                        effect.payload = Relocation{{coordinate(raw.x), coordinate(raw.y)}};
+                        effect.payload =
+                            Relocation{{coordinate(raw.x, operation.max_coordinate_mm), coordinate(raw.y, operation.max_coordinate_mm)}};
                     } else {
                         if (meaning.delivery != Delivery::Subject)
                             fail(Code::RoleMismatch, raw.span, "Shatter needs a captured object binding.");
@@ -864,7 +922,9 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Relocate   ? Rule::CommonRelocate
+                const auto concept_rule = raw.primitive == Primitive::Transmute  ? Rule::CommonTransmute
+                                          : raw.primitive == Primitive::Create   ? Rule::CommonCreate
+                                          : raw.primitive == Primitive::Relocate ? Rule::CommonRelocate
                                           : raw.primitive == Primitive::Shatter  ? Rule::CommonShatter
                                           : raw.primitive == Primitive::Ward     ? Rule::CommonWard
                                           : raw.primitive == Primitive::Restrict ? Rule::CommonRestrict
@@ -924,7 +984,28 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
+                if (auto material = std::get_if<Transmutation>(&effect.payload)) {
+                    append(output, "transmute object to ");
+                    append(output, appearance_name(material->form));
+                    append(output, " for ");
+                    number(output, static_cast<std::uint64_t>(material->duration_ticks) * 10);
+                    append(output, " ms");
+                } else if (auto creation = std::get_if<Creation>(&effect.payload)) {
+                    append(output, "create ");
+                    append(output, appearance_name(creation->form));
+                    append(output, " at G0 point ");
+                    auto signed_number = [&](std::int32_t value) {
+                        if (value < 0)
+                            append(output, "-");
+                        number(output, static_cast<std::uint64_t>(value < 0 ? -static_cast<std::int64_t>(value) : value));
+                    };
+                    signed_number(creation->position.x);
+                    append(output, " mm ");
+                    signed_number(creation->position.y);
+                    append(output, " mm for ");
+                    number(output, static_cast<std::uint64_t>(creation->duration_ticks) * 10);
+                    append(output, " ms owned by this actor");
+                } else if (auto relocation = std::get_if<Relocation>(&effect.payload)) {
                     append(output, "relocate to G0 point ");
                     auto signed_number = [&](std::int32_t coordinate) {
                         if (coordinate < 0)
@@ -1094,6 +1175,10 @@ namespace Magic {
                 return "common.relocate@1";
             case Rule::CommonShatter:
                 return "common.shatter@1";
+            case Rule::CommonTransmute:
+                return "common.transmute@1";
+            case Rule::CommonCreate:
+                return "common.create@1";
         }
         return "invalid-rule";
     }

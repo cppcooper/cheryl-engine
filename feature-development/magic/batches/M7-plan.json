@@ -10,7 +10,10 @@
       "bounds": "four ward records, fixed actor generations, checked shared new-instance horizon",
       "support_needed": "typed Absorption payload, shared staged incoming-damage resolution, expiry/checkpoint",
       "rough_effort_minutes": 10,
-      "status": "focused-checked"
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     },
     {
       "id": "M7-INTENT",
@@ -20,7 +23,10 @@
       "bounds": "four restriction records; Attack only; fixed generations",
       "support_needed": "typed AttackRestriction, actual finite attack operation, lifecycle/checkpoint",
       "rough_effort_minutes": 8,
-      "status": "focused-checked"
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     },
     {
       "id": "M7-RELOCATE",
@@ -30,7 +36,10 @@
       "bounds": "one selected actor, G0 integer mm +/-1000000, scan16 actor/4 object centres",
       "support_needed": "typed WorldPoint, exact coordinates, explicit point-occupancy fixture policy",
       "rough_effort_minutes": 9,
-      "status": "focused-checked"
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     },
     {
       "id": "M7-SHATTER",
@@ -40,7 +49,10 @@
       "bounds": "existing four object slots, one subject role, standalone immediate/delayed spoken subject delivery",
       "support_needed": "typed object binding/delivery, current object schema, retained pending subject",
       "rough_effort_minutes": 8,
-      "status": "focused-checked"
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     }
   ],
   "stretch": [
@@ -51,7 +63,11 @@
       "actual_expected_world_change": "object form/passability changes on same ID; later destruction remains destruction",
       "bounds": "four transient records; explicit owner-edit supersession; no full snapshot restoration",
       "support_needed": "typed form/duration, subject lifecycle/checkpoint",
-      "rough_effort_minutes": 7
+      "rough_effort_minutes": 7,
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     },
     {
       "id": "M7-CREATE",
@@ -60,11 +76,15 @@
       "actual_expected_world_change": "new real object ID/placement/owner/lifetime, not relocation of old object",
       "bounds": "four creation records and existing four objects; actor16 remains",
       "support_needed": "typed registered form/point/duration, atomic allocation and owner-checked dismissal/checkpoint",
-      "rough_effort_minutes": 7
+      "rough_effort_minutes": 7,
+      "status": "checked",
+      "evidence": [
+        "feature-development/magic/logs/M7/accumulated-01.log"
+      ]
     }
   ],
   "estimated_total_minutes": "45-60 uncertain, no padding; resource/3600s boundary takes precedence",
-  "status": "four cores focused-checked; preselected stretches and final campaign pending",
+  "status": "all four cores and both preselected stretches checked; final accumulated campaign22/22",
   "assumptions": [
     "Private native owner, no personal API taste inference beyond recorded v3 evidence.",
     "Each new operation standalone only; old multi-effects unchanged; perception composition not selected.",
@@ -72,5 +92,20 @@
     "Destination collision means exact occupied actor/object centre only, not physics/pathfinding.",
     "One whole staged transition per release/advance/native action.",
     "Keep old numeric quotas; charge new scans/slots/retained plans."
-  ]
+  ],
+  "completion": {
+    "core_ids": [
+      "M7-WARD",
+      "M7-INTENT",
+      "M7-RELOCATE",
+      "M7-SHATTER"
+    ],
+    "stretch_ids": [
+      "M7-TRANSMUTE",
+      "M7-CREATE"
+    ],
+    "unfinished_core_ids": [],
+    "unfinished_stretch_ids": [],
+    "next_action": "Idle for coordinator source/receipt/evidence review; no extra assignment scheduled."
+  }
 }

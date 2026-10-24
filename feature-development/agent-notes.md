@@ -1248,3 +1248,183 @@ slots increase fixed logical copy260->264, with all prior quotas unchanged.
 Continue preselected material transmutation and owned creation stretches within
 the same bounded invocation, then accumulated M1–M7 validation and final receipt.
 These stretches are still proposals here, not completed capability claims.
+
+## M7-033 — Both preselected stretches implemented and checked
+
+Transmutation owns a typed registered form/duration and captured subject role.
+It temporarily changes the existing physical object's form/passability, preserving
+ObjectId and position. OpenArch is passable, StoneWall opaque in this fixture.
+Four records retain original form/passability only, desired form, exact onset/
+until, action/instance and actual plan. No old World/Snapshot is saved for expiry.
+Conflicting active transmutation refuses. Native owner update_object explicitly
+supersedes any material contribution and adopts the supplied complete facts;
+future expiry cannot undo that edit. Shatter/remove retires the material record,
+so expiry cannot resurrect it or alter a replacement generation. Intervening actor
+injury/healing also survives. Partial object injury/debris/energy/thermal simulation
+is not modeled; Shatter is removal of a whole registered fixture object.
+
+Creation is a separate typed {form, G0 point, duration, selected-actor ownership}
+operation, standalone immediate spoken contact. It is not relocation: checks
+placement against all16 actor/4 object centres and record/object/generation/time/
+identity capacity before adopting one fresh object, owner, cost10 and expiry.
+Any existing actor or object centre blocks creation, even a passable object.
+Four creation records join the existing four-object cap; no quota is raised.
+Native trusted-owner dismiss_created requires the exact living recorded ActorId.
+Wrong owner/generation refuses; owner removal leaves the object until absolute
+expiry, and replacement actors acquire no control. Native actor/object IDs are
+logical references within this trusted owner, not network authentication tokens.
+Created object removal/Shatter retires its row; reused slots survive old cleanup.
+Created objects may be transmuted, with independent lifetimes; earlier creation
+expiry retires material/disguise contributions without restoring old matter.
+
+Actual independent material-demo.cpp compiles/prints Creation/Transmute Common,
+creates real wall0:1 at300 owned by the selected actor, adds an M6 disguise and
+physically opens the wall. Ordinary perceive still says StoneWall, while separate
+trusted inspection sees OpenArch/passable; real relocation reaches300. Checkpoint
+owns original sources/plans after catalog/host destruction. Restore rejects an old
+ticket, preserves physical opening through99 and restores real wall at100 without
+moving/injuring the actor. Wrong-owner dismissal refuses; the exact owner removes
+it. Fresh0:2 at600 survives old400 cleanup and expires500, hp50/mana50. Old tick0
+perceived Wall value stays owned after both owners die. This is one second caller,
+not multiple scenario counts. Closing at an occupied point does not eject/damage
+occupants: the selected fixture checks destination centres, not collision physics.
+
+Full new continuation retains Ward/Restriction/Transmutation/Creation arrays and
+actual plans alongside pending subjects/aim, M3 items/charges/receipts and M6
+contributions/witnesses. Validation checks version1, canonical empties, slot caps,
+unique mechanical identities/actor or subject conflicts, action/generation bounds,
+current keys/typed schemas/capabilities, exact durations and future expiry. Historical
+creation owners may be departed with bounded generations. Restore gets a fresh
+incarnation and revokes live spell/event inputs while logical IDs intentionally
+survive. Default/incompatible/unsupported capture/restore refusals preserve the
+old world and usable prior outputs. A combined literal test owns partially spent
+ward2, attack restriction, a created/transmuted subject, pending shatter, item plus
+admitted touch, disguise/witness and active slow. After original inputs die, restore
+resumes touch hp50->62, material expiry/shatter at100, restriction/ward/disguise
+expiry200, actual attack hp62->59, slow expiry300 and created-object expiry400;
+dated witness and spent receipt persist. No source regeneration substitutes for
+retained plans and no external exactly-once/disk guarantee is made.
+
+## M7-034 — Final bounds, schemas and measured resource model
+
+Finite operation set deliberately grows M6 five -> core seven -> nine -> final
+eleven (six added operations, not21 families). Exact concept registry grows11->17
+bits in owned32-bit RuleMask. Existing school/tome rules still teach only their
+registered productions; each new Common operation concept is separately required
+by M4 edits. Book knowledge never mints a release/event ticket or bypasses a disabled
+host schema. All new operations are standalone: new/old or new/new bundles and
+new engraving refuse before payment; all old scalar bundles and M6 perception
+bundle refusals remain. Old Fire+Slow against a ward is tested: ActiveSlow refusal
+preserves capacity5 and resources; after expiry it prevents4, leaves capacity1,
+keeps target hp50 and applies new slow while the other unwarded actor loses4.
+
+Every operation checks current symbolic key AND primitive plus its typed parameters:
+Ward capacity/duration, Attack-only restriction/duration, Relocate destination,
+Shatter current target/form support, Transmute desired form/duration, Creation
+form/position/duration/owner role. Coordinate ceiling max_coordinate_mm is symmetric
+absolute G0 mm, independently0..1000000 per relevant schema; it is not range from
+caster. Both compiler and live host enforce it. A current299 cap refuses a plan at
+300;300 accepts. The field is appended after appearances to preserve M6's existing
+five-field schema aggregates; an actual Disguise capability refusal proves that
+compatibility. No new physical frame, universal px ratio, arbitrary strings or
+free-text execution is introduced. CLI fixture catalog now registers all11 and
+can inspect every supported Common operation.
+
+Old hard quotas remain source8192/tokens512/nesting8/bindings8/clauses4/effects4,
+compiler work65536/retained32768; host actor16/pending8/items8/disguises8/witness16,
+status16/targets128/selector1024/work16384/plan32768. Existing book quotas remain.
+New downward-only caps are Ward4, Restriction4, Transmutation4, Creation4 and shared
+mechanical instance horizon1000000. All active records own fixed slots/plan handles;
+there is no eviction or unbounded event graph. Whole-step selected members and
+simultaneous candidates count against the old work/selector/target budgets. Normal
+payment remains10/effect, cancellation no refund; delayed failed advance preserves
+the previously paid pending world, clock, capacity, history, objects and authority.
+
+Measured final native evidence (GNU16/Linux Debug C++23 ASan+UBSan):
+
+| Fixture | Complete work | Selector | Selected |
+| --- | ---: | ---: | ---: |
+| delayed Ward, two current eligible members |591|16|2|
+| delayed Restriction, two members |635|16|2|
+| immediate Relocation |477|21|1|
+| delayed Shatter |612|1|1|
+| delayed Transmute |611|1|1|
+| immediate Creation |463|21|1|
+
+Each exact work value and one less is executed independently, preserving complete
+state on refusal. Contact1 +16 actors +4 objects yields exact21/20 occupancy selector.
+Each new source independently checks exact/one-short source bytes/tokens/work/
+retention; token/work/retained literals in operation order are38/2692/2158,
+36/2686/2157,40/2763/2209,36/2762/2214,40/2853/2277,47/2894/2298. These use the
+explicit eleven-schema fixture and exact Common text, not an implementation renderer
+used to invent expected Meaning. Caller word/number edits exercise actual grammar.
+
+Fixed logical state copy rises244->280:16 mechanic records +16 plan handles +4
+object-coordinate slots. Complete steps additionally scan16 mechanic slots per
+search and16 per expiry, check bounded identity pairs and count actual damage/
+placement work. M2 disk activation496->584 and equivalent M5 annulus514->602 retain
+exact18 additional annular work and32 vs16 selector units. M6 activation471->555;
+old S5 touch333->369. Empty compatible three-schema checkpoint540->632, one-short631
+refuses. Historical case name `exact348 and one-short347` stays; its new632/631
+literals are explicitly explained, without changing its behavior/assertions. An
+edit-helper initially expected unformatted spacing while moving the new schema
+field; its guard refuses before writing. Correct line-based editing and the new
+five-field compatibility test resolve it; it is not a native acceptance failure.
+
+The largest variant grows one Effect slot8 bytes on this ABI: S1 retained2112->2120,
+S2 2805->2821, annular3135->3151 and M6 perception2891->2899. M4 lesson retained
+18036->18068 (work23361 unchanged), M5 lesson19001->19033 (work25335 unchanged),
+M4 edit work14824 unchanged. Old dynamic exact boundaries still pass. Fixed host
+sizeof8640, Snapshot1688 and Observation3600 are ABI witnesses, not RSS budgets.
+Catalog and factory copies are intrinsically bounded by11 keys<=64 and fixed
+metadata; logical units exclude allocator/control blocks, caller-retained history,
+exact CPU and heap overhead. Allocation exceptions occur before adoption; no
+allocator fault injection or deliberate memory stress is performed.
+
+## M7 actual campaigns, command diagnostics and final limits
+
+All20 native configure/build/check commands use the required workspace build wrapper,
+one job and the existing clone-local projects/magic/build Debug sanitizer cache.
+Every command, complete output and immediate status is saved in logs/M7:
+- configure-01/02: actual CMake source/build/options, both exit0.
+- build-01..11: actual target selections and --parallel1, all exit0. Focused targets
+  grow with the checked slices;09/10 build all retained targets for the final
+  campaign.11 rebuilds only new cases for old five-field schema compatibility and
+  the new-ward/old-Fire+Slow transactional interaction. No unchanged rerun consumes time.
+- core-01: initial focused2 entries, exit8 due to invalid fixture recipient eligibility;
+  core-02 passes2/2 (14 cases+caller). core-03 exit8 with24/25 cases and caller pass,
+  due to ineligible self-contact fixture; core-04 passes the affected1/1 (25 cases).
+  Both failures and explicit precondition fixes remain, rather than relaxing host laws.
+- stretch-01 passes4/4:46 new cases,34 old engraving cases and the two real callers.
+- stretch-02 passes1/1:50 new cases after actual coordinate-schema, six work-boundary
+  and full combined-checkpoint evidence. No native failure remains.
+- accumulated-01 runs ALL22 CTest entries once, exit0,22/22 pass, final52 new cases.
+
+All19 predecessor names/196 contract cases remain meaningful:35 compiler,37 host,
+34 engraving,25 learning,25 annular,40 perception. M7 adds52, total248 contract
+cases; callers/fixtures/CLI are separate (two new callers, six old file fixtures,
+nine old CLI scenarios, retained old caller counts). No previous failure logs or
+receipts are rewritten, including M4 corrected build history and M6's18/19+focused
+record. Final source hashes/static/staged review bind this execution to exact
+reviewed inputs; no self-referential final SHA is required. No full Engine/map/
+platform/display run, native rerun after a green unchanged campaign or resource
+bypass occurs. Native-lock sessions finish normally; no auth/resource refusal,
+ASan/UBSan finding, provider, subagent, sibling write or direct push is observed.
+
+Remaining limits: trusted private headless native fixture, not Engine/physics/
+pathfinding/network authentication, human enjoyment/learning, graphics/audio or
+edition-compatible D&D. Point occupancy is only exact centres; closing material
+has no collision response. No debris/partial material damage, conservation law,
+AI mind control, broad combat/action system, spell range/occlusion, necromancy,
+universal dispel, arbitrary composition, recurring field, new engraving trigger
+or entire catalogue is claimed. Knowledge/spellbooks are not checkpoint saves.
+Current-runtime exact-schema/limit in-memory continuation and intentional whole-world
+rewind are real; disk/process/crash/power-loss/cross-version persistence and external
+exactly-once are unverified. Known tracing restriction leaves leak checking disabled;
+other platforms/ABIs, allocator faults/exact CPU/RSS and balance remain unverified.
+
+All four cores AND both selected stretches are checked. Finish this batch idle:
+coordinator reviews the standalone receipt, source hashes and saved native evidence;
+publisher alone transports feat/magic. A concrete unselected next evidence is a
+human-readable presentation/prediction exercise for the two checked passage/ward
+scenes before any broader integration. No extra worker, controller or task starts.

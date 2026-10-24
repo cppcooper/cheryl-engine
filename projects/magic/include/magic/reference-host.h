@@ -178,7 +178,7 @@ namespace Magic::Reference {
         std::uint64_t max_fact_id = 1'000'000'000;
         std::size_t objects = object_capacity, disguises = disguise_capacity, witnesses = witness_capacity;
         std::uint64_t max_instance = 1'000'000;
-        std::size_t wards = 4, restrictions = 4;
+        std::size_t wards = 4, restrictions = 4, transmutations = 4, creations = 4;
         std::uint64_t max_mechanic_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
@@ -262,10 +262,28 @@ namespace Magic::Reference {
         std::uint64_t until_tick = 0, onset_tick = 0;
         bool operator==(const RestrictionView&) const = default;
     };
+    struct TransmutationView {
+        std::uint64_t instance = 0, action = 0;
+        ObjectId subject;
+        Appearance original_form = Appearance::OpenArch;
+        bool original_passable = true;
+        Appearance form = Appearance::OpenArch;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        bool operator==(const TransmutationView&) const = default;
+    };
+    struct CreationView {
+        std::uint64_t instance = 0, action = 0;
+        ObjectId object;
+        ActorId owner;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        bool operator==(const CreationView&) const = default;
+    };
     struct MechanicsSnapshot {
         std::uint32_t version = 1;
         std::array<WardView, 4> wards;
         std::array<RestrictionView, 4> restrictions;
+        std::array<TransmutationView, 4> transmutations;
+        std::array<CreationView, 4> creations;
         std::uint64_t instances_issued = 0;
         bool operator==(const MechanicsSnapshot&) const = default;
     };
@@ -361,7 +379,7 @@ namespace Magic::Reference {
             std::array<PlanHandle, item_capacity> inscriptions;
             PerceptionSnapshot perception;
             MechanicsSnapshot mechanics;
-            std::array<PlanHandle, 4> ward_plans, restriction_plans;
+            std::array<PlanHandle, 4> ward_plans, restriction_plans, transmutation_plans, creation_plans;
             std::array<PlanHandle, disguise_capacity> disguise_plans;
         };
         struct Prepared {
@@ -403,6 +421,9 @@ namespace Magic::Reference {
         void expire_mechanics(State& state, std::uint64_t tick, Meter& meter) const;
         void check_mechanics(const State& state, Meter& meter) const;
         void relocate(const Relocation& payload, ActorId target, State& state, Meter& meter) const;
+        void transmute(const PlanHandle& plan, ObjectId subject, State& state, Meter& meter) const;
+        void create_object(const PlanHandle& plan, ActorId owner, State& state, Meter& meter) const;
+        void override_material(State& state, ObjectId subject, Meter& meter) const;
         void erase_object(State& state, ObjectId subject, Meter& meter) const;
         void forget_actor_mechanics(State& state, ActorId actor, Meter& meter) const;
         void continuation(const State& state, std::uint64_t tickets, Meter& meter) const;
@@ -422,6 +443,8 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<MechanicsSnapshot, Failure> inspect_mechanics() const;
         // Trusted native-owner action, fixed3dp/contact50mm; intent restrictions and wards are real gates.
         [[nodiscard]] std::expected<AttackObserved, Failure> try_attack(ActorId attacker, ActorId target);
+        // Trusted native-owner control; only the exact living recorded owner may dismiss a created object.
+        [[nodiscard]] std::expected<void, Failure> dismiss_created(ActorId owner, ObjectId object);
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

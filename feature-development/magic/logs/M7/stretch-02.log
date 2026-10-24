@@ -1,0 +1,89 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --verbose --parallel 1 -R '^magic_mechanics_contracts$'
+Feature native work: one job; memory limits active.
+UpdateCTestConfiguration  from :/mnt/projects/cheryl-features/projects/magic/projects/magic/build/DartConfiguration.tcl
+Test project /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 20
+    Start 20: magic_mechanics_contracts
+
+20: Test command: /mnt/projects/cheryl-features/projects/magic/projects/magic/build/magic_mechanics_checks
+20: Working Directory: /mnt/projects/cheryl-features/projects/magic/projects/magic/build
+20: Test timeout computed to be: 30
+20: PASS ward and restriction exact typed meanings Common and concept requirements
+20: PASS capacity5 hits3 then4 absorbs3 then2 and passes2 exactly once
+20: PASS attack intent restriction gates actual action and exact expiry
+20: PASS ward and restriction interact without changing unrelated state
+20: PASS current symbolic keys primitive quantities duration permission recheck
+20: PASS overlap refuses and refused action leaves valid earlier ticket usable
+20: PASS new actor generations do not inherit expired or removed contributions
+20: PASS pending audience and capacity resolve at activation paid failure preserved
+20: PASS exact4 ward slots and one-short activation rollback
+20: PASS new identity horizon exhaustion refuses without wrapping
+20: PASS owned checkpoints retain partially spent wards and restrictions
+20: PASS source dimensions ranges unsupported bundles owned diagnostics
+20: PASS default foreign stale repeated normal live tickets still gate mechanics
+20: PASS new finite cap expansion refuses and exact mana9 versus10
+20: PASS relocation and shatter have exact typed roles and Common roundtrip
+20: PASS real wall blocks relocation until shatter removes object without injuring actor
+20: PASS relocation does not walk intermediate blockers and includes extreme coordinates
+20: PASS relocation refuses occupied actor and opaque wall but passable object is allowed
+20: PASS attack restriction permits actual relocation of the restricted actor
+20: PASS new role wrong dimension exact coordinates overflow and unsupported envelopes refuse
+20: PASS subject delivery live keys capabilities and current forms recheck before debit
+20: PASS captured delayed subject cannot retarget replacement or silently refund
+20: PASS pending shatter checkpoint owns source captured subject and exact due
+20: PASS shatter removes only its disguise and preserves other subjects history and health
+20: PASS relocation occupancy selector work exact21 and one-short20
+20: PASS material and creation typed meanings exact Common and independent parameters
+20: PASS physical transmutation exact identity passability onset and expiry
+20: PASS transmuted wall opens relocation while illusion still changes only perception
+20: PASS owner physical edit supersedes transmutation without restoring older fields
+20: PASS shatter during transmutation cannot resurrect or remove a replacement
+20: PASS creation adopts fresh real object owner lifetime payment atomically
+20: PASS only recorded living creation owner dismisses; replacement survives old cleanup
+20: PASS creation owner loss does not grant replacement control or extend absolute lifetime
+20: PASS created object shatter spends lifetime permanently and new generation survives
+20: PASS new object placement refuses occupied actors objects and full exact capacities
+20: PASS transmutation exact record slots overlap and generation expiry refusal
+20: PASS material creation schema keys form duration and knowledge remain separate
+20: PASS material and creation time horizons and identity exhaustion preserve complete state
+20: PASS material plus creation checkpoint retains actual plans and exact owned facts
+20: PASS late delayed material failure rolls back earlier expiry and new scratch writes
+20: PASS restriction capacity4 versus3 refuses the whole delayed selection
+20: M7 compiler primitive=5 tokens=38 work=2692 retained=2158
+20: M7 compiler primitive=6 tokens=36 work=2686 retained=2157
+20: M7 compiler primitive=7 tokens=40 work=2763 retained=2209
+20: M7 compiler primitive=8 tokens=36 work=2762 retained=2214
+20: M7 compiler primitive=9 tokens=40 work=2853 retained=2277
+20: M7 compiler primitive=10 tokens=47 work=2894 retained=2298
+20: PASS all six source contracts keep exact token work and retained budgets
+20: PASS new operations standalone bundles and engraving refusal remain complete
+20: PASS all new knowledge concepts are compiler metadata without live authority
+20: PASS checkpoint incompatibility and changed creation schema preserve live destination
+20: PASS creation live key primitive and form changes cannot mint a physical object
+20: PASS live coordinate schema tightens payload positions independently of geometry
+20: M7 transition primitive=5 work=591 selector=16 targets=2
+20: M7 transition primitive=6 work=635 selector=16 targets=2
+20: M7 transition primitive=7 work=477 selector=21 targets=1
+20: M7 transition primitive=8 work=612 selector=1 targets=1
+20: M7 transition primitive=9 work=611 selector=1 targets=1
+20: M7 transition primitive=10 work=463 selector=21 targets=1
+20: PASS each selected capability has exact complete-transition work and one-short refusal
+20: PASS one owned checkpoint coherently resumes all new domains and old item witness slow state
+20: PASS material creation state ceilings cannot expand and old source outputs remain owned
+20: 50 M7 mechanics cases passed; 0 failed.
+1/1 Test #20: magic_mechanics_contracts ........   Passed    0.05 sec
+
+The following tests passed:
+	magic_mechanics_contracts
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.05 sec
+
+exit_status=0

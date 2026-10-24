@@ -61,8 +61,8 @@ namespace Magic {
         WorldPoint destination;
         bool operator==(const Relocation&) const = default;
     };
-    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict, Relocate, Shatter };
-    inline constexpr std::size_t primitive_count = 9;
+    enum class Primitive { Heal, Fire, Slow, Disguise, Discern, Ward, Restrict, Relocate, Shatter, Transmute, Create };
+    inline constexpr std::size_t primitive_count = 11;
     enum class Intent { Attack };
     struct Absorption {
         std::uint32_t capacity_dp = 0, duration_ticks = 0;
@@ -79,6 +79,20 @@ namespace Magic {
         SubjectRole subject = SubjectRole::CapturedObject;
         bool operator==(const ObjectShatter&) const = default;
     };
+    struct Transmutation {
+        SubjectRole subject = SubjectRole::CapturedObject;
+        Appearance form = Appearance::OpenArch;
+        std::uint32_t duration_ticks = 0;
+        bool operator==(const Transmutation&) const = default;
+    };
+    enum class OwnershipRole { SelectedActor };
+    struct Creation {
+        Appearance form = Appearance::StoneWall;
+        WorldPoint position;
+        std::uint32_t duration_ticks = 0;
+        OwnershipRole owner = OwnershipRole::SelectedActor;
+        bool operator==(const Creation&) const = default;
+    };
     struct VisualDisguise {
         SubjectRole subject = SubjectRole::CapturedObject;
         Appearance form = Appearance::StoneWall;
@@ -89,7 +103,16 @@ namespace Magic {
         SubjectRole subject = SubjectRole::CapturedObject;
         bool operator==(const Discernment&) const = default;
     };
-    using Payload = std::variant<std::monostate, VisualDisguise, Discernment, Absorption, IntentRestriction, Relocation, ObjectShatter>;
+    using Payload = std::variant<
+        std::monostate,
+        VisualDisguise,
+        Discernment,
+        Absorption,
+        IntentRestriction,
+        Relocation,
+        ObjectShatter,
+        Transmutation,
+        Creation>;
     [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
@@ -164,13 +187,15 @@ namespace Magic {
         CommonWard,
         CommonRestrict,
         CommonRelocate,
-        CommonShatter
+        CommonShatter,
+        CommonTransmute,
+        CommonCreate
     };
     using RuleMask = std::uint32_t;
-    inline constexpr RuleMask all_rules = 32767;
+    inline constexpr RuleMask all_rules = 131071;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 15 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 17 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
@@ -189,7 +214,8 @@ namespace Magic {
         std::string key;
         std::uint32_t max_quantity = 1'000'000;
         std::uint32_t max_duration_ticks = 8'640'000;
-        std::uint8_t appearances = 3; // Disguise only: OpenArch bit0, StoneWall bit1; caller may disable either.
+        std::uint8_t appearances = 3;                // Registered forms: OpenArch bit0, StoneWall bit1; caller may disable either.
+        std::uint32_t max_coordinate_mm = 1'000'000; // Absolute G0 payload coordinate; independently tightenable, including zero.
     };
 
     struct Catalog {

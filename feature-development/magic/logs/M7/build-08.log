@@ -1,0 +1,27 @@
+$ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- cmake --build projects/magic/build --target magic_mechanics_checks magic_mechanics_demo magic_material_demo --parallel 1
+[ 11%] Building CXX object CMakeFiles/magic_compiler.dir/src/compiler.cpp.o
+[ 22%] Linking CXX static library libmagic_compiler.a
+[ 22%] Built target magic_compiler
+[ 33%] Building CXX object CMakeFiles/magic_learning.dir/src/learning.cpp.o
+[ 44%] Linking CXX static library libmagic_learning.a
+[ 44%] Built target magic_learning
+[ 55%] Building CXX object CMakeFiles/magic_reference_host.dir/src/reference-host.cpp.o
+[ 66%] Building CXX object CMakeFiles/magic_reference_host.dir/src/mechanics.cpp.o
+[ 77%] Linking CXX static library libmagic_reference_host.a
+[ 77%] Built target magic_reference_host
+[ 88%] Building CXX object CMakeFiles/magic_mechanics_checks.dir/tests/mechanics.cpp.o
+[100%] Linking CXX executable magic_mechanics_checks
+[100%] Built target magic_mechanics_checks
+[ 22%] Built target magic_compiler
+[ 44%] Built target magic_learning
+[ 77%] Built target magic_reference_host
+[ 88%] Building CXX object CMakeFiles/magic_mechanics_demo.dir/src/mechanics-demo.cpp.o
+[100%] Linking CXX executable magic_mechanics_demo
+[100%] Built target magic_mechanics_demo
+[ 28%] Built target magic_compiler
+[ 71%] Built target magic_reference_host
+[ 85%] Building CXX object CMakeFiles/magic_material_demo.dir/src/material-demo.cpp.o
+[100%] Linking CXX executable magic_material_demo
+[100%] Built target magic_material_demo
+
+exit_status=0

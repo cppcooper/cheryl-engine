@@ -94,3 +94,13 @@ Standalone M7 selects four new witnesses and two stretches in
 | ID | Choice, reason, tradeoff and confidence |
 | --- | --- |
 | M7-032 | Give object spells a distinct captured-object binding and Subject delivery, instead of pretending objects are actors/audiences. Shatter removes a real generation-checked fixture object; immediate contact relocation uses an exact authored G0 point, checked against16 actor and4 opaque object centres. It jumps over intermediate blockers, without physics/pathfinding. Keys/forms/roles/costs and delayed subject checkpoints remain live-checked. High confidence in narrow semantics, medium in point-occupancy game policy. |
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M7-033 | Add four timed physical transmutations and four temporary creations, retaining plans and exact generations. Transmutation changes real form/passability; expiry restores only those fields, owner edits supersede it and destruction retires it. Creation allocates a fresh placed object with a selected living owner, owner-checked dismissal and absolute expiry independent of owner loss. Both share normal casting and checkpoints. High confidence in lifecycle/refusal, medium in fixture material and occupancy policy; no physics or matter conservation claim. |
+| M7-034 | Deliberately register eleven exact operations and seventeen concept bits, with typed coordinates/forms/durations and downward-only state/schema limits. Preserve the old fifth appearance-mask aggregate field; append coordinate ceilings. Fixed copy/scan/plan-slot accounting grows explicitly while all prior quotas remain. One accumulated22/22 campaign retains196 old cases plus52 new and two actual callers. High confidence in bounded native evidence; logical units are not RSS/CPU and do not prove human fun or durable saves. |
+
+M7 completes all four selected cores and both preselected stretches, documented in
+the standalone receipt and batch plan. This is six specific witnesses across six
+areas, not coverage of the whole open catalogue. No queued plan or follow-on unit
+is added; final worker state is idle for coordinator review.

@@ -1,0 +1,55 @@
+$ git merge-base --is-ancestor a01a5f76592ed1f851de3a43a4b6462aa516a072 HEAD
+exit_status=0
+$ git diff --check
+exit_status=0
+$ clang-format --dry-run --Werror projects/magic/include/magic/compiler.h projects/magic/include/magic/reference-host.h projects/magic/src/compiler.cpp projects/magic/src/reference-host.cpp projects/magic/src/reference-meter.h projects/magic/src/mechanics.cpp projects/magic/src/main.cpp projects/magic/src/mechanics-demo.cpp projects/magic/src/material-demo.cpp projects/magic/tests/mechanics.cpp projects/magic/tests/engraving.cpp
+exit_status=0
+All final tested source hashes match the completed accumulated campaign inputs.
+feature-development/magic/MAGIC-M1.json: receipt and every complete earlier evidence byte preserved, including failure history
+feature-development/magic/MAGIC-M2.json: receipt and every complete earlier evidence byte preserved, including failure history
+feature-development/queue/feature-round-20261024-0500/MAGIC-M3.json: receipt and every complete earlier evidence byte preserved, including failure history
+feature-development/queue/feature-round-20261024-0500/MAGIC-M4.json: receipt and every complete earlier evidence byte preserved, including failure history
+feature-development/queue/feature-round-20261024-0500/MAGIC-M5.json: receipt and every complete earlier evidence byte preserved, including failure history
+feature-development/continuation/MAGIC-M6.json: receipt and every complete earlier evidence byte preserved, including failure history
+compiler: old named behavioral cases preserved; native totals separately checked
+reference-host: old named behavioral cases preserved; native totals separately checked
+engraving: old named behavioral cases preserved; native totals separately checked
+learning: old named behavioral cases preserved; native totals separately checked
+annular: old named behavioral cases preserved; native totals separately checked
+perception: old named behavioral cases preserved; native totals separately checked
+$ git diff --exit-code a01a5f76592ed1f851de3a43a4b6462aa516a072 -- projects/magic/tests/compiler.cpp projects/magic/tests/reference-host.cpp projects/magic/tests/learning.cpp projects/magic/tests/annular.cpp projects/magic/tests/perception.cpp projects/magic/tests/caller.cpp projects/magic/tests/cli.py projects/magic/src/reference-demo.cpp projects/magic/src/engraving-demo.cpp projects/magic/src/learning-demo.cpp projects/magic/src/annular-demo.cpp projects/magic/src/perception-demo.cpp
+exit_status=0
+Actual accumulated discovery/execution:22 unique entries pass,196 retained+52 new=248 cases;2 new callers separate. Exactly one accumulated M7 log exists.
+feature-development/magic/logs/M7/accumulated-01.log complete bytes=49826 exit=0
+feature-development/magic/logs/M7/build-01.log complete bytes=1299 exit=0
+feature-development/magic/logs/M7/build-02.log complete bytes=808 exit=0
+feature-development/magic/logs/M7/build-03.log complete bytes=1039 exit=0
+feature-development/magic/logs/M7/build-04.log complete bytes=1299 exit=0
+feature-development/magic/logs/M7/build-05.log complete bytes=491 exit=0
+feature-development/magic/logs/M7/build-06.log complete bytes=496 exit=0
+feature-development/magic/logs/M7/build-07.log complete bytes=1853 exit=0
+feature-development/magic/logs/M7/build-08.log complete bytes=1571 exit=0
+feature-development/magic/logs/M7/build-09.log complete bytes=2666 exit=0
+feature-development/magic/logs/M7/build-10.log complete bytes=3572 exit=0
+feature-development/magic/logs/M7/build-11.log complete bytes=496 exit=0
+feature-development/magic/logs/M7/configure-01.log complete bytes=373 exit=0
+feature-development/magic/logs/M7/configure-02.log complete bytes=373 exit=0
+feature-development/magic/logs/M7/core-01.log complete bytes=2987 exit=8
+feature-development/magic/logs/M7/core-02.log complete bytes=3006 exit=0
+feature-development/magic/logs/M7/core-03.log complete bytes=4348 exit=8
+feature-development/magic/logs/M7/core-04.log complete bytes=3153 exit=0
+feature-development/magic/logs/M7/stretch-01.log complete bytes=10288 exit=0
+feature-development/magic/logs/M7/stretch-02.log complete bytes=6021 exit=0
+projects/magic/CMakeLists.txt sha256=5ef47eaea3193d3eb60dd9d3f471356c66aa50d7b2f16db12c98544aa32fb7e3
+projects/magic/include/magic/compiler.h sha256=d417c2e38205b339b5f6bb8d96ef27a58ba7a86d889a3310622efebb7c9a2404
+projects/magic/include/magic/reference-host.h sha256=7bdf597d752b51d0da6c9938cbb16e3a171f97681ac086ebdbee4c4dea989dd8
+projects/magic/src/compiler.cpp sha256=1b441e6a11353ec94cfe35eb597e59e4d6b5b4b421b1993e2160d7e447116427
+projects/magic/src/reference-host.cpp sha256=b250312bd86d97dd0fc87917499b385f55c1048d31a844d7956155e653f055a4
+projects/magic/src/reference-meter.h sha256=f104113b2d1438a1178f0887e02ac0142d5d2a9f7305406ba6ac08ec1495b7da
+projects/magic/src/mechanics.cpp sha256=f4f890e459b87134a63928aed819d8f72ac54128e1f564e85509e70699d2dea3
+projects/magic/src/main.cpp sha256=f1581fcff055351ceefdc3429ef2e25d1290826a59150fbf81866f594f90061d
+projects/magic/src/mechanics-demo.cpp sha256=c68b8afe6af88a3574f48f44aad40b32ac4e57698d8374390e10ddd9b1008b51
+projects/magic/src/material-demo.cpp sha256=79b9650fc2597b270e5bbd4bd9aabdeb9a65a1b9c6553c06535f0e548763e0c9
+projects/magic/tests/mechanics.cpp sha256=5274a6ed8ada1aa9b0317aec4568ba5d756bbbef8420626e44cbd2ee7b5f0a68
+projects/magic/tests/engraving.cpp sha256=c85b5f2a2f7a4172ff7a6e9dcae618af86676ef77b346a31ea7d6c81664e7dc1
+Static review exit_status=0. No further native run needed after green unchanged campaign. Four cores/two stretches checked; final lane idle.

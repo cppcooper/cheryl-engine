@@ -104,3 +104,8 @@ target_compile_options(magic_mechanics_demo PRIVATE -Wall -Wextra -Wpedantic -We
 add_test(NAME magic_mechanics_contracts COMMAND magic_mechanics_checks)
 add_test(NAME magic_mechanics_caller COMMAND magic_mechanics_demo)
 set_tests_properties(magic_mechanics_contracts magic_mechanics_caller PROPERTIES TIMEOUT 30)
+add_executable(magic_material_demo src/material-demo.cpp)
+target_link_libraries(magic_material_demo PRIVATE magic_reference_host)
+target_compile_options(magic_material_demo PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME magic_material_caller COMMAND magic_material_demo)
+set_tests_properties(magic_material_caller PROPERTIES TIMEOUT 30)
