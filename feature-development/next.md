@@ -1,3 +1,165 @@
+# U14 final-lane promise payoff
+
+Starts clean on feat/storytelling at actual U13
+`a7a66e217fb853690fcaf258dfe02b0f8c6750bb`. Inspected source/current records,
+committed U13 receipt and complete saved native evidence:227/227 accumulated plus
+final affected33/33, all211 U12 names/order and89 older child blocks unchanged.
+U11's original193/194 then corrected test-only1/1 remains preserved. No blocked
+prerequisite, resource refusal, dependency retrieval or pin change.
+
+U14 implemented and executed acceptance: **244/244** in ONE accumulated invocation,
+all **227 predecessor names/order** and **103 old full child blocks byte-identical**.
+Fourteen payoff contract and three transcript cases add16 actual children with
+expected outcomes **8x0,6x2,2x3**. Review then qualified definition identity by the
+fragment library ID and enhanced existing wrong-library/prose-authority/longest-
+string assertions (17/17 affected pass), then also bound source revision with a
+recompiled-parent mismatch check (final17/17 pass). All16 child blocks are unchanged
+in both rechecks. All eight native invocations exit0, with no failures/skips/ASan/UBSan
+findings. This is not a second244 run after review. Native lock waiting was normal
+queueing; the existing tool sessions were retained until commands drained.
+
+## Implemented caller and consequences
+
+```cpp
+const auto completed = bargain.capture().value();
+const auto followup = compose_payoff(retained_content, completed, handoff_event,
+                                      manual_payoff_library(), limits).value();
+auto scene = PayoffEncounter::start(followup, {"relief-payoff-01"}).value();
+const auto before_handoff = scene.capture().value();
+scene.handoff(true).value();
+const auto offered = scene.view().value(); // Select only a real issued action.
+```
+
+ST-037/038/039/040 match both decision views. Use the actual retained U12 artifact
+or U13 selected->content() and CURRENT completed bargain pair, not candidate claims,
+a stale origin cursor as proof of current history or regenerated seed meaning.
+The demo seed selects the initial bargain once; payoff/restore never reselect it.
+Source validation restores the real bargain pair and requires terminal/resolved
+completion. Library/event/source values are deeply owned; source meaning/origin
+chain remains immutable and retained independently of producer lifetime.
+
+Pending promises have deliver/break/leave, with fixed terminal targets. Handoff
+presence gates settlement; enough live planks gate delivery. One retained small
+ordinary promise consumes2, larger consumes3, negotiated small consumes1. Delivery
+sets due0/delivered quantity/Fulfilled and grants exactly one boolean relief favor;
+recipient knowledge becomes checked-delivery/attitude4. Breach spends nothing,
+grants no favor, marks Broken/due0 and heard-breach/attitude-3. Leaving keeps the
+obligation pending. Previous immediate help/payment/refusal gets a distinct
+acknowledgment or departure without charge, new favor or rewritten history.
+Original bank/quay and existing recipient are checked; declined ferry histories
+never gain licensed passage/teleportation. Same accepted ingredients supply shared
+proposition/flavour plus eight manual payoff fragments, not provider output.
+
+Knowledge/belief/facts remain separate. At the explicit host meeting, a suspected-
+breach report can create recipient belief while the obligation is STILL pending.
+Only checked delivery or direct breach settles the authoritative fact. Earlier
+Mara/Ivo/Lena knowledge, belief and attitudes remain exactly unchanged; Lena stays
+unaware. NPC prose uses its own earlier interaction and accepted public proposition,
+not other observers' private knowledge. Printed debug world state is separate.
+
+All guard checks are pure; current resources and presence recheck before effect.
+Prepare complete scalar state before nonthrowing app adoption. The Engine's
+pre-effect owned transition preparation and allocation-free cursor/result commit
+remain unchanged. Effects borrow stable keys, perform no string allocation on the
+success path, choose no targets, generate no content and do no I/O. A live terminal
+timeline rejects repeated delivery/reward. No public Engine API, old caller mode/
+default bytes, console format, dependency/pin or persistence format changed.
+
+## Paired checkpoint, accounting and limits
+
+Snapshot owns cursor plus ALL world/resources, obligation/due/delivered/favor,
+recipient knowledge/attitude/belief, outcome, presence/encountered and pre-settlement
+balance. Validate coherence and cursor/outcome match, construct a fresh Session,
+prepare success, then nonthrowingly adopt both. Failed restore preserves old pair
+and issued token; success renews incarnation. Same/fresh owners restore pre-handoff,
+pending and resolved values without replaying ferry/watch/bargain/payoff effects.
+Deliberately restoring an older COMPLETE pending world rewinds its resources and
+can legitimately permit delivery again in that NEW timeline. The unsaved effect
+counter is instrumentation, not a durable reward ledger or authenticated history.
+
+Compiled identity includes payoff library ID/revision, source definition ID/revision, source
+resolution and report kind. Revision/ID discipline is not a content hash; retain
+exact accepted meaning. Narrative claims cannot add coins/rewards/operations;
+normal programming/allocation exceptions propagate. No production rollback,
+external exactly-once/crash durability, disk schema, generic reputation/quest/event
+service, provider/free-text parser or magic dependency is claimed.
+
+Caps: eight fragments x two flavours, four context candidates,4 nodes/3 edges
+(or3/2),2048-byte strings/64-byte metadata IDs,16KiB charged text,64KiB new requested
+payload,1MiB retained parent charges and256Ki modeled work. Count/limit/product
+checks precede growth. Charge scans/key comparisons/logical copies/four-case work,
+all generated strings/targets/operation-table copies and temporary source-validation
+reservation. Retained quota conservatively sums four immutable parent payload
+charges (bargain/watch/ferry projection/accepted ferry). Exact/one-short fields,
+longest strings,64/65 IDs, invalid/SIZE_MAX limits and preserved values are tested.
+
+Exclusions: allocator capacity/rounding/control blocks, temporary concatenation/
+library implementation overhead, compiler/frozen-definition/index/session internals
+beyond the explicit validator reservation, stack/diagnostics and RSS/time. Parent
+private caps independently bound their input shapes. These are charged logical
+payload/work allowances, not exact peak memory/instructions; overlaps are conservative.
+Confidence high in executed ownership/authority/consequences, medium in caps,
+favor/attitude design and fun. These are reversible private engineering decisions,
+not newly inferred personal API taste.
+
+## Exact executed commands and saved evidence
+
+CWD is this clone. Prefix **P** for EVERY native command below:
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+```sh
+cmake -S . -B builds/storytelling-u1-debug
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline tests-engine tests-dialogue-inspection dialogue-lookup-allocation dialogue-transition-allocation dialogue-console tests-dialogue-console --parallel 1
+ctest --test-dir builds/storytelling-u1-debug -N -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^(tests-engine\.(dialogue_definition|dialogue_session|dialogue_inspection|dialogue_lookup|dialogue_route|dialogue_transition)\.|tests-dialogue-console\.dialogue_console_|tests-dialogue-inspection\.|tests-dialogue-(lookup|transition)\.allocation$|tests-story-offline\.)'
+# Review correction to library identity; affected checks only:
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_payoff(_transcript)?\.'
+# Subsequent source-revision scoping correction; same affected selection:
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_payoff(_transcript)?\.'
+```
+
+All immediate exits **0**. Registration244 nonempty unique names. Accumulated
+**244/244,31.44s** (242 GoogleTest cases +2 allocation probes), first affected
+**17/17,2.52s**, then final affected**17/17,2.57s**. Debug/shared Engine, existing OFF selections/pins/incremental outputs
+and ASan/UBSan remain. Only command-local detect_leaks=0 is used under ST-008;
+leak checking remains unverified. Child processes inherit the native resource/
+sanitizer envelope without reacquiring the lock; no native process ran outside P.
+
+Complete files in `builds/storytelling-u1-debug/`: `u14-configure.log`,
+`u14-build-1.log`, `u14-registration.log`, `u14-ctest-1.log`,
+`u14-ctest-details-1.log`, `u14-build-2.log`, `u14-ctest-2.log`,
+`u14-ctest-details-2.log`, `u14-build-3.log`, `u14-ctest-3.log`,
+`u14-ctest-details-3.log`, with immediate `.exit` statuses for all native invocations.
+Static/full-evidence audits: `u14-prerequisite-audit.log`,
+`u14-registration-audit.log`, `u14-results-audit-1.log`, `u14-results-audit-2.log`, `u14-results-audit-3.log`,
+`u14-demo-transcripts.log`, `u14-boundary-rules.log`, `u14-commands.log`,
+`u14-checkpoint-audit.log`. The static checkpoint helper had a conditional-spacing
+SyntaxError, then passed after correction with no native/source changes. Actual
+private compile and real shared Engine link rules are captured and exercised;
+there is no copied Engine source/archive or export macro patch. Historical failure/
+recheck logs/receipts remain untouched.
+
+## Precise final-lane handoff — idle
+
+No unresolved U14 acceptance blocker. Coordinator reviews this coherent source,
+both decision views, committed passing receipt and complete saved logs, then
+records completion of the lane's THIRD and FINAL milestone in this finite round.
+Receipt reports worker execution, not automatic source acceptance. Further scope
+requires a separately selected assignment; do not schedule/start a fourth unit,
+automatic scene loop, service, integration or provider work.
+
+Remaining unverified: participant fun/comprehension/provider quality, LSan, other
+platforms/Release/SDK/visual/wider runtime, authenticated history and production/
+external durability. The next action is coordinator review and finite-round
+completion, with this worker idle and exact content/pairs/evidence retained.
+
+---
+
 # U13 bounded compatible seeded bargain selection
 
 Starts clean on feat/storytelling at actual accepted U12

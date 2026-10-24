@@ -433,3 +433,100 @@ TEST(story_selection_transcript, refusal_and_usage) {
         EXPECT_NE(r.error.find("Usage: story-offline --select-bargain"), std::string::npos);
     }
 }
+
+TEST(story_payoff_transcript, fulfilled_configurations) {
+    const auto small = child({"--payoff", "1", "promise", "deliver", "restore"});
+    ASSERT_EQ(small.code, 0);
+    EXPECT_TRUE(small.error.empty());
+    EXPECT_NE(small.output.find("plan=ramp actor=nera prior=promise"), std::string::npos);
+    EXPECT_NE(small.output.find("Recorded due: 2 planks."), std::string::npos);
+    EXPECT_NE(small.output.find("deliver: Deliver the recorded material [unavailable]"), std::string::npos);
+    EXPECT_NE(small.output.find("deliver: Deliver the recorded material [available]"), std::string::npos);
+    EXPECT_NE(small.output.find("break: Declare the promise broken [available]"), std::string::npos);
+    EXPECT_NE(small.output.find("Restored before handoff; no prior charges or favors replayed."), std::string::npos);
+    EXPECT_NE(small.output.find("Restored pending handoff pair; old token rejected; no effect replay."), std::string::npos);
+    EXPECT_NE(small.output.find("Fresh owner restored resolved pair; no additional delivery or favor."), std::string::npos);
+    EXPECT_NE(
+        small.output.find("Payoff actual: coins=5 planks=1 ready=1 obligation=fulfilled due=0 delivered=2 favor=1 outcome=fulfilled"),
+        std::string::npos
+    );
+    EXPECT_NE(small.output.find("Recipient: knowledge=checked-delivery attitude=4 believes-broken=0"), std::string::npos);
+    EXPECT_NE(small.output.find("Observer lena: knowledge=unaware belief-unlicensed=0 attitude=0"), std::string::npos);
+    EXPECT_TRUE(small.output.ends_with("Effects: ferry=1 watch=1 bargain=1 payoff=1\n"));
+    const auto large = child({"--payoff", "3", "promise", "deliver"});
+    ASSERT_EQ(large.code, 0);
+    EXPECT_TRUE(large.error.empty());
+    EXPECT_NE(large.output.find("plan=shelter actor=nera prior=promise"), std::string::npos);
+    EXPECT_NE(large.output.find("Recorded due: 3 planks."), std::string::npos);
+    EXPECT_NE(
+        large.output.find("Payoff actual: coins=5 planks=0 ready=1 obligation=fulfilled due=0 delivered=3 favor=1 outcome=fulfilled"),
+        std::string::npos
+    );
+    const auto negotiated = child({"--payoff", "1", "negotiate", "deliver", "restore"});
+    ASSERT_EQ(negotiated.code, 0);
+    EXPECT_TRUE(negotiated.error.empty());
+    EXPECT_NE(
+        negotiated.output.find("coins=5 planks=2 ready=1 obligation=fulfilled due=0 delivered=1 favor=1 outcome=fulfilled"),
+        std::string::npos
+    );
+    EXPECT_TRUE(negotiated.output.ends_with("Effects: ferry=1 watch=1 bargain=2 payoff=1\n"));
+}
+
+TEST(story_payoff_transcript, breach_refusal_acknowledgment) {
+    const auto broken = child({"--payoff", "1", "promise", "break", "restore"});
+    ASSERT_EQ(broken.code, 0);
+    EXPECT_TRUE(broken.error.empty());
+    EXPECT_NE(broken.output.find("coins=5 planks=3 ready=1 obligation=broken due=0 delivered=0 favor=0 outcome=broken"), std::string::npos);
+    EXPECT_NE(broken.output.find("Recipient: knowledge=heard-breach attitude=-3 believes-broken=1"), std::string::npos);
+    const auto helped = child({"--payoff", "1", "immediate", "acknowledge", "restore"});
+    ASSERT_EQ(helped.code, 0);
+    EXPECT_TRUE(helped.error.empty());
+    EXPECT_NE(
+        helped.output.find("coins=5 planks=2 ready=1 obligation=none due=0 delivered=0 favor=0 outcome=acknowledged"), std::string::npos
+    );
+    EXPECT_NE(helped.output.find("Recipient: knowledge=saw-help attitude=3 believes-broken=0"), std::string::npos);
+    const auto paid = child({"--payoff", "1", "pay", "acknowledge"});
+    ASSERT_EQ(paid.code, 0);
+    EXPECT_TRUE(paid.error.empty());
+    EXPECT_NE(
+        paid.output.find("coins=3 planks=3 ready=1 obligation=none due=0 delivered=0 favor=0 outcome=acknowledged"), std::string::npos
+    );
+    const auto refused = child({"--payoff", "1", "refuse", "acknowledge", "bank"});
+    ASSERT_EQ(refused.code, 0);
+    EXPECT_TRUE(refused.error.empty());
+    EXPECT_NE(refused.output.find("actor=oren prior=refuse"), std::string::npos);
+    EXPECT_NE(refused.output.find("Original bank handoff."), std::string::npos);
+    EXPECT_NE(
+        refused.output.find("coins=8 planks=3 ready=1 obligation=none due=0 delivered=0 favor=0 outcome=acknowledged"), std::string::npos
+    );
+    EXPECT_NE(refused.output.find("Recipient: knowledge=heard-refusal attitude=-1 believes-broken=0"), std::string::npos);
+    EXPECT_NE(refused.output.find("passage=0 licensed=0 paid=0 repaired=0 declined=1"), std::string::npos);
+    EXPECT_EQ(refused.output.find("Harbor quay handoff."), std::string::npos);
+    EXPECT_TRUE(refused.output.ends_with("Effects: ferry=1 watch=0 bargain=1 payoff=1\n"));
+    const auto left = child({"--payoff", "1", "promise", "leave"});
+    ASSERT_EQ(left.code, 0);
+    EXPECT_TRUE(left.error.empty());
+    EXPECT_NE(left.output.find("coins=5 planks=3 ready=1 obligation=pending due=2 delivered=0 favor=0 outcome=left"), std::string::npos);
+}
+
+TEST(story_payoff_transcript, live_refusal_and_usage) {
+    for (const auto& mode : {"drain", "absent"}) {
+        const auto r = child({"--payoff", "1", "promise", "deliver", mode});
+        EXPECT_EQ(r.code, 3);
+        EXPECT_TRUE(r.error.empty());
+        EXPECT_NE(r.output.find("Payoff choice rejected before mutation."), std::string::npos);
+        EXPECT_NE(r.output.find("obligation=pending due=2 delivered=0 favor=0 outcome=open"), std::string::npos);
+        EXPECT_TRUE(r.output.ends_with("Payoff effects: 0\n"));
+    }
+    for (const auto& args :
+         {std::vector<std::string>{"--payoff"}, std::vector<std::string>{"--payoff", "-1", "promise", "deliver"},
+          std::vector<std::string>{"--payoff", "1", "refuse", "deliver"},
+          std::vector<std::string>{"--payoff", "1", "promise", "acknowledge"},
+          std::vector<std::string>{"--payoff", "1", "promise", "invent-favor"},
+          std::vector<std::string>{"--payoff", "1", "promise", "deliver", "loop"}}) {
+        const auto r = child(args);
+        EXPECT_EQ(r.code, 2);
+        EXPECT_TRUE(r.output.empty());
+        EXPECT_NE(r.error.find("Usage: story-offline --payoff"), std::string::npos);
+    }
+}

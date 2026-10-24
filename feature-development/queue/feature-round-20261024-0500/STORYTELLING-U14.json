@@ -1,0 +1,45 @@
+{
+  "batch_id": "feature-round-20261024-0500",
+  "milestone_id": "STORYTELLING-U14",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "builds/storytelling-u1-debug/u14-prerequisite-audit.log",
+    "builds/storytelling-u1-debug/u14-configure.log",
+    "builds/storytelling-u1-debug/u14-build-1.log",
+    "builds/storytelling-u1-debug/u14-registration.log",
+    "builds/storytelling-u1-debug/u14-registration-audit.log",
+    "builds/storytelling-u1-debug/u14-ctest-1.log",
+    "builds/storytelling-u1-debug/u14-ctest-details-1.log",
+    "builds/storytelling-u1-debug/u14-results-audit-1.log",
+    "builds/storytelling-u1-debug/u14-build-2.log",
+    "builds/storytelling-u1-debug/u14-ctest-2.log",
+    "builds/storytelling-u1-debug/u14-ctest-details-2.log",
+    "builds/storytelling-u1-debug/u14-results-audit-2.log",
+    "builds/storytelling-u1-debug/u14-build-3.log",
+    "builds/storytelling-u1-debug/u14-ctest-3.log",
+    "builds/storytelling-u1-debug/u14-ctest-details-3.log",
+    "builds/storytelling-u1-debug/u14-results-audit-3.log",
+    "builds/storytelling-u1-debug/u14-demo-transcripts.log",
+    "builds/storytelling-u1-debug/u14-boundary-rules.log",
+    "builds/storytelling-u1-debug/u14-commands.log",
+    "builds/storytelling-u1-debug/u14-checkpoint-audit.log"
+  ],
+  "implemented_contracts": [
+    "Private finite payoff composition validates the actual current completed bargain pair against the exact retained U12/U13 accepted artifact. It retains immutable promise meaning, copied source/library/event and compiled definition; it never reselects a seed, trusts candidate outcome prose or treats an old origin cursor as authenticated current history.",
+    "Pending promises offer actual issued delivery, explicit breach and departure at fixed targets. Delivery consumes the original ordinary/negotiated plank quantity and grants one host-approved favor; breach consumes nothing and grants none; departure retains the obligation. Immediate help/payment/refusal receive their own acknowledgment without another charge or invented debt/reward.",
+    "An explicit serialized host handoff presence event binds the existing recipient to the actual quay/original bank, gates current settlement eligibility and supports withdrawal. Known interaction/report/check information changes only recipient knowledge/attitude/belief; suspected breach does not rewrite pending facts, delivery corrects belief, and old observers including unaware Lena remain unchanged.",
+    "Pure live conditions recheck resource/presence before mutation. Borrowed stable keys and fully validated scalar staging precede nonthrowing owner adoption; unchanged actual Engine Session APIs prepare owned transition success before effect and commit cursor/result without post-effect allocation. No callback routing, generation, I/O/provider or mutable definition is added.",
+    "Owned value checkpoints pair cursor with all resources, obligation/due/delivered/favor, outcome, recipient state, presence/encountered and pre-settlement balance. Fresh coherence/cursor/Session validation precedes nonthrowing adoption; failures preserve old pair/token, success renews incarnation. Library and source definition IDs/revisions bind resume identity. Same/fresh resolved restore applies no old effect; terminal timelines reject repeat settlement. Older complete-world rewind may legitimately allow a new timeline.",
+    "Eight fragments/two flavours, four context alternatives, text/new payload/retained parent charges/work and small graph caps are preflighted before growth. Exact/one-short and invalid/overflow requests preserve prior values; owned typed/nested diagnostics and ordinary allocation/programming exceptions remain explicit. Source/prose claims cannot add arbitrary operations/rewards.",
+    "244/244 accumulated focused cases pass once, with all227 predecessor names/order and103 byte-identical older child blocks. Seventeen new cases include16 actual child outcomes (8 exit0,6 usage2,2 live refusal3). Library-ID and source-revision review corrections each pass affected17/17 rechecks; final16 child blocks remain unchanged. All8 native commands exit0, no skips or ASan/UBSan diagnostics. Complete prior histories and final source hashes are retained."
+  ],
+  "limitations": [
+    "LSan remains unverified under ST-008 command-local detect_leaks=0. Native evidence is GNU/Linux Debug real shared Engine, not other platforms/Release, installed SDK, visual or broader runtime integration.",
+    "Conservative requested payload/work and retained parent-charge sums are not exact peak memory/RSS/instruction time; parent charges may overlap. Allocator capacity/rounding/control blocks, temporary concatenation/library overhead, Engine compiler/frozen-index/session internals beyond explicit validation reservation, stack/diagnostics and RSS/time remain excluded. Normal allocation/programming exceptions propagate.",
+    "IDs/revisions and paired scalar checks are not content authentication or proof of an executed path. Retain exact content and the COMPLETE CURRENT world pair; intentionally restoring an older complete pair is a rewind/new timeline, not globally exactly-once delivery, authenticated history, production rollback or crash durability.",
+    "This is a finite manual offline family and one local steward/favor reference owner, not actual model output, a reputation/rumor/quest scheduler, event bus, provider/free-text framework, disk schema or magic/sibling integration.",
+    "Participant fun/comprehension, provider quality and production/external-effect durability remain unverified. This receipt reports worker execution rather than automatic coordinator source acceptance."
+  ],
+  "next_action": "Worker is idle. Coordinator reviews the coherent U14 checkpoint/source/decision views/receipt/full native logs and records this lane\u2019s third and FINAL milestone for feature-round-20261024-0500. No fourth task, automatic scene loop, service or further implementation is authorized; any later scope needs a new selected assignment."
+}

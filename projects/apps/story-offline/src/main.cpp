@@ -2,6 +2,7 @@
 #include "continuation.h"
 #include "bargain.h"
 #include "selection.h"
+#include "payoff.h"
 
 #include <charconv>
 
@@ -10,6 +11,21 @@
 
 int main(int argc, char** argv) {
     try {
+        if (argc >= 2 && std::string_view(argv[1]) == "--payoff") {
+            if (argc == 5 || argc == 6) {
+                const std::string_view text = argv[2];
+                std::uint64_t seed = 0;
+                const auto parsed = std::from_chars(text.data(), text.data() + text.size(), seed);
+                if (!text.empty() && parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size()) {
+                    const auto code = OfflineStory::run_payoff(std::cout, seed, argv[3], argv[4], argc == 6 ? argv[5] : "none");
+                    if (code != 2)
+                        return std::cout ? code : 3;
+                }
+            }
+            std::cerr
+                << "Usage: story-offline --payoff SEED immediate|pay|promise|negotiate|refuse deliver|break|acknowledge|leave [none|restore|drain|absent|bank]\n";
+            return 2;
+        }
         if (argc >= 2 && std::string_view(argv[1]) == "--select-bargain") {
             if (argc == 5) {
                 const std::string_view text = argv[2];

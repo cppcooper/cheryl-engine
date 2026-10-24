@@ -12,8 +12,14 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-036` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-040` IDs;
 [next](next.md) records the next coordinator review action.
+
+U14 now plays fulfillment/breach/acknowledgment from retained actual bargain
+results. One accumulated244/244 passes with227 old names and103 unchanged child
+blocks; final affected17/17 follows library/source-identity review. ST-037–040 and next.md
+record the complete paired-state/rewind and information-authority limits. This is
+the third/final lane milestone; no automatic fourth task follows.
 
 U13 now adds bounded versioned seeded recombination of actual U12 ingredients,
 with separate owned mechanical/presentation reports and a real private caller.
@@ -1704,6 +1710,205 @@ external exactly-once history remain unverified. Promises remain pending; U14's
 later finite payoff requires a new controller-selected invocation and this retained
 accepted content. No provider/parser/public story framework/reputation/magic or new
 persistence format is introduced.
+
+## U14 playable fulfillment, breach and earlier refusal
+
+Starts clean at U13 `a7a66e217fb853690fcaf258dfe02b0f8c6750bb`. Actual source,
+committed receipt and complete saved evidence agree: 227/227 accumulated followed
+by final affected33/33 after accounting/identity review, not a second227 run. All211
+U12 names/order and89 old child blocks were retained. U11's 193/194 accumulated
+plus corrected test-only1/1 remains historical. This third/final lane milestone
+finishes the selected round; the worker schedules no fourth task. ST-037–040 match
+the compact view. New names/rules are engineering choices, not intentional v3
+personal-preference evidence; previous agent contracts establish compatibility.
+
+### ST-037 — Actual retained commitments, fixed targets and explicit agency
+
+The small proposed caller preceded dependent APIs. Implemented private caller:
+
+```cpp
+auto completed = bargain.capture().value();
+auto followup = compose_payoff(retained_content, completed, event,
+                              manual_payoff_library(), limits).value();
+auto scene = PayoffEncounter::start(followup, {"relief-payoff-01"}).value();
+auto before_handoff = scene.capture().value();
+scene.handoff(true).value(); // Explicit host presence, outside any callback.
+auto offered = scene.view().value(); // Choose only an actually issued Selection.
+```
+
+`retained_content` is U12's frozen BargainArtifact or U13's selected->content(),
+not a candidate claim or seed. Composition restores the supplied actual bargain
+pair against that retained definition, requires terminal completion and a resolved
+original outcome, and retains both meaning and source values. Original promises
+stay immutable; current payoff obligation/favor are separate state. The executable
+may select a new initial bargain once from a seed, but neither payoff composition
+nor restore reselects content. Producer edits/death cannot rewrite its accepted cost.
+
+Four context alternatives reuse eight shared manual fragments, accepted proposition
+and selected flavour. Pending ordinary/negotiated promises compile four nodes/three
+fixed edges: deliver->fulfilled, break->broken, leave->left. All three are available
+at a supported handoff; delivery additionally requires the recorded plank quantity.
+Leaving before/at the meeting retains the obligation. Help/payment/refusal compile
+three nodes/two edges: hear acknowledgment or leave. No outcome is silently treated
+as fulfillment, and prior refusal creates no debt or forced reward. All terminal
+responses are explicit fixed destinations; there is no callback routing/scene loop.
+
+Delivery consumes exactly source.planks_due (normal2/3 or negotiated1/2 in tested
+fixtures), sets current due0/delivered quantity/Obligation::Fulfilled and grants the
+single host-approved boolean relief favor. It sets recipient checked-delivery and
+attitude4. Breach spends nothing, grants no favor and sets current due0/Broken,
+heard-breach/attitude-3; the immutable source still records the original promise.
+Acknowledgment preserves earlier resources/attitudes and grants no new favor.
+Immediate one-plank help stays spent once; prior payment is never charged again.
+
+Conditions are pure and rechecked on current resources/presence. The callback
+borrows fixed retained keys, stages an entire scalar PayoffState, validates it, then
+adopts nonthrowingly. Only a saturating instrumentation counter follows app adoption;
+Engine still prepares owning transition success before effect and commits cursor/
+result without allocation afterward. No allocation/generation/I/O/provider call or
+mutable definition is used by the effect. Ordinary programming failure before app
+adoption throws; unchanged Engine fault semantics apply. Transition observations
+are not delivery credentials. Existing allocation probes are retained regressions;
+no new reusable failure-injection framework or OOM test is introduced.
+
+Alternative: rewarding the promise itself would violate its pending meaning; routing
+through effect callbacks or a general quest scheduler is unnecessary. Confidence
+high in exercised costs/agency, medium in favor/attitude values and pacing. Reversal
+is private host policy/identity/test work, with no public Engine API change.
+
+### ST-038 — Physical handoff and bounded observer authority
+
+`HandoffEvent` names the exact existing recipient and location of the accepted
+request (Nera/quay or Oren/original bank), plus an explicit unverified suspected-
+breach report allowed only for promises. Unknown actor, mismatched location or
+impossible suspicion refuses before construction. Declined ferry histories stay
+on the original bank without passage/licensing; no teleport is inferred.
+
+The scene starts before presence, with delivery/breach/ack unavailable and leaving
+available. `handoff(present)` validates an idle healthy open owner before staged
+adoption. Entering enables settlement; withdrawal disables it even for previously
+presented rows. The monotonic encountered bit retains already heard suspicion when
+presence is withdrawn. This is one finite host context, not a clock/event bus or
+scheduler. Host setters and choices are serialized outside callbacks; no external
+application callback surface exists in this private owner.
+
+Recipient knowledge starts from its actual earlier witnessed bargain: saw help,
+saw payment, heard promise/refusal. An encountered suspected-breach report may set
+belief=true while authoritative obligation remains Pending, due unchanged and
+favor=false. Successful checked delivery changes recipient knowledge/attitude and
+clears that mistaken belief. Explicit breach is a direct declaration, not omniscient
+inference. The old three-observer world knowledge/belief/attitude arrays stay EXACTLY
+unchanged, including unaware Lena. Prose uses the accepted public proposition and
+that steward's own prior interaction, never Ivo/Lena's private knowledge. Debug
+world/state printing is separate from NPC dialogue.
+
+Confidence high in tested information isolation/physical context, medium in story
+reactions. A general rumor/reputation system is rejected here; broader observers
+require a new explicit knowledge rule and selected scope.
+
+### ST-039 — Owned pairs, fresh authority and honest rewind
+
+Privately construct an actual const PayoffContent only after successful validation/
+compile. Deep-copy manual library, event and completed source pair; retain the
+immutable bargain and its finite origin chain. The new definition ID includes
+library ID/revision, source definition ID/revision, source resolution and report kind;
+source definition carries accepted flavour/plan meaning. These human identities
+are revision disciplines, not content hashes/authenticated history. Wrong-library or changed-source-revision
+restore refuses even when other fields match. Source/library/context mutations
+or destruction leave accepted prose/quantity stable; narrative reward claims do
+not grant arbitrary coins/operations.
+
+PayoffCheckpoint owns Session snapshot and ALL app values: current world resources,
+obligation/due/delivered/favor, outcome, recipient knowledge/attitude/belief, presence/
+encountered and pre-resolution plank balance. Coherence constrains world facts and
+all earlier observers to source values, allows bounded host plank edits only while
+open, and checks settled balance minus actual delivered quantity. It cross-checks
+cursor with outcome before resuming. Before-handoff, pending, acknowledged, left,
+fulfilled and broken pairs are valid at healthy idle completed boundaries.
+
+Restore validates new scalar values and a fresh Session, prepares success, then
+nonthrowingly adopts both. Failure preserves prior pair/live issued token; success
+renews the opaque incarnation even at identical persisted fields. Same/fresh-owner
+restores after settlement grant/charge nothing; old actions reject. Terminal state
+also prohibits host edits/presence and repeat settlement within that live timeline.
+Restoring an intentionally older COMPLETE pending world restores its resources
+and permits delivery again in that new timeline. Favor/delivered state and unsaved
+instrumentation counter serve different purposes; there is no global reward ledger.
+
+This is not authenticated path history, production rollback, external exactly-once
+or crash-safe delivery. It adds no disk schema/codec/sibling storage. Do not compose
+another current-world payoff from a stale original cursor after settlement; retain
+and continue the complete current pair. Explicit fresh starts/old complete restores
+are separate copied worlds/timelines, not proof of global uniqueness. Confidence
+high in exercised ownership/authority/accounting, medium in naming/revision discipline;
+future persistence/integration must preserve these distinctions.
+
+### ST-040 — Bounded composition and actual executable evidence
+
+Lower-only defaults/hard caps: eight fragments/two flavours, four context alternatives,
+four nodes/three choices (or three/two for acknowledgment), 2048-byte strings,
+16KiB charged text,64KiB new requested payload,1MiB retained parent charges,
+256Ki modeled work. Private metadata IDs are nonempty ASCII and at most64 bytes;
+source snapshot strings are bounded/C0-checked too. Validate count/limit/shape before
+loops/copies, all unused fragment text eagerly, identity/reference uniqueness,
+source context and graph constraints. Typed owned failures retain location/value/
+row or nested source/Session/compiler details; no partial usable artifact is exposed.
+
+Charge fragment scans/logical copies, key-comparison bytes, all four context rows,
+generated strings including targets/operation-table copies, requested object/vector
+slots and a conservative source-validator session/identity/work reservation. Retained
+quota sums reported payload charges for bargain, watch, ferry projection and accepted
+ferry owner; these may conservatively overlap. It is not exact memory measurement.
+Exact/one-short ingredients/candidates/nodes/choices/text/new storage/retained storage/
+work tests pass, including longest-string and64/65-byte identity boundaries and
+SIZE_MAX invalid requests without huge allocations. Resource refusals preserve
+existing accepted/live pairs. Allocation/programming exceptions propagate.
+
+Accounting exclusions: allocator capacity/rounding/control blocks, unmodeled temporary
+concatenation/library implementation overhead, Engine compiler/frozen-definition/
+index/session internals beyond the explicit validation reservation, stack/diagnostics,
+RSS/CPU time. Frozen graphs/text and prior private parent caps bound those input
+shapes independently; quota usage is charged logical payload/work, not a peak-memory
+or exact-instruction guarantee. No general validator/planner/file abstraction is added.
+
+Real caller: `story-offline --payoff SEED immediate|pay|promise|negotiate|refuse
+ deliver|break|acknowledge|leave [none|restore|drain|absent|bank]`. Usage errors exit2
+before source play; changed live resource/presence rejection exits3 without payoff
+mutation. Source fixture preparation deliberately executes ferry/watch/bargain once;
+view/compose/compile/inspect/start/restore do not apply payoff effects. Representative
+literal final state for `1 promise deliver restore`:
+
+```text
+Payoff actual: coins=5 planks=1 ready=1 obligation=fulfilled due=0 delivered=2 favor=1 outcome=fulfilled
+Recipient: knowledge=checked-delivery attitude=4 believes-broken=0
+Effects: ferry=1 watch=1 bargain=1 payoff=1
+```
+
+Plan3 delivers three/planks0 instead; negotiated plan1 delivers one/planks2.
+Breach leaves planks3/favor0/Broken/attitude-3; leave keeps due2/Pending/favor0.
+Immediate acknowledgment leaves planks2; prior-payment acknowledgment keeps coins3;
+bank refusal acknowledgment preserves coins8/planks3/no licensed passage/attitude-1.
+
+Executed accumulated **244/244** once: all **227 predecessor names/order**, all
+**103 older full child blocks byte-identical**, fourteen payoff contract cases and
+three transcript cases. Sixteen new actual children:8 exit0,6 expected usage2,
+2 expected live refusal3. Source review then qualified definition identity by library
+ID and enhanced existing identity/prose-authority/string-boundary assertions (17/17
+affected pass), then also bound the source revision with a real recompiled-parent
+refusal test (final17/17 pass). All16 child blocks remain unchanged in both rechecks. No native command/test
+failed or skipped; no ASan/UBSan diagnostics. A later static checkpoint-audit helper
+had a Python conditional-spacing SyntaxError; it was corrected and passed without
+source/native changes (u14-checkpoint-audit.log). No second accumulated run is claimed.
+Complete logs, immediate exits, exact commands and real shared Engine sanitizer
+compile/link proof are retained in next.md/receipt evidence. Queued native commands
+were kept alive and allowed to drain rather than canceled/relaunched.
+
+Confidence high in executed ownership/authority/consequences, medium in numerical
+caps/creative usefulness. Fun/comprehension/provider quality, LSan (ST-008), broader
+platforms/Release/SDK/runtime/visual integration and durable/external delivery remain
+unverified. No provider/free-text parser, public story framework, magic integration,
+global reputation or fourth unit is selected. Worker ends idle for coordinator
+review of this third/final lane milestone and finite-round completion.
 
 ## Verification environment
 

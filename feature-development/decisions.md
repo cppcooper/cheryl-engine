@@ -383,3 +383,42 @@ allocation exceptions propagate. This trades tight resource estimates for conser
 quotas with explicit exclusions. Confidence is high in exact boundary/child checks,
 medium in caps; broader platforms, leaks, participant fun and durable history remain
 unverified, with U14 selected separately.
+
+## ST-037 — Pay off retained commitments through explicit choices
+
+Compose a finite follow-up from the retained accepted bargain and its validated
+completed pair. Delivery spends the recorded planks and grants one favor; breach
+clears the pending obligation as broken without reward; leaving keeps it pending.
+Earlier help/payment/refusal receive distinct acknowledgment without another charge.
+This trades a quest system for playable concrete continuity. Confidence is high
+in literal consequences, medium in reward/pacing choices; reversal requires private
+policy, identity and expectation review.
+
+## ST-038 — Bind recipient reactions to explicit handoff information
+
+Bind one existing steward to the actual bank/quay and use a serialized host presence
+event to enable settlement. An explicit suspicion may affect belief while obligation
+facts remain pending; checked delivery or declared breach updates only that recipient.
+Other observers retain their knowledge and attitudes. This trades social simulation
+for inspectable witness rules. Confidence is high in isolation checks, medium in
+narrative reactions; expansion requires new host-approved information rules.
+
+## ST-039 — Resume complete payoff pairs and distinguish rewind
+
+Bind library/source IDs and revisions; own exact content and capture cursor,
+resources, obligation, delivered quantity, favor, recipient state and presence.
+Validate fresh values/Session before nonthrowing adoption; failed restore preserves
+tokens, success renews authority. A terminal timeline rejects repeat settlement;
+restoring an older complete world permits a new timeline. Confidence is high in
+exercised ownership/accounting, medium in identity discipline; this trades
+authenticated/durable history for a bounded in-memory checkpoint.
+
+## ST-040 — Bound the private payoff and retain executed evidence
+
+Preflight eight fragments, four context alternatives, text, new payload, retained
+parent charges, graph and modeled work before growth. Keep owned typed refusals
+and normal allocation exceptions explicit. Verify the actual headless executable
+and accumulated regressions under the existing wrapper. This trades exact peak-memory
+accounting for bounded conservative quotas with exclusions. Confidence is high in
+native boundaries, medium in caps; leaks, other platforms, participant fun and
+external durability remain unverified.
