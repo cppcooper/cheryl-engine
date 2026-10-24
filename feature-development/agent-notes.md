@@ -1,13 +1,13 @@
 # World integration contracts and provenance
 
-WORLD-U7 is a standalone continuation on exact clean reviewed feat/tilemap
-`0654533c01f29058262ffdb7e4a26db5205515c0`. The committed U6 receipt was ready/true,
-with12 nonempty evidence logs and127 passing XML entries inspected before edits.
-WINT-018–021 extend this current world namespace. The explicit user requirement
-selects Engine memory/object services; exact hooks and scratch policy are delegated
-engineering, not evidence of personal API taste. Older receipts, source archives
-and completed plans remain unchanged. Executed evidence is in next.md and the
-standalone continuation receipt; no further unit is selected.
+WORLD-U8 is the current standalone continuation on exact clean reviewed U7
+`bb3a0421d4d6fdc7d1a609ada441a04282288b6c`. The manifest-bound committed U7 receipt
+hash and ten nonempty logs match; reviewed170 passing CPU names remain historical
+execution, not allocator conformance certification. This invocation implements the
+three specified boundary repairs and178 passing accumulated CPU cases. No timing
+was attempted; U8's full benchmark receipt is BLOCKED/false. WINT-019 corrects the
+old cross-type conclusion; WINT-022/023 record reservation and the bounded stop.
+Older receipts/archives are immutable; next.md owns exact evidence/next action.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -22,7 +22,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–021 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–023 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records
@@ -1011,25 +1011,35 @@ probes; this does not establish another standard library or installed SDK.
 
 ## WINT-019 — Preserve typed pool lifetime and construction meaning
 
-ObjectPoolAllocator<T> remains class-only and retains PoolState<T>, its per-T
-BlockManagement state and Constructor<T> tracker. A new explicit constructor can
-capture a live local Pool<T> facade; default construction captures the established
-singleton. The local facade need not outlive it. Copies retain their source state;
-rvalue operations intentionally use copy semantics so moved-from allocators remain
-usable. Different-T converting construction captures the destination class pool;
-rebind-back is equivalent, without pretending typed storage can be returned as
-another class. New/rebound allocators must be constructed while their facade is
-live; retained contexts do not extend arbitrary singleton acquisition. Growing a
-retained typed pool still requires its underlying byte-manager facade to be live;
-existing backing construction/final return retain their captured contexts.
+ObjectPoolAllocator<T> remains class-only. U8 keeps the existing per-T block and
+Constructor<T> domains but corrects the U7 comparison/conversion conclusion.
+A shared retained directory owns typed contexts acquired through the existing
+Pool<T> facades. Default construction/capture may initialize it; a converting
+constructor ONLY copies the directory shared_ptr, declared noexcept with no lazy
+destination singleton access. Actual first-use tests confirm destination
+Pool<Second/Third>::get_existing stays null through conversion and law checks;
+first allocate performs the allowed setup. context() may also acquire a missing
+entry and may throw; it is not converting construction or valid deallocation.
+Same-type copies retain their captured context; moves deliberately copy as before.
 
-BlockManagement<T>::shared_state and Constructor<T>::release_context are shared
-per EXACT T, not per PoolState handle. Therefore same-T allocators are interchangeable
-and is_always_equal is true; different T comparisons are false. A meaningful test
-captures a local facade, destroys it, creates a different context handle, compares
-equal, destroys/returns the old allocation through the new allocator and allocates /
-constructs again through the retained old allocator. Pointer spelling is explicitly
-not domain identity. No new shared-domain registry or metadata copy is added.
+All cross-type comparisons return true for this shared service family. The
+independent oracle compares a==b, b==a, a==A(b), b==B(a) and round trips in both
+directions, rather than repeating is_same_v. U7's false cross-type expectation was
+wrong: a shared-family comparison is NOT permission to free a U pointer as T.
+Different typed bookkeeping still exists, while the comparison law holds. Do not
+rewrite U7's receipt or call its passing wrong assertion conformance evidence.
+A local captured facade can disappear; valid allocation registered the exact
+return type before publication, and the retained directory holds that context for
+an allocator/node handle whose local typed cache is empty. Valid deallocation
+performs a nonallocating find and typed return, never first destination setup.
+
+The context directory is metadata, not another storage backend or a replacement
+singleton lifecycle. It uses ordinary std-owned bookkeeping to avoid recursive
+Engine allocation. It can retain class contexts through process/final-handle
+lifetime, as existing global typed bookkeeping already caches storage. Extra
+shared-owner/map/mutex cost must be counted in later measurement. New acquisition
+and growing typed backing still require live underlying facades. The source-tree
+GNU shared build is verified; cross-library unload/other-platform ABI is not.
 
 Positive bounded allocation delegates to retained retrieve_block; deallocate
 returns exactly N intended typed slots, not a byte section. Existing partial-slot
@@ -1163,3 +1173,127 @@ or measured here. The explicit user service requirement does not prove those pat
 already migrated. GNU/Linux Debug/shared ASan/UBSan evidence leaves leak detection,
 real input/display/assets/teardown/fun, installed SDK/static/Release/other toolchains
 and stronger file durability open. No unchanged X11 retry or automatic next task.
+
+## WINT-022 — Reserve release metadata before publishing storage
+
+The review identifies actual std set/map emplace/reserve during return_locked,
+not a hypothetical allocator typedef problem. U8 keeps the five existing
+collections, split/merge ordering and raw byte/typed backing algorithms. It adds
+empty node-handle banks to BlockManagement<T>::State. Checkout, record_new and
+fill_request fund future returns BEFORE publishing a checked-out range. Node
+handles recycle into banks; their Block keys are cleared, so spare metadata does
+not retain backing owners. Vector capacity covers all current live records being
+recycled, preventing a valid return from growing a bank vector.
+
+Typed outstanding units count checked-out slots; each can eventually return
+separately. Reserve at least3*units+3 section nodes and units+1 pool/timestamp nodes,
+with checked arithmetic, plus capacity for currently live records. Three sections
+cover prefix, returned middle and suffix before merging. Returning c typed slots
+reduces outstanding units by c. Byte units count checked-out sections, not bytes:
+whole byte returns need no extra admission; a low-level middle byte return that
+creates two live remaining sections admits the additional unit BEFORE mutation.
+Its failure preserves the prior partition. Repeated boundary returns reuse
+existing free-neighbor metadata. This avoids reserving metadata for every byte.
+
+Timestamp buckets are reserved for registered owners (including a prospective
+owner), not merely current timestamp count; register_free cannot shrink below
+outstanding owner requirements. Whole return inserts a preallocated timestamp
+node into adequate buckets. Adjacent-free merging and stale/cull/release behavior
+remain. Low-level direct record editors can still require preparation; they do
+not establish the valid allocator checkout/return invariant by arbitrary set
+mutation. Original low-level block tests remain registered and pass. Valid
+allocator returns use only lookups, locks, shared-owner copies and compatible
+node transfers, no fresh metadata allocation. Invalid/double/out-of-bounds
+SERVICE returns still diagnose through PoolState/Manager/context methods.
+Invalid allocator deallocation violates its standard precondition; the noexcept
+adapter is not the checked arbitrary-pointer service API.
+
+State's metadata collections/banks use std::pmr containers with explicit
+new_delete_resource by default, without changing the global default PMR resource
+or allocating bookkeeping recursively from CE. An optional borrowed metadata
+resource must outlive State. This narrow injection exercises the ACTUAL
+BlockTransactions and PoolState producer under deterministic refusal. It changes
+public State collection types/layout and allocator object layout (directory
+handle); all relevant CPU Engine/consumer code is rebuilt. No ABI compatibility
+or install/other-library promise is made. This is a source-level boundary repair,
+not a new manager, allocator backend, slab geometry or container facade.
+
+An initial compile exposed uses_allocator attempting allocator injection into
+node_handle's move. A small State-local ReturnNode holder avoids that problem;
+its PMR vector counts allocation/refusal too. A later strict world consumer caught
+signed int-to-size_t arithmetic; explicit size_t branch values fix it with Werror
+retained. Both failed diagnostics remain. Failed admission may retain increased
+EMPTY metadata capacity, while active partitions/published storage are unchanged.
+Allocation/programming exceptions during admission propagate normally.
+
+Real refusal producer evidence: a private derived ActualPool installs an owned
+State using a scoped rejecting metadata resource, then runs the SAME inherited
+PoolState retrieve/return/retrieve_objects and BlockTransactions code. Backing
+still comes from real Engine ObjectMemoryManager. Void-state proof retains an
+actual Engine managed block. All PMR collection-node/bucket/bank-vector requests
+are observed; no global new interception or alternate Engine implementation.
+This is a metadata-producer oracle, NOT whole-process malloc denial: constructor
+tracking/control blocks and raw backing outside that resource are excluded.
+
+Typed nine-slot fragmented returns in literal order4,0,8,2,6,1,7,3,5, whole byte
+returns, reuse, constructor unwinding and final retained pool-handle release make
+ZERO new metadata requests while refusal is active. Invalid/double returns leave
+the completed partition intact. Twelve successive admission-allocation refusal
+positions all fail before publication, preserving every prior owner/section/free
+record; each older accepted allocation then returns with zero new requests.
+Subsequent valid checkout/construction succeeds. Culling/regression tests pass.
+The scoped producer records actual peak requested metadata5344 bytes in the
+nine-slot case; all its resource bytes return to0 after State ownership ends.
+This peak excludes State/shared-control objects, tracking, raw backing, global
+directory and malloc overhead. It is not per-container metadata, RSS or compactness.
+
+## WINT-023 — Checkpoint conformance before locality measurement
+
+The selected future caller is still ordinary standard containers:
+
+```cpp
+// PROPOSED benchmark notation, not implemented/run or a public Engine API:
+const auto trace = fixed_trace(512, fixed_seed); // hard live maximum8192
+run_trace<std::list<Record, std::allocator<Record>>>(trace.list, exact_list_sequence);
+run_trace<std::list<Record, PoolAlloc<Record>>>(trace.list, exact_list_sequence);
+run_trace<std::map<Key, Record, Compare, std::allocator<Pair>>>(trace.map, exact_ordered_pairs);
+run_trace<std::map<Key, Record, Compare, PoolAlloc<Pair>>>(trace.map, exact_ordered_pairs);
+```
+
+A future declaration would use finite ordered/shuffled insertion, scans/map
+hit-miss queries, erase-half/refill, two fixed churn rounds, sparse occupancy and
+cleanup, with traces/oracles generated outside timing and7 fresh-process optimized
+samples. Warm reuse would be separately labelled within process. This is a proposed
+finite measurement, NOT current evidence or authorization for another invocation.
+Current default ObjectMemoryManager already grows1.29*request+64*sizeof(actual U);
+no tuning, assumed64-slot claim or redundant third column is introduced.
+
+Executed concrete callers instead establish the repair foundation: actual
+std::list<Record,Measured<...,ObjectPoolAllocator>> inserts0..7, erases evens,
+refills8/10/12/14 and compares exact1/3/5/7/8/10/12/14. Surviving references remain
+valid through unrelated erasure/refill/swap; copy/move/swap/cleanup balance.
+Actual map extraction survives source destruction, reinserts with compatible
+allocator, then survives another container destruction before final slot return.
+Measured hooks verify actual rebound typed free ranges, not only equal outputs.
+Separate alignas(256) nontrivial throwing list/map values preserve every successful
+construction/destruction and allow valid construction after failure. Allocators
+serve contiguous n-object ranges; no live compaction/new container is added.
+
+Final accumulated178/178 once,0 failed/skipped,116.49s, contains all170 prior U7
+names plus8 new law/lifetime/refusal cases. Earlier45/45 focused repair cases are
+preserved separately, before the final stricter compile/cases;223 test executions
+cover178 unique names. All16 world children exit0. Existing memory/block/reservation,
+editor/history/generated/retained-frame and public CPU callers remain. Normal
+single shared Engine/header/import/loader checks pass, including17 prior producer
+pairs and actual imported diagnostics. No Engine implementation archive substitute.
+The graphics output is preserved, NOT rebuilt/run/accepted for U8.
+
+BLOCKED measurement gate: this one invocation was spent on the admitted related
+repair, not implementing or executing a fair optimized standard-vs-Engine trace.
+There is no Release configuration, timing sample, p50/p95/max, per-slab fullness,
+allocator-level cold/warm reuse comparison or cache-hit percentage. Only the small
+refusal-producer metadata peak is measured; no performance conclusion follows.
+WORLD-U8 receipt is therefore blocked/false despite passing repair checks. Next
+action is coordinator review of this source/evidence before any separately selected
+measurement assignment. Do not auto-resume, append jobs or silently mark the
+benchmark ready. Graphics/fun/leaks/packaging/platform/durability remain open.

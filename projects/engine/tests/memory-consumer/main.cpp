@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <list>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -358,12 +359,198 @@ TEST(allocator_containers, pool_retained_context) {
     EXPECT_EQ(later->value, 23);
     old.destroy(later);
     old.deallocate(later, 2);
-    // Different slot types are different domains, even though their byte backing is shared.
+    // Cross-type comparison identifies the shared service family, not typed-pointer interchangeability.
     struct Other {
         int value;
     };
     A::ObjectPoolAllocator<Other> rebound(old);
-    EXPECT_FALSE(rebound == old);
+    EXPECT_TRUE(rebound == old);
+    EXPECT_TRUE(old == rebound);
     Alloc roundtrip(rebound);
     EXPECT_EQ(roundtrip, old);
+}
+
+namespace {
+    template <class Left, class Right> void equality_laws(const Left& left, const Right& right) {
+        static_assert(std::is_nothrow_constructible_v<Left, const Right&>);
+        static_assert(std::is_nothrow_constructible_v<Right, const Left&>);
+        const Left round_left(right);
+        const Right round_right(left);
+        EXPECT_EQ(left == right, right == left);
+        EXPECT_EQ(left == right, left == round_left);
+        EXPECT_EQ(right == left, right == round_right);
+        EXPECT_EQ(left == round_left, round_left == left);
+        EXPECT_TRUE(left == round_right);
+        EXPECT_TRUE(right == round_left);
+    }
+}
+
+TEST(allocator_containers, rebind_laws) {
+    struct First {
+        int value;
+    };
+    struct Second {
+        double value;
+    };
+    struct Third {
+        int value;
+    };
+    A::ObjectPoolAllocator<First> first;
+    ASSERT_EQ(CE::Memory::Objects::Pool<Second>::get_existing(), nullptr);
+    A::ObjectPoolAllocator<Second> second(first);
+    EXPECT_EQ(CE::Memory::Objects::Pool<Second>::get_existing(), nullptr); // First conversion did NOT acquire destination.
+    equality_laws(first, second);
+    A::ObjectPoolAllocator<Third> third(second);
+    equality_laws(first, third);
+    EXPECT_EQ(CE::Memory::Objects::Pool<Second>::get_existing(), nullptr);
+    EXPECT_EQ(CE::Memory::Objects::Pool<Third>::get_existing(), nullptr);
+    auto* p = second.allocate(2); // First type setup is admitted here, where allocation failure is allowed.
+    second.construct(p, Second{3.5});
+    EXPECT_EQ(p->value, 3.5);
+    A::ObjectPoolAllocator<Second> other(third);
+    other.destroy(p);
+    other.deallocate(p, 2);
+    equality_laws(A::DefaultAllocator<int>{}, A::DefaultAllocator<double>{});
+    equality_laws(A::ObjectAllocator<int>{}, A::ObjectAllocator<double>{});
+    static_assert(noexcept(first.deallocate(nullptr, 1)));
+    static_assert(noexcept(A::DefaultAllocator<int>{}.deallocate(nullptr, 1)));
+    static_assert(noexcept(A::ObjectAllocator<int>{}.deallocate(nullptr, 1)));
+}
+
+TEST(allocator_containers, extracted_node_owner) {
+    Tracked::reset();
+    using Pair = std::pair<const int, Tracked>;
+    using M = Measured<Pair, A::ObjectPoolAllocator>;
+    using Map = std::map<int, Tracked, std::less<int>, M>;
+    M alloc;
+    Map::node_type detached;
+    Tracked* stable = nullptr;
+    const auto counters = alloc.activity;
+    {
+        Map source(std::less<int>{}, alloc);
+        source.try_emplace(1, 101);
+        source.try_emplace(2, 202);
+        stable = &source.at(2);
+        detached = source.extract(2);
+        EXPECT_EQ(&detached.mapped(), stable);
+    }
+    ASSERT_TRUE(detached);
+    EXPECT_EQ(Tracked::live, 1);
+    EXPECT_EQ(detached.mapped().value, 202);
+    EXPECT_EQ(counters->allocations - counters->returns, 1u);
+    {
+        Map destination(std::less<int>{}, detached.get_allocator());
+        const auto inserted = destination.insert(std::move(detached));
+        ASSERT_TRUE(inserted.inserted);
+        EXPECT_EQ(&inserted.position->second, stable);
+        destination.try_emplace(3, 303);
+        auto copy = destination;
+        auto moved = std::move(copy);
+        destination.swap(moved);
+        EXPECT_EQ(destination.at(2).value, 202);
+        detached = destination.extract(2);
+    }
+    EXPECT_EQ(Tracked::live, 1);
+    EXPECT_EQ(detached.mapped().value, 202);
+    detached = {}; // Last extracted node returns its actual rebound class slot.
+    EXPECT_EQ(Tracked::live, 0);
+    EXPECT_EQ(counters->allocations, counters->returns);
+    EXPECT_EQ(counters->constructions, counters->destructions);
+    EXPECT_EQ(Tracked::constructed, Tracked::destroyed);
+}
+
+TEST(allocator_containers, list_node_owner) {
+    Tracked::reset();
+    using M = Measured<Tracked, A::ObjectPoolAllocator>;
+    M alloc;
+    const auto counts = alloc.activity;
+    {
+        std::list<Tracked, M> values(alloc);
+        for (int i = 0; i < 8; ++i)
+            values.emplace_back(i);
+        auto survivor = std::next(values.begin(), 3);
+        const auto* stable = &*survivor;
+        for (auto it = values.begin(); it != values.end();)
+            if (it->value % 2 == 0)
+                it = values.erase(it);
+            else
+                ++it;
+        EXPECT_EQ(&*survivor, stable);
+        EXPECT_EQ(stable->value, 3);
+        for (int i : {8, 10, 12, 14})
+            values.emplace_back(i);
+        const std::array expected{1, 3, 5, 7, 8, 10, 12, 14};
+        std::size_t at = 0;
+        for (const auto& value : values) {
+            ASSERT_LT(at, expected.size());
+            EXPECT_EQ(value.value, expected[at++]);
+        }
+        EXPECT_EQ(at, expected.size());
+        EXPECT_EQ(&*survivor, stable);
+        std::list<Tracked, M> other(alloc);
+        other.emplace_back(99);
+        values.swap(other);
+        EXPECT_EQ(&*survivor, stable);
+        EXPECT_EQ(values.front().value, 99);
+        auto copy = other;
+        auto moved = std::move(copy);
+        values = std::move(moved);
+        EXPECT_EQ(values.size(), expected.size());
+        auto it = values.begin();
+        for (int want : expected) {
+            ASSERT_NE(it, values.end());
+            EXPECT_EQ(it->value, want);
+            ++it;
+        }
+        other.clear();
+        values.clear();
+        EXPECT_EQ(Tracked::live, 0);
+    }
+    EXPECT_EQ(counts->allocations, counts->returns);
+    EXPECT_EQ(counts->constructions, counts->destructions);
+    EXPECT_GT(counts->subobjects, 0u); // std::list constructs Record inside actual rebound node.
+    EXPECT_EQ(Tracked::constructed, Tracked::destroyed);
+}
+
+namespace {
+    struct alignas(256) AlignedItem {
+        inline static int live = 0, made = 0, destroyed = 0;
+        const int id;
+        explicit AlignedItem(int v)
+        : id(v) {
+            if (v < 0)
+                throw 17;
+            ++live;
+            ++made;
+        }
+        AlignedItem(const AlignedItem& other)
+        : AlignedItem(other.id) {}
+        ~AlignedItem() {
+            --live;
+            ++destroyed;
+        }
+    };
+}
+TEST(allocator_containers, aligned_throwing_nodes) {
+    AlignedItem::live = AlignedItem::made = AlignedItem::destroyed = 0;
+    {
+        using ListAlloc = A::ObjectPoolAllocator<AlignedItem>;
+        std::list<AlignedItem, ListAlloc> list;
+        list.emplace_back(7);
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&list.front()) % 256, 0u);
+        EXPECT_THROW(list.emplace_back(-1), int);
+        EXPECT_EQ(list.size(), 1u);
+        list.emplace_back(8);
+        EXPECT_EQ(list.back().id, 8);
+        using Pair = std::pair<const int, AlignedItem>;
+        std::map<int, AlignedItem, std::less<int>, A::ObjectPoolAllocator<Pair>> map;
+        map.try_emplace(3, 13);
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&map.at(3)) % 256, 0u);
+        EXPECT_THROW(map.try_emplace(4, -1), int);
+        EXPECT_EQ(map.size(), 1u);
+        map.try_emplace(4, 14);
+        EXPECT_EQ(map.at(4).id, 14);
+    }
+    EXPECT_EQ(AlignedItem::live, 0);
+    EXPECT_EQ(AlignedItem::made, AlignedItem::destroyed);
 }

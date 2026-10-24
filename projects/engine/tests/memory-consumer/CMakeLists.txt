@@ -1,6 +1,6 @@
 # Reuse focused resource cases without enabling the broad acceptance campaign.
 include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
-add_executable(tests-memory-containers main.cpp
+add_executable(tests-memory-containers main.cpp release.cpp
     ../all-tests/src/resources/memory.cpp
     ../all-tests/src/resources/reservations.cpp
     ../all-tests/src/templates/block.cpp)

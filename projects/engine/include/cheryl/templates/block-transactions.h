@@ -5,8 +5,9 @@ namespace CE::Memory {
 
     /**
  * Transactions over one retained CE::Memory::BlockManagement<T>::State. All five collections
- * are locked together. Replacement nodes are allocated before existing records
- * change, then transferred with the same allocator and nonthrowing comparators.
+ * are locked together. Checkout reserves empty release nodes before publishing
+ * storage. Whole byte/typed range returns recycle those nodes without allocating;
+ * low-level byte fragmentation may admit extra metadata before mutation.
  * Backing allocation and final owner destruction happen outside these locks.
  * Direct collection access still requires external quiescence and the same invariants.
  * Included by block.h after its CE::Memory::Block hash specialization.
@@ -17,13 +18,13 @@ namespace CE::Memory {
         /** Shared per-T collections retained independently of manager facades. */
         using State = typename ::CE::Memory::BlockManagement<T>::State;
         /** Reusable free-range collection, ordered by checkout suitability. */
-        using Pool = std::set<BlockType, ::CE::Memory::Ordering::PoolOrder<T>>;
+        using Pool = typename State::PoolRecords;
         /** Address-ordered partition sections for split backing allocations. */
-        using Sections = std::set<BlockType, ::CE::Memory::Ordering::HeadOrder<T>>;
+        using Sections = typename State::SectionRecords;
         /** Complete backing-allocation metadata retaining underlying owners. */
-        using Registry = std::set<BlockType, ::CE::Memory::Ordering::RegistryOrder<T>>;
+        using Registry = typename State::OwnerRecords;
         /** Timestamps of complete free owners; not timestamps for every free section. */
-        using Stale = std::unordered_map<BlockType, typename ::CE::Memory::BlockManagement<T>::tpoint>;
+        using Stale = typename State::StaleRecords;
 
     private:
         struct Locked {
@@ -95,34 +96,82 @@ namespace CE::Memory {
             return std::nullopt;
         }
 
+        static std::size_t units(std::size_t count) {
+            if constexpr (std::is_void_v<T>)
+                return 1;
+            else
+                return count;
+        }
+        template <class Records, class Bank> static void recycle(Records& records, Bank& bank, const BlockType& key) {
+            auto node = records.extract(key);
+            if (node.empty())
+                return;
+            if constexpr (requires { node.mapped(); }) {
+                node.key() = {};
+                node.mapped() = {};
+            } else
+                node.value() = {};
+            bank.push_back(std::move(node));
+        }
+        template <class Records, class Bank> static void prepare_bank(Records& live, Bank& bank, std::size_t required) {
+            const auto missing = required > bank.size() ? required - bank.size() : 0;
+            if (missing > bank.max_size() - bank.size() || live.size() > bank.max_size() - bank.size() - missing)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata capacity cannot be represented");
+            // Capacity also covers recycling EVERY currently live record; returns never grow this vector.
+            bank.reserve(bank.size() + missing + live.size());
+            while (bank.size() < required) {
+                Records one(live.get_allocator());
+                if constexpr (requires { typename Records::mapped_type; })
+                    one.emplace(BlockType{}, typename Records::mapped_type{});
+                else
+                    one.emplace(BlockType{});
+                bank.push_back(one.extract(one.begin()));
+            }
+        }
+        static void prepare_returns(State& state, std::size_t needed) {
+            if (needed > (std::numeric_limits<std::size_t>::max() - 3) / 3)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata count cannot be represented");
+            prepare_bank(std::get<1>(state.sections), state.section_spares, 3 * needed + 3);
+            prepare_bank(std::get<1>(state.pool), state.pool_spares, needed + 1);
+            prepare_bank(std::get<1>(state.stale), state.stale_spares, needed + 1);
+            // At most one timestamp per registered owner, including a prospective new owner.
+            std::get<1>(state.stale).reserve(std::get<1>(state.registry).size() + 1);
+        }
+        template <class Records, class Bank> static void insert_spare(Records& records, Bank& bank, const BlockType& block) {
+            auto node = std::move(bank.back().node);
+            bank.pop_back();
+            node.value() = block;
+            records.insert(std::move(node));
+        }
+
         static BlockType checkout_locked(State& state, BlockType original, std::size_t count, bool fresh) {
             auto& pool = std::get<1>(state.pool);
             auto& sections = std::get<1>(state.sections);
             auto& registry = std::get<1>(state.registry);
             const auto point = split_point(original, count);
             const auto head = slice(original, 0, point);
-            Sections prepared_sections;
-            Pool prepared_pool;
-            Registry prepared_registry;
+            Registry prepared_registry(registry.get_allocator());
             if (fresh)
                 prepared_registry.emplace(original);
-            if (point < original.length) {
-                const auto tail = slice(original, point, original.length - point);
-                prepared_sections.emplace(head);
-                prepared_sections.emplace(tail);
-                prepared_pool.emplace(tail);
-            } else if (exact(sections, original)) {
-                prepared_sections.emplace(head);
-            }
-
-            // Everything that can allocate has succeeded. Transfers below allocate no nodes.
-            pool.erase(original);
-            sections.erase(original);
-            std::get<1>(state.stale).erase(original);
+            if (units(head.length) > std::numeric_limits<std::size_t>::max() - state.return_units)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata units cannot be represented");
+            const auto next_units = state.return_units + units(head.length);
+            prepare_returns(state, next_units);
+            // No allocations after admission. Recycle metadata as well as raw storage.
+            recycle(pool, state.pool_spares, original);
+            recycle(sections, state.section_spares, original);
+            recycle(std::get<1>(state.stale), state.stale_spares, original);
             std::get<1>(state.release).erase(original);
             registry.merge(prepared_registry);
-            sections.merge(prepared_sections);
-            pool.merge(prepared_pool);
+            if (point < original.length) {
+                const auto tail = slice(original, point, original.length - point);
+                insert_spare(sections, state.section_spares, head);
+                insert_spare(sections, state.section_spares, tail);
+                insert_spare(pool, state.pool_spares, tail);
+            } else if (head != *registry.find(BlockType{head.owner, head.owner, {}, 0})) {
+                insert_spare(sections, state.section_spares, head);
+            }
+            state.return_units = next_units;
             return head;
         }
 
@@ -168,35 +217,46 @@ namespace CE::Memory {
                 merged.length += right->length;
             const bool whole = merged == *owner;
 
-            Sections prepared_sections;
-            Pool prepared_pool;
-            Stale prepared_stale;
-            if (offset > 0)
-                prepared_sections.emplace(slice(original, 0, offset));
-            if (offset + count < original.length)
-                prepared_sections.emplace(slice(original, offset + count, original.length - offset - count));
-            if (!whole)
-                prepared_sections.emplace(merged);
-            prepared_pool.emplace(merged);
-            if (whole) {
-                prepared_stale.emplace(merged, ::CE::Memory::BlockManagement<T>::clock::now());
-                // reserve can fail, but no logical record has changed yet.
-                stale.reserve(stale.size() + 1);
+            // Byte partial-return services may create two remaining active ranges.
+            // Whole allocator returns never enter this allocating admission path.
+            const std::size_t remaining = (offset > 0 ? std::size_t{1} : 0) + (offset + count < original.length ? std::size_t{1} : 0);
+            if constexpr (std::is_void_v<T>) {
+                if (remaining > 1)
+                    prepare_returns(state, state.return_units + remaining - 1);
             }
-
-            sections.erase(original);
+            // Low-level record editors must prepare their own domain before use;
+            // preserve the existing primitive path, which may allocate before mutation.
+            if (state.section_spares.size() < 3 || state.pool_spares.empty() || state.stale_spares.empty())
+                prepare_returns(state, state.return_units + units(original.length));
+            recycle(sections, state.section_spares, original);
             for (const auto& neighbor : {left, right}) {
                 if (neighbor) {
-                    pool.erase(*neighbor);
-                    sections.erase(*neighbor);
+                    recycle(pool, state.pool_spares, *neighbor);
+                    recycle(sections, state.section_spares, *neighbor);
                 }
             }
-            sections.merge(prepared_sections);
-            pool.merge(prepared_pool);
+            if (offset > 0)
+                insert_spare(sections, state.section_spares, slice(original, 0, offset));
+            if (offset + count < original.length)
+                insert_spare(sections, state.section_spares, slice(original, offset + count, original.length - offset - count));
+            if (!whole)
+                insert_spare(sections, state.section_spares, merged);
+            insert_spare(pool, state.pool_spares, merged);
             if (whole) {
                 release.erase(merged);
-                stale.erase(merged);
-                stale.merge(prepared_stale);
+                recycle(stale, state.stale_spares, merged);
+                auto node = std::move(state.stale_spares.back().node);
+                state.stale_spares.pop_back();
+                node.key() = merged;
+                node.mapped() = ::CE::Memory::BlockManagement<T>::clock::now();
+                stale.insert(std::move(node));
+            }
+            if constexpr (std::is_void_v<T>) {
+                state.return_units += remaining;
+                if (state.return_units)
+                    --state.return_units;
+            } else {
+                state.return_units = count <= state.return_units ? state.return_units - count : 0;
             }
             return merged;
         }
@@ -241,23 +301,31 @@ namespace CE::Memory {
         }
 
         static void register_free(const std::shared_ptr<State>& state, const BlockType& block) {
-            Registry registry;
-            Pool pool;
-            Stale stale;
+            Registry registry(std::get<1>(state->registry).get_allocator());
+            Pool pool(std::get<1>(state->pool).get_allocator());
+            Stale stale(std::get<1>(state->stale).get_allocator());
             registry.emplace(block);
             pool.emplace(block);
             stale.emplace(block, ::CE::Memory::BlockManagement<T>::clock::now());
             Locked lock(*state);
             auto& live_stale = std::get<1>(state->stale);
-            live_stale.reserve(live_stale.size() + 1);
+            live_stale.reserve(std::get<1>(state->registry).size() + 1);
             std::get<1>(state->registry).merge(registry);
             std::get<1>(state->pool).merge(pool);
             live_stale.merge(stale);
         }
 
         static void record_new(const std::shared_ptr<State>& state, const BlockType& block) {
-            std::unique_lock lock(std::get<0>(state->registry));
-            std::get<1>(state->registry).emplace(block);
+            Locked lock(*state);
+            auto& registry = std::get<1>(state->registry);
+            if (exact(registry, block))
+                return;
+            const auto added = units(block.length);
+            if (added > std::numeric_limits<std::size_t>::max() - state->return_units)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata units cannot be represented");
+            prepare_returns(*state, state->return_units + added);
+            registry.emplace(block);
+            state->return_units += added;
         }
 
         static void mark_stale(const std::shared_ptr<State>& state, const BlockType& block) {
@@ -283,8 +351,10 @@ namespace CE::Memory {
             for (auto it = pool.begin(); it != pool.end(); ++it) {
                 if (it->alignment >= alignment && it->length >= count) {
                     const auto result = *it;
-                    pool.erase(it);
-                    std::get<1>(state->stale).erase(result);
+                    prepare_returns(*state, state->return_units + units(result.length));
+                    recycle(pool, state->pool_spares, result);
+                    recycle(std::get<1>(state->stale), state->stale_spares, result);
+                    state->return_units += units(result.length);
                     std::get<1>(state->release).erase(result);
                     return result;
                 }
@@ -293,7 +363,7 @@ namespace CE::Memory {
         }
 
         static void cull(const std::shared_ptr<State>& state, std::chrono::minutes age) {
-            Registry prepared;
+            Registry prepared(std::get<1>(state->release).get_allocator());
             const auto now = ::CE::Memory::BlockManagement<T>::clock::now();
             std::scoped_lock lock(std::get<0>(state->stale), std::get<0>(state->release));
             auto& stale = std::get<1>(state->stale);
@@ -308,7 +378,7 @@ namespace CE::Memory {
         }
 
         static void release_culled(const std::shared_ptr<State>& state) {
-            Registry retired;
+            Registry retired(std::get<1>(state->release).get_allocator());
             {
                 Locked lock(*state);
                 auto& registry = std::get<1>(state->registry);
@@ -359,7 +429,7 @@ namespace CE::Memory {
  * @param state Nonnull retained bookkeeping domain matching the range.
  * @param block Valid owner/head/alignment/length; all users and live-object obligations must already be finished.
  * @return Merged free range, or nullopt for unknown, zero, already-free or inconsistent range metadata.
- * Replacement-node allocation occurs before partition mutation; failures propagate without partial logical change. Returning a whole owner starts its stale age, but does not immediately free backing or destroy T.
+ * Checked-out ranges carry reserved release metadata. Valid whole-byte and typed-range returns allocate no metadata; low-level externally edited records may require preparation. Returning a whole owner starts its stale age, without immediately freeing backing or destroying T.
  */
 
 /**

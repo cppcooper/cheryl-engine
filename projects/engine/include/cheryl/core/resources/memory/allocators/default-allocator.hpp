@@ -43,7 +43,7 @@ namespace CE::Memory::Allocators {
         /** End all lifetimes first. Return the entire granted byte section; count is ignored.
          * Null/unknown/already-pooled pointers follow Manager::return_ptr's no-op policy.
          */
-        void deallocate(T* pointer, std::size_t /*count*/) { manager_type::get().return_ptr(pointer); }
+        void deallocate(T* pointer, std::size_t /*count*/) noexcept { manager_type::get().return_ptr(pointer); }
         template <class U, class... Args> void construct(U* pointer, Args&&... args) {
             std::construct_at(pointer, std::forward<Args>(args)...);
         }

@@ -1,14 +1,14 @@
 # World integration decisions
 
-Current unit: standalone WORLD-U7, exact clean reviewed parent
-`0654533c01f29058262ffdb7e4a26db5205515c0`. Its committed U6 receipt was ready/true;
-all12 saved evidence logs and127 passing XML entries were inspected. WINT-018–021
-correct allocator/container compatibility and reuse bounded editor scratch under
-the user's explicit Engine-service choice. Actual execution passes40/40 focused
-memory/container cases and130/130 shared cases once, preserving all127 U6 names.
-The demo links and normal shared-Engine/header/import/loader checks pass. This is
-not another queue unit; no graphics or performance acceptance follows from it.
-Exact commands, failures, measurements and limits are in next.md.
+Current unit: standalone WORLD-U8 on exact clean reviewed U7 parent
+`bb3a0421d4d6fdc7d1a609ada441a04282288b6c`. Manifest receipt, selection and review
+hashes match. U7's170 passes/routing remain real but review found three allocator
+boundary defects. This checkpoint implements the related repair, with178/178
+accumulated Debug ASan/UBSan passes retaining ALL170 U7 names. WINT-019 is corrected;
+WINT-022/023 record metadata and scope. WORLD-U8 BENCHMARK remains BLOCKED: no
+optimized configuration, matched bounded benchmark trace or timing samples were
+implemented/executed in this repair-focused invocation. The standalone receipt is
+blocked/false; coordinator review is the next action, never automatic continuation.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -209,14 +209,14 @@ service choice is explicit user direction, spelling is engineering.
 
 ## WINT-019 — Preserve typed pool lifetime and construction meaning
 
-Pool allocators retain existing per-class state; same-T contexts compare equal
-because they share block/tracking domains, even when handle addresses differ.
-Rebind selects the destination class pool; cross-type domains differ. Whole T
-construction remains tracked; different U node-value subobjects construct/destroy
-directly without inventing Pool<char/double> or new tracker retention. Typed slot
-returns and facade-independent captured contexts remain. This trades automatic
-subobject tracking for precise ownership. Confidence is high from class/node,
-exception, equality and retained-context execution; external templates must recompile.
+U8 corrects U7's cross-type law: all rebound pool adapters compare equal in the
+shared service family; equality never authorizes returning U storage as T.
+Conversion nonthrowingly copies a retained context-directory handle; destination
+setup occurs on allocation/context acquisition. Same-type captured contexts and
+tracked T/untracked U-subobject construction remain. This adds directory retention
+and lookup overhead, preserving extracted-node release. Confidence is high for
+executed GNU law/lifetime cases; wider ABI remains unverified. The prior contrary
+inequality assertion was incorrect despite passing U7.
 
 ## WINT-020 — Retain one bounded editor workspace
 
@@ -239,3 +239,24 @@ bytes separately from manager/control metadata and unconverted candidates. No
 editor-wide allocation/copy-byte counter or speed claim is selected. Confidence
 is high in GNU Debug ASan/UBSan CPU evidence; leaks, graphics and wider ABI remain
 open. Future weather/magic adoption needs separate ownership review.
+
+## WINT-022 — Reserve release metadata before publishing storage
+
+Keep existing block collections and algorithms; reserve empty collection nodes and
+bank capacity during checkout, then transfer/recycle them on valid returns.
+Reserve timestamp buckets for registered owners. Typed units cover every possible
+slot return; byte units cover checked-out sections, admitting extra fragmentation
+before mutation. Metadata uses explicit new_delete_resource by default; scoped
+resource injection proves actual-producer refusal without global interception.
+This increases retained metadata and changes State layout/types. Confidence is
+high in executed return/unwind/culling regressions; recompilation is required.
+
+## WINT-023 — Checkpoint conformance before locality measurement
+
+Use the finite invocation for the specified allocator-boundary repair and its
+failure/lifetime proof. Preserve every U7 name, correct its wrong equality oracle,
+and verify real list/map nodes through normal shared Engine. The benchmark remains
+blocked: no fair optimized samples, slab-fullness/reuse trace or tuning column is
+claimed. This trades completion of the selected measurement for a reviewed repair
+foundation. Confidence is high in178 executed CPU cases; timing/locality evidence
+is absent. Coordinator must review before selecting further work.

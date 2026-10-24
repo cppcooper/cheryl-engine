@@ -1,3 +1,184 @@
+# WORLD-U8 — checked allocator repair; benchmark BLOCKED
+
+Starting EXACT clean reviewed feat/tilemap HEAD
+`bb3a0421d4d6fdc7d1a609ada441a04282288b6c`. Committed U7 receipt ready/true hashes to
+`f2476b81aac182ba570e86f16d59f4341a69631bc646798ad36800d60e6c46c1`, matching the
+assignment manifest. Selection/review hashes and all10 nonempty U7 evidence logs
+were verified. The review preserves U7's real170 CPU passes/routing but identifies
+R1 comparison, R2 allocating return and R3 throwing conversion defects. This is one
+standalone invocation, not an old queue or automatic continuation.
+
+Implemented the ONE related repair first. Final accumulated178/178 passes retain
+all170 U7 names, plus8 meaningful law/release/node cases. The requested locality
+benchmark is NOT complete: no matched standard-vs-Engine trace implementation,
+optimized Engine configuration, cold/warm measurement samples, per-slab occupancy /
+upstream count comparison, p50/p95/max or cache evidence. No timing was attempted.
+[WORLD-U8 receipt](continuation/WORLD-U8.json) is BLOCKED/checks_passed=false despite
+passing repair checks. [Compact](decisions.md) and [detailed](agent-notes.md) views
+match corrected WINT-019 and new WINT-022/023. Coordinator source review is pending.
+
+## Proposed caller versus executed repair caller
+
+```cpp
+// Proposed benchmark notation only: NOT implemented or executed.
+const auto trace = fixed_trace(512, fixed_seed); // hard live limit8192
+run_trace<std::list<Record, std::allocator<Record>>>(trace.list, exact_list_sequence);
+run_trace<std::list<Record, PoolAlloc<Record>>>(trace.list, exact_list_sequence);
+run_trace<std::map<Key, Record, Compare, std::allocator<Pair>>>(trace.map, exact_ordered_pairs);
+run_trace<std::map<Key, Record, Compare, PoolAlloc<Pair>>>(trace.map, exact_ordered_pairs);
+```
+
+Future finite trace would include ordered/shuffled insertion, complete scans, map
+hit/miss queries, erase-half/refill, two churn rounds, sparse occupancy and cleanup;
+7 fresh-process optimized samples and separately labelled within-process warm reuse.
+Nothing in this proposal authorizes another invocation. No tuned policy/backend,
+segmented list, general resource framework or automatic next job was added.
+
+Executed real callers use unchanged std::list and std::map through actual retained
+ObjectPoolAllocator/rebound class-node hooks. Literal list sequence inserts0..7,
+erases evens, refills8/10/12/14 and independently checks1/3/5/7/8/10/12/14. Surviving
+references stay valid across unrelated erasure/refill/swap; no erased iterator is
+used. Copy/move/swap and construction/destruction balance. Actual extracted map
+node survives source destruction, reinserts with a compatible allocator and later
+survives another container until final typed-slot return. alignas(256) nontrivial
+throwing list/map values demonstrate alignment, cleanup and later successful use.
+These are conformance cases, NOT the fair full benchmark workload or locality proof.
+
+## Corrected contracts
+
+- R1: cross-type comparison follows shared-family rebinding law, not is_same_v.
+  All pool comparisons are equal; this never permits returning a U pointer as T.
+  Replace U7's wrong inequality assertion and independently check both directions,
+  a==b versus a==A(b), b==a versus b==B(a), symmetry and round trips. Same-type
+  contexts with different handle addresses still share actual typed state.
+- R3: converting construction only copies a shared retained context-directory
+  handle, noexcept. Destination Pool<T> is not initialized; actual first-use tests
+  check get_existing()==nullptr before/after conversions. First allocate/context
+  acquisition performs setup where failure is permitted. Valid allocation registers
+  its return type BEFORE publishing storage; return does a find-only retained
+  lookup. Same-type copies/moves remain usable and generic U subobjects retain
+  explicit untracked construction, while whole T tracking is unchanged.
+- R2: checkout prepares empty section/pool/timestamp node handles, bank vector
+  capacity and timestamp buckets before storage publication. Compatible node
+  transfers/recycling satisfy valid returns without fresh metadata. Keys in spare
+  nodes are cleared, retaining no backing owners. Typed units cover all requested
+  slots; byte units cover active sections, with extra low-level middle-fragment
+  admission before mutation. Exact/greedy backing, contiguous n-object ranges,
+  merging, partial typed returns and culling remain. Admission may retain increased
+  EMPTY metadata capacity on failure, while published partitions stay unchanged.
+- State metadata uses explicit new_delete_resource via PMR containers/banks;
+  scoped borrowed resource must outlive State. No global PMR/new override or
+  recursive Engine allocation. This is existing producer metadata, not a new
+  storage backend. Source/layout changes require recompiling Engine/consumers;
+  installed/static/other-library/platform/unload ABI is unverified.
+- Allocator deallocate is noexcept for valid allocated ranges. Invalid allocator
+  deallocation violates its precondition; checked invalid/double/out-of-bounds
+  SERVICE returns still reject through PoolState/Manager/context APIs. No valid
+  catch-and-leak/terminate workaround was added. Default/Object facade lifetime
+  constraints remain; growing a retained pool still needs a live byte manager.
+  Context directory/control costs and retained metadata are additional, not free.
+
+## Actual commands and results
+
+Every configure/build/native/format/symbol/loader check used
+`/mnt/projects/cheryl-features/scripts/build --`, one job, preserved
+build/tilemap-u1-debug and existing shared lock/admission controls. No resource,
+auth, quota or memory refusal occurred. No downloads/installs/pin/global-config /
+sibling changes. Full argv/cwd/environment/merged stdout+stderr/immediate exits /
+elapsed times are in build/world-u8-logs/commands.jsonl and per-label logs/exits.
+ASan/UBSan instrumentation and halt_on_error remain; only command-local
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 and UBSAN_OPTIONS=halt_on_error=1. Leaks
+remain UNVERIFIED. Tests are CPU-only; no display/X11 retry.
+
+| Log under build/world-u8-logs | Actual result |
+| --- | --- |
+| preflight.json | Exact clean HEAD/manifest predecessor receipt/selection/review hash and10 nonempty prior evidence files verified |
+| repair-build.log | Exit1: PMR vector tried uses_allocator construction of node_handle; full diagnostic retained |
+| repair-build-node-holder.log | Exit0 after narrow node holder correction; Engine/memory/header probes built |
+| release-build.log | Exit0; new actual metadata resource/refusal cases compiled |
+| repair-tests.log / repair-results.xml | Preliminary45/45,0 failed/skipped,11.49s; separate from final campaign |
+| repair-final-build.log | Exit1: strict world consumer rejected int-to-size_t sign conversion; full diagnostic retained |
+| repair-build-signed-count.log | Exit0 with explicit size_t arithmetic, Werror unchanged; all affected CPU callers built |
+| final-build.log | Exit0; final formatted memory/node cases compiled/linked |
+| discovery.log / registration-correspondence.json |178 unique names, all170 U7 names preserved,8 new exact names listed |
+| accumulated-tests.log / results.xml |178/178 ONCE,0 failed/skipped,116.49s;48 memory/resource/node cases +130 prior shared/map/editor/world cases |
+| world-processes.json +16 copied child logs |16 successful actual child exits, including fresh literal/semantic/generated full-snapshot reloads |
+| ownership.log + symbol/link/loader logs | Exit0; normal single clone-local shared Engine in memory/unit/world callers,17 actual prior export/import pairs and imported Engine diagnostics, no copied implementation archive |
+| format-check.log | Exit0; all changed C++ headers/sources pass formatter |
+
+Actual commands (all through wrapper/run.py, exact absolute JUnit path in JSONL):
+
+```text
+cmake --build build/tilemap-u1-debug --target tests-memory-containers tests-engine tests-world-consumer tests-terrain-consumer map_storage_consumer --parallel 1
+ctest --test-dir build/tilemap-u1-debug --output-on-failure --no-tests=error -V -j 1 -R '^tests-memory-containers\.' --output-junit ABS/build/world-u8-logs/repair-results.xml
+ctest --test-dir build/tilemap-u1-debug --output-on-failure --no-tests=error -V -j 1 -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.|map_storage\.consumer\.|world\.|tests-memory-containers\.)' --output-junit ABS/build/world-u8-logs/results.xml
+python3 build/world-u8-logs/ownership.py
+```
+
+223 test executions cover178 unique names (45 preliminary +178 accumulated), not
+one223-case invocation. No native test failed or skipped; initial COMPILE failures
+remain recorded. Two unrelated unchanged dangling-else warnings remain; no warning
+policy weakened. All170 U7 names are retained while one wrong assertion is corrected.
+Existing original memory/block/reservation cases remain, plus affected real editor /
+history/generated/frame consumers. Three allocator public-header probes rebuilt.
+Graphics configuration/output is preserved, NOT rebuilt/run/accepted by U8. No
+unchanged standalone storage/procedural or broad platform campaign was repeated.
+
+## Measured versus unmeasured
+
+The scoped resource observes ACTUAL block-producer collection/bucket/bank-vector
+allocation requests, delegating successful requests to new_delete_resource. No
+global interception. A private ActualPool only supplies its owned State; all
+retrieve/return/construction/unwind algorithms are SAME inherited Engine producer
+code, raw backing still from actual ObjectMemoryManager. Void test retains a real
+Engine managed block. This is not denial of all process allocations: tracking,
+shared-control objects, exception runtime and raw backing outside this resource
+are excluded. Source review complements this precise oracle.
+
+Nine typed slots return in literal fragmented order4,0,8,2,6,1,7,3,5, merging fully;
+whole bytes, reuse, constructor unwind and final retained pool-owner release make
+ZERO fresh requests while metadata refusal is active. All12 tested admission
+failure positions refuse, preserving every old registry/section/free record, and
+the earlier promised release still completes without a new request. Later valid
+construction succeeds. Scoped resource bytes return to0 after State ownership ends.
+The nine-slot case observes5344 peak requested metadata bytes, NOT RSS or per-
+container/slab overhead. State/control/tracker/directory/backing/malloc overhead is
+additional. U7's real workload still observes7 allocator call/return pairs and96
+construction/destruction pairs per vector service; these are NOT upstream heap
+counts or timing. The erased-slot locality benchmark remains unmeasured.
+
+Default greedy pool behavior remains1.29*request+64*sizeof(actual rebound U), with
+alignment rounding and shared byte reuse; no assumption of exactly64 slots and no
+new geometry/tuning column. Metadata reservations can increase memory materially,
+retain high-water banks after culling and change allocation-failure points. Actual
+cold/warm slab fullness, upstream ownership/bytes, per-container retained storage,
+standard-backend instrumentation and fair optimized timing are the exact unfinished
+WORLD-U8 acceptance. No mixed Debug timing substitutes for that gate.
+
+Logs are finite/fixed-count (currently about2 MiB, within an8 MiB handoff budget),
+including complete failed diagnostics/raw selected evidence; no timing samples are
+missing because none ran. tested-source-hashes.json matches final C++/CMake/cache
+inputs. preservation.json verifies all29 older receipt/archive paths byte-identical,
+including U7's immutable receipt; public storage/tilemap/schema/strict-v1 source is
+unchanged. New public State/allocator layout is intentionally source-incompatible;
+normal affected CPU Engine/callers rebuild together. Graphical/input/atlas upload /
+teardown/visual/fun, leaks, packaging/other platforms and stronger file durability
+remain open. This partial repair is not automatic coordinator source acceptance.
+
+## Next action — idle with a blocked benchmark receipt
+
+Coordinator reviews this focused R1/R2/R3 repair and its178-case/native producer
+proof, especially metadata reservation invariants/context lifetime and cost. Only
+a separately selected bounded assignment may implement the matched trace and fair
+optimized slab/reuse measurement. Publisher alone backs up feat/tilemap. Worker2
+stops after this checkpoint; no retry loop, queue extension, next controller,
+sibling integration or automatic additional resume.
+
+---
+
+Historical U7/U6 handoffs follow unchanged except for their current namespace
+entry points; they do not certify the unexecuted U8 benchmark.
+
 # WORLD-U7 Engine allocator containers and retained editor workspace
 
 Standalone implementation on EXACT clean reviewed feat/tilemap parent

@@ -36,6 +36,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <mutex>
+#include <memory_resource>
 #include <cstdint>
 #include <type_traits>
 
@@ -81,10 +82,10 @@ namespace CE::Memory {
         using spointer = std::shared_ptr<T>;
         /** Optional range result; no value means no legal split/match. */
         using OBlock = std::optional<Block>;
-        spointer owner = {nullptr}; ///< Backing-allocation root owner shared by every split range.
-        spointer head = {nullptr}; ///< First element/byte, normally an alias retaining owner.
+        spointer owner = {nullptr};   ///< Backing-allocation root owner shared by every split range.
+        spointer head = {nullptr};    ///< First element/byte, normally an alias retaining owner.
         std::align_val_t alignment{}; ///< Known alignment of head, expressed in bytes; valid splitting requires nonzero bounds.
-        std::size_t length = 1; ///< Count of T objects, or bytes when T is void; not a constructed-object count.
+        std::size_t length = 1;       ///< Count of T objects, or bytes when T is void; not a constructed-object count.
         OBlock split_exactly(std::size_t idx);
         OBlock split_at(std::size_t idx);
         bool contains(void* p) const;
@@ -298,11 +299,42 @@ namespace CE::Memory {
         /** All pool, partition, and culling records retained for one T specialization. */
         struct State {
             const ::CE::Diagnostics::DomainId domain = ::CE::Diagnostics::next_domain_id(); ///< Shared per-T bookkeeping identity.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::PoolOrder<T>>> pool; ///< Mutex and reusable free ranges.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::HeadOrder<T>>> sections; ///< Mutex and partition sections for split owners.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> registry; ///< Mutex and complete backing-allocation owners.
-            std::tuple<std::shared_mutex, std::unordered_map<::CE::Memory::Block<T>, tpoint>> stale; ///< Mutex and timestamps of complete free owners.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> release; ///< Mutex and complete owners queued for culling release.
+            using PoolRecords = std::pmr::set<Block<T>, Ordering::PoolOrder<T>>;
+            using SectionRecords = std::pmr::set<Block<T>, Ordering::HeadOrder<T>>;
+            using OwnerRecords = std::pmr::set<Block<T>, Ordering::RegistryOrder<T>>;
+            using StaleRecords = std::pmr::unordered_map<Block<T>, tpoint>;
+            std::tuple<std::shared_mutex, PoolRecords> pool;
+            std::tuple<std::shared_mutex, SectionRecords> sections;
+            std::tuple<std::shared_mutex, OwnerRecords> registry;
+            std::tuple<std::shared_mutex, StaleRecords> stale;
+            std::tuple<std::shared_mutex, OwnerRecords> release;
+            // A node_handle exposes allocator_type without allocator-aware move
+            // construction; wrap it so PMR vector does not inject an allocator.
+            template <class Node> struct ReturnNode {
+                Node node;
+                ReturnNode(Node&& value) noexcept
+                : node(std::move(value)) {}
+                ReturnNode(ReturnNode&&) = default;
+                ReturnNode& operator=(ReturnNode&&) = default;
+            };
+            // Empty preallocated nodes. No backing owner is retained in a spare.
+            // Checkout funds future whole/range returns before publishing storage.
+            std::pmr::vector<ReturnNode<typename PoolRecords::node_type>> pool_spares;
+            std::pmr::vector<ReturnNode<typename SectionRecords::node_type>> section_spares;
+            std::pmr::vector<ReturnNode<typename StaleRecords::node_type>> stale_spares;
+            std::size_t return_units = 0;
+
+            // The resource is metadata-only and must outlive this State. Normal
+            // Engine uses new_delete_resource explicitly, never global default PMR.
+            explicit State(std::pmr::memory_resource* metadata = std::pmr::new_delete_resource())
+            : pool(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
+              sections(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
+              registry(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
+              stale(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
+              release(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
+              pool_spares(metadata),
+              section_spares(metadata),
+              stale_spares(metadata) {}
         };
 
         static std::shared_ptr<State> shared_state() {
@@ -313,10 +345,11 @@ namespace CE::Memory {
         // Keep the established access points while making the storage's lifetime
         // independent of the singleton facades that use it.
         inline static auto& pool = shared_state()->pool; ///< Legacy reference into retained shared state; obey its lock/invariants.
-        inline static auto& sections = shared_state()->sections; ///< Legacy partition reference; compound edits require transactions/quiescence.
+        inline static auto& sections =
+            shared_state()->sections; ///< Legacy partition reference; compound edits require transactions/quiescence.
         inline static auto& registry = shared_state()->registry; ///< Legacy backing-owner reference; not a separately owned domain.
-        inline static auto& stale = shared_state()->stale; ///< Legacy stale-time map reference protected by its mutex.
-        inline static auto& release = shared_state()->release; ///< Legacy pending-release reference protected by its mutex.
+        inline static auto& stale = shared_state()->stale;       ///< Legacy stale-time map reference protected by its mutex.
+        inline static auto& release = shared_state()->release;   ///< Legacy pending-release reference protected by its mutex.
 
     protected:
         std::shared_ptr<State> state_ = shared_state(); ///< Retained per-T collections independent of a manager facade's lifetime.

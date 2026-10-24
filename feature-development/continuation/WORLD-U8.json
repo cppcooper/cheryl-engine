@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U8",
+  "starting_head": "bb3a0421d4d6fdc7d1a609ada441a04282288b6c",
+  "predecessor_source": "bb3a0421d4d6fdc7d1a609ada441a04282288b6c",
+  "predecessor_receipt": {
+    "path": "feature-development/continuation/WORLD-U7.json",
+    "sha256": "f2476b81aac182ba570e86f16d59f4341a69631bc646798ad36800d60e6c46c1",
+    "status": "ready",
+    "checks_passed": true
+  },
+  "assignment_manifest": "coordination/assignments/allocator-locality-20261024/manifest.json",
+  "review_sha256": "bc6d42d5fb51170d40b107e0f5ffdd73004aaf6338a544f25482b57c40c64ff3",
+  "status": "blocked",
+  "checks_passed": false,
+  "repair_checks_passed": true,
+  "evidence": [
+    "build/world-u8-logs/repair-build.log",
+    "build/world-u8-logs/repair-build-node-holder.log",
+    "build/world-u8-logs/release-build.log",
+    "build/world-u8-logs/repair-tests.log",
+    "build/world-u8-logs/repair-final-build.log",
+    "build/world-u8-logs/repair-build-signed-count.log",
+    "build/world-u8-logs/final-build.log",
+    "build/world-u8-logs/discovery.log",
+    "build/world-u8-logs/accumulated-tests.log",
+    "build/world-u8-logs/ownership.log",
+    "build/world-u8-logs/format-check.log"
+  ],
+  "implemented_contracts": [
+    "Repairs R1 pool cross-type equality using shared service-family semantics and independent both-direction/roundtrip law assertions; corrects the prior wrong inequality without rewriting U7 receipt/history.",
+    "Repairs R3 converting construction: only noexcept shared directory-handle copy; no destination singleton initialization. Actual first-use get_existing observations remain null until allocation. Directory retains exact typed return contexts for copies/rebinds and surviving extracted nodes.",
+    "Repairs R2 valid release: checkout reserves empty PMR collection nodes, bank capacity and stale buckets before publication; valid whole byte and typed ranges reuse metadata. Extra low-level byte-fragment admission precedes mutation; failures preserve logical partitions. Existing exact/greedy backing/contiguous ranges/typed slot meanings/culling remain.",
+    "Explicit default new_delete_resource for metadata, no global PMR/new interception or recursively CE-allocated bookkeeping. Borrowed test metadata resource outlives State. Scoped ActualPool/BlockTransactions oracle uses actual inherited Engine producer and actual Engine backing, not copied implementation.",
+    "Typed fragmented returns, whole byte returns, constructor unwind and final retained pool-owner cleanup make zero fresh metadata requests under refusal. All12 admitted fault positions preserve old registry/section/free records and earlier promised cleanup; later valid construction succeeds. Invalid service returns still reject.",
+    "178/178 accumulated Debug ASan/UBSan CPU cases once preserve all170 U7 names plus8 new cases,0 failed/skipped; earlier45/45 focused checks retained (223 executions,178 unique).16 world child exits0. Actual list/map nodes, over-aligned throwing values, copy/move/swap and map extraction/reinsertion/final destruction pass.",
+    "Normal one shared clone-local Engine link/header/loader/import proof passes, including17 prior producer/import pairs and memory diagnostic import. No alternate Engine archive. Same editor/history/generated/frame consumers recompiled and pass; graphics output preserved but not rebuilt/run.",
+    "Allocation-time metadata reservations may retain increased empty capacity after failed admission; public State types/layout and allocator object layout change, requiring recompilation. No general resource framework, new storage/container backend or singleton lifecycle redesign."
+  ],
+  "actual_measurements": {
+    "scoped_nine_slot_metadata_peak_requested_bytes": 5344,
+    "fresh_metadata_requests_during_valid_refused_release": 0,
+    "admission_fault_positions_exercised": 12,
+    "admission_refusals": 12,
+    "scoped_metadata_bytes_after_state_release": 0,
+    "final_accumulated_tests": 178,
+    "retained_u7_names": 170,
+    "preliminary_tests": 45,
+    "test_executions": 223,
+    "failed": 0,
+    "skipped": 0,
+    "final_seconds": 116.49,
+    "world_child_exits_zero": 16
+  },
+  "benchmark": {
+    "implemented": false,
+    "optimized_configuration_created": false,
+    "timing_samples": 0,
+    "p50_p95_max": null,
+    "per_slab_locality_measurement": false,
+    "policy_variants_timed": [],
+    "blocker": "This single finite invocation was used for the selected allocator prerequisite repair. The matched independent benchmark trace, optimized shared Engine configuration, upstream/slab/fullness/reuse accounting and cold/warm samples remain unimplemented/unexecuted. No timing begins on an unreviewed partial benchmark foundation."
+  },
+  "limitations": [
+    "U8 benchmark acceptance is incomplete despite passing repair checks. No Release samples, latency/locality gain, cache-hit percentage, assumed64-slot geometry, or tuning comparison is claimed.",
+    "5344 bytes is an actual scoped PMR metadata-resource peak for a small producer fixture, not RSS or per-container/slab overhead. State/control/tracker/directory/raw backing and malloc overhead lie outside it. This is metadata-producer refusal, not whole-process malloc denial. Returned storage/empty metadata can remain cached.",
+    "Valid allocator ranges require proper checkout and live byte facades where documented. Checked invalid service calls remain diagnosed; invalid noexcept allocator deallocation violates its precondition. Tracking/metadata synchronization does not serialize standard-container contents.",
+    "Public State collection types/layout and allocator layout changed; all affected CPU callers rebuilt with one normal shared Engine. Installed/static/Release/other standard libraries/platforms/unload ABI and graphical output are not verified by this checkpoint.",
+    "ASan/UBSan/halt_on_error retained; command-local detect_leaks=0 accommodation only, leak detection unverified. Real input/display/atlas upload/graphical teardown/visual/fun and stronger file durability remain open; no unchanged X11 retry.",
+    "No sibling source/ref/config/cache/process change, dependency/pin/global setting change, queue extension or next assignment. Older17 receipts and12 provenance/archive files remain byte-identical."
+  ],
+  "next_action": "Coordinator reviews this drained focused R1/R2/R3 repair, reservation invariants/lifetimes and saved178-case proof. A separately selected bounded assignment is needed to implement and run the fair optimized slab/reuse benchmark. Worker2 remains idle; publisher alone backs up feat/tilemap."
+}
