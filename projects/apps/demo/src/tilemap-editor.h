@@ -7,6 +7,7 @@
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
 #include <core/rendering/render-frame.h>
+#include <core/resources/memory/allocators/default-allocator.hpp>
 #include <maps/terrain-map.h>
 
 #include <array>
@@ -33,6 +34,15 @@ public:
         CE::Platform::FramebufferSize framebuffer{0, 0};
     };
 
+    // Private application diagnostic. The address is borrowed until destruction;
+    // payload bytes exclude manager metadata, other editor storage and owners.
+    struct Workspace {
+        const CE::Tilemaps::TerrainEdit* data;
+        std::size_t size;
+        std::size_t capacity;
+        std::size_t payload_bytes;
+    };
+
 private:
     struct Geometry {
         glm::mat4 projection;
@@ -46,6 +56,8 @@ private:
     std::array<std::unique_ptr<WorldProof::TerrainDocument>, 2> terrain_;
     std::array<std::unique_ptr<WorldProof::GeneratedDocument>, 2> generated_;
     CE::Tilemaps::TerrainBatchLimits terrain_limits_;
+    using Pending = std::vector<CE::Tilemaps::TerrainEdit, CE::Memory::Allocators::DefaultAllocator<CE::Tilemaps::TerrainEdit>>;
+    Pending pending_; // At most 1024 slots; clear on every consume exit, retain backing.
     WorldProof::HistoryLimits history_limits_;
     std::array<std::array<WorldProof::DocumentHistory, 2>, 2> histories_;
     Mode mode_ = Mode::Literal;
@@ -118,4 +130,7 @@ public:
     [[nodiscard]] CE::Tilemaps::TileId brush() const { return brush_; }
     [[nodiscard]] CE::Tilemaps::LocalPoint pan() const { return pan_; }
     [[nodiscard]] double zoom() const { return zoom_; }
+    [[nodiscard]] Workspace workspace() const {
+        return {pending_.data(), pending_.size(), pending_.capacity(), pending_.capacity() * sizeof(CE::Tilemaps::TerrainEdit)};
+    }
 };

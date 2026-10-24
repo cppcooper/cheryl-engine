@@ -63,6 +63,8 @@ DemoTilemapEditor::DemoTilemapEditor(
       {{WorldProof::DocumentHistory(history_limits), WorldProof::DocumentHistory(history_limits)},
        {WorldProof::DocumentHistory(history_limits), WorldProof::DocumentHistory(history_limits)}}
   } {
+    if (terrain_limits_.requests > 1024)
+        throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain input workspace supports at most 1024 requests per run");
     for (const auto id : palette.target_to_id)
         if (id.value != 0 && (id.value < 7 || id.value > 10))
             throw CE::Exceptions::invalid_args(CE_HERE, "Private terrain palette supports only logical IDs 7..10 or unmapped zero");
@@ -301,11 +303,16 @@ std::optional<Maps::Point> DemoTilemapEditor::pick(const Events::Pointer pointer
 }
 
 void DemoTilemapEditor::consume(const std::span<const Events::Record> records, const Sizes sizes) {
+    pending_.clear();
+    struct ClearPending {
+        Pending& pending;
+        ~ClearPending() { pending.clear(); }
+    } clear{pending_};
+    auto& pending = pending_;
     sizes_ = sizes;
     geometry_ = geometry(sizes_, pan_, zoom_);
     if (!geometry_)
         return;
-    std::vector<Maps::TerrainEdit> pending;
     const auto flush = [&] {
         if (!pending.empty()) {
             terrain_edit(pending);
@@ -406,6 +413,13 @@ void DemoTilemapEditor::consume(const std::span<const Events::Record> records, c
                     } else if (button->mouse_button == Mouse::Left || button->mouse_button == Mouse::Right) {
                         if (pending.size() == terrain_limits_.requests)
                             throw CE::Exceptions::bad_request(CE_HERE, "Private terrain input run exceeds request cap");
+                        if (pending.capacity() == 0) {
+                            Pending staged;
+                            staged.reserve(terrain_limits_.requests);
+                            if (staged.capacity() > 1024)
+                                throw CE::Exceptions::bad_request(CE_HERE, "Private terrain input workspace capacity exceeds 1024");
+                            pending.swap(staged);
+                        }
                         pending.push_back({*cell, button->mouse_button == Mouse::Left ? terrain_brush_ : Maps::TerrainLabel{0}});
                     }
                     continue;

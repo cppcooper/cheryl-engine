@@ -1,3 +1,187 @@
+# WORLD-U7 Engine allocator containers and retained editor workspace
+
+Standalone implementation on EXACT clean reviewed feat/tilemap parent
+`0654533c01f29058262ffdb7e4a26db5205515c0`. The committed U6 receipt was ready/true;
+all12 nonempty saved logs and127 passing XML entries were inspected before edits.
+The explicit user choice selects Engine memory/object services. Exact hooks and
+private workspace policy are reversible engineering, not inferred API taste.
+Implementation and selected CPU acceptance pass; ready for coordinator review.
+Matching WINT-018/019/020/021 live in [compact](decisions.md) and
+[detailed](agent-notes.md) views; [receipt](continuation/WORLD-U7.json) is standalone,
+not an addition to either immutable completed queue. No sibling input is selected.
+
+## Actual callers and ownership
+
+```cpp
+#include <cheryl/core/resources/allocators.h> // first header; normal Cheryl::Engine
+using A = CE::Memory::Allocators::DefaultAllocator<int>;
+std::vector<int, A> values;
+values.reserve(32);
+values.push_back(7);
+values.clear(); // CE storage retained, lifetimes ended
+```
+
+Actual private editor input caller remains:
+
+```cpp
+DemoTilemapEditor editor;
+editor.consume(std::array{press(Key::B), paint(first_pointer), paint(second_pointer)}, sizes);
+const auto warm = editor.workspace(); // scalar observations + borrowed backing address
+editor.consume(std::array{press(Key::T), erase(first_pointer)}, sizes);
+// Same bounded CE-backed pending buffer; owned document/history/frame rules unchanged.
+```
+
+The SAME tilemap-editor.cpp compiles into real demo, unit and world consumers.
+Records use their own admitted captured pointers; keyboard Press, wheel and middle
+sample flush boundaries/order remain unchanged. Member pending TerrainEdits use
+DefaultAllocator and lazy reserve of the configured request cap (default32, hard
+1024), with actual capacity checked before adoption. Zero permits no edit/no
+allocation;1025 config refuses. Clear at entry AND on all exits/unwinds prevents
+stale samples after rejection or invalid sizes. Per-run request/affected/work and
+history/generated overlay limits still apply. Completed earlier runs survive a
+later tick error; the existing actual demo update diagnostics/drop/recovery path
+is exercised by retained CPU cases, not by a new graphical run.
+
+Primary std traits now honor CE rebind, converting construction, allocator copy
+selection, equality/propagation and generic U construction. Positive addressable
+counts are checked BEFORE checkout, <=PTRDIFF_MAX/sizeof(T); zero/excess throws
+existing CE bad_request. Default exact and Object greedy byte policies remain.
+Byte storage still requires users/deallocation before manager facade teardown.
+The source-inspected app reset after simulation join meets that boundary; graphical
+cleanup has not been executed. Whole byte-section returns and typed pool-slot
+returns retain their separate semantics. No new global PMR/new/delete interception.
+
+Pool SAME-T equality follows shared BlockManagement/Constructor domains, not
+context address; different-T domains compare unequal. Explicit capture of a live
+local Pool facade supports retained-context tests. Copies/moves keep source
+allocators usable. T construction remains tracked through retained context;
+different U node-value subobjects construct/destroy directly, explicitly UNTRACKED,
+without inventing Pool<char/double> or retaining arbitrary tracker registries.
+Growing a retained typed pool still needs its underlying byte-manager facade live;
+retained construction/final return use their captured contexts. Raw allocation
+never constructs objects. Existing tracked Factory/Reservation
+semantics remain. User synchronization of contents remains independent.
+
+Compatibility: no std::allocator base/upcast, no obsolete Pool Base alias, no
+program-defined allocator_traits specializations/instance-free overloads. Eight
+active production traits calls (Factory7, asset manager1) already pass instances;
+none needed migration. New external calls use allocator/member/instanceful primary
+traits; tracked batch operations explicitly use Constructor<T>. Templates require
+recompilation; no installed/static/other-standard-library ABI promise follows.
+
+## Executed verification
+
+All native/configure/build/format/link probes ran through
+`/mnt/projects/cheryl-features/scripts/build --`, one job, preserved clone-local
+Debug configurations and existing lock/admission controls. No resource refusal,
+install/download/pin/config/sibling change or display retry. Full exact argv,
+cwd, sanitizer environment, immediate exits and elapsed time are saved in
+`build/world-u7-logs/commands.jsonl`; run.py captures merged complete stdout/stderr.
+ASan/UBSan remain instrumented with halt_on_error; invocation-local
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 and UBSAN_OPTIONS=halt_on_error=1 only.
+Leak checking stays UNVERIFIED.
+
+| Check / log under build/world-u7-logs | Actual result |
+| --- | --- |
+| baseline-probes.log | Exit1: probe script's library glob used wrong Engine filename, before compilation; preserved |
+| baseline-probes-fixed.log, baseline-run.log, baseline-string-compile.log | Probe driver0; Default/Object vector CE rebind0/domain0; expected string compile1: final allocator holder derivation error |
+| memory-build.log | Exit1: missing CherylConsumers.cmake include; corrected locally, preserved |
+| memory-build-fixed.log | Exit0; actual shared Engine, focused resource runner and three allocator header-first probes built |
+| memory-tests.log / memory-results.xml |40/40,0 failed/skipped,8.49s;32 existing resource/block cases +8 new allocator cases |
+| shared-build.log | Exit1: mistyped target tests-map-storage-consumer; no compilation; corrected to map_storage_consumer |
+| shared-build-target-fixed.log | Exit0; tests-engine, tests-world-consumer, tests-terrain-consumer, map_storage_consumer built/linked |
+| discovery.log / registration-correspondence.json |130 nonempty unique names, ALL127 U6 names retained plus3 scratch cases |
+| shared-tests.log / results.xml |130/130 once,0 failed/skipped,104.05s; accumulated relevant selection only |
+| world-processes.json +16 copied child logs |16 successful child exits0, including fresh full semantic/literal snapshot reloads |
+| demo-build.log | Exit0; actual demo rebuilt/linked in preserved graphics output, no execution |
+| corrected-probes.log | Exit0; same Default/Object vector rebind1/domain1; long string compile0 |
+| ownership.log + detailed symbol/link/loader logs | Exit0;17 existing exports/imports, SAME three private app sources in unit/world/demo, original private cave producer, normal single shared Engine; memory consumer imports actual Engine next_domain_id and loads local libcheryl-engine.so.4 |
+| format-check.log | Exit0; all changed C++ sources/headers pass formatter |
+
+Actual selected commands (each prefixed by scripts/build -- through run.py):
+
+```text
+cmake --build build/tilemap-u1-debug --target tests-memory-containers --parallel 1
+ctest --test-dir build/tilemap-u1-debug --output-on-failure --no-tests=error -V -j 1 -R '^tests-memory-containers\.' --output-junit ABS/build/world-u7-logs/memory-results.xml
+cmake --build build/tilemap-u1-debug --target tests-engine tests-world-consumer tests-terrain-consumer map_storage_consumer --parallel 1
+ctest --test-dir build/tilemap-u1-debug --output-on-failure --no-tests=error -V -j 1 -R '^(tests-engine\.(tilemap|tilemap_submission|tilemap_consumer|tilemap_terrain)\.|tests-terrain-consumer\.|map_storage\.consumer\.|world\.)' --output-junit ABS/build/world-u7-logs/results.xml
+cmake --build build/tilemap-u4-display-debug --target demo --parallel 1
+python3 build/world-u7-logs/corrected-probe.py
+python3 build/world-u7-logs/check-ownership.py
+```
+
+ABS is the clone's absolute path; exact executable commands are retained in JSONL.
+The new focused runner compiles unchanged resource memory/reservation/block cases
+without enabling broad acceptance; existing aggregate/acceptance registration is
+preserved. Native tests actually cover empty/full vectors, growth/clear/reuse,
+long strings, nested explicit CE strings in maps, map insertion/erase/copy/move /
+assignment/swap, class pools/rebound nodes/value subobjects, constructor failures,
+context equality/retention, aligned storage, zero/overflow refusal before storage
+change and valid recovery. Direct unwrapped CE containers complement delegated
+instrumentation so its own rebind cannot hide the original defect. Actual Manager
+registry/free-range inspections establish storage domain/return, not equal output
+alone. Two unrelated unchanged dangling-else warnings occur in recompiled asset /
+shader cases; no warning policy was weakened. There are NO test failures, skips or
+post-pass campaign repeats. Total170 unique test entries:40 memory +130 shared.
+
+## Real measurements and limits
+
+`measurements.json` distinguishes real call counters from logical observations.
+For EACH Default/Object/Pool measured class-vector workload:7 allocator calls /
+7 returns,96 successful construction/destruction pairs,352 summed requested bytes,
+22 value copies and30 moves. Failed construction is excluded from successful
+count and returns its allocation. Pool map records20 class-node allocations and
+19 successful different-U value-subobject constructions, including failure cleanup.
+These are real delegated service calls in a bounded test, not production-global
+counters or performance comparisons.
+
+The actual editor retains capacity32, sizeof(TerrainEdit)=24, payload768 bytes;
+after warmup four consume/flush calls and separate undo/redo retain the SAME backing
+and capacity. Hard1024 slots is24576 payload bytes on this ABI. Every key/label /
+visual compares independently; sibling maps/modes, other cells, histories,
+generated exact-witness/final patch and old frames stay isolated. Refused collected
+samples clear before later recovery; native bind/draw/upload counters remain zero.
+There is no editor-wide allocation/constructor counter or measured copy-byte total.
+Capacity/address plus the reserve-only-when-unallocated source establish THIS
+buffer's reuse; they do not prove allocation-free editor ticks. Copy/move counts
+are real; bytes inferred from them would be modeled, not observed memory traffic.
+
+Payload/request totals EXCLUDE manager registry/section/free/stale/tracker nodes,
+locks, shared-owner/control blocks, greedy spare bytes/alignment/fragmentation,
+allocator objects and test counter/observer allocations. Returned backing can
+remain cached in Engine. U6 recipe/base/witness/patch/history/candidate charges
+still apply separately and may exceed a full snapshot; no compactness or saving
+claim. Allocation/programming exceptions propagate; byte facades must outlive
+scratch users, and serialized writer/preparation/cleanup remain required.
+
+Concrete unconverted paths: full document/key-string snapshots and history copies,
+TerrainDocument two-owner reconstruction, Map/TerrainMap batch candidates/results,
+generated base/witness/patch/codec copies, private Cave replay scratch, event/frame
+packet vectors. Future weather field/step scratch and magic effect/query/preparation
+buffers require separately assigned Engine-service/lifetime/accounting review;
+no sibling source or measurement was imported here.
+
+`source-inputs.json` hashes final tested C++/CMake inputs and both preserved caches.
+`preservation.json` verifies372 of375 prior production/header/archive paths stay
+unchanged; ONLY the three selected allocator headers differ. All16 older receipts
+and complete source-provenance archives remain byte-identical. Public storage /
+tilemap headers, strict-v1 bytes and standalone procedural/storage suites remain
+unchanged and were not repeated. Real input/display/atlas upload/graphical teardown /
+visual correctness/fun, leak detection, installed SDK/static/Release/other platforms
+and stronger filesystem durability remain open. No unchanged X11 retry occurred.
+
+## Next action — idle
+
+Coordinator reviews the drained standalone WORLD-U7 checkpoint, receipt, exact
+source and saved native evidence. Publisher alone backs up feat/tilemap; coordinator
+alone selects any integration or next data-path/mining assignment. Worker2 remains
+idle. No queue, sibling merge, public extraction or next task starts automatically.
+
+---
+
+Historical predecessor handoff below is retained as U6 evidence, not the current
+assignment or authority to start more work.
+
 # WORLD-U6 owned generated base plus semantic edits
 
 Standalone continuation on exact clean reviewed parent

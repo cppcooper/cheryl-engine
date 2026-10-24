@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U7",
+  "starting_head": "0654533c01f29058262ffdb7e4a26db5205515c0",
+  "status": "ready",
+  "checks_passed": true,
+  "evidence": [
+    "build/world-u7-logs/baseline-probes-fixed.log",
+    "build/world-u7-logs/memory-build-fixed.log",
+    "build/world-u7-logs/memory-tests.log",
+    "build/world-u7-logs/shared-build-target-fixed.log",
+    "build/world-u7-logs/discovery.log",
+    "build/world-u7-logs/shared-tests.log",
+    "build/world-u7-logs/demo-build.log",
+    "build/world-u7-logs/corrected-probes.log",
+    "build/world-u7-logs/ownership.log",
+    "build/world-u7-logs/format-check.log"
+  ],
+  "implemented_contracts": [
+    "Confirmed actual GCC16 baseline: Default/Object vector rebind and CE-storage routing both false; basic_string compile rejects final allocator holder. Corrected SAME probe reports true/true and string compiles; expected baseline failure and initial probe filename error retained.",
+    "Existing Default/Object/Pool adapters use primary std::allocator_traits, owned hooks/types, CE rebind/conversions/copy selection/equality/propagation and positive addressable checked counts before checkout. Exact/greedy byte policies, whole-byte and exact-slot returns stay distinct; no new allocation algorithm or global lifecycle/PMR replacement.",
+    "Typed pool contexts retain existing same-T block/tracker domains across local facade lifetime; distinct handle pointers compare equal, cross-type domains differ, source allocators remain usable after moves. T construction remains tracked; new generic different-U node value subobjects construct/destroy directly and explicitly untracked without Pool<char/double>. Raw storage is not construction.",
+    "Audit finds eight active production traits operations already instanceful (Factory7, asset manager1); no legacy instance-free caller needed migration. Removed custom std overloads/upcasts/Base alias require source migration/recompilation, with tracked batches explicitly using Constructor<T>.",
+    "Actual shared DemoTilemapEditor pending TerrainEdit vector uses DefaultAllocator, lazy retained request-cap reserve, hard1024 slots, zero-cap refusal and clear on every return/unwind. Flush/admission/Press/pointer/history/generated-overlay/file/old-frame boundaries remain compatible; failed samples never leak into next call. Byte facade must outlive scratch deallocation.",
+    "40/40 focused memory/container cases (32 preserved existing,8 new) plus one130/130 accumulated shared selection retaining all127 U6 names and3 new scratch cases;170 unique,0 failed/skipped,16 successful world children. Real demo compile/link, three allocator header-first probes,17 prior Engine imports/exports plus memory diagnostic import and single local shared Engine loaders pass.",
+    "SAME private app sources compile into demo/unit/world; actual original cave producer and normal Engine ownership remain. Source preservation verifies372 unchanged prior paths and only three assigned allocator-header changes among375; all16 older receipts/provenance archives stay byte-identical. Initial CMake helper include and incorrect target failures preserved/corrected; no compiler policy weakening."
+  ],
+  "real_measurements": {
+    "real_container_probe": {
+      "per_vector_service": {
+        "allocation_calls": 7,
+        "return_calls": 7,
+        "successful_constructions": 96,
+        "destructions": 96,
+        "requested_bytes_sum": 352,
+        "Tracked_value_copies": 22,
+        "Tracked_value_moves": 30
+      },
+      "pool_map_node_allocations": 20,
+      "pool_map_value_subobjects_constructed": 19
+    },
+    "observed_editor_workspace": {
+      "capacity": 32,
+      "element_bytes": 24,
+      "payload_bytes": 768,
+      "backing_address": "0x7d0c92de0480 (borrowed process address, not a persistent identity)",
+      "warm_consume_calls": 4,
+      "same_backing_and_capacity": true,
+      "separate_undo_redo_calls": 2,
+      "hard_capacity": 1024,
+      "hard_payload_on_tested_ABI": 24576
+    },
+    "not_instrumented": [
+      "No editor-wide allocation/constructor counter or measured copy-byte total",
+      "Tracked copy/move COUNTS are actual; sizeof(Tracked)*count is not measured byte traffic",
+      "Vector requested_bytes are summed requests, not manager granted bytes or RSS",
+      "Manager registry/section/free/tracker nodes, shared control blocks, allocator family state, fragmentation/greedy spare storage and other editor candidates/history are additional overhead"
+    ]
+  },
+  "checks": {
+    "memory_passed": 40,
+    "shared_passed": 130,
+    "prior_shared_retained": 127,
+    "unique": 170,
+    "failed": 0,
+    "skipped": 0,
+    "memory_seconds": 8.49,
+    "shared_seconds": 104.05,
+    "world_child_exits_zero": 16,
+    "asan_ubsan_halt_on_error": true,
+    "leaks_checked": false,
+    "demo_linked": true,
+    "demo_executed": false
+  },
+  "limitations": [
+    "Measured delegated calls and borrowed editor backing/capacity observations are not editor-wide allocation/constructor/copy-byte counters or performance gains. Requested/payload bytes exclude manager metadata, control/shared-owner and tracker costs, greedy spare storage, alignment/fragmentation, instrumentation and all other candidates.",
+    "Default/Object still require live byte-manager facade through deallocation; captured Pool contexts preserve existing retained guarantees, while new allocator/rebind acquisition needs live facades. Tracking is not a lock on user contents. Private editor access/preparation remains serialized. Growing retained typed pools still needs the underlying byte-manager facade live; existing backing construction/final return uses retained contexts.",
+    "Remaining allocation-sensitive snapshot/key/history/two-owner/generated witness/patch/codec copies, TerrainMap candidates/results, private cave scratch and event/frame packet vectors are unchanged. Future weather/magic service adoption requires separately assigned audit; sibling implementations were not imported or measured.",
+    "GNU16/libstdc++ source-tree Debug/shared ASan/UBSan verified. Source/ABI changes require recompilation; installed SDK/static/Release/other standard libraries/platforms are unverified.",
+    "Invocation-local detect_leaks=0 accommodation only; leaks and real display/input/atlas upload/graphical teardown/visual correctness/fun stay unverified. No unchanged X11 retry, stronger durability/fsync, compact storage, persisted recipe or automatic next unit is claimed."
+  ],
+  "next_action": "Coordinator reviews drained standalone WORLD-U7 source, receipt and saved evidence; publisher alone backs up feat/tilemap. Worker2 remains idle until a separately selected integration or next data-path/mining assignment."
+}

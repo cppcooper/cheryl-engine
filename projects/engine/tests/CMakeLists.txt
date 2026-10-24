@@ -23,6 +23,7 @@ add_subdirectory(unit)
 # Narrow public terrain boundary check; independent of the optional broad
 # CHERYL_BUILD_CONSUMER_TESTS family and unit-private include requirements.
 if(CHERYL_BUILD_SHARED_LIBS)
+    add_subdirectory(memory-consumer)
     add_subdirectory(terrain-consumer)
     block(SCOPE_FOR VARIABLES)
         set(MAP_STORAGE_USE_SHARED_ENGINE ON)

@@ -1,11 +1,13 @@
 # World integration contracts and provenance
 
-WORLD-U6 is a standalone continuation on exact clean reviewed feat/tilemap
-`9cfa376a6366012fff2e1399af2c5d87acfa471c`. Before implementation, require the
-committed U5 old-batch receipt ready/true, nine nonempty logs and119 passing XML
-entries. WINT-015/016/017 extend the current world namespace. Completed plans /
-receipts and all feature archives remain immutable; no sibling/climate input or
-queue job is selected. Commands/results and standalone receipt belong in next.md.
+WORLD-U7 is a standalone continuation on exact clean reviewed feat/tilemap
+`0654533c01f29058262ffdb7e4a26db5205515c0`. The committed U6 receipt was ready/true,
+with12 nonempty evidence logs and127 passing XML entries inspected before edits.
+WINT-018–021 extend this current world namespace. The explicit user requirement
+selects Engine memory/object services; exact hooks and scratch policy are delegated
+engineering, not evidence of personal API taste. Older receipts, source archives
+and completed plans remain unchanged. Executed evidence is in next.md and the
+standalone continuation receipt; no further unit is selected.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -20,7 +22,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–012 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–021 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records
@@ -948,3 +950,216 @@ commands/exits/rechecks/limits and standalone receipt are in next.md. CPU eviden
 leaves real graphics/input/assets/teardown/fun, leaks, packaging/platform/ABI,
 indefinite generator replay and stronger filesystem durability unverified. No
 unchanged display retry, persisted recipe or subsequent job is selected.
+
+## WINT-018 — Keep standard containers on the real Engine boundary
+
+Small actual public-header caller (normal Cheryl::Engine usage requirements):
+
+```cpp
+#include <cheryl/core/resources/allocators.h> // first include
+using Alloc = CE::Memory::Allocators::DefaultAllocator<int>;
+std::vector<int, Alloc> values;
+values.reserve(32);
+values.push_back(7);
+values.clear(); // retains checked-out CE backing
+using Text = std::basic_string<char, std::char_traits<char>,
+                              CE::Memory::Allocators::ObjectAllocator<char>>;
+Text text(300, 'x'); // explicitly engine-backed nested text, beyond inline storage
+```
+
+Authority is the explicit assignment and coordination/allocation-policy.md, not
+v1/v3 import membership or recent agent APIs. The preserved baseline probe really
+compiled/ran against normal shared Engine: GCC16 vector Default/Object both printed
+rebind_is_ce=0 and ce_storage=0. String compilation failed at basic_string.h:196,
+“cannot derive from ‘final’ base”. After the correction the SAME probe prints1/1
+for both services and the long string compiles. Complete diagnostics and exits
+remain in build/world-u7-logs, including the first probe script's incorrect library
+filename error (before compilation), corrected probe, and expected baseline string
+compile failure. These are separate from all-green acceptance invocations.
+
+The three existing public adapters now own value_type/rebind/converting constructors,
+select_on_container_copy_construction, equality and propagation; no std trait
+specialization remains. Default keeps copy-assignment propagation false, Object /
+Pool true; move-assignment and swap propagate for all. Primary traits derive pointer,
+size and difference types correctly. No std::allocator base conversion or Pool's
+old Base alias remains. This is a source compatibility correction; recompilation
+is required and no cross-version public template ABI promise is made.
+
+A shared narrow allocator-count.hpp helper limits positive N to PTRDIFF_MAX /
+sizeof(T), guarding multiplication AND addressable byte ranges before any lookup /
+checkout, even for reusable pool storage. Zero and excess counts throw existing
+CE bad_request. Byte adapters accept scalar char/double and over-aligned classes.
+Default uses Manager<2.0,4096>/exact; Object uses ObjectMemoryManager<T>/greedy.
+All void-block growth policies share the same domain; alignment is at least
+alignof(T), service minimum/growth/reuse remains unchanged. Deallocation ignores
+count and returns the WHOLE granted byte section, after lifetimes end; null/unknown
+and repeated returns retain Manager's no-op policy. No new allocation algorithm,
+PMR/global new replacement or lifecycle redesign is introduced. Default/Object
+still require live singleton facades through final deallocation.
+
+The full active source/doc audit finds only Factory (seven operations) and asset-mgr
+(one operation) using production std::allocator_traits; ALL eight already pass an
+allocator instance. No active instance-free consumer needed migration. Removed
+legacy custom-traits overloads must be replaced by allocator/member/instanceful
+primary traits for single-object operations. Tracked batch legacy use must call
+Objects::Constructor<T>::construct/destroy explicitly, preserving tracking and
+partial-effect semantics; it must not silently become plain std construction.
+Byte generic U construction stays std::construct_at/std::destroy_at, untracked as
+before. Existing Factory and Reservation cases prove unchanged tracked cleanup.
+High confidence from direct source, GNU16 execution and captured public-header
+probes; this does not establish another standard library or installed SDK.
+
+## WINT-019 — Preserve typed pool lifetime and construction meaning
+
+ObjectPoolAllocator<T> remains class-only and retains PoolState<T>, its per-T
+BlockManagement state and Constructor<T> tracker. A new explicit constructor can
+capture a live local Pool<T> facade; default construction captures the established
+singleton. The local facade need not outlive it. Copies retain their source state;
+rvalue operations intentionally use copy semantics so moved-from allocators remain
+usable. Different-T converting construction captures the destination class pool;
+rebind-back is equivalent, without pretending typed storage can be returned as
+another class. New/rebound allocators must be constructed while their facade is
+live; retained contexts do not extend arbitrary singleton acquisition. Growing a
+retained typed pool still requires its underlying byte-manager facade to be live;
+existing backing construction/final return retain their captured contexts.
+
+BlockManagement<T>::shared_state and Constructor<T>::release_context are shared
+per EXACT T, not per PoolState handle. Therefore same-T allocators are interchangeable
+and is_always_equal is true; different T comparisons are false. A meaningful test
+captures a local facade, destroys it, creates a different context handle, compares
+equal, destroys/returns the old allocation through the new allocator and allocates /
+constructs again through the retained old allocator. Pointer spelling is explicitly
+not domain identity. No new shared-domain registry or metadata copy is added.
+
+Positive bounded allocation delegates to retained retrieve_block; deallocate
+returns exactly N intended typed slots, not a byte section. Existing partial-slot
+return, unknown/out-of-bounds/double-return refusals and retained release behavior
+stay unchanged. Raw allocation/return constructs/destroys nothing. Generic hooks
+use retained tracked construction when U==T. When U differs (GNU map's pair value
+inside a rebound class node), that value subobject is NOT a whole T pool slot:
+construct/destroy it directly, paired and untracked. This NEW formerly unsupported
+path does not create Pool<U>, register an interior object as a whole node or add
+a tracker singleton lookup during teardown. Tracked T replacement/raw/live/busy
+semantics remain unchanged; user content still needs synchronization. Byte adapters
+were already untracked. This is an explicit engineering distinction, not a quiet
+change to an existing tracked operation or a promise to track every subobject.
+
+Actual class-vector and class-node map cases prove generic value construction,
+copy/move/assignment/swap, balanced destruction and constructor-failure return.
+The test-only Measured wrapper delegates EVERY storage/lifetime operation to these
+same public services; it records actual calls and checks byte AND exact-class
+registry/free ranges. Unwrapped vector/map/string cases separately prevent the
+instrumentation's own rebind from hiding a broken public adapter. Scoped metadata
+inspection excludes concurrent writes and deliberately performs no user-content
+locking. Pool backing/tracker contexts retain existing ownership, including their
+shared-control and bookkeeping cost. Confidence high for executed class/node
+paths; recompile external templates, retain ordinary facade acquisition constraints.
+
+## WINT-020 — Retain one bounded editor workspace
+
+Actual private caller/control sequence remains unchanged:
+
+```cpp
+DemoTilemapEditor editor;
+editor.consume(std::array{press(Key::B), press(Key::Digit6),
+                          paint(first_captured_pointer), paint(second_captured_pointer)}, sizes);
+const auto warmed = editor.workspace(); // borrowed backing address, owned scalar observations
+editor.consume(std::array{press(Key::T), erase(first_captured_pointer)}, sizes);
+// Same pending allocation; every action uses its own recorded pointer.
+```
+
+Press/paint build the existing admitted Events::Record values. No event span,
+callback, document/frame pointer or sampler is retained. The actual private
+DemoTilemapEditor now owns vector<TerrainEdit,DefaultAllocator<TerrainEdit>>.
+No pool wrapper is added to fixed fields. Constructor rejects request limits above
+1024; zero is admitted but paint refuses before allocation. The first admitted
+semantic paint/erase lazily reserves the configured per-run request cap; actual
+capacity above1024 refuses before swapping the workspace. Capacity is retained
+until editor destruction, never grown per tick; N<=1024 and checked sizeof products
+bound payload, on tested ABI at most24576 bytes. Default cap32 retains768 bytes.
+This remains a bounded per-run buffer, not a cap on all event records or total
+per-tick completed runs; keyboard/wheel/sample flushes can form multiple commands.
+
+Clear at entry plus a stack cleanup guard clears on ALL exits, including invalid
+sizes, request/Engine/history/overlay/storage refusals and allocation exceptions.
+Flush still stages/publishes terrain before clearing; earlier completed runs remain
+accepted after a later refusal. A successful failed-file-action pre-flush is not
+rolled back, and remaining tick events are dropped by existing actual demo update
+diagnostics. No-op runs retain existing history/redo/views. Camera, mode/map/layer
+selection, captured pointers/independent scales, pan/zoom, generated witness/patch
+synchronization, file boundaries and old prepared packets are unchanged. Mutation
+of private scratch is allowed during a refused command; published content/history/
+attachment still preserves its existing transaction. Next consume cannot replay
+stale pending samples. Tests specifically refuse after collecting two valid samples,
+then accept a different one, plus fail after a valid flush and recover next call.
+
+The editor and every allocator operation are serialized on the existing simulation
+owner; preparation shares its established nonconcurrent contract. Platform cleanup
+after simulation join resets GameImpl::tilemaps_ before global facade teardown;
+that is the required DefaultAllocator lifetime boundary, source-inspected and
+compiled, not newly executed graphical teardown. Unit/world owners are scoped
+before process exit. workspace() is private-app observation, NOT an Engine API or
+allocation counter; its data pointer borrows storage until editor destruction and
+must not be dereferenced after clear as live TerrainEdits. Confidence high in
+executed CPU behavior, cheap private reversal; no whole-editor allocation policy
+is changed.
+
+## WINT-021 — Separate observed storage from allocation-wide claims
+
+Executed40/40 focused cases comprise32 EXISTING memory/reservation/construction /
+block cases and8 new container cases. They reuse original case sources under a
+narrow normal-Engine consumer, without enabling broad acceptance or copying any
+Engine implementation. Existing aggregate registration stays intact; no alternate
+Engine archive, macro patch or system installation is used. Three header-first
+public allocator probes build through normal Engine requirements. Actual imported
+CE::Diagnostics::next_domain_id plus readelf/ldd/link commands prove one normal
+clone-local shared Engine; the existing17 storage/map exports/imports and SAME
+private app source in unit/world/demo remain verified.
+
+Actual Measured vector workload for EACH Default/Object/Pool service:7 allocation
+calls,7 returns,96 successful constructions,96 destructions,352 SUMMED requested
+bytes,22 value copies and30 value moves. The failed growth constructor is excluded
+from successful construction count and its storage is returned. Pool map observes
+20 class-node allocation calls and19 successful generic value-subobject constructions,
+including one later constructor refusal with complete cleanup. No synthetic native
+bind/draw/upload occurs. These are bounded test workloads, not benchmark gains.
+
+The real editor's four repeated consume/flush calls after warmup retain the same
+borrowed backing address/capacity32; payload is768 bytes (sizeof TerrainEdit24).
+Undo/redo also retain it. Every semantic key/label/derived visual matches frozen
+base plus literal edits and an independent cardinal oracle, with sibling/literal,
+generated-overlay/history and retained-frame isolation. No editor-wide allocation
+or copy-byte counter is present: unchanged buffer capacity/address plus inspected
+reserve-only-when-empty code establishes THIS buffer's reuse, not allocation-free
+updates. Tracked copy/move COUNTS are measured; multiplying by sizeof would be
+modeled payload, not measured memory traffic. No such byte-traffic claim is made.
+
+Summed requested bytes and vector payload EXCLUDE greedy spare blocks, alignment
+rounding/fragmentation, registry/partition/free/stale/tracker nodes and locks,
+shared control blocks, test instrumentation's own vectors/owners, normal allocator
+objects and all other application storage. Existing global service metadata can
+retain reusable blocks after return. History/recipe/base/witness/patch ownership
+and candidate reconstruction copies still cost the separate U6 logical charges;
+these were not remeasured as heap bytes or reduced by this scratch migration.
+Allocation/programming exceptions propagate. No RSS/latency/compactness guarantee.
+
+The one accumulated130/130 shared selection preserves127 U6 names plus3 scratch
+cases,0 failed/skipped; memory40/40 is separate (170 unique names, no whole-suite
+repetition). All16 world children exit0, including fresh full-snapshot reload.
+Actual demo compiles/links, never runs. Initial missing CMake helper include and
+an incorrectly spelled build target each fail before the corrected commands;
+full diagnostics/exits remain, no compiler-warning suppression. Two unrelated
+unchanged dangling-else warnings remain. Final format and shared link/header/source
+checks pass. Source/archive preservation verifies372 unchanged prior paths, only
+three selected allocator headers changed;16 older receipts stay byte-identical.
+
+Remaining allocation-sensitive work: document snapshots/key strings and complete
+history timeline copies, TerrainDocument two-owner reconstruction and Engine Map /
+TerrainMap batch candidates/results, generated full base/witness/patch/codec copies,
+Cave replay scratch, event capture/frame packet vectors. Future weather field /
+step scratch and magic effect/query/preparation buffers need their own assigned
+service/lifetime/peak-accounting review; sibling implementations were not imported
+or measured here. The explicit user service requirement does not prove those paths
+already migrated. GNU/Linux Debug/shared ASan/UBSan evidence leaves leak detection,
+real input/display/assets/teardown/fun, installed SDK/static/Release/other toolchains
+and stronger file durability open. No unchanged X11 retry or automatic next task.

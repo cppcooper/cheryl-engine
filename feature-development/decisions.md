@@ -1,13 +1,14 @@
 # World integration decisions
 
-Current unit: standalone WORLD-U6, starting at exact clean reviewed
-`9cfa376a6366012fff2e1399af2c5d87acfa471c`. The committed U5 receipt (old batch /
-unit ready/true), nonempty saved logs and119 passing XML entries were inspected.
-WINT-015/016/017 add in-memory cave base/edit ownership to the same private editor.
-Execution passes127/127 once, then1/1 isolation and8/8 final affected rechecks;
-all18 world child exits0. Actual demo and17 shared-Engine ownership probes pass.
-This does not extend the completed finite round. Exact execution/results and the
-standalone receipt are in next.md; historical queues/receipts/provenance stay intact.
+Current unit: standalone WORLD-U7, exact clean reviewed parent
+`0654533c01f29058262ffdb7e4a26db5205515c0`. Its committed U6 receipt was ready/true;
+all12 saved evidence logs and127 passing XML entries were inspected. WINT-018–021
+correct allocator/container compatibility and reuse bounded editor scratch under
+the user's explicit Engine-service choice. Actual execution passes40/40 focused
+memory/container cases and130/130 shared cases once, preserving all127 U6 names.
+The demo links and normal shared-Engine/header/import/loader checks pass. This is
+not another queue unit; no graphics or performance acceptance follows from it.
+Exact commands, failures, measurements and limits are in next.md.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -194,3 +195,47 @@ Report recipe/base/witness/edits/history/full-snapshot charges separately, inclu
 candidate-copy reservations; none is a saving or RSS guarantee. Share the original
 private cave producer across real callers. Confidence is high from boundary/link
 checks; synchronous latency, allocation, graphical/leak/platform/durability gaps remain.
+
+## WINT-018 — Keep standard containers on the real Engine boundary
+
+Remove std allocator inheritance/finality and all three program-defined traits
+specializations. Put rebind, conversions, copy selection, propagation and checked
+counts on the existing adapters; primary traits retain CE storage. Preserve exact
+Default versus greedy Object checkout and untracked construction. Zero and
+unaddressable products reject before checkout. Eight active production traits
+calls already carry instances. This removes legacy instance-free conveniences
+and requires consumer recompilation. Confidence is high for tested GNU C++23;
+service choice is explicit user direction, spelling is engineering.
+
+## WINT-019 — Preserve typed pool lifetime and construction meaning
+
+Pool allocators retain existing per-class state; same-T contexts compare equal
+because they share block/tracking domains, even when handle addresses differ.
+Rebind selects the destination class pool; cross-type domains differ. Whole T
+construction remains tracked; different U node-value subobjects construct/destroy
+directly without inventing Pool<char/double> or new tracker retention. Typed slot
+returns and facade-independent captured contexts remain. This trades automatic
+subobject tracking for precise ownership. Confidence is high from class/node,
+exception, equality and retained-context execution; external templates must recompile.
+
+## WINT-020 — Retain one bounded editor workspace
+
+Use DefaultAllocator<TerrainEdit> in the actual editor's member pending vector.
+Lazily reserve the admitted request allowance, capped at1024 slots; preserve
+flush points, then clear on every return/unwind while retaining backing. Reject
+oversized private configurations before content setup. This spends bounded spare
+storage to reuse allocations and prevents refused samples leaking into later
+ticks. The app must destroy it before byte-manager facade teardown. Confidence
+is high from repeated real-helper/history/generated/frame checks; reversal is
+private and inexpensive.
+
+## WINT-021 — Separate observed storage from allocation-wide claims
+
+Prove ownership through bounded registry/free-range inspection, actual delegated
+call/lifetime counts and normal shared-Engine linkage. Execute existing memory,
+construction/reservation/block regressions plus all127 prior shared names; compile
+the actual demo from the same editor source. Report768 retained scratch payload
+bytes separately from manager/control metadata and unconverted candidates. No
+editor-wide allocation/copy-byte counter or speed claim is selected. Confidence
+is high in GNU Debug ASan/UBSan CPU evidence; leaks, graphics and wider ABI remain
+open. Future weather/magic adoption needs separate ownership review.

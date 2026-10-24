@@ -3549,3 +3549,124 @@ TEST(tilemap_consumer, generated_files) {
     EXPECT_EQ(Documents::load(diagnostics.directory / "west-terrain.json"), WorldProof::generate_document(small_recipe(), cap).base);
     fixture.calls->expect_cpu();
 }
+
+namespace {
+    void expect_workspace(const DemoTilemapEditor::Workspace workspace) {
+        ASSERT_NE(workspace.data, nullptr);
+        EXPECT_EQ(workspace.size, 0u); // No pending edits survive ANY consume return.
+        EXPECT_LE(workspace.capacity, 1024u);
+        EXPECT_EQ(workspace.payload_bytes, workspace.capacity * sizeof(Maps::TerrainEdit));
+        bool owned = false, pooled = false;
+        const auto blocks = CE::Memory::BlockManagement<void>::shared_state();
+        {
+            std::shared_lock lock(std::get<0>(blocks->registry));
+            for (const auto& block : std::get<1>(blocks->registry))
+                if (block.contains(const_cast<Maps::TerrainEdit*>(workspace.data)))
+                    owned = true;
+        }
+        {
+            std::shared_lock lock(std::get<0>(blocks->pool));
+            for (const auto& block : std::get<1>(blocks->pool))
+                if (block.contains(const_cast<Maps::TerrainEdit*>(workspace.data)))
+                    pooled = true;
+        }
+        EXPECT_TRUE(owned);
+        EXPECT_FALSE(pooled); // The editor actually retains checked-out CE storage.
+    }
+}
+
+TEST(tilemap_consumer, editor_scratch_reuse) {
+    const Fixture fixture;
+    DemoTilemapEditor editor;
+    domain_view(editor);
+    EXPECT_EQ(editor.workspace().capacity, 0u); // Literal-only state needs no scratch allocation.
+    edit(editor, {key(Key::B)});
+    editor.install_generated(Generated::recipe(), Replace::DiscardCurrent);
+    const auto east = editor.terrain_document(1).snapshot();
+    const auto literal = editor.document(0).snapshot();
+    auto expected = Generated::base(); // Frozen full independent occupancy/key expectations.
+    edit(editor, {key(Key::Digit6), click(Mouse::Left, domain_cell(editor, 2, 2)), click(Mouse::Left, domain_cell(editor, 2, 2))});
+    expected.layers[0].cells[2 * 31 + 2] = "terrain:four";
+    expect_domain(editor, 0, expected, true);
+    const auto warmed = editor.workspace();
+    expect_workspace(warmed);
+    ASSERT_GE(warmed.capacity, 32u);
+    Render::Frame old;
+    prepare_editor(old, editor, fixture);
+    const auto packets = old.passes()[0].draws;
+    for (int tick = 0; tick < 4; ++tick) {
+        const bool clear = tick % 2 == 0;
+        edit(editor, {key(Key::T), key(Key::Digit3), click(clear ? Mouse::Right : Mouse::Left, domain_cell(editor, 1, 1))});
+        expected.layers[1].cells[32] = clear ? std::nullopt : std::optional<std::string>{"terrain:one"};
+        expect_domain(editor, 0, expected, true); // Every label, key and independent cardinal visual.
+        EXPECT_EQ(editor.workspace().data, warmed.data);
+        EXPECT_EQ(editor.workspace().capacity, warmed.capacity);
+        expect_workspace(editor.workspace());
+        EXPECT_EQ(editor.generated_state(0)->overlay, Patches::diff(Generated::base(), expected));
+        EXPECT_EQ(editor.document(0).snapshot(), literal);
+        EXPECT_EQ(editor.terrain_document(1).snapshot(), east);
+        expect_packets(old, packets);
+    }
+    edit(editor, {key(Key::F6)});
+    expected.layers[1].cells[32] = std::nullopt;
+    expect_domain(editor, 0, expected, true);
+    edit(editor, {key(Key::F7)});
+    expected.layers[1].cells[32] = "terrain:one";
+    expect_domain(editor, 0, expected, true);
+    EXPECT_EQ(editor.workspace().data, warmed.data);
+    std::cout << "observed editor backing=" << warmed.data << " retained capacity=" << warmed.capacity
+              << " TerrainEdit bytes=" << sizeof(Maps::TerrainEdit) << " logical payload=" << warmed.payload_bytes
+              << " repeated consume backing/capacity unchanged; no copy-byte counter\n";
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_scratch_recovery) {
+    const Fixture fixture;
+    DemoTilemapEditor editor(DemoTilemapEditor::diagnostic_terrain(), {2, 10, 64});
+    edit(editor, {key(Key::B)});
+    auto expected = editor.terrain_document(0).snapshot();
+    const auto east = editor.terrain_document(1).snapshot();
+    const auto history = editor.history(0, Mode::Terrain);
+    const auto one = click(Mouse::Left, {40, 128});
+    const auto two = click(Mouse::Left, {72, 128});
+    const auto three = click(Mouse::Left, {104, 128});
+    EXPECT_THROW(edit(editor, {one, two, three}), bad_request);
+    expect_domain(editor, 0, expected, true);
+    EXPECT_EQ(editor.history(0, Mode::Terrain), history);
+    const auto workspace = editor.workspace();
+    expect_workspace(workspace);
+    ASSERT_EQ(workspace.capacity, 2u);
+    edit(editor, {three}); // Earlier refused samples MUST NOT reappear.
+    expected.layers[0].cells[2] = "terrain:one";
+    expect_domain(editor, 0, expected, true);
+    EXPECT_THROW(edit(editor, {key(Key::T), one, key(Key::F8), two}), bad_request);
+    expected.layers[1].cells[0] = "terrain:one"; // Prior completed flush remains accepted; F8 is disabled.
+    expect_domain(editor, 0, expected, true);
+    expect_workspace(editor.workspace());
+    EXPECT_EQ(editor.workspace().data, workspace.data);
+    editor.consume({}, {{0, 0}, {0, 0}});
+    EXPECT_EQ(editor.workspace().size, 0u);
+    edit(editor, {three}); // Safe next-tick recovery after invalid sizes / failed file action.
+    expected.layers[1].cells[2] = "terrain:one";
+    expect_domain(editor, 0, expected, true);
+    EXPECT_EQ(editor.terrain_document(1).snapshot(), east);
+    Render::Frame current;
+    prepare_editor(current, editor, fixture);
+    EXPECT_FALSE(current.passes().empty());
+    fixture.calls->expect_cpu();
+}
+
+TEST(tilemap_consumer, editor_workspace_bounds) {
+    EXPECT_THROW(DemoTilemapEditor(DemoTilemapEditor::diagnostic_terrain(), {1025, 0, 0}), invalid_args);
+    DemoTilemapEditor zero(DemoTilemapEditor::diagnostic_terrain(), {0, 0, 0});
+    edit(zero, {key(Key::B)});
+    const auto before = zero.terrain_document(0).snapshot();
+    EXPECT_THROW(edit(zero, {click(Mouse::Left, {40, 128})}), bad_request);
+    EXPECT_EQ(zero.terrain_document(0).snapshot(), before);
+    EXPECT_EQ(zero.workspace().capacity, 0u);
+    DemoTilemapEditor exact(DemoTilemapEditor::diagnostic_terrain(), {1024, 10, 4096});
+    edit(exact, {key(Key::B), click(Mouse::Left, {40, 128})});
+    expect_workspace(exact.workspace());
+    EXPECT_EQ(exact.workspace().capacity, 1024u);
+    EXPECT_EQ(exact.terrain(0, ground).label({0, 0}), (Maps::TerrainLabel{1}));
+}
