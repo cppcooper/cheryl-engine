@@ -110,7 +110,7 @@ namespace CE::Audio::Miniaudio {
  */
 
 /** @fn void CE::Audio::Miniaudio::System::maintain()
- * Under the system lock, retire nonplaying voices whose only owner is the system. Active playback and externally retained voices remain; closed output rejects.
+ * Under the system lock, retire inactive voices whose only owner is the system. Playing/Scheduled voices and externally retained voices remain; closed output rejects.
  */
 
 /** @fn void CE::Audio::Miniaudio::System::close() noexcept

@@ -16,6 +16,16 @@ namespace CE::Audio {
 
     void PlaybackOptions::validate() const { validate_volume(volume); }
 
+    void validate_start_delay(std::chrono::duration<double> delay) {
+        if (!std::isfinite(delay.count()) || delay.count() < 0)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Audio start delay must be finite and nonnegative");
+    }
+
+    void Voice::resume_after(std::chrono::duration<double> delay) {
+        validate_start_delay(delay);
+        throw CE::Exceptions::bad_request(CE_HERE, "Scheduled playback is unsupported by this audio backend");
+    }
+
     void Voice::set_playback_rate(float rate) {
         validate_playback_rate(rate);
         throw CE::Exceptions::bad_request(CE_HERE, "Playback-rate control is unsupported by this audio backend");

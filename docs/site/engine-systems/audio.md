@@ -25,7 +25,8 @@ Types below are in `CE::Audio` unless another namespace is shown.
 | Type or choice | Purpose and details |
 | --- | --- |
 | {cpp:struct}`PlaybackOptions <CE::Audio::PlaybackOptions>` | Initial normalized volume, looping and paused state per voice. [Clip/stream submission](../runtime/audio.md#clips-and-voices). |
-| {cpp:enum}`PlaybackState <CE::Audio::PlaybackState>` | `Playing`, `Paused`, `Finished`, `Stopped`, `Closed`; stopped/finished voices require explicit restart. [State transitions and closed handles](../runtime/audio.md#clips-and-voices). |
+| {cpp:enum}`PlaybackState <CE::Audio::PlaybackState>` | `Playing`, `Paused`, `Finished`, `Stopped`, `Closed`, `Scheduled`; stopped/finished voices require explicit restart. [State transitions and closed handles](../runtime/audio.md#clips-and-voices). |
+| `Voice::resume_after(delay)` | Arm paused clips/streams on the output clock; waiting voices stay active through maintenance. Optional backends may reject. [Delayed playback](../runtime/audio.md#schedule-a-delayed-start). |
 | Device / offline output | Device output advances independently; offline output advances only through explicit `render()` calls. [Backend selection](../runtime/audio.md#backends-and-limits); [miniaudio preparation](../modules/miniaudio.md#preparation-and-output). |
 | Clip / streamed file | Retained decoded samples or file-backed playback whose source must remain available. [Sources and limits](../runtime/audio.md#clips-and-voices). |
 

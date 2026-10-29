@@ -104,6 +104,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 | Load/play sounds | [miniaudio preparation and output](../../modules/miniaudio.md#preparation-and-output). |
 | Stream/control audio playback | [Clips and voices](../../runtime/audio.md#clips-and-voices); [module example](../../modules/miniaudio.md#preparation-and-output). |
 | Change audio speed | [Opt into variable-rate playback](../../runtime/audio.md#change-playback-speed). |
+| Delay a clip or stream start | [Output-clock scheduling](../../runtime/audio.md#schedule-a-delayed-start). |
 | Manage playback lifetime | [Audio lifetime and scheduling](../../runtime/audio.md#lifetime-and-scheduling). |
 
 (windows-timing-and-work-delivery)=

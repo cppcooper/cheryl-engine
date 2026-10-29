@@ -28,8 +28,28 @@ namespace {
     using CE::Audio::PlaybackState;
     using CE::Audio::Miniaudio::System;
 
+    bool delayed_start() {
+        auto system = System::open_offline();
+        CE::Audio::System& portable = *system;
+        const auto clip = Clip::from_samples({2, 48000}, std::vector<float>(2048, 0.25f));
+        auto voice = portable.play(clip, {.paused = true});
+        voice->resume_after(std::chrono::milliseconds{1});
+        if (voice->snapshot().state != PlaybackState::Scheduled)
+            return false;
+        std::array<float, 128> samples{};
+        system->render(samples);
+        for (std::size_t index = 0; index < samples.size(); ++index)
+            if (std::abs(samples[index] - (index < 96 ? 0.0f : 0.25f)) >= 0.00001f)
+                return false;
+        return voice->snapshot().state == PlaybackState::Playing;
+    }
+
     int offline() {
         std::cout << "Audio consumer: checking offline PCM and closed handles.\n" << std::flush;
+        if (!delayed_start()) {
+            std::cerr << "Audio consumer: delayed start did not respect the output-frame boundary.\n";
+            return 1;
+        }
         auto system = CE::Audio::Miniaudio::System::open_offline();
         CE::Events::EventBus events;
         std::optional<CE::Audio::PlaybackEnded> ended;
@@ -77,6 +97,8 @@ namespace {
                 return "Stopped";
             case CE::Audio::PlaybackState::Closed:
                 return "Closed";
+            case CE::Audio::PlaybackState::Scheduled:
+                return "Scheduled";
         }
         return "Unknown";
     }

@@ -6,13 +6,14 @@
 #include "playback-events.h"
 #include <core/subsystems/event-bus.h>
 
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <optional>
 
 namespace CE::Audio {
     /** Observed voice lifecycle; only restart() restarts stopped/finished playback. */
-    enum class PlaybackState { Playing /**< Advancing. */, Paused /**< Suspended with progress retained. */, Finished /**< Reached end. */, Stopped /**< Explicitly stopped. */, Closed /**< Owning system is closed. */ };
+    enum class PlaybackState { Playing /**< Advancing. */, Paused /**< Suspended with progress retained. */, Finished /**< Reached end. */, Stopped /**< Explicitly stopped. */, Closed /**< Owning system is closed. */, Scheduled /**< Armed for a future output-clock start. */ };
 
     /** Initial per-voice controls; validate before admitting playback. */
     struct PlaybackOptions {
@@ -40,9 +41,10 @@ namespace CE::Audio {
     // Normalized linear gain, inclusive [0, 1]; rejects non-finite values.
     CE_API void validate_volume(float volume);
     CE_API void validate_playback_rate(float rate); ///< Reject nonfinite multipliers or values outside [0.125, 8].
+    CE_API void validate_start_delay(std::chrono::duration<double> delay); ///< Reject nonfinite or negative seconds.
 
     /** One independently controlled playback. Controls and snapshots are synchronized.
-     * Pause preserves progress; resume affects only Paused voices. Stop is terminal
+     * Pause preserves progress and cancels a scheduled start; resume affects only Paused voices. Stop is terminal
      * until restart explicitly requests frame zero. Finished voices also need restart.
      * Changing looping does not restart a stopped/finished voice.
      * Snapshot state can change immediately afterward as native playback progresses.
@@ -64,6 +66,7 @@ namespace CE::Audio {
          * Synchronized like other controls; closed output and unsupported backends reject.
          */
         virtual void set_playback_rate(float rate);
+        virtual void resume_after(std::chrono::duration<double> delay);
     };
 
     /** Application-owned audio output and voice lifetime, independent of graphics.
@@ -100,6 +103,26 @@ namespace CE::Audio {
  * Reject nonfinite values or values outside inclusive[0,1] with invalid_args. Gain is linear, not decibels.
  */
 
+/** @fn void CE::Audio::validate_start_delay(std::chrono::duration<double> delay)
+ * Reject nonfinite or negative seconds with invalid_args. A backend additionally rejects
+ * delays it cannot represent on its output clock before arming playback.
+ */
+
+/** @fn void CE::Audio::Voice::resume_after(std::chrono::duration<double> delay)
+ * Arm a Paused voice to resume its existing source cursor after finite nonnegative
+ * output-clock seconds. Zero resumes immediately. On supporting backends other live
+ * states are unchanged; pause first to replace an existing schedule. Unsupported
+ * backends reject with bad_request, including zero; closed output rejects controls.
+ * Scheduling does not create a playback generation or terminal outcome. Pause cancels
+ * the pending start while preserving the cursor; a subsequent resume() is immediate.
+ * Stop cancels and remains terminal; restart cancels and starts from source frame zero
+ * immediately. A scheduled voice stays active after its application handle is released.
+ * Backend clock quantization, buffering and source processing determine audible timing;
+ * acceptance is not a wall-clock or hardware sample-accuracy guarantee. Invalid delay,
+ * clock overflow or native start failure must not arm a previously paused voice.
+ * @see [Delayed playback](cheryl-guide:runtime/audio#schedule-a-delayed-start)
+ */
+
 /** @fn void CE::Audio::PlaybackOptions::validate() const
  * Validate normalized finite volume; boolean looping/paused options require no further validation.
  */
@@ -113,11 +136,11 @@ namespace CE::Audio {
  */
 
 /** @fn void CE::Audio::Voice::pause()
- * Suspend a Playing voice while retaining progress; other states need not change. Controls reject after system close and native failures can propagate.
+ * Suspend a Playing or Scheduled voice while retaining progress and cancelling any pending start. Other states need not change. Controls reject after system close and native failures can propagate.
  */
 
 /** @fn void CE::Audio::Voice::resume()
- * Resume only a Paused voice from retained progress. Stopped/Finished voices require restart(); controls reject after system close.
+ * Resume only a Paused voice immediately from retained progress; a cancelled delay is not restored. Stopped/Finished voices require restart(); controls reject after system close.
  */
 
 /** @fn void CE::Audio::Voice::stop()
@@ -127,7 +150,7 @@ namespace CE::Audio {
  */
 
 /** @fn void CE::Audio::Voice::restart()
- * Request fresh playback from frame zero, preserving volume/looping. Source/device failures can propagate; streaming restart may reopen the retained file. Concrete backends define failure effects beyond the common closed-system rejection.
+ * Request immediate fresh playback from frame zero, cancelling a pending start and preserving volume/looping/playback rate. Source/device failures can propagate; streaming restart may reopen the retained file. Concrete backends define failure effects beyond the common closed-system rejection.
  */
 
 /** @fn void CE::Audio::Voice::set_volume(float volume)

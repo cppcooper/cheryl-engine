@@ -70,6 +70,23 @@ A native start failure leaves it stopped. Control changes take effect at backend
 processing boundaries. Buffered decoded PCM can delay a looping-policy change;
 already queued device output cannot be withdrawn.
 
+## Delayed starts
+
+Create a clip or stream voice paused, then call
+[`voice->resume_after(delay)`](../runtime/audio.md#schedule-a-delayed-start).
+The backend arms miniaudio's native start-time gate at the current output frame
+plus the delay rounded up to output frames. Scheduling needs no later game update
+or notification pump. Waiting voices report `Scheduled` and remain retained
+through maintenance even without an application handle.
+
+Pause and stop cancel the pending gate; ordinary resume and restart start
+immediately. Delays use output time independently of source playback rate.
+Calls have individual admission times, not a shared absolute/group deadline;
+queued device audio and source-processing latency remain outside the timing promise.
+Offline PCM cases cover frame boundaries, delayed cursor continuation, streams,
+rate changes, cancellation, failure, retention and terminal outcomes. Native-device
+audible onset and hardware timing have not been established by those cases.
+
 ## Playback notifications
 
 Use `publish_events_to()` and `publish_notifications()` for the

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <mutex>
 #include <optional>
@@ -40,6 +41,7 @@ namespace CE::Audio::Miniaudio::Detail {
         bool looping = false;
         bool variable_rate = false;
         float playback_rate = 1;
+        std::optional<ma_uint64> start_frame;
         std::optional<std::chrono::duration<double>> duration;
         std::uint64_t voice = 0;
         std::uint64_t generation = 0;
@@ -75,6 +77,9 @@ namespace CE::Audio::Miniaudio::Detail {
                 return ::CE::Audio::PlaybackState::Stopped;
             if ((terminal && terminal->reason == PlaybackEndReason::Completed) || ma_sound_at_end(&sound))
                 return ::CE::Audio::PlaybackState::Finished;
+            if (requested == ::CE::Audio::PlaybackState::Playing && start_frame &&
+                ma_engine_get_time_in_pcm_frames(ma_sound_get_engine(&sound)) < *start_frame)
+                return ::CE::Audio::PlaybackState::Scheduled;
             return requested;
         }
     };
@@ -173,16 +178,33 @@ namespace CE::Audio::Miniaudio::Detail {
         void stop(VoiceData& data, const char* operation) {
             check(std::exchange(next_stop, MA_SUCCESS), operation);
             check(ma_sound_stop(&data.sound), operation);
+            ma_sound_reset_start_time(&data.sound);
+            data.start_frame.reset();
         }
         void start(VoiceData& data, const char* operation) {
             check(std::exchange(next_start, MA_SUCCESS), operation);
             check(ma_sound_start(&data.sound), operation);
         }
 
+        [[nodiscard]] ma_uint64 delayed_start(std::chrono::duration<double> delay) const {
+            const double frames = std::ceil(delay.count() * output.sample_rate);
+            // A strict power-of-two bound also works where long double is double.
+            // Converting a rounded UINT64_MAX to uint64_t would be out of range.
+            if (frames >= std::ldexp(1.0, std::numeric_limits<ma_uint64>::digits))
+                throw CE::Exceptions::invalid_args(CE_HERE, "Audio start delay exceeds the output clock");
+            const auto count = static_cast<ma_uint64>(frames);
+            const auto now = ma_engine_get_time_in_pcm_frames(&engine);
+            if (count > std::numeric_limits<ma_uint64>::max() - now)
+                throw CE::Exceptions::invalid_args(CE_HERE, "Audio start delay overflows the output clock");
+            return now + count;
+        }
+
         void maintain_locked() {
             std::erase_if(voices, [this](const auto& voice) {
                 observe(*voice);
-                if (voice.use_count() == 1 && voice->state() != ::CE::Audio::PlaybackState::Playing) {
+                const auto current = voice->state();
+                if (voice.use_count() == 1 && current != ::CE::Audio::PlaybackState::Playing &&
+                    current != ::CE::Audio::PlaybackState::Scheduled) {
                     terminal(*voice, PlaybackEndReason::Reclaimed);
                     return true;
                 }
@@ -361,18 +383,32 @@ namespace CE::Audio::Miniaudio::Detail {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
             system_->observe(*data_);
-            if (data_->state() == ::CE::Audio::PlaybackState::Playing) {
+            const auto current = data_->state();
+            if (current == ::CE::Audio::PlaybackState::Playing || current == ::CE::Audio::PlaybackState::Scheduled) {
                 system_->stop(*data_, "Pause audio voice");
                 data_->requested = ::CE::Audio::PlaybackState::Paused;
             }
         }
 
         void resume() override {
+            resume_after(std::chrono::duration<double>::zero());
+        }
+
+        void resume_after(std::chrono::duration<double> delay) override {
+            ::CE::Audio::validate_start_delay(delay);
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
             system_->observe(*data_);
             if (data_->state() == ::CE::Audio::PlaybackState::Paused) {
-                system_->start(*data_, "Resume audio voice");
+                const auto start = system_->delayed_start(delay);
+                ma_sound_set_start_time_in_pcm_frames(&data_->sound, start);
+                try {
+                    system_->start(*data_, "Resume audio voice");
+                } catch (...) {
+                    ma_sound_reset_start_time(&data_->sound);
+                    throw;
+                }
+                data_->start_frame = start;
                 data_->requested = ::CE::Audio::PlaybackState::Playing;
             }
         }

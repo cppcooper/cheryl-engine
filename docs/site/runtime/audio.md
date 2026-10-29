@@ -46,6 +46,7 @@ sources can exceed nominal PCM amplitude and applications manage their mix level
 | Initial playback | Starts immediately, or starts `Paused` when requested. |
 | `pause` | Pauses a playing voice and preserves progress. |
 | `resume` | Resumes a paused voice; other live states are unchanged. |
+| `resume_after(delay)` | Arms a paused voice; `Scheduled` becomes `Playing` when the output clock reaches its start. |
 | `stop` | Leaves the voice `Stopped` until explicit restart. |
 | Natural end | Reports `Finished`; explicit restart is required. |
 | `restart` | Requests source frame zero and starts playback. |
@@ -89,6 +90,53 @@ During game updates, call `voice->set_playback_rate(rate)` when the desired rate
 changes, using the retained live voice. Validate the game's rate against the audio
 range rather than passing an uncapped world-speed value. Controls take effect at
 backend processing boundaries; they do not retime already queued device output.
+
+## Schedule a delayed start
+
+Prepare a paused voice, then arm it using a `std::chrono::duration`. With the
+existing miniaudio `audio` system and decoded `effect`, a 22 ms delayed effect is:
+
+```cpp
+auto delayed = audio->play(effect, {.volume = 0.5f, .paused = true});
+delayed->resume_after(std::chrono::milliseconds{22});
+```
+
+Include `<chrono>`. A paused voice from `stream()` uses the same operation.
+Preparing the voice first keeps synchronous source opening outside the delay.
+`resume_after()` measures finite nonnegative seconds from control admission on
+the output clock; zero resumes immediately. Miniaudio rounds positive delays up
+to output frames and rejects a delay or deadline outside its frame-counter range.
+The base Voice implementation rejects this optional capability with `bad_request`,
+including zero, so other backends need not silently pretend to schedule playback.
+
+While waiting, the snapshot reports `PlaybackState::Scheduled`. Device mixing
+advances the deadline independently of simulation; offline output advances only
+through `render()`. Neither `maintain()` nor notification pumping advances time.
+Keep `Scheduled` alongside `Playing` when tracking active effects. Releasing the
+handle does not cancel an armed start; maintenance retains it until inactive.
+
+| Control | Effect on a pending start |
+| --- | --- |
+| `pause()` | Cancels the deadline, keeps the source cursor, and reports `Paused`. |
+| `resume()` after pause | Resumes immediately; it does not restore a cancelled delay. |
+| `resume_after()` while already Scheduled/Playing | Leaves playback unchanged; pause first to choose another delay. |
+| `stop()` | Cancels and reports `Stopped`; delayed resume cannot restart it. |
+| `restart()` | Cancels and immediately restarts source frame zero, preserving volume, looping and playback rate. |
+| Output closure | Cancels playback; surviving handles report `Closed`. |
+
+Scheduling itself creates no generation or terminal notification. Completion,
+stop, restart/replacement and closure retain their ordinary outcome rules. Invalid
+delays, frame-clock overflow and native start failure leave the paused voice unarmed.
+Changing playback rate changes source speed/pitch without scaling its output-clock
+delay. Buffered output, decoder readiness and resampler latency still affect
+audible onset; this API promises neither wall-clock deadlines nor hardware
+sample accuracy.
+
+For a volley, prepare its voices paused and arm each with its own delay. Individual
+calls measure from their own admission; this is not an atomic group or a shared
+absolute timestamp. Keep a premixed clip when exact relative sample offsets are
+required. Delayed starts remove dependence on a later simulation tick without
+providing absolute-time or batch scheduling.
 
 ## Playback outcomes
 
@@ -180,11 +228,10 @@ which voices the pause suspended so resume does not start independently paused
 playback. Keep audio maintenance, and notification pumping when used, running
 while the world is paused.
 
-The current interface has no delayed or scheduled voice start. Calling `play()`
-on successive simulation ticks gives tick scheduling, not fixed spacing on the
-audio output clock. For a fixed short volley, an application can prepare one PCM
-clip containing the sounds and sample offsets, then play that clip once. This
-does not add a general scheduling guarantee to the voice API.
+Calling `play()` on successive simulation ticks gives tick scheduling. Use
+[`resume_after()`](#schedule-a-delayed-start) on prepared paused voices for an
+output-clock delay; use a premixed PCM clip when a group needs exact relative
+sample offsets.
 
 The system retains active playback after the application releases its voice
 handle. Call `maintain` regularly to reclaim completed/stopped/paused voices that
