@@ -5,6 +5,11 @@ Start from [First Game's sprite walkthrough](../first-game.md#put-a-sprite-on-sc
 Its maintained actor has two cells and deliberately has no timed clip; add a
 clip in your application's copied definition before asking the asset for one.
 
+Selecting a sprite selects an **asset and its grid**. A **cell** is one image
+region in that grid. A named **clip** supplies an ordered timeline of cells,
+durations and looping; an **Animation** is a mutable playback cursor over that
+shared clip data. Two cells alone do not imply a timeline or automatic playback.
+
 ## Define a clip
 
 Inside the `actor` entry in your copy of `graphics/definitions/sprites.json`, add
@@ -47,6 +52,15 @@ Missing or ambiguous clips throw. A separately constructed cursor for each
 entity has independent progress, even when entities share the same asset.
 Do not retrieve a fresh cursor in every update: that restarts playback.
 
+### Choose a default by application convention
+
+`sprite->animation("default")` works when the manifest defines that name, but
+`default` has no special SDK meaning. Select it explicitly and retain the returned
+cursor. There is no implicit first-clip selection or default-animation metadata.
+The shared Invaders definitions use this convention: each two-cell enemy has
+2,000 ms per frame, giving a four-second cycle at normal speed. The UFO's clip
+has only one cell, so advancing it does not change its appearance.
+
 ## Advance only during update
 
 The cursor advances with simulation time. Frame preparation reads its selected
@@ -73,6 +87,28 @@ simulation clock, so animation responds to its selected timing policy. At an
 exact boundary the next frame becomes current. Looping clips wrap; nonlooping
 clips remain on their last frame. `set_frame()` selects a normalized frame and
 resets time within it when explicit restart/scrubbing is needed.
+
+### Change playback speed
+
+Replace the unscaled `advance()` call above with this expression. Here `speed`
+is an application-owned finite, nonnegative multiplier, initially `1.0`:
+
+```cpp
+animation_->advance(std::chrono::duration<double>{tick.delta_seconds * speed});
+```
+
+`std::chrono::duration<double>` stores seconds by default: braces convert the
+tick's `double` seconds into the duration that `advance()` expects. With a
+two-second manifest frame, speed `1` changes cells every two simulation seconds;
+speed `2` changes them every second; speed `0` freezes this cursor. Ensure the
+product also stays finite. Keep manifest durations positive. Multiplying elapsed
+time speeds playback up; multiplying the frame interval would slow it down.
+
+Advance each cursor once per update, then read its cell during frame preparation.
+For enemies that must march in phase, let the formation own one cursor per clip
+and share its selected cell, rather than starting independent clocks on spawn.
+Apply speed only to the systems the game intends to accelerate; respawn, UI and
+explosion timers can follow separate policies.
 
 ## Publish and release
 

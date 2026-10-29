@@ -9,6 +9,22 @@
 | Use an ordinary allocator for one constructed batch | `Objects::Factory<T, Allocator>::create()` ([declaring header](../../../projects/engine/include/cheryl/core/resources/objects/factory.hpp)) | Completed elements can release independently; the last element owner releases the original allocation. |
 | Implement storage bookkeeping or custom construction | Blocks, managers and construction contexts | The caller preserves the lower-level range and live-object invariants below. |
 
+Pooling does not require shared ownership. Choose a lifetime before choosing
+the storage adapter:
+
+| Application need | Ownership pattern |
+| --- | --- |
+| A formation of 70 enemies retired together | One owner allocates a contiguous range, constructs each enemy with its own arguments, tracks the live prefix, and destroys that prefix before returning the whole range. Publish borrowed spans/pointers only after successful construction; replacing the wave invalidates them. |
+| Bullets retired independently | One `unique_ptr` per bullet with a deleter that destroys through the original allocator and returns its one slot. Each deleter retains the allocator/release state it needs. |
+| Independently retained/shared objects | Use the pool handles or reservations demonstrated below; their deleters already capture release state. |
+
+For custom contiguous storage, unwind the constructed prefix if a later constructor
+throws, then deallocate the original range with its original count. A borrowed
+`span` owns neither storage nor live objects. For independent unique ownership,
+ordinary `make_unique` uses ordinary allocation; pooled storage requires the
+matching allocator/deleter path, not `default_delete` over a pool slot. A pool
+warm-up of 100 slots is reusable capacity, not a hard maximum or memory budget.
+
 ### Construct a pool batch
 
 Include `<cheryl/core/resources/objects/pool.h>`:

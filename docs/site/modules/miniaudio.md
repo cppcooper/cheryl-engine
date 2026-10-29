@@ -54,9 +54,13 @@ identifies the selected native backend. Offline output uses `open_offline`, open
 no device and reports `offline`; `render` alone advances its clock. Native systems
 reject manual mixing. Offline output spans contain complete interleaved frames.
 Successful renders fill the whole span, including silence before playback or after
-voice retirement, and advance the clock by the requested frame count. Voices bypass
-pitch processing at matching sample rates; differing source rates still use the
-SDK's rate conversion. Cheryl exposes no pitch or spatialization control.
+voice retirement, and advance the clock by the requested frame count. Normal
+voices bypass pitch processing at matching sample rates; differing source rates
+still use the SDK's rate conversion. For speed changes, opt into
+`PlaybackOptions::variable_rate` when creating the voice, then use
+[`set_playback_rate()`](../runtime/audio.md#change-playback-speed). Pitch changes
+with speed. Independent pitch, pitch-preserving stretching and spatialization
+controls are not exposed.
 
 File stream opening waits for initial readiness; subsequent decode-ahead uses the
 SDK's resource-manager worker. Keep the file and its contents stable until playback

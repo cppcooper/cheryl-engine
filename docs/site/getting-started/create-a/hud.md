@@ -41,6 +41,12 @@ to the parent's top-right. Coordinates are logical UI units with downward-positi
 Y. The bindings follow the shared view as it changes. See
 [typed layout](../../modules/tgui.md#typed-layout) for proportional sizing and offsets.
 
+If a score label shows small arrows, first check its text size and fixed height:
+TGUI can show a scrollbar when the font no longer fits the label. For a short
+single-line score, `score_->setAutoSize(true)` lets the widget follow its contents;
+otherwise keep a fixed size large enough for the chosen font and longest text.
+This is native label layout, not an extra Cheryl menu control.
+
 ## Add the HUD to the UI owner
 
 Extend the initial `ui-controller.h` from the preceding lesson. Include `hud.h`,

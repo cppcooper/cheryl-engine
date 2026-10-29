@@ -70,11 +70,52 @@ player_input_.emplace(input.action_contexts());
 controller_.emplace(player_input_->attach(Tutorial::PlayerController::keyboard(keyboard_)));
 ```
 
+These similarly named values have different jobs:
+
+| Expression | Type | Purpose |
+| --- | --- | --- |
+| `engine_.input()` | `CE::Input::System&` | Borrow the initialized input system. |
+| `input.action_contexts()` | `CE::Input::Actions::ContextSubmission` | Acquire the producer endpoint on platform. |
+| `PlayerController::keyboard(keyboard_)` | `CE::Input::Actions::ContextDefinition` | Build mapping data; `keyboard()` is an application helper. |
+| `player_input_->attach(definition)` | `CE::Input::Actions::Context` | Own a move-only lease for one action namespace. |
+| `tick.input.actions(context)` | `CE::Input::Actions::View` | Borrow that namespace's state from this tick. |
+
 Acquire the endpoint and native device ID on platform while input is initialized.
-Retaining them lets simulation request a later player without calling
-`keyboard_id()` or changing the platform-owned binding collection itself.
+The first `action_contexts()` call lazily changes the live mapper without
+synchronizing that acquisition with polling. Calling it from simulation can race
+with platform polling; it need not produce a wrong-thread exception. Save the
+endpoint here instead. Its `attach()` operation supports producer-side submission,
+including a later simulation request, without querying a native keyboard or
+directly changing the platform binding collection.
 `attach()` validates and accepts an owned definition; installation happens at the
 next input poll. Until that poll publishes the context, its tick view is empty.
+
+### Transfer the context into the controller
+
+The immediate `attach()` result above is already a temporary. When naming the
+lease first, move it; an lvalue would request its deleted copy constructor.
+This is an alternative to the preceding `controller_.emplace(...)`, using the
+same saved endpoint and device ID. Include `<utility>`:
+
+```cpp
+auto context = player_input_->attach(Tutorial::PlayerController::keyboard(keyboard_));
+controller_.emplace(std::move(context));
+```
+
+For an owning pointer instead, include `<memory>` and declare
+`std::unique_ptr<Tutorial::PlayerController> controller_;`; replace that last
+line with `controller_ = std::make_unique<Tutorial::PlayerController>(std::move(context));`.
+The maintained constructor also moves its parameter into its member. Keep the
+controller alive to keep its context attached.
+
+`CE::Runtime::Context` is the engine service context. Rendering's
+`CE::Rendering::Submission::Context2D` holds pass inputs. Neither is this input lease.
+
+If storing `unique_ptr<Concrete>` in `unique_ptr<Abstract>`, the C++ conversion
+requires accessible, unambiguous inheritance, normally `class Concrete : public
+Abstract`. Give a polymorphic base a virtual destructor before deleting through
+it. Use `.get()` to borrow a pointer without transferring ownership; no engine
+downcast operation is needed.
 
 ## Read during update
 

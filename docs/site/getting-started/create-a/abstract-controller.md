@@ -50,6 +50,30 @@ The game must still preserve platform-owned resource setup, simulation-owned UI
 operations, and dependency-ordered cleanup. Give a common interface only the
 operations its caller actually needs.
 
+## Make ownership and update order explicit
+
+A small game can use this composition without another engine base class:
+
+| Owner | Owns | Borrows |
+| --- | --- | --- |
+| Game | Player, world systems, controllers and UI owner. | Runtime context. |
+| Player/AI controller | Decision state and any input-context lease. | Its target actor or a world observation. |
+| Formation | Enemy storage and shared march timing. | Any world services it observes. |
+| UI owner | Sessions, HUD/menu components and scene publication. | Game values supplied for presentation. |
+
+References do not require shared ownership: keep each borrower within its target's
+lifetime. Construct ordinary dependency relationships first; initialize loaded
+appearance and uploaders in `init_platform()`, then live UI in `init_simulation()`.
+The game can forward each lifecycle hook to its controllers from one place while
+preserving those two execution owners.
+
+An application-defined `AbstractGameObject` does not register itself with Cheryl.
+The game still calls its operations. Choose one update path: read a controller's
+command, update its actor once, then update systems and presentation in the game's
+chosen order. A forwarding controller plus another direct actor update would
+advance that actor twice. Reuse appearance/bounds for a bullet without requiring
+all actor behavior on every world object.
+
 ## Choose the smallest useful contract
 
 Keep concrete calls when they express the game's update order clearly. Introduce

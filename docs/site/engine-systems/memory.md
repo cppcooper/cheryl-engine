@@ -47,6 +47,24 @@ synchronize the object's members.
 The [engine dependency view](diagram-explorer.md#memory-internal) follows
 caches and geometry into their actual storage owners.
 
+### What manifest loading allocates
+
+Loading a graphics manifest uses resource management, but not one block for all
+of its data:
+
+| Data | Storage owner |
+| --- | --- |
+| Sprite/tileset asset objects | Cache loaders reserve pooled object slots. |
+| Grid CPU vertices | Managed CPU backing blocks retained by geometry. |
+| Decoded image pixels | Owned pixel vectors. |
+| Uploaded textures and buffers | The graphics provider and its native retirement path. |
+| The game's enemies and bullets | Application storage, allocated separately. |
+
+Loading a sprite does not allocate its actors. Cache residency, contiguous
+storage and object ownership solve different problems. Choose application storage
+through the [allocation recipes](../resources/resource-lifetime.md#choose-an-allocation-path)
+rather than assuming every pooled object needs shared ownership.
+
 ### Choose storage and construction together
 
 | Need | Entry point | What the caller retains |

@@ -60,6 +60,13 @@ owner and the initial view in both modes. All live session/widget operations use
 that owner. Final session closure stays in `deinit_platform()` after UI
 quiescence and accepted work have settled.
 
+Constructing an uploader on simulation records that thread as its owner. A
+later dispatched platform upload then throws `failed_operation`; its future
+rethrows during adoption. Constructing a session on platform in concurrent mode
+similarly makes later simulation session calls reject the wrong owner. Graphics
+upload and live toolkit work therefore need separate initialization hooks even
+when one controller coordinates both.
+
 ## Establish the shared session
 
 Create `ui-controller.h` with this initial controller. It has no widgets yet;
@@ -167,7 +174,7 @@ void Game::init_simulation() {
 }
 ```
 
-After quit handling and gameplay changes in `update()`:
+For this passive HUD, after quit handling and gameplay changes in `update()`:
 
 ```cpp
 ui_->update(tick);
@@ -189,8 +196,13 @@ ui_.reset();
 
 The controller retains the latest complete uploaded scene while at most one
 replacement is pending. `adopt_scene()` checks readiness without blocking;
-failed uploads propagate while the preceding scene remains retained. Keep input,
-the provider, and dispatch dependencies alive through runtime cleanup.
+failed uploads propagate while the preceding scene remains retained. Live widget
+edits do not change that older scene. Keep input, the provider, and dispatch
+dependencies alive through runtime cleanup.
+
+For a TGUI HUD plus an independently published RmlUi pause menu, continue with
+[Combine a HUD and pause menu](../how-to/pause-menu.md). That procedure moves
+interactive UI input before gameplay and keeps UI publication running while paused.
 
 ## Add interface components
 

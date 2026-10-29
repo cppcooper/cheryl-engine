@@ -52,12 +52,43 @@ sources can exceed nominal PCM amplitude and applications manage their mix level
 | `set_looping` | Changes the loop policy without restarting stopped/finished playback. |
 | System closure | Surviving handles report `Closed`; their controls throw. |
 
-Snapshots copy playback state, volume, loop policy and known source duration.
+Snapshots copy playback state, volume, loop policy, playback rate and known
+source duration.
 Backends supporting outcomes also supply system/voice identity, generation and
 an immutable optional terminal fact as described below.
 They are observations, not an atomic freeze of native playback. Live decoder
 cursors are outside the initial API; reading them concurrently with mixing needs
 additional synchronization. No game callback runs on the mixing thread.
+
+## Change playback speed
+
+Opt in when creating a voice, then retain that handle to control it. With
+`audio` and `effect` from [the miniaudio setup](../modules/miniaudio.md#preparation-and-output),
+replace its effect-play line with:
+
+```cpp
+auto voice = audio->play(effect, {.volume = 0.5f, .variable_rate = true});
+voice->set_playback_rate(2.0f);
+const auto observed_rate = voice->snapshot().playback_rate;
+```
+
+`set_playback_rate()` accepts a finite multiplier in `[0.125, 8]`; `1` is normal,
+`2` plays twice as fast and `0.5` half as fast. Pitch follows speed. This is not
+pitch-preserving time stretching or an independent pitch control. A successful
+restart preserves the selected rate. Snapshot duration remains the original
+source duration, not the rate-adjusted wall time or a remaining-time estimate.
+
+The same `PlaybackOptions::variable_rate` option applies to `stream()`. Select it
+before playback; miniaudio rejects rate changes on a voice opened without it,
+including an attempt to set rate `1`. Normal voices avoid the extra variable-rate
+processing path and its latency. Other backends can reject this optional control;
+choose a supporting backend or use an application fallback when speed is required.
+Do not assume the base interface guarantees support.
+
+During game updates, call `voice->set_playback_rate(rate)` when the desired rate
+changes, using the retained live voice. Validate the game's rate against the audio
+range rather than passing an uncapped world-speed value. Controls take effect at
+backend processing boundaries; they do not retime already queued device output.
 
 ## Playback outcomes
 
@@ -141,6 +172,19 @@ application producers. Their order follows control admission, rather than a
 deterministic simulation clock. Device playback progresses on its own clock
 without render or simulation admission. Offline processing is explicitly selected;
 an unavailable native device must not silently produce inaudible success.
+
+Skipping world updates for a pause does not pause device playback. Retain the
+music/effect voices that should pause and call their `pause()`/`resume()` controls
+at the game's transition boundary. Decide which menu sounds continue, and track
+which voices the pause suspended so resume does not start independently paused
+playback. Keep audio maintenance, and notification pumping when used, running
+while the world is paused.
+
+The current interface has no delayed or scheduled voice start. Calling `play()`
+on successive simulation ticks gives tick scheduling, not fixed spacing on the
+audio output clock. For a fixed short volley, an application can prepare one PCM
+clip containing the sounds and sample offsets, then play that clip once. This
+does not add a general scheduling guarantee to the voice API.
 
 The system retains active playback after the application releases its voice
 handle. Call `maintain` regularly to reclaim completed/stopped/paused voices that

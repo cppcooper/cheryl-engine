@@ -14,6 +14,13 @@ Start with [Project setup](../project-setup.md) and the `CE::Runtime::Context`
 borrowed by your game in [First Game](../first-game.md). This example applies
 damage, then updates a value a HUD could display.
 
+To find an existing channel, start with the
+[engine-event catalogue](../../engine-systems/events.md#engine-events).
+For a signal with no data, use an empty typed payload or the existing
+[named route with an empty `std::any`](../../runtime/event-delivery.md#named-channels).
+Pause and new-game decisions remain application policy; there is no required
+global gameplay-pause event.
+
 ## Choose a bus
 
 Your engine Context already owns a bus, available through `engine.events()`.
@@ -135,6 +142,9 @@ constructs one occurrence; `notify()` delivers it to the registered listener.
 In a lasting HUD, retain the registration as a member and remove it before
 destroying the state its callback borrows. Dropping the registration does not
 unsubscribe. Call `unregister_and_wait()` outside that listener's own callback.
+`Registration::disconnect()` prevents new callback entry without waiting for
+already entered callbacks. Before destroying borrowed state, also settle entered
+callbacks through the [removal/wait protocol](../../runtime/event-delivery.md#removal-and-shutdown).
 The callback's event reference is borrowed; copy any values you need later.
 
 ## Choose delivery behavior
@@ -151,6 +161,21 @@ callback to simulation. For cross-thread listeners, choose an explicit
 [queued delivery adapter](../../runtime/event-delivery.md#optional-queued-delivery).
 See [event delivery](../../runtime/event-delivery.md) for channel identity,
 failure handling and listener lifetime details.
+
+## Defer destructive game transitions
+
+Immediate publication can call several systems before `notify()` returns. A shot
+listener may create a bullet inside `fire()`; a hit listener may run while collision
+iteration still holds pointers into the world. Do not clear that collection or
+replace the scene from such a callback. Record an intent and apply it after the
+iteration or toolkit input call has returned, at a boundary owned by the game.
+For a quit intent, call `tick.request_stop()` from the game's update hook.
+
+[Combine a HUD and pause menu](../how-to/pause-menu.md) demonstrates this boundary
+for native button callbacks, world pause and the resume tick. The same policy
+applies when those buttons publish application events instead of setting flags.
+An event changes delivery; it does not grant a callback the required thread or a
+safe world-mutation boundary.
 
 ## Give a service a publishing route
 

@@ -225,6 +225,23 @@ Here `callback` interprets the application's `std::any` payload. Named and typed
 channels remain separate even when their text names match. Prefer the typed form
 for a new channel so registration and submission agree on its payload type.
 
+For a signal with no data, named dispatch still takes an explicit empty payload.
+Using the same `local_bus` as above:
+
+```cpp
+bool pause_requested = false;
+auto signal = local_bus.register_listener("game.pause-toggle", [&](const std::any&) {
+    pause_requested = true;
+});
+local_bus.dispatch("game.pause-toggle", std::any{});
+local_bus.unregister_and_wait(signal);
+```
+
+The callback records intent; the game consumes `pause_requested` at its update
+boundary. There is no payload-free `dispatch(name)` overload. For a new typed
+signal, define an empty payload such as `struct PauseToggle {};` and publish
+`PauseToggle{}` through its `EventChannel<PauseToggle>` instead.
+
 ## Optional queued delivery
 
 Queued delivery copies the event into owned work. The selected target controls

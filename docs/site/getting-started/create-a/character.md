@@ -87,6 +87,14 @@ const CE::Rendering::Submission::Context2D context{
 };
 ```
 
+The maintained `Character::append(CE::Rendering::PassWriter&)` constructs
+`CE::Rendering::Submission::Context2D` from the pass, then calls
+`resolve_sprite(*sprite_, cell_, style, context)`. `DrawStyle2D` supplies per-object
+inputs; that fourth argument supplies the pass inputs. See
+[First Game's drawing vocabulary](../first-game.md#understand-what-a-draw-needs).
+An actor contributes draws to a borrowed pass; a UI owner instead takes a
+`FrameWriter&` because its retained scenes append their own passes.
+
 The pass copies the camera matrices and retains each packet's resources and draw
 values. Keep First Game's score afterward, changing its `pass.add(...)` to
 `world.add(...)` to use this pass and the `context` above, until [the HUD tutorial](hud.md)

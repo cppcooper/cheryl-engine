@@ -213,6 +213,27 @@ SDK composition, including Startup and native toolkit authoring. The
 Desktop, GPU and physical-device coverage remain separate. The SDK does not export
 the Linux Debug terminal; that module retains its source-composition path.
 
+## Troubleshoot an SDK/example mismatch
+
+If a lifecycle name or constructor in an example differs from your compiler's
+declaration, check the selected artifacts before changing application ownership:
+
+1. Read `SDK-MANIFEST.json` for the installed SDK's source revision and enabled
+   modules; compare that revision with the checkout used for the example.
+2. Inspect the application's existing `CMakeCache.txt` for `Cheryl_DIR` and its
+   compile commands for the selected include path. Editing another checkout does
+   not refresh an installed SDK or change an already selected package.
+3. Compare the declaration in that selected SDK header with the corresponding
+   source header. Update/select a matched SDK and refresh the IDE's compilation
+   database when those paths change.
+4. Check the documentation's source revision. Local generated output records
+   `revision.json`; use the [documentation output/cache troubleshooting](documentation.md#troubleshooting)
+   to distinguish an old generation or cached browser page from current source.
+
+For example, current game hooks split `init_platform()`/`init_simulation()` and
+their matching deinitialization hooks. An older `init()` example is not evidence
+that both owners' work belongs in one constructor.
+
 ## Context assembly
 
 The standard startup result owns the context; the game and runtime borrow it.

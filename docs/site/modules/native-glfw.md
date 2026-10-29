@@ -312,6 +312,26 @@ The [Desktop and controller checks](../development/native-desktop-checks.md#linu
 supplies build inspection and Bluetooth capture procedures; HID observations
 remain blocked in the [testing queue](../../testing-requests.md).
 
+## Linux shutdown leak reports
+
+Native GLFW's diagnostics owner supplies a weak `__lsan_default_suppressions`
+hook on Linux GCC/Clang builds. LeakSanitizer uses it to filter known external
+Fontconfig/GTK desktop-module stacks and the once-only EGL allocation matched by
+`_glfwInitEGL`. These defaults address dependency reports after window teardown;
+they do not free allocations or establish that application leaks are absent.
+Inspect the report's allocation stack before attributing another leak to them.
+
+An application can supply its own strong hook to replace those defaults. To
+restore unfiltered reporting, define this once in an application `.cpp` file:
+
+```cpp
+extern "C" const char* __lsan_default_suppressions() { return ""; }
+```
+
+Use this on the Linux LeakSanitizer path; other platforms/toolchains have no such
+module default. The [diagnostics implementation](../../../projects/modules/platform/native-glfw/src/core/display/glfw-diagnostics.cpp)
+owns the exact suppression patterns.
+
 ## Checks
 
 | Target | Output / kind | Selection / coverage |

@@ -13,6 +13,7 @@ widget construction, input routing, focus and a publication path.
 :titlesonly:
 
 Create an interactive GUI with RmlUi <../getting-started/how-to/create-gui>
+Combine a HUD and pause menu <../getting-started/how-to/pause-menu>
 TGUI reference <../modules/tgui>
 RmlUi reference <../modules/rmlui>
 ```
@@ -25,8 +26,11 @@ RmlUi reference <../modules/rmlui>
 | RmlUi | Native contexts, RML documents and RCSS styles through a document session. | [Create an interactive GUI](../getting-started/how-to/create-gui.md); [RmlUi contracts](../modules/rmlui.md) |
 
 Neither integration provides a common widget API. Select one according to the
-application's authoring needs. Both convert ordered Engine input and publish
-retained scenes; Engine headers do not import either toolkit.
+application's authoring needs, or combine a TGUI HUD and RmlUi menu in one
+application UI owner. Each toolkit keeps its own session, uploader and retained
+scene. [The pause-menu procedure](../getting-started/how-to/pause-menu.md) connects
+those lifetimes to input and world updates. Both convert ordered Engine input and
+publish retained scenes; Engine headers do not import either toolkit.
 
 ## Construct widgets on the UI owner
 
@@ -197,6 +201,14 @@ application material builder or additional shader assets. The optional third
 argument accepts [custom material handles](../rendering/pipelines-and-materials.md#custom-ui-materials).
 Each frame retains its published resources; later UI edits must not mutate an
 earlier frame's data.
+
+Retained scenes lag live widgets. Gate scene appending when hiding a menu; calling
+native `Hide()` alone cannot remove packets from the previous complete scene.
+Reusing that scene on reopen is suitable for an unchanged menu. If page contents
+must never reappear stale, clear the retained scene and tag pending recordings
+with an application revision. Consume a ready future, propagate its error, and
+discard a successful result whose revision is obsolete before adopting it. Merely
+clearing the scene does not invalidate an older upload that is still pending.
 
 After simulation joins, release application-held widget, document, font and
 texture references before session teardown. `close_after_quiescence()` permits

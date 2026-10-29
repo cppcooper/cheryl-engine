@@ -90,6 +90,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 | Own a shared TGUI session | [Create a UIController](../create-a/ui-controller.md). |
 | Create a TGUI HUD | [Create a HUD with TGUI](../create-a/hud.md). |
 | Create an interactive RmlUi document | [Create an interactive GUI with RmlUi](create-gui.md). |
+| Combine a TGUI HUD and RmlUi pause menu | [Pause-menu composition](pause-menu.md). |
 | Move keyboard focus between menu and chat | [Session routing and widget focus](../../gui/index.md#session-routing-and-widget-focus). |
 | Customize GUI fonts | [GUI font selection](../../gui/index.md#select-fonts). |
 | Refresh a GUI view after size changes | [Shared session dimensions](../create-a/ui-controller.md#establish-the-shared-session). |
@@ -102,6 +103,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 | --- | --- |
 | Load/play sounds | [miniaudio preparation and output](../../modules/miniaudio.md#preparation-and-output). |
 | Stream/control audio playback | [Clips and voices](../../runtime/audio.md#clips-and-voices); [module example](../../modules/miniaudio.md#preparation-and-output). |
+| Change audio speed | [Opt into variable-rate playback](../../runtime/audio.md#change-playback-speed). |
 | Manage playback lifetime | [Audio lifetime and scheduling](../../runtime/audio.md#lifetime-and-scheduling). |
 
 (windows-timing-and-work-delivery)=
@@ -133,6 +135,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 
 | Task | Guide |
 | --- | --- |
+| Find engine events or send a signal | [Engine-event catalogue](../../engine-systems/events.md#engine-events); [named signals](../../runtime/event-delivery.md#named-channels). |
 | Create and send typed events | [Create an event](../create-a/event.md); [channel contracts](../../runtime/event-delivery.md#typed-channels). |
 | Queue event delivery | [Queued event delivery](../../runtime/event-delivery.md#optional-queued-delivery). |
 | Remove event listeners | [Registration removal](../../runtime/event-delivery.md#removal-and-shutdown). |

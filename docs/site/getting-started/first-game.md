@@ -348,6 +348,18 @@ from the engine's `CE::Runtime::Context` referenced by `engine_`. By default,
 resolution inserts each asset's image using the standard material parameter
 `image` and texture binding slot zero.
 
+```mermaid
+flowchart LR
+    accTitle: A frame contains passes and draw packets
+    accDescr: A frame writer orders passes, and each pass writer orders draw packets sharing its camera and constraints.
+    frame["Frame"] --> passes["Ordered passes"] --> draws["Ordered draw packets"]
+```
+
+A pass is a shared rendering boundary. It can require several GPU draw calls.
+Draws in it can overlap; visibility depends on their order,
+depth settings and blending. Separate world and HUD passes give each its own
+camera and constraints; the game chooses their order.
+
 For each draw, the local `image_style` or `text_style` is a
 {cpp:struct}`CE::Rendering::DrawStyle2D` value. It supplies an optional material,
 the model transform (position/orientation), scale, and alpha (opacity). Resolution
@@ -358,8 +370,12 @@ walkthroughs add those packets to this same `pass` with `pass.add(...)`.
 With no material in the style, resolution uses the resource's retained material.
 For pixel art, `images_` keeps the sprite's default pipeline and changes only
 sampling; the text draw uses its uploaded generation's default directly.
-Objects can share a sprite while choosing different materials. See
-[pipelines and materials](../rendering/pipelines-and-materials.md) for custom
+Objects can share a sprite while choosing different materials. For a per-object
+color tint, follow the [custom sprite material recipe](../rendering/pipelines-and-materials.md#give-one-object-a-custom-material).
+Scale and alpha have standard draw semantics; a custom `tint` parameter must
+match the selected material's declared contract. Keep the sprite-cell triangle-strip
+topology; a UI material expecting colored triangles is not interchangeable.
+See [pipelines and materials](../rendering/pipelines-and-materials.md) for further
 JSON recipes and sampling overrides.
 
 ## Put a sprite on screen
