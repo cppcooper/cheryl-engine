@@ -38,6 +38,8 @@ namespace CE::Audio::Miniaudio::Detail {
         ::CE::Audio::PlaybackState requested = ::CE::Audio::PlaybackState::Paused;
         float volume = 1;
         bool looping = false;
+        bool variable_rate = false;
+        float playback_rate = 1;
         std::optional<std::chrono::duration<double>> duration;
         std::uint64_t voice = 0;
         std::uint64_t generation = 0;
@@ -261,8 +263,9 @@ namespace CE::Audio::Miniaudio::Detail {
             );
     }
 
-    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const ::CE::Audio::Clip& clip) {
+    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const ::CE::Audio::Clip& clip, bool variable_rate) {
         auto data = std::make_shared<VoiceData>();
+        data->variable_rate = variable_rate;
         data->clip = clip;
         data->duration = clip.duration();
         auto config = ma_audio_buffer_config_init(
@@ -271,9 +274,8 @@ namespace CE::Audio::Miniaudio::Detail {
         config.sampleRate = clip.format().sample_rate;
         check(ma_audio_buffer_init(&config, &data->buffer), "Initialize audio clip cursor");
         data->buffer_initialized = true;
-        // Pitch control is not exposed. Avoid its resampler latency at matching rates;
-        // miniaudio still enables rate conversion when the source rate differs.
-        constexpr auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
+        // Opt into the pitch resampler only for voices that need variable speed.
+        const auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | (variable_rate ? 0 : MA_SOUND_FLAG_NO_PITCH);
         check(
             ma_sound_init_from_data_source(&system.engine, &data->buffer, flags, nullptr, &data->sound),
             "Initialize audio clip voice"
@@ -282,15 +284,16 @@ namespace CE::Audio::Miniaudio::Detail {
         return data;
     }
 
-    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const std::filesystem::path& file) {
+    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const std::filesystem::path& file, bool variable_rate) {
         auto data = std::make_shared<VoiceData>();
+        data->variable_rate = variable_rate;
         data->file = file;
         auto* manager = ma_engine_get_resource_manager(&system.engine);
-        constexpr auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
+        const auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | (variable_rate ? 0 : MA_SOUND_FLAG_NO_PITCH);
         if ((manager->config.flags & MA_RESOURCE_MANAGER_FLAG_NO_THREADING) != 0) {
             // Without a worker, synchronous initialization finishes the load job
             // before returning and needs no thread-backed notification event.
-            constexpr auto stream_flags = flags | MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT;
+            const auto stream_flags = flags | MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT;
 #if defined(_WIN32)
             check(
                 ma_sound_init_from_file_w(&system.engine, file.c_str(), stream_flags, nullptr, nullptr, &data->sound),
@@ -351,7 +354,7 @@ namespace CE::Audio::Miniaudio::Detail {
             const std::lock_guard lock(system_->mutex);
             system_->observe(*data_);
             return {data_->state(), data_->volume, data_->looping, data_->duration,
-                    system_->id, data_->voice, data_->generation, data_->terminal};
+                    system_->id, data_->voice, data_->generation, data_->terminal, data_->playback_rate};
         }
 
         void pause() override {
@@ -393,13 +396,17 @@ namespace CE::Audio::Miniaudio::Detail {
             // A fresh node/cursor also discards decoder/resampler processing caches.
             // Prepare it before stopping the current voice, so admission failure
             // leaves that voice intact. Native start failure leaves it Stopped.
-            auto replacement = data_->clip ? make_voice(*system_, *data_->clip) : make_voice(*system_, *data_->file);
+            auto replacement = data_->clip
+                ? make_voice(*system_, *data_->clip, data_->variable_rate)
+                : make_voice(*system_, *data_->file, data_->variable_rate);
             replacement->voice = data_->voice;
             replacement->generation = data_->generation + 1;
             ma_sound_set_volume(&replacement->sound, data_->volume);
             ma_sound_set_looping(&replacement->sound, data_->looping ? MA_TRUE : MA_FALSE);
             replacement->volume = data_->volume;
             replacement->looping = data_->looping;
+            if (data_->variable_rate) ma_sound_set_pitch(&replacement->sound, data_->playback_rate);
+            replacement->playback_rate = data_->playback_rate;
             system_->stop(*data_, "Stop audio voice for restart");
             data_->requested = ::CE::Audio::PlaybackState::Stopped;
             try {
@@ -424,6 +431,17 @@ namespace CE::Audio::Miniaudio::Detail {
             system_->observe(*data_);
             ma_sound_set_volume(&data_->sound, volume);
             data_->volume = volume;
+        }
+
+        void set_playback_rate(float rate) override {
+            ::CE::Audio::validate_playback_rate(rate);
+            const std::lock_guard lock(system_->mutex);
+            system_->require_open();
+            if (!data_->variable_rate)
+                throw CE::Exceptions::bad_request(CE_HERE, "Create playback with variable_rate to control its speed");
+            system_->observe(*data_);
+            ma_sound_set_pitch(&data_->sound, rate);
+            data_->playback_rate = rate;
         }
 
         void set_looping(bool looping) override {
@@ -554,7 +572,7 @@ namespace CE::Audio::Miniaudio {
         state_->maintain_locked();
         Detail::SystemState::TerminalPermit permit(*state_);
         const auto id = Detail::identity();
-        auto data = Detail::make_voice(*state_, clip);
+        auto data = Detail::make_voice(*state_, clip, options.variable_rate);
         return Detail::publish_voice(state_, data, options, id, permit);
     }
 
@@ -566,7 +584,7 @@ namespace CE::Audio::Miniaudio {
         state_->maintain_locked();
         Detail::SystemState::TerminalPermit permit(*state_);
         const auto id = Detail::identity();
-        auto data = Detail::make_voice(*state_, file);
+        auto data = Detail::make_voice(*state_, file, options.variable_rate);
         return Detail::publish_voice(state_, data, options, id, permit);
     }
 

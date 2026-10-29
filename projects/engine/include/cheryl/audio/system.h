@@ -19,6 +19,7 @@ namespace CE::Audio {
         float volume = 1; ///< Linear normalized gain in[0,1], finite; independent of master gain.
         bool looping = false; ///< Repeat the source at its end.
         bool paused = false; ///< Create without starting the playback clock for this voice.
+        bool variable_rate = false; ///< Enable playback-rate controls; default effects avoid the extra resampler latency.
 
         CE_API void validate() const;
     };
@@ -33,10 +34,12 @@ namespace CE::Audio {
         std::uint64_t voice = 0; ///< Logical voice identity, stable across successful restart.
         std::uint64_t generation = 0; ///< Current admitted generation; starts at one when supported.
         std::optional<PlaybackTerminal> terminal; ///< Immutable current-generation outcome, retained after close.
+        float playback_rate = 1; ///< Source-speed multiplier; pitch follows speed, with source duration unchanged.
     };
 
     // Normalized linear gain, inclusive [0, 1]; rejects non-finite values.
     CE_API void validate_volume(float volume);
+    CE_API void validate_playback_rate(float rate); ///< Reject nonfinite multipliers or values outside [0.125, 8].
 
     /** One independently controlled playback. Controls and snapshots are synchronized.
      * Pause preserves progress; resume affects only Paused voices. Stop is terminal
@@ -56,6 +59,11 @@ namespace CE::Audio {
         virtual void restart() = 0;
         virtual void set_volume(float volume) = 0;
         virtual void set_looping(bool looping) = 0;
+        /** Set source speed and pitch together, without seeking or changing playback state.
+         * Requires variable_rate playback; validate finite[0.125,8]. Preserved by restart.
+         * Synchronized like other controls; closed output and unsupported backends reject.
+         */
+        virtual void set_playback_rate(float rate);
     };
 
     /** Application-owned audio output and voice lifetime, independent of graphics.
