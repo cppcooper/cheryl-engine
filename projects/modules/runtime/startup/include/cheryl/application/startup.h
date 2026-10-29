@@ -14,11 +14,12 @@
 #include <string>
 
 namespace CE::Application {
-    /** Initial simulation mode, input buffering and timing policy for a runtime. */
+    /** Initial owner placement, simulation/input policy and independent render pacing. */
     struct RuntimeOptions {
         CE::Runtime::RunMode mode = CE::Runtime::RunMode::Sequential; ///< Sequential/concurrent owner placement, independent of simulation pacing.
         CE::Input::PollingOptions polling; ///< Input observation/backlog settings validated before context creation.
         CE::Runtime::Simulation::TimingOptions timing; ///< Variable/fixed simulation delta and bounded recovery settings.
+        CE::Runtime::FramePacingOptions frame_pacing; ///< Independent render cap; disabled by default, retaining a 60 FPS target.
     };
 
     /** Initial execution/runtime defaults, overridden by registered command-line options. */
@@ -129,7 +130,7 @@ namespace CE::Application {
  * @details
  * @par Runtime construction
  * make_runtime(game) is available on a const lvalue result. It returns an unstarted
- * runtime configured with this result's mode, polling and timing settings. The
+ * runtime configured with this result's mode, polling, timing and frame-pacing settings. The
  * result/context and borrowed game must outlive runtime execution and cleanup.
  * Construction does not begin the context's single runtime session.
  *

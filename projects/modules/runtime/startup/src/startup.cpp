@@ -11,7 +11,7 @@ namespace CE::Application {
     CE::Runtime::GameRuntime StartupResult::make_runtime(CE::Game::AbstractGame& game) const& {
         if (!context)
             throw Exceptions::failed_operation(CE_HERE, "A runtime requires successful engine startup");
-        return CE::Runtime::GameRuntime(*context, game, runtime.mode, runtime.polling, runtime.timing);
+        return CE::Runtime::GameRuntime(*context, game, runtime.mode, runtime.polling, runtime.timing, runtime.frame_pacing);
     }
 
     Startup::Startup(StartupBackend backend, std::string description, StartupOptions configuration)
@@ -26,6 +26,14 @@ namespace CE::Application {
 
     void Startup::add_engine_options() {
         auto& options = *parser_.add_option_group("Engine");
+        options.add_flag("--limit-fps,!--no-fps-limit", configuration_.runtime.frame_pacing.enabled,
+            "Enable the software render cap; --no-fps-limit disables it")
+            ->trigger_on_parse();
+        options.add_option("--target-fps", configuration_.runtime.frame_pacing.target_fps,
+            "Render cap target in FPS; enable separately with --limit-fps")
+            ->capture_default_str()
+            ->check(CLI::PositiveNumber)
+            ->trigger_on_parse();
         options
             .add_flag_callback(
                 "--concurrent", [this] { configuration_.runtime.mode = CE::Runtime::RunMode::Concurrent; },
@@ -131,6 +139,7 @@ namespace CE::Application {
     void Startup::validate_configuration() const {
         static_cast<void>(CE::Input::PollingBacklog(configuration_.runtime.polling));
         static_cast<void>(CE::Runtime::Simulation::Scheduler(configuration_.runtime.timing));
+        static_cast<void>(CE::Runtime::FramePacer(configuration_.runtime.frame_pacing));
         if (configuration_.runtime.mode != CE::Runtime::RunMode::Sequential &&
             configuration_.runtime.mode != CE::Runtime::RunMode::Concurrent)
             throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");

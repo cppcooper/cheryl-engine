@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace {
     struct FactoryCalled {
@@ -91,6 +92,39 @@ TEST(startup, arguments) {
     const char* arguments[]{"startup-test", nullptr};
     EXPECT_THROW(static_cast<void>(startup.initialize(2, arguments)), CE::Exceptions::invalid_args);
     EXPECT_THROW(static_cast<void>(startup.initialize(0, nullptr)), CE::Exceptions::invalid_args);
+}
+
+TEST(startup, frame_pacing) {
+    const auto backend = [] {
+        return CE::Application::StartupBackend{
+            .create = [](const CE::Runtime::ExecutionOptions& options) -> std::unique_ptr<CE::Runtime::Context> {
+                throw FactoryCalled{options.worker_count};
+            }
+        };
+    };
+    for (const auto& arguments : {
+             std::vector<const char*>{"startup-test"},
+             std::vector<const char*>{"startup-test", "--limit-fps"},
+             std::vector<const char*>{"startup-test", "--target-fps", "59.94"},
+             std::vector<const char*>{"startup-test", "--limit-fps", "--target-fps", "120"},
+             std::vector<const char*>{"startup-test", "--no-fps-limit"}}) {
+        CE::Application::Startup startup(backend());
+        EXPECT_THROW(static_cast<void>(startup.initialize(static_cast<int>(arguments.size()), arguments.data())), FactoryCalled);
+    }
+    for (const auto* invalid : {"0", "-1", "nan", "inf", "1e-300"}) {
+        bool created = false;
+        CE::Application::Startup startup({
+            .create = [&](const CE::Runtime::ExecutionOptions&) -> std::unique_ptr<CE::Runtime::Context> {
+                created = true;
+                return nullptr;
+            }
+        });
+        const char* arguments[]{"startup-test", "--limit-fps", "--target-fps", invalid};
+        const auto result = startup.initialize(4, arguments);
+        EXPECT_FALSE(result.should_start());
+        EXPECT_NE(result.exit_code, 0);
+        EXPECT_FALSE(created);
+    }
 }
 
 #if CHERYL_HAS_STARTUP_OPENGL

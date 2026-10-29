@@ -16,6 +16,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -138,9 +139,14 @@ namespace {
         Observations& observations_;
 
     public:
+        std::function<void()> on_present;
         explicit ContractSurface(Observations& observations)
         : observations_(observations) {}
-        void present() override { ++observations_.presentations; }
+        void present() override {
+            ++observations_.presentations;
+            if (on_present)
+                on_present();
+        }
     };
 
     class ContractRenderer final : public CE::Rendering::Renderer {
@@ -323,6 +329,66 @@ namespace {
             static_cast<void>(frame.begin_pass(glm::mat4{1}, glm::mat4{1}));
         }
     };
+}
+
+TEST(frame_pacing, runtime_progress) {
+    using namespace CE::Runtime;
+    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == RunMode::Sequential ? "sequential" : "concurrent");
+        Observations observations;
+        auto surface = std::make_unique<ContractSurface>(observations);
+        auto* output = surface.get();
+        Context engine(
+            std::make_unique<ContractDisplay>(), std::move(surface),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        LifecycleGame game;
+        game.stop_after_update = false;
+        Simulation::TimingOptions timing;
+        timing.variable_interval = std::chrono::milliseconds{1};
+        // The next frame is deliberately far beyond the fixture's watchdog.
+        // Simulation, platform posts and shutdown must still progress meanwhile.
+        GameRuntime runtime(engine, game, mode, {}, timing, {.enabled = true, .target_fps = 0.001});
+        std::atomic<bool> presented{false};
+        int updates_after_frame = 0;
+        int dispatched = 0;
+        std::future<void> stop_post;
+        output->on_present = [&] { presented.store(true, std::memory_order_release); };
+        game.on_update = [&] {
+            if (presented.load(std::memory_order_acquire) && ++updates_after_frame == 8)
+                stop_post = engine.platform_dispatcher().submit([&](Context&) {
+                    ++dispatched;
+                    runtime.stop();
+                });
+        };
+        runtime.run();
+        ASSERT_TRUE(stop_post.valid());
+        EXPECT_NO_THROW(stop_post.get());
+        EXPECT_EQ(dispatched, 1);
+        EXPECT_GE(updates_after_frame, 8);
+        EXPECT_EQ(observations.presentations, 1);
+        EXPECT_EQ(runtime.diagnostics().rendered, 1u);
+        EXPECT_GT(runtime.diagnostics().polls, 1u);
+        EXPECT_GT(observations.collections, 1);
+    }
+}
+
+TEST(frame_pacing, runtime_validation) {
+    Observations observations;
+    CE::Runtime::Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    LifecycleGame game;
+    for (const auto target : {0.0, -1.0, std::numeric_limits<double>::infinity()})
+        EXPECT_THROW(
+            static_cast<void>(CE::Runtime::GameRuntime(engine, game, CE::Runtime::RunMode::Sequential, {}, {}, {true, target})),
+            CE::Exceptions::invalid_args
+        );
+    EXPECT_EQ(observations.initializations, 0);
+    EXPECT_EQ(game.simulation_inits, 0);
 }
 
 TEST(runtime_lifecycle, owner_hooks) {

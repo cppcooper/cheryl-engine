@@ -71,12 +71,14 @@ namespace CE::Runtime {
         ::CE::Game::AbstractGame& game,
         const RunMode mode,
         const Input::PollingOptions polling,
-        const ::CE::Runtime::Simulation::TimingOptions timing
+        const ::CE::Runtime::Simulation::TimingOptions timing,
+        const ::CE::Runtime::FramePacingOptions frame_pacing
     )
-    : engine_(engine), game_(game), mode_(mode), polling_(polling), timing_(timing) {
+    : engine_(engine), game_(game), mode_(mode), polling_(polling), timing_(timing), frame_pacing_(frame_pacing) {
         // Reject an invalid policy before starting any platform or game resources.
         (void)Input::PollingBacklog(polling_);
         (void)::CE::Runtime::Simulation::Scheduler(timing_);
+        static_cast<void>(FramePacer(frame_pacing_));
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
         pressure_state_ = std::make_shared<Detail::RuntimePressureState>();
@@ -515,6 +517,7 @@ namespace CE::Runtime {
             ::CE::Input::Accumulator accumulator(previous_poll, started_at);
             Input::PollingBacklog backlog(polling_);
             ::CE::Runtime::Simulation::Scheduler timing(timing_, started_at);
+            FramePacer pacing(frame_pacing_);
             bool published = false;
 
             while (!stop_source_.stop_requested()) {
@@ -589,8 +592,9 @@ namespace CE::Runtime {
                     published = true;
                     ++diagnostics_.published;
                 }
-                if (published && window_selection_current(selected_window)) {
+                if (published && pacing.due(FramePacer::Clock::now()) && window_selection_current(selected_window)) {
                     phase_ = "render_present";
+                    pacing.frame_started(FramePacer::Clock::now());
                     renderer.clear();
                     renderer.render(frame);
                     engine_.surface().present();
@@ -599,9 +603,11 @@ namespace CE::Runtime {
                 phase_ = "platform_maintenance";
                 Detail::RuntimeServicesAccess::maintenance(engine_.services_, MaintenanceReason::Running);
                 std::unique_lock lock(scheduler_->mutex);
+                const auto now = FramePacer::Clock::now();
+                const auto render_deadline = published && !pacing.due(now) ? pacing.next_frame_at() : FramePacer::Clock::time_point::max();
                 const auto deadline = std::min(
                     {timing.next_update_at(), backlog.next_poll_at(),
-                     ::CE::Runtime::Simulation::Clock::now() + resource_maintenance_interval}
+                     render_deadline, now + resource_maintenance_interval}
                 );
                 scheduler_->wake.wait_until(lock, deadline, [&] {
                     return stop_source_.stop_requested() || engine_.platform_dispatcher().has_pending() || shutdown_->has_pending();
@@ -969,6 +975,7 @@ namespace CE::Runtime {
             scheduler_->wake.notify_all();
 
             std::optional<std::size_t> current_frame;
+            FramePacer pacing(frame_pacing_);
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
             while (!stop_source_.stop_requested()) {
@@ -1035,7 +1042,10 @@ namespace CE::Runtime {
                 std::optional<std::size_t> ready;
                 {
                     std::lock_guard lock(scheduler_->mutex);
-                    ready = std::exchange(handoff.ready, std::nullopt);
+                    // Retain the newest publication until rendering is eligible;
+                    // its mere presence must not turn a capped wait into a spin.
+                    if (pacing.due(FramePacer::Clock::now()))
+                        ready = std::exchange(handoff.ready, std::nullopt);
                     if (ready)
                         slots[*ready].state = SlotState::Rendering;
                 }
@@ -1047,8 +1057,9 @@ namespace CE::Runtime {
                     }
                     current_frame = ready;
                 }
-                if (current_frame && window_selection_current(selected_window)) {
+                if (current_frame && pacing.due(FramePacer::Clock::now()) && window_selection_current(selected_window)) {
                     phase_ = "render_present";
+                    pacing.frame_started(FramePacer::Clock::now());
                     renderer.clear();
                     renderer.render(slots[*current_frame].frame);
                     engine_.surface().present();
@@ -1061,9 +1072,13 @@ namespace CE::Runtime {
 
                 std::unique_lock lock(scheduler_->mutex);
                 const auto poll_deadline = handoff.backlog.next_poll_at();
-                const auto deadline = std::min(poll_deadline, ::CE::Runtime::Simulation::Clock::now() + resource_maintenance_interval);
+                const auto now = FramePacer::Clock::now();
+                const auto render_deadline = (current_frame || handoff.ready) && !pacing.due(now)
+                    ? pacing.next_frame_at() : FramePacer::Clock::time_point::max();
+                const auto deadline = std::min({poll_deadline, render_deadline, now + resource_maintenance_interval});
                 scheduler_->wake.wait_until(lock, deadline, [&] {
-                    if (stop_source_.stop_requested() || handoff.worker_done || handoff.ready ||
+                    if (stop_source_.stop_requested() || handoff.worker_done ||
+                        (handoff.ready && pacing.due(FramePacer::Clock::now())) ||
                         engine_.platform_dispatcher().has_pending() || shutdown_->has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.

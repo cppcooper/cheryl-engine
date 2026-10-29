@@ -9,6 +9,7 @@
 #include <core/diagnostics.h>
 
 #include "simulation-scheduler.h"
+#include "frame-pacer.h"
 #include "runtime-lifecycle.h"
 #include "shutdown.h"
 
@@ -55,6 +56,9 @@ namespace CE::Runtime {
      * and simulation cleanup to one simulation worker.
      * Sequential mode uses one recycled frame. Concurrent mode uses three slots
      * and renders the newest complete frame available at each handoff.
+     * Optional frame pacing caps render starts while polling, simulation and
+     * platform maintenance retain their own deadlines. The cap is disabled by
+     * default with a stored 60 FPS target; it cannot override slower native presentation.
      */
     class GameRuntime final {
         static constexpr std::chrono::milliseconds resource_maintenance_interval{10};
@@ -63,6 +67,7 @@ namespace CE::Runtime {
         ::CE::Runtime::RunMode mode_;
         Input::PollingOptions polling_;
         ::CE::Runtime::Simulation::TimingOptions timing_;
+        ::CE::Runtime::FramePacingOptions frame_pacing_;
         ::CE::Runtime::RuntimeStats diagnostics_{::CE::Diagnostics::next_domain_id()};
         const char* phase_ = "reserve_session"; // Platform owner; retained first failing phase.
         std::atomic<bool> run_finished_{false};
@@ -96,7 +101,8 @@ namespace CE::Runtime {
             ::CE::Game::AbstractGame& game,
             ::CE::Runtime::RunMode mode = ::CE::Runtime::RunMode::Sequential,
             Input::PollingOptions polling = Input::PollingOptions{},
-            ::CE::Runtime::Simulation::TimingOptions timing = ::CE::Runtime::Simulation::TimingOptions{}
+            ::CE::Runtime::Simulation::TimingOptions timing = ::CE::Runtime::Simulation::TimingOptions{},
+            ::CE::Runtime::FramePacingOptions frame_pacing = ::CE::Runtime::FramePacingOptions{}
         );
         CE_API ~GameRuntime();
 
@@ -153,14 +159,15 @@ namespace CE::Runtime {
  */
 
 /**
- * @fn CE::Runtime::GameRuntime::GameRuntime(Context& engine, CE::Game::AbstractGame& game, RunMode mode, Input::PollingOptions polling, Simulation::TimingOptions timing)
+ * @fn CE::Runtime::GameRuntime::GameRuntime(Context& engine, CE::Game::AbstractGame& game, RunMode mode, Input::PollingOptions polling, Simulation::TimingOptions timing, FramePacingOptions frame_pacing)
  * @brief Retain a context/game and validate execution, polling and timing policy.
  * @param engine Borrowed compatible context, alive through runtime use and cleanup.
  * @param game Borrowed game hooks, alive through runtime use and cleanup.
  * @param mode Sequential caller-owned or concurrent simulation-worker execution.
  * @param polling Input observation/backlog policy, independent of simulation delta.
  * @param timing Variable/fixed and bounded recovery policy.
- * @throws CE::Exceptions::invalid_args For invalid mode, polling or timing settings.
+ * @param frame_pacing Optional render-start cap, independent of polling and simulation; disabled with a 60 FPS target by default.
+ * @throws CE::Exceptions::invalid_args For invalid mode, polling, timing or frame-pacing settings.
  * Construction starts no session; run() reserves the context's single session.
  * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
  */
