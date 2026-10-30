@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import cache
 from html.parser import HTMLParser
 import json
 import os
@@ -102,12 +103,25 @@ def check(html: Path, xml: Path, *, require_clean: bool = False) -> dict:
     references = 0
     source_objects = set()
     source_prefix = f"https://github.com/cppcooper/cheryl-engine/"
+
+    # Shared navigation repeats the same destinations on every page. Output is
+    # fixed during this check; scope caches to this invocation so a later check
+    # still observes changed or removed files.
+    parse_target = cache(urlsplit)
+
+    @cache
+    def local_target(parent: Path, target: str) -> tuple[Path, bool, bool]:
+        candidate = (parent / unquote(target)).resolve()
+        if candidate.is_dir():
+            candidate /= "index.html"
+        return candidate, candidate.is_relative_to(html), candidate.is_file()
+
     for path, page in pages.items():
         for private in page.anchors & private_members:
             errors.append(f"Private member rendered in {path.relative_to(html)}: {private}")
         for target in page.references:
             references += 1
-            parsed = urlsplit(target)
+            parsed = parse_target(target)
             if target.startswith(source_prefix):
                 match = re.fullmatch(r"(blob|tree)/([0-9a-fA-F]{40}|[0-9a-fA-F]{64})(?:/(.*))?", parsed.path.removeprefix("/cppcooper/cheryl-engine/"))
                 if match:
@@ -121,12 +135,11 @@ def check(html: Path, xml: Path, *, require_clean: bool = False) -> dict:
             if parsed.path.startswith("/"):
                 errors.append(f"Root-relative link breaks version/project prefixes: {path.relative_to(html)} -> {target}")
                 continue
-            candidate = (path.parent / unquote(parsed.path)).resolve() if parsed.path else path
-            if candidate.is_dir():
-                candidate /= "index.html"
-            if not candidate.is_relative_to(html):
+            candidate, inside, exists = (local_target(path.parent, parsed.path)
+                                         if parsed.path else (path, True, True))
+            if not inside:
                 errors.append(f"Link escapes the HTML tree: {path.relative_to(html)} -> {target}")
-            elif not candidate.is_file():
+            elif not exists:
                 errors.append(f"Missing local target: {path.relative_to(html)} -> {target}")
             elif parsed.fragment and candidate.suffix == ".html":
                 fragment = unquote(parsed.fragment).split(":~:text=", 1)[0]
@@ -135,7 +148,7 @@ def check(html: Path, xml: Path, *, require_clean: bool = False) -> dict:
     # Stylesheets also reference fonts and images that are absent from HTML tags.
     for stylesheet in html.rglob("*.css"):
         for target in re.findall(r"url\(\s*['\"]?([^)'\"\s]+)", stylesheet.read_text(encoding="utf-8")):
-            parsed = urlsplit(target)
+            parsed = parse_target(target)
             if parsed.scheme or parsed.netloc or not parsed.path:
                 continue
             candidate = (stylesheet.parent / unquote(parsed.path)).resolve()
