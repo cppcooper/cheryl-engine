@@ -506,6 +506,41 @@ class ReleasePolicyTests(unittest.TestCase):
         self.pull["title"] = "Ordinary development"
         self.assertIsNone(versions.check_release({"pull_request": self.pull}, self.git))
 
+    def maintenance(self):
+        self.pull["title"] = "Repairs release automation and documentation builds"
+        self.pull["head"]["ref"] = "hotfix/release-and-documentation"
+        self.pull["base"]["sha"] = STABLE
+
+    def test_maintenance(self):
+        self.maintenance()
+        self.assertIsNone(versions.check_release({"pull_request": self.pull}, self.git))
+
+    def test_maintenance_versions(self):
+        self.maintenance()
+        for component in (versions.PROJECT, versions.ENGINE):
+            with self.subTest(component=component):
+                self.git.files[B][versions.VERSION_FILE] = versions.replace_versions(TEXT, {component: "4.1.0"})
+                with self.assertRaisesRegex(ValueError, "preserve every"):
+                    versions.check_release({"pull_request": self.pull}, self.git)
+
+    def test_maintenance_release_title(self):
+        self.maintenance()
+        self.pull["title"] = "Release 4.0.0"
+        with self.assertRaisesRegex(ValueError, "repository's develop"):
+            versions.check_release({"pull_request": self.pull}, self.git)
+
+    def test_maintenance_fork(self):
+        self.maintenance()
+        self.pull["head"]["repo"]["full_name"] = "someone/cheryl-engine"
+        with self.assertRaisesRegex(ValueError, "repository's develop"):
+            versions.check_release({"pull_request": self.pull}, self.git)
+
+    def test_maintenance_branch(self):
+        self.maintenance()
+        self.pull["head"]["ref"] = "ordinary-development"
+        with self.assertRaisesRegex(ValueError, "repository's develop"):
+            versions.check_release({"pull_request": self.pull}, self.git)
+
     def test_title(self):
         self.pull["title"] = "Release 4.1.0"
         with self.assertRaisesRegex(ValueError, "title"):

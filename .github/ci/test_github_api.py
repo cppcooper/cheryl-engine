@@ -27,6 +27,14 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(request.full_url, "https://api.github.com/repos/cppcooper/cheryl-engine/releases")
         self.assertIn(b'v4.0.0', request.data)
 
+    def test_pull_schema(self):
+        self.respond(b'[{"merge_commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]')
+        pulls = self.api.pages("/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/pulls")
+        request = self.api.opener.open.call_args.args[0]
+        # Release identity uses the field removed by API version 2026-03-10.
+        self.assertEqual(request.get_header("X-github-api-version"), "2022-11-28")
+        self.assertEqual(pulls[0]["merge_commit_sha"], "a" * 40)
+
     def test_paths(self):
         for path in ("https://example.com", "//example.com", "/releases?token=x", "/../outside", "/bad\npath"):
             with self.subTest(path=path), self.assertRaises(ValueError):

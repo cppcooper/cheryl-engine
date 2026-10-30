@@ -94,11 +94,15 @@ def release_pull(api, revision, version):
         if (base.get("ref") != "main" or head.get("ref") != "develop"
                 or (head.get("repo") or {}).get("full_name") != REPOSITORY
                 or (base.get("repo") or {}).get("full_name") != REPOSITORY
-                or pull.get("state") != "closed" or pull.get("merge_commit_sha") != revision
-                or not pull.get("merged_at")):
+                or pull.get("state") != "closed" or not pull.get("merged_at")):
             continue
         title = pull.get("title", "")
         if not isinstance(title, str) or not re.fullmatch(r"Release " + VERSION.pattern, title):
+            continue
+        merged = pull.get("merge_commit_sha")
+        if not isinstance(merged, str) or not REVISION.fullmatch(merged):
+            raise RuntimeError("The merged release PR has no valid merge_commit_sha; check the GitHub API version")
+        if merged != revision:
             continue
         if title != f"Release {version}":
             raise RuntimeError("The merged release PR title does not match the CMake project version")

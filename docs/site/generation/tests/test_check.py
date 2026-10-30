@@ -165,8 +165,35 @@ class CheckTests(unittest.TestCase):
                     checker.check(self.html, self.xml)
 
     def test_missing_css_asset(self):
+        checker.check(self.html, self.xml)
         (self.html / "_static/fonts/fixture.woff2").unlink()
         with self.assertRaisesRegex(ValueError, "Missing or prefix-dependent CSS asset"):
+            checker.check(self.html, self.xml)
+
+    def test_shared_targets(self):
+        before = checker.check(self.html, self.xml)["references"]
+        self.add_html('<a href="guide/setup.html#start">Again</a>' * 3)
+        self.assertEqual(checker.check(self.html, self.xml)["references"], before + 3)
+        self.add_html('<a href="guide/setup.html#missing">Different anchor</a>')
+        with self.assertRaisesRegex(ValueError, "Missing local fragment"):
+            checker.check(self.html, self.xml)
+
+    def test_local_target_changes(self):
+        checker.check(self.html, self.xml)
+        (self.html / "guide/setup.html").unlink()
+        with self.assertRaisesRegex(ValueError, "Missing local target"):
+            checker.check(self.html, self.xml)
+
+    def test_fragment_on_encoded_filename(self):
+        (self.html / "literal%20name.html").write_text(
+            '<h1 id="top">Literal percent</h1><a href="#top">Top</a>', encoding="utf-8"
+        )
+        checker.check(self.html, self.xml)
+
+    def test_escaping_target(self):
+        (self.root / "outside.html").write_text("Outside", encoding="utf-8")
+        self.add_html('<a href="../outside.html">Outside</a>')
+        with self.assertRaisesRegex(ValueError, "Link escapes the HTML tree"):
             checker.check(self.html, self.xml)
 
     def test_root_relative(self):
