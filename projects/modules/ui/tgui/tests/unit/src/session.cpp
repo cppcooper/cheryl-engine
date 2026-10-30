@@ -1,0 +1,446 @@
+#include <gtest/gtest.h>
+
+#include <ui/tgui/session.h>
+#include <text/font-rasterizer.h>
+#include <text/font-service.h>
+#include <internals/exceptions.h>
+#include <testing/font-fixture.h>
+
+#include <TGUI/Backend/Window/Backend.hpp>
+#include <TGUI/Widgets/EditBox.hpp>
+#include <TGUI/Widgets/Label.hpp>
+#include <TGUI/DefaultFont.hpp>
+#include <TGUI/Loading/Deserializer.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <thread>
+
+namespace {
+    using namespace CE::Input;
+    using namespace CE::UI::TGUI;
+
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
+
+    public:
+        bool text_supported = true;
+        bool focus_supported = true;
+
+        void initialize(CE::Platform::Window&) override {}
+        void poll() override {}
+        void deinitialize() override {}
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
+        DeviceId keyboard_id() const override { return 1; }
+        DeviceId mouse_id() const override { return 2; }
+        DeviceId gamepad_id() const override { return 3; }
+        bool supports(const CE::Input::Capture::Channel mode) const override {
+            return mode != CE::Input::Capture::Channel::Text || text_supported;
+        }
+        bool supports_focus() const override { return focus_supported; }
+
+        std::shared_ptr<const PollSnapshot> emit(const CE::Input::Events::Payload data, const DeviceKind kind = DeviceKind::Keyboard) {
+            begin_input_poll();
+            capture_buffer().record(kind == DeviceKind::Mouse ? mouse_id() : keyboard_id(), kind, data);
+            return publish_input();
+        }
+    };
+
+    CE::Input::Events::Button
+    key(const KeyboardKey id,
+        const Modifiers modifiers = Modifiers::None,
+        const CE::Input::Events::ButtonPhase phase = CE::Input::Events::ButtonPhase::Press) {
+        return {800, phase, modifiers, -1, -1, id};
+    }
+
+    struct FontLoaderLease {
+        tgui::Deserializer::DeserializeFunc previous = tgui::Deserializer::getFunction(tgui::ObjectConverter::Type::Font);
+        ~FontLoaderLease() { tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, previous); }
+    };
+}
+
+TEST(ui_tgui_session, lifecycle) {
+    Input input;
+    EXPECT_FALSE(tgui::isBackendSet());
+    {
+        Session session(input, 7);
+        EXPECT_TRUE(tgui::isBackendSet());
+        EXPECT_THROW(Session(input, 8), CE::Exceptions::failed_operation);
+        EXPECT_EQ(input.emit(key(KeyboardKey::A))->records.size(), 1u);
+        session.request_keyboard_focus();
+        const auto capabilities = session.capabilities();
+        EXPECT_TRUE(capabilities.keyboard_focus);
+        EXPECT_TRUE(capabilities.committed_text);
+        EXPECT_FALSE(capabilities.clipboard);
+        EXPECT_FALSE(capabilities.cursor);
+        EXPECT_FALSE(capabilities.ime);
+        EXPECT_TRUE(session.owns_keyboard_focus());
+        const auto text = input.emit(CE::Input::Events::Text{U'a'});
+        ASSERT_EQ(text->records.size(), 1u);
+        EXPECT_EQ(text->records[0].target, 7u);
+        session.release_keyboard_focus();
+        EXPECT_FALSE(session.owns_keyboard_focus());
+        EXPECT_TRUE(input.emit(CE::Input::Events::Text{U'a'})->records.empty());
+    }
+    EXPECT_FALSE(tgui::isBackendSet());
+    EXPECT_TRUE(input.emit(key(KeyboardKey::A))->records.empty());
+    Session next(input, 9, {});
+    EXPECT_TRUE(tgui::isBackendSet());
+}
+
+TEST(ui_tgui_session, engine_font) {
+    Input input;
+    Session session(input, 7);
+    const auto font = tgui::Font::getGlobalFont();
+    ASSERT_NE(font.getBackendFont(), nullptr);
+    const auto face = CE::Text::FontRasterizer::load(::defaultFontBytes, 0, 0, true);
+    const auto expected = face.rasterize(U'A', {24}, {.force_autohint = true});
+    ASSERT_TRUE(expected);
+    const auto plain = font.getGlyph(U'A', 24, false);
+    const auto bold = font.getGlyph(U'A', 24, true);
+    const auto outlined = font.getGlyph(U'A', 24, false, 2);
+    EXPECT_EQ(plain.advance, expected->advance);
+    EXPECT_EQ(bold.advance, plain.advance + 1);
+    EXPECT_GT(outlined.bounds.width, plain.bounds.width);
+    EXPECT_GT(font.getLineSpacing(36), font.getLineSpacing(18));
+}
+
+TEST(ui_tgui_session, font_catalogue) {
+    Input input;
+    CE::Testing::FontFixture files;
+    const auto regular = files.path / "regular.ttf";
+    const auto bold = files.path / "bold.ttf";
+    const auto italic = files.path / "italic.ttf";
+    CE::Testing::styled_file(regular, 400, false);
+    CE::Testing::styled_file(bold, 700, false);
+    CE::Testing::styled_file(italic, 400, true);
+    auto fonts = std::make_unique<CE::Text::FontService>();
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {{"book-print", {CE::Text::FontFile{regular}, CE::Text::FontFile{bold}, CE::Text::FontFile{italic}}}};
+    configuration.default_font = "book-print";
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts->configure(configuration);
+    const auto selected = fonts->default_font();
+    int previous_calls = 0;
+    const FontLoaderLease loader;
+    tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, [&](const tgui::String&) {
+        ++previous_calls;
+        return tgui::ObjectConverter{tgui::Font{nullptr}};
+    });
+    {
+        Session session(input, *fonts, 7);
+        fonts.reset();
+        std::filesystem::remove(regular);
+        std::filesystem::remove(bold);
+        std::filesystem::remove(italic);
+        EXPECT_EQ(session.gui().getFont().getId(), "book-print");
+        const tgui::Font alias{"book-print"};
+        EXPECT_EQ(alias.getBackendFont(), session.gui().getFont().getBackendFont());
+        EXPECT_FALSE(tgui::Font{"unknown-file"}.getBackendFont());
+        EXPECT_EQ(previous_calls, 1);
+        const auto label = tgui::Label::create("A book");
+        session.gui().add(label);
+        EXPECT_EQ(tgui::Font::getGlobalFont().getBackendFont(), session.gui().getFont().getBackendFont());
+        const auto explicit_label = tgui::Label::create("A book");
+        session.set_font(explicit_label, selected);
+        EXPECT_EQ(label->getSize(), explicit_label->getSize());
+        std::thread foreign([&] { EXPECT_THROW(session.set_font(label, selected), CE::Exceptions::failed_operation); });
+        foreign.join();
+        const auto native = session.font(selected);
+        const auto primary = std::find_if(selected.faces().begin(), selected.faces().end(), [](const auto& face) {
+            return !face.fallback && face.style.weight == 700 && !face.style.italic;
+        });
+        ASSERT_NE(primary, selected.faces().end());
+        const auto expected = CE::Text::FontRasterizer::load(primary->bytes, primary->face_index).rasterize(
+            U'A', {24}, {.force_autohint = true}
+        );
+        ASSERT_TRUE(expected);
+        EXPECT_EQ(native.getGlyph(U'A', 24, true).advance, expected->advance);
+        session.set_font(label, selected, {400, true});
+        EXPECT_EQ(label->getRenderer()->getFont().getBackendFont(), session.font(selected, {400, true}).getBackendFont());
+        EXPECT_NE(label->getRenderer()->getFont().getBackendFont(), native.getBackendFont());
+        EXPECT_THROW(session.set_font(nullptr, selected), CE::Exceptions::invalid_args);
+        EXPECT_THROW(static_cast<void>(session.font({})), CE::Exceptions::invalid_args);
+        session.set_view({320, 240}, {320, 240});
+        EXPECT_FALSE(session.record().draws().empty());
+    }
+    EXPECT_FALSE(tgui::Font{"after-session"}.getBackendFont());
+    EXPECT_EQ(previous_calls, 2);
+}
+
+TEST(ui_tgui_session, embedded_default) {
+    Input input;
+    CE::Text::FontService fonts;
+    const auto selected = fonts.default_font();
+    Session session(input, fonts, 7);
+    EXPECT_EQ(session.gui().getFont().getId(), selected.reference());
+    const auto face = CE::Text::FontRasterizer::load(selected.faces().front().bytes);
+    const auto expected = face.rasterize(U'A', {24}, {.force_autohint = true});
+    ASSERT_TRUE(expected);
+    EXPECT_EQ(session.gui().getFont().getGlyph(U'A', 24, false).advance, expected->advance);
+}
+
+TEST(ui_tgui_session, font_index) {
+    Input input;
+    CE::Testing::FontFixture files;
+    const auto path = files.path / "book.ttc";
+    CE::Testing::collection_file(path);
+    CE::Text::FontService fonts;
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {{"book-print", {CE::Text::FontFile{path, 1}}}};
+    configuration.default_font = "book-print";
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts.configure(configuration);
+    const auto selected = fonts.default_font();
+    ASSERT_EQ(selected.reference(), "book-print");
+    ASSERT_EQ(selected.faces().front().face_index, 1u);
+    const auto& source = selected.faces().front();
+    const auto expected = CE::Text::FontRasterizer::load(source.bytes, 1).metrics({24});
+    const auto other = CE::Text::FontRasterizer::load(source.bytes, 0).metrics({24});
+    ASSERT_TRUE(expected);
+    ASSERT_TRUE(other);
+    ASSERT_NE(expected->ascent, other->ascent);
+    Session session(input, fonts, 7);
+    const auto native = session.gui().getFont();
+    EXPECT_EQ(native.getBackendFont()->getAscent(24), std::ceil(expected->design_ascent));
+    const auto inherited = tgui::Label::create("A");
+    inherited->setTextSize(24);
+    session.gui().add(inherited);
+    const auto explicit_label = tgui::Label::create("A");
+    explicit_label->setTextSize(24);
+    session.set_font(explicit_label, selected);
+    EXPECT_EQ(inherited->getSize(), explicit_label->getSize());
+    const tgui::Font first_face{source.bytes.data(), source.bytes.size()};
+    const auto other_label = tgui::Label::create("A");
+    other_label->setTextSize(24);
+    other_label->getRenderer()->setFont(first_face);
+    EXPECT_NE(inherited->getSize().y, other_label->getSize().y);
+}
+
+TEST(ui_tgui_session, font_height) {
+    Input input;
+    Session session(input, 7);
+    std::vector<std::uint8_t> bytes(std::begin(::defaultFontBytes), std::end(::defaultFontBytes));
+    const auto u16 = [&](const std::size_t offset) { return static_cast<unsigned int>(bytes[offset]) * 256 + bytes[offset + 1]; };
+    const auto u32 = [&](const std::size_t offset) { return u16(offset) * 65536u + u16(offset + 2); };
+    std::size_t hhea = 0;
+    for (unsigned int i = 0; i < u16(4); ++i) {
+        const auto record = 12 + i * 16;
+        if (bytes[record] == 'h' && bytes[record + 1] == 'h' && bytes[record + 2] == 'e' && bytes[record + 3] == 'a')
+            hhea = u32(record + 8);
+    }
+    ASSERT_NE(hhea, 0u);
+    ASSERT_LT(hhea + 8, bytes.size());
+    ASSERT_EQ(u16(hhea + 4), 1901u);
+    // Keep the scalable fixture's 2048 units/em and set descent to -531.
+    // At 16px, legacy FT_MulFix((1901 - -531), scale)/64 is exactly 19.
+    // Scaling the two half-grid metrics separately and then subtracting gives
+    // 19 + 1/64, which incorrectly rounds the font height up to 20.
+    bytes[hhea + 6] = 0xfd;
+    bytes[hhea + 7] = 0xed;
+    const tgui::Font font(bytes.data(), bytes.size());
+    ASSERT_NE(font.getBackendFont(), nullptr);
+    EXPECT_EQ(font.getBackendFont()->getFontHeight(16), 19.f);
+}
+
+TEST(ui_tgui_session, routing) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {640, 480});
+    const auto field = tgui::EditBox::create();
+    field->setSize({200, 30});
+    session.gui().add(field);
+    session.request_keyboard_focus();
+    field->setFocused(true);
+    const auto first = input.emit(CE::Input::Events::Text{U'a'});
+    session.handle_input(first->records, false);
+    EXPECT_EQ(field->getText(), "a");
+    auto foreign = first->records;
+    foreign[0].target = 9;
+    session.handle_input(foreign, false);
+    EXPECT_EQ(field->getText(), "a");
+    session.request_keyboard_focus();
+    session.handle_input(first->records, false); // Same target, obsolete lease.
+    EXPECT_EQ(field->getText(), "a");
+    const auto pending = input.emit(CE::Input::Events::Text{U'b'});
+    auto newer_owner = input.routing().focus(9);
+    session.handle_input(pending->records, false); // Poll-latched delivery drains.
+    EXPECT_EQ(field->getText(), "ab");
+    EXPECT_FALSE(session.owns_keyboard_focus());
+    EXPECT_TRUE(newer_owner.owns_focus());
+    EXPECT_EQ(first->records[0].target, 7u); // Shared records were not consumed.
+}
+
+TEST(ui_tgui_session, modifiers_clipboard) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {320, 240});
+    const auto field = tgui::EditBox::create();
+    field->setSize({200, 30});
+    field->setText("keep");
+    session.gui().add(field);
+    session.request_keyboard_focus();
+    field->setFocused(true);
+    field->selectText();
+#ifdef TGUI_SYSTEM_MACOS
+    constexpr auto modifier = Modifiers::Super;
+#else
+    constexpr auto modifier = Modifiers::Control;
+#endif
+    for (const auto shortcut : {KeyboardKey::C, KeyboardKey::X, KeyboardKey::V}) {
+        const auto poll = input.emit(key(shortcut, modifier));
+        session.handle_input(poll->records, false);
+        EXPECT_EQ(field->getText(), "keep");
+    }
+    const auto shift = input.emit(key(KeyboardKey::LeftShift, Modifiers::Shift));
+    session.handle_input(shift->records, false);
+    EXPECT_TRUE(session.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
+    auto release = input.emit(key(KeyboardKey::LeftShift, Modifiers::None, CE::Input::Events::ButtonPhase::Release))->records;
+    release[0].target = 99; // Even an unselected release updates the snapshot.
+    session.handle_input(release, false);
+    EXPECT_FALSE(session.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
+    EXPECT_THROW(tgui::getBackend()->setClipboard("private"), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(tgui::getBackend()->getClipboard()), CE::Exceptions::failed_operation);
+}
+
+TEST(ui_tgui_session, views) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {640, 480});
+    const auto label = tgui::Label::create("Copied view");
+    session.gui().add(label);
+    const auto first = session.record();
+    EXPECT_EQ(session.gui().getContainer()->getSize(), (tgui::Vector2f{320, 240}));
+    EXPECT_EQ(session.gui().mapPixelToCoords({40, 30}), (tgui::Vector2f{40, 30}));
+    EXPECT_FLOAT_EQ(first.width(), 320);
+    EXPECT_FLOAT_EQ(first.height(), 240);
+    EXPECT_FALSE(first.draws().empty());
+    session.set_view({160, 120}, {200, 150});
+    session.update_time(0.02);
+    EXPECT_EQ(session.gui().getContainer()->getSize(), (tgui::Vector2f{160, 120}));
+    EXPECT_FLOAT_EQ(session.record().width(), 160);
+    EXPECT_FLOAT_EQ(first.width(), 320); // Prior CPU recording remains independent.
+    session.set_view({160, 120}, {0, 0});
+    EXPECT_TRUE(session.record().draws().empty());
+    session.set_view({0, 0}, {0, 0});
+    EXPECT_TRUE(session.record().draws().empty());
+    EXPECT_THROW(session.set_view({-1, 2}, {2, 2}), CE::Exceptions::invalid_args);
+    EXPECT_THROW(session.update_time(-1), CE::Exceptions::invalid_args);
+    EXPECT_THROW(session.update_time(std::numeric_limits<double>::infinity()), CE::Exceptions::invalid_args);
+    EXPECT_THROW(session.gui().mainLoop(), CE::Exceptions::failed_operation);
+}
+
+TEST(ui_tgui_session, pointer_selection) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {640, 480});
+    const auto field = tgui::EditBox::create();
+    field->setPosition({10, 10});
+    field->setSize({200, 30});
+    session.gui().add(field);
+    const auto click = input.emit(
+        CE::Input::Events::Button{
+            800, CE::Input::Events::ButtonPhase::Press, Modifiers::None, -1, -1, KeyboardKey::Unknown, MouseButton::Left,
+            CE::Input::Events::Pointer{20, 20}
+        },
+        DeviceKind::Mouse
+    );
+    session.handle_input(click->records, false);
+    EXPECT_FALSE(field->isFocused());
+    session.request_keyboard_focus();
+    session.handle_input(click->records, true);
+    EXPECT_TRUE(field->isFocused());
+    const auto text = input.emit(CE::Input::Events::Text{U'a'});
+    session.handle_input(text->records, true);
+    EXPECT_EQ(field->getText(), "a");
+}
+
+TEST(ui_tgui_session, font_generations) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {320, 240});
+    const auto label = tgui::Label::create("A");
+    label->setTextSize(32);
+    session.gui().add(label);
+    const auto first = session.record();
+    std::shared_ptr<const CE::Assets::Images::Decoded> atlas;
+    for (const auto& draw : first.draws())
+        if (draw.texture)
+            atlas = draw.texture;
+    ASSERT_TRUE(atlas);
+    const auto pixels = atlas->rgba;
+    const auto font = session.gui().getFont();
+    ASSERT_TRUE(font.getBackendFont());
+    EXPECT_TRUE(font.isSmooth());
+    font.getBackendFont()->setSmooth(false);
+    EXPECT_FALSE(font.isSmooth());
+    const auto nearest = session.record();
+    bool recorded_font = false;
+    for (const auto& draw : nearest.draws()) {
+        if (draw.texture) {
+            EXPECT_EQ(draw.texture, atlas);
+            EXPECT_FALSE(draw.smooth);
+            recorded_font = true;
+        }
+    }
+    EXPECT_TRUE(recorded_font);
+    for (const auto& draw : first.draws())
+        if (draw.texture)
+            EXPECT_TRUE(draw.smooth);
+    for (char32_t code = U' '; code < 0x300; ++code)
+        if (font.getBackendFont()->hasGlyph(code))
+            static_cast<void>(font.getGlyph(code, 32, false));
+    unsigned int version = 0;
+    const auto texture = std::dynamic_pointer_cast<Texture>(font.getBackendFont()->getTexture(32, version));
+    ASSERT_TRUE(texture);
+    ASSERT_TRUE(texture->snapshot());
+    EXPECT_NE(texture->snapshot(), atlas);
+    EXPECT_GT(texture->snapshot()->rgba.size(), pixels.size());
+    EXPECT_FALSE(texture->isSmooth());
+    EXPECT_EQ(atlas->rgba, pixels);
+    font.getBackendFont()->setSmooth(true);
+    const auto smooth = session.record();
+    for (const auto& draw : smooth.draws())
+        if (draw.texture)
+            EXPECT_TRUE(draw.smooth);
+    for (const auto& draw : nearest.draws())
+        if (draw.texture)
+            EXPECT_FALSE(draw.smooth);
+}
+
+TEST(ui_tgui_session, owner_teardown) {
+    Input input;
+    Session session(input, 7);
+    session.set_view({320, 240}, {320, 240});
+    session.gui().add(tgui::Label::create("Retained CPU scene"));
+    const auto retained = session.record();
+    std::thread other([&] { EXPECT_THROW(static_cast<void>(session.record()), CE::Exceptions::failed_operation); });
+    other.join();
+    // Serial transfer after the owner stops; no external toolkit references.
+    std::thread teardown([&] { session.close_after_quiescence(); });
+    teardown.join();
+    EXPECT_FALSE(tgui::isBackendSet());
+    EXPECT_FALSE(retained.draws().empty());
+    for (const auto& draw : retained.draws())
+        if (draw.texture)
+            EXPECT_FALSE(draw.texture->rgba.empty());
+    EXPECT_THROW(static_cast<void>(session.gui()), CE::Exceptions::failed_operation);
+}
+
+TEST(ui_tgui_session, prerequisites) {
+    Input input;
+    EXPECT_THROW(Session(input, 0), CE::Exceptions::invalid_args);
+    EXPECT_THROW(Session(input, 7, {64, 1}), CE::Exceptions::invalid_args);
+    EXPECT_THROW(Session(input, 7, {4096, 0}), CE::Exceptions::invalid_args);
+    EXPECT_FALSE(tgui::isBackendSet());
+    input.text_supported = false;
+    input.focus_supported = false;
+    Session session(input, 7);
+    EXPECT_FALSE(session.capabilities().committed_text);
+    EXPECT_FALSE(session.capabilities().keyboard_focus);
+    EXPECT_THROW(session.request_keyboard_focus(), CE::Exceptions::failed_operation);
+    EXPECT_FALSE(session.owns_keyboard_focus());
+}

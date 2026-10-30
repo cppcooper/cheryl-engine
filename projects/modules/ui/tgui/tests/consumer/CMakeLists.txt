@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.28)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    project(cheryl_ui_tgui_consumer LANGUAGES CXX)
+endif()
+if(NOT TARGET Cheryl::UI::TGUI)
+    block(SCOPE_FOR VARIABLES)
+        set(CHERYL_BUILD_TESTS OFF)
+        set(CHERYL_BUILD_CONSUMER_TESTS OFF)
+        set(CHERYL_BUILD_ROOT "${CMAKE_BINARY_DIR}")
+        add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../.." adapter EXCLUDE_FROM_ALL)
+    endblock()
+endif()
+include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
+file(GLOB_RECURSE consumer_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_executable(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} ${consumer_sources})
+set_target_properties(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} PROPERTIES OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_MODULE_UI_TGUI}")
+if(DEFINED CHERYL_BUILD_ROOT)
+    set_target_properties(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+endif()
+target_link_libraries(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} PRIVATE ${LINKAGE_PRIVATE_TEST_CONSUMER_MODULE_UI_TGUI})
+add_subdirectory(headers)
+add_dependencies(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} ${TARGET_TEST_CONSUMER_MODULE_UI_TGUI_HEADERS})
+
+add_executable(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI}-native
+    "${CHERYL_REPOSITORY_ROOT}/.github/ci/sdk-consumer/standalone/native-tgui.cpp")
+set_target_properties(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI}-native PROPERTIES
+    OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_MODULE_UI_TGUI}-native"
+    RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+target_link_libraries(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI}-native PRIVATE Cheryl::UI::TGUI)
+add_test(NAME ${TARGET_TEST_CONSUMER_MODULE_UI_TGUI}-native COMMAND ${TARGET_TEST_CONSUMER_MODULE_UI_TGUI}-native)

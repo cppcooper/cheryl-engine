@@ -1,0 +1,20 @@
+#pragma once
+
+#include <filesystem>
+#include <string>
+#include <vector>
+
+namespace CE::Platform::Linux::DebugTerminal::Detail {
+    inline constexpr char ready = 'R';
+    inline constexpr char started = 'S';
+    inline constexpr char normal_exit = 'N';
+
+    [[nodiscard]] std::vector<std::string> viewer_arguments(
+        const std::string& emulator,
+        const std::filesystem::path& viewer,
+        const std::filesystem::path& socket,
+        const std::filesystem::path& output,
+        unsigned long owner
+    );
+    [[nodiscard]] bool desktop_available() noexcept;
+}

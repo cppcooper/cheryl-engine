@@ -1,0 +1,15 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.com/platform/stable/build-customization.html
+
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.13"
+  jobs:
+    install:
+      - python docs/site/generation/bootstrap.py setup --force-pinned
+    build:
+      html:
+        - python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean --jobs 2 --output "$READTHEDOCS_OUTPUT"

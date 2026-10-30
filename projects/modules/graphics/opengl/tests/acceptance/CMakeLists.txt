@@ -1,0 +1,21 @@
+set(native_test_definitions CHERYL_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../fixtures")
+set(native_test_libraries ${LINKAGE_PUBLIC_TEST_ACCEPTANCE_OPENGL})
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11)
+    if(NOT TARGET X11::X11)
+        find_package(X11 REQUIRED)
+    endif()
+    list(APPEND native_test_definitions CHERYL_NATIVE_X11_TESTS=1)
+    list(APPEND native_test_libraries ${LINKAGE_PUBLIC_TEST_ACCEPTANCE_OPENGL_LINUX_X11})
+endif()
+file(GLOB_RECURSE native_acceptance_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+cheryl_add_test_suite(${TARGET_TEST_ACCEPTANCE_OPENGL} ACCEPTANCE
+    OUTPUT_NAME "${OUTPUT_TEST_ACCEPTANCE_OPENGL}"
+    SOURCES ${native_acceptance_sources}
+    LIBRARIES ${native_test_libraries}
+    PRIVATE_INCLUDES "${CHERYL_OPENGL_PRIVATE_SOURCE_DIR}"
+        "${CHERYL_REPOSITORY_ROOT}/projects/modules/platform/native-glfw/src"
+        "$<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:${TARGET_LIB_MODULE_OPENGL_S_GL46},INTERFACE_INCLUDE_DIRECTORIES>"
+    DEFINITIONS ${native_test_definitions})
+add_dependencies(${TARGET_TEST_ACCEPTANCE_OPENGL}-cases ${TARGET_LIB_MODULE_OPENGL_S_GL46})

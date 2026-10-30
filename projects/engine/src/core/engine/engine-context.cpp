@@ -1,0 +1,218 @@
+#include <core/engine/engine-context.h>
+#include "engine-context-internal.h"
+#include "view-state-internal.h"
+#include "runtime-services-internal.h"
+
+#include <assets/resources/resource-provider.h>
+#include <core/controls/input-interface.h>
+#include <core/display/display-system-interface.h>
+#include <core/rendering/presentation-surface.h>
+#include <core/rendering/renderer.h>
+#include <core/engine/event-delivery.h>
+#include <templates/asset-mgr.h>
+#include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
+
+#include <utility>
+#include <span>
+
+namespace CE::Runtime {
+    void Detail::ContextAccess::set_owned_worker_factory(
+        Context& context,
+        std::function<std::unique_ptr<CE::Workers::Pool>(std::size_t)> factory
+    ) {
+        std::lock_guard lock(context.execution_mutex_);
+        if (!factory)
+            throw Exceptions::invalid_args(CE_HERE, "Owned worker factory must not be empty");
+        if (context.execution_.shared_pool || context.owned_workers_ || !context.worker_groups_.empty() ||
+            context.worker_submissions_closed_ || context.session_started_.load(std::memory_order_acquire))
+            throw Exceptions::failed_operation(CE_HERE, "Owned worker factory must be configured before context startup");
+        context.owned_worker_factory_ = std::move(factory);
+    }
+
+    Context::Context(
+        std::unique_ptr<CE::Platform::DisplaySystem> display,
+        std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+        std::unique_ptr<CE::Rendering::Renderer> renderer,
+        std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+        CE::Input::System& input,
+        ExecutionOptions execution
+    )
+    : display_(std::move(display)),
+      surface_(std::move(surface)),
+      renderer_(std::move(renderer)),
+      resources_(std::move(resources)),
+      input_(&input),
+      execution_(std::move(execution)) {
+        validate();
+    }
+
+    Context::Context(
+        std::unique_ptr<CE::Platform::DisplaySystem> display,
+        std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+        std::unique_ptr<CE::Rendering::Renderer> renderer,
+        std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+        std::unique_ptr<CE::Input::System> input,
+        ExecutionOptions execution
+    )
+    : display_(std::move(display)),
+      surface_(std::move(surface)),
+      renderer_(std::move(renderer)),
+      resources_(std::move(resources)),
+      owned_input_(std::move(input)),
+      input_(owned_input_.get()),
+      execution_(std::move(execution)) {
+        validate();
+    }
+
+    void Context::validate() const {
+        if (!display_ || !surface_ || !renderer_ || !resources_ || !input_)
+            throw Exceptions::invalid_args(CE_HERE, "EngineContext requires display, surface, renderer, resources, and input");
+        if (!execution_.shared_pool && execution_.worker_count == 0)
+            throw Exceptions::invalid_args(CE_HERE, "Owned execution requires a positive worker count");
+    }
+
+    void Context::begin_session() {
+        std::lock_guard lock(execution_mutex_);
+        if (session_started_.load(std::memory_order_acquire))
+            throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
+        const auto context = Detail::ViewSourceAccess::identity();
+        const auto session = Detail::ViewSourceAccess::identity();
+        const auto window_source = Detail::ViewSourceAccess::identity();
+        const auto simulation_source = Detail::ViewSourceAccess::identity();
+        input_->publish_events_to(events_.publisher());
+        resources_->publish_events_to(events_.publisher());
+        events_.register_listener(
+            CE::Rendering::graphics_domain_state_changed_event, [](const CE::Rendering::GraphicsDomainStateChanged& change) {
+                static_cast<void>(CE::Assets::Cache::Context::evict_graphics_domain(change));
+            }
+        );
+        renderer_->publish_events_to(events_.publisher(), CE::Events::platform_delivery(platform_dispatcher_.submission()));
+        Detail::ViewSourceAccess::reserve(window_state_, window_source, session);
+        Detail::ViewSourceAccess::reserve(simulation_view_, simulation_source, session);
+        Detail::RuntimeServicesAccess::begin(services_, context, session);
+        event_context_ = context;
+        session_started_.store(true, std::memory_order_release);
+    }
+
+    Context::~Context() {
+        destroying_ = true;
+        try {
+            close_worker_submissions();
+            finish_workers();
+        } catch (...) {
+            // Failing to settle owned work cannot safely permit adapter destruction.
+            Diagnostics::report_failure("engine context destruction", std::current_exception());
+            Diagnostics::report_outcome("execution", domain_, "context_destruction", "failed");
+            std::terminate();
+        }
+        Detail::ViewSourceAccess::close(simulation_view_);
+        Detail::RuntimeServicesAccess::close(services_);
+        Detail::ViewSourceAccess::close(window_state_);
+    }
+
+    CE::Workers::Group Context::make_worker_group(CE::Workers::GroupOptions options) {
+        CE::Workers::Pool* selected_pool = nullptr;
+        try {
+            auto group = [&] {
+                std::lock_guard lock(execution_mutex_);
+                if (worker_submissions_closed_)
+                    throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
+                CE::Workers::Pool* pool = execution_.shared_pool.get();
+                if (!pool) {
+                    if (!owned_workers_) {
+                        auto workers = owned_worker_factory_ ? owned_worker_factory_(execution_.worker_count)
+                                                             : std::make_unique<CE::Workers::Pool>(execution_.worker_count);
+                        if (!workers)
+                            throw Exceptions::failed_operation(CE_HERE, "Owned worker factory returned no pool");
+                        owned_workers_ = std::move(workers);
+                    }
+                    pool = owned_workers_.get();
+                }
+                auto group = pool->make_group(std::move(options));
+                worker_groups_.push_back(group);
+                selected_pool = pool;
+                return group;
+            }();
+            // Pool/group creation can run under the context lock; diagnostics
+            // are explicit observers after that entire publication transaction.
+            selected_pool->report_diagnostics();
+            group.report_diagnostics();
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine, "subsystem=execution domain={} operation=group_created group={} pool={}", domain_,
+                group.status().domain, selected_pool->diagnostic_id()
+            );
+            return group;
+        } catch (...) {
+            Diagnostics::report_outcome("execution", domain_, "make_group", "failed");
+            CE_LOG_ERROR(CE::Logging::Categories::engine, "subsystem=execution domain={} operation=make_group outcome=failed", domain_);
+            throw;
+        }
+    }
+
+    void Context::close_worker_submissions() {
+        std::lock_guard lock(execution_mutex_);
+        worker_submissions_closed_ = true;
+        for (const auto& group : worker_groups_)
+            group.close();
+    }
+
+    bool Context::workers_idle() const {
+        std::lock_guard lock(execution_mutex_);
+        for (const auto& group : worker_groups_) {
+            const auto status = group.status();
+            if (status.pending != 0 || status.running != 0)
+                return false;
+        }
+        return true;
+    }
+
+    void Context::finish_workers() {
+        std::span<const CE::Workers::Group> groups;
+        CE::Workers::Pool* owned;
+        {
+            std::lock_guard lock(execution_mutex_);
+            if (!worker_submissions_closed_)
+                throw Exceptions::failed_operation(CE_HERE, "Worker submissions must close before finishing groups");
+            // The submission barrier fixes this member's storage until context
+            // destruction. Borrow its retained owners without allocating a copy
+            // while recovering from construction/allocation failure.
+            groups = worker_groups_;
+            owned = owned_workers_.get();
+        }
+        // Jobs may reenter the context while finishing. Never hold its mutex
+        // while waiting, and never shut down unrelated injected-pool groups.
+        for (const auto& group : groups) {
+            group.drain();
+            if (!destroying_)
+                group.report_diagnostics();
+        }
+        if (owned)
+            owned->shutdown();
+    }
+
+    CE::Platform::DisplaySystem& Context::display() const {
+        return *display_;
+    }
+
+    CE::Platform::Window& Context::window() const {
+        auto* active = display_->active_window();
+        if (!active)
+            throw Exceptions::failed_operation(CE_HERE, "EngineContext has no active window");
+        return *active;
+    }
+
+    CE::Rendering::PresentationSurface& Context::surface() const {
+        return *surface_;
+    }
+    CE::Rendering::Renderer& Context::renderer() const {
+        return *renderer_;
+    }
+    CE::Rendering::Resources::Provider& Context::resources() const {
+        return *resources_;
+    }
+    CE::Input::System& Context::input() const {
+        return *input_;
+    }
+}

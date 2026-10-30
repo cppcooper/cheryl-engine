@@ -1,0 +1,114 @@
+#include <core/controls/tick-input.h>
+
+#include <internals/exceptions.h>
+
+#include <algorithm>
+#include <utility>
+
+namespace CE::Input {
+    Tick::Tick(std::shared_ptr<const Actions::Snapshot> previous, std::vector<std::shared_ptr<const Actions::Snapshot>> polls)
+    : Tick(
+          previous,
+          polls,
+          previous ? previous->observed_at() : ObservationClock::time_point{},
+          !polls.empty() && polls.back() ? polls.back()->observed_at()
+          : previous                     ? previous->observed_at()
+                                         : ObservationClock::time_point{}
+      ) {}
+
+    Tick::Tick(
+        std::shared_ptr<const Actions::Snapshot> previous,
+        std::vector<std::shared_ptr<const Actions::Snapshot>> polls,
+        const ObservationClock::time_point since,
+        const ObservationClock::time_point until
+    )
+    : previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
+        if (!previous_ || since < previous_->observed_at() || until < since)
+            throw Exceptions::invalid_args(CE_HERE, "TickInput requires a baseline and a monotonic consumption interval");
+        auto last_poll = previous_->poll();
+        auto last_time = previous_->observed_at();
+        for (const auto& poll : polls_) {
+            if (!poll || poll->poll() <= last_poll || poll->observed_at() < last_time || poll->observed_at() > until)
+                throw Exceptions::invalid_args(CE_HERE, "TickInput requires newer completed polls in observation order");
+            last_poll = poll->poll();
+            last_time = poll->observed_at();
+        }
+    }
+
+    Actions::ButtonTickState Tick::button(const Actions::Id action) const {
+        return button(action, std::nullopt);
+    }
+
+    Actions::View Tick::actions(const Actions::Context& context) const {
+        return actions(context.id());
+    }
+    Actions::View Tick::actions(const Actions::ContextId context) const {
+        return Actions::View(*this, context);
+    }
+
+    Actions::ButtonTickState Tick::button(const Actions::Id action, const std::optional<Actions::ContextId> context) const {
+        const auto query = [action, context](const Actions::Snapshot& sample) {
+            return context ? sample.button(*context, action) : sample.button(action);
+        };
+        const auto baseline = query(*previous_);
+        Actions::ButtonTickState result;
+        result.current = baseline.current;
+        result.previous = baseline.current;
+        auto cursor = since_;
+        for (const auto& poll : polls_) {
+            const auto observed = std::max(cursor, poll->observed_at());
+            if (result.current)
+                result.down_duration += observed - cursor;
+            const auto state = query(*poll);
+            result.current = state.current;
+            result.press_count += state.press_count;
+            result.release_count += state.release_count;
+            result.completed_holds.insert(result.completed_holds.end(), state.completed_holds.begin(), state.completed_holds.end());
+            cursor = observed;
+        }
+        if (result.current) {
+            result.down_duration += until_ - cursor;
+            const auto last = query(*latest_poll());
+            if (last.hold_started_at)
+                result.held_duration = until_ - *last.hold_started_at;
+        }
+        result.pressed_this_tick = result.press_count != 0;
+        result.released_this_tick = result.release_count != 0;
+        return result;
+    }
+
+    Actions::AxisTickState Tick::axis(const Actions::Id action) const {
+        return axis(action, std::nullopt);
+    }
+
+    Actions::AxisTickState Tick::axis(const Actions::Id action, const std::optional<Actions::ContextId> context) const {
+        const auto query = [action, context](const Actions::Snapshot& sample) {
+            return context ? sample.axis(*context, action) : sample.axis(action);
+        };
+        const auto baseline = query(*previous_);
+        const auto latest = query(*latest_poll());
+        // An unbound relative action can disappear from later samples. Keep
+        // the last explicitly reported kind rather than treating absence as Absolute.
+        std::optional<AxisKind> kind;
+        for (const auto& poll : polls_) {
+            if (!(context ? poll->has_axis(*context, action) : poll->has_axis(action)))
+                continue;
+            const auto observed = query(*poll).kind;
+            if (kind && *kind != observed)
+                throw Exceptions::invalid_args(CE_HERE, "Changing an axis kind requires an input consumption boundary");
+            kind = observed;
+        }
+        if (kind.value_or(baseline.kind) == AxisKind::Relative) {
+            float delta = 0.0f;
+            for (const auto& poll : polls_)
+                if (const auto state = query(*poll); state.kind == AxisKind::Relative)
+                    delta += state.current;
+            return {delta, 0.0f, AxisKind::Relative};
+        }
+        return {latest.current, baseline.kind == AxisKind::Absolute ? baseline.current : 0.0f, AxisKind::Absolute};
+    }
+
+    std::shared_ptr<const Actions::Snapshot> Tick::latest_poll() const {
+        return polls_.empty() ? previous_ : polls_.back();
+    }
+}

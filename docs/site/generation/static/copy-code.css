@@ -1,0 +1,79 @@
+.cheryl-copy-feedback {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@media screen {
+    .rst-content .cheryl-code-block {
+        position: relative;
+    }
+
+    .rst-content .cheryl-copy-source {
+        padding-right: 3.25rem;
+    }
+
+    .rst-content .cheryl-copy-code {
+        position: absolute;
+        top: 0.375rem;
+        right: 0.375rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        padding: 0;
+        border: 1px solid var(--cheryl-border, #c9cfd6);
+        border-radius: 0.2rem;
+        background: var(--cheryl-surface, #fff);
+        color: var(--cheryl-text, #3f4e5f);
+        cursor: pointer;
+    }
+
+    .rst-content .cheryl-copy-code:hover {
+        border-color: var(--cheryl-link, #216aa0);
+        color: var(--cheryl-link, #216aa0);
+    }
+
+    .rst-content .cheryl-copy-code:focus-visible {
+        outline: 2px solid var(--cheryl-focus, #216aa0);
+        outline-offset: 2px;
+    }
+
+    .rst-content .cheryl-copy-code svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .rst-content .cheryl-copy-code[data-state="copied"] {
+        color: #18723e;
+    }
+
+    .rst-content .cheryl-copy-code[data-state="failed"] {
+        color: #a12622;
+    }
+
+    html[data-theme="dark"] .cheryl-copy-code[data-state="copied"] {
+        color: #a9dca1;
+    }
+
+    html[data-theme="dark"] .cheryl-copy-code[data-state="failed"] {
+        color: #ffaaaa;
+    }
+}
+
+@media print {
+    .cheryl-copy-code {
+        display: none;
+    }
+}

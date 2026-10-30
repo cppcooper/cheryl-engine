@@ -1,0 +1,59 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Audio · application-owned playback and outcomes
+    accDescr: Local names omit Audio::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>composition"]):::app
+    k1["<b>Miniaudio::<br/>System</b><br/><br/>open_device(Format, PlaybackNotificationOptions):<br/>Miniaudio::System<br/><br/>publish_events_to(Events::EventBus::Publisher)<br/><br/>pump_with(Runtime::RuntimeServices):<br/>Runtime::ServiceAttachment<br/><br/>publish_notifications()"]:::focal
+    k2(["Application<br/>loading work"]):::app
+    k3("Miniaudio::decode_file(file, Miniaudio::DecodeOptions):<br/>Clip"):::focal
+    k4["<b>Clip</b><br/><br/>from_samples(Format, samples): Clip"]:::focal
+    k5(["Application<br/>sound controller"]):::app
+    k6["<b>System</b><br/><br/>play(Clip, PlaybackOptions): Voice<br/><br/>stream(file, PlaybackOptions): Voice<br/><br/>maintain()<br/><br/>close()"]:::focal
+    k7["PlaybackOptions"]:::focal
+    k8["<b>Voice</b><br/><br/>snapshot(): VoiceSnapshot<br/><br/>pause()<br/><br/>resume()<br/><br/>stop()"]:::focal
+    k9["VoiceSnapshot"]:::focal
+    k10(["Application<br/>listener setup"]):::app
+    k11["<b>Events::<br/>EventBus</b><br/><br/>register_listener(<br/>Events::EventChannel&lt;PlaybackEnded&gt;,<br/>Events::EventChannel&lt;PlaybackEnded&gt;::Callback,<br/>Events::EventBus::Delivery,<br/>Events::EventBus::ErrorHandler):<br/>Events::EventBus::Registration<br/><br/>publisher(): Events::EventBus::Publisher"]:::neighbor
+    k12["PlaybackEnded"]:::focal
+    k13(["Application<br/>init_platform()"]):::app
+    k14["Runtime::<br/>RuntimeServices"]:::neighbor
+    k15["<b>Runtime::<br/>ServiceAttachment</b><br/><br/>reset()"]:::neighbor
+    k16(["Application<br/>cleanup / quiesce()"]):::app
+    k17["Events::EventBus::<br/>Publisher"]:::neighbor
+    k0 --> k1
+    k2 -.-> k4
+    k5 --> k6
+    k5 --> k7
+    k6 --> k4
+    k6 --> k8
+    k5 --> k8
+    k8 --> k9
+    k10 --> k11
+    k10 --> k12
+    k13 --> k1
+    k1 --> k14
+    k1 --> k15
+    k13 --> k15
+    k16 --> k6
+    k2 --> k3
+    k3 --> k4
+    k6 --> k7
+    k11 --> k17
+    k1 --> k17
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

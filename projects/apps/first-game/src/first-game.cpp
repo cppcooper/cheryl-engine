@@ -1,0 +1,117 @@
+#include "first-game.h"
+
+#include <cheryl/assets/submission/draw2d.h>
+#include <cheryl/assets/resources/resource-provider.h>
+#include <cheryl/core/controls/input-interface.h>
+#include <cheryl/core/display/window-interface.h>
+#include <cheryl/core/resources/asset-management/asset-loader.h>
+#include <cheryl/core/resources/asset-management/sprite-mgr.h>
+#include <cheryl/text/font-service.h>
+#include <cheryl/text/layout.h>
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <cheryl/core/controls/button-codes.h>
+
+#include <algorithm>
+#include <stdexcept>
+
+namespace FirstGame {
+    Game::Game(CE::Runtime::Context& engine, std::filesystem::path asset_root)
+    : engine_(engine), asset_root_(std::move(asset_root)) {}
+
+    void Game::init_platform() {
+        camera_.set_framebuffer_size(engine_.window().framebuffer_size());
+
+        // [bindings]
+        auto& input = engine_.input();
+        auto& bindings = input.bindings();
+        const auto keyboard = input.keyboard_id();
+        bindings_[0] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Escape}, quit_);
+        bindings_[1] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Left}, left_);
+        bindings_[2] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Right}, right_);
+        bindings_[3] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Space}, next_cell_);
+        // [/bindings]
+
+        // [assets]
+        auto& resources = engine_.resources();
+        CE::Assets::Loading::Loader loader(asset_root_);
+        loader.publish_events_to(engine_.events().publisher());
+        loader.load_assets(resources);
+
+        auto sprite = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
+        if (!sprite)
+            throw std::runtime_error("First-game assets require the actor sprite");
+
+        // Keep this small pixel-art image sharp while sharing the engine's pipeline.
+        auto appearance = sprite->material->definition();
+        appearance.sampling["image"] = resources.create_sampler(
+            {.minification = CE::Rendering::Sampling::Filter::Nearest,
+             .magnification = CE::Rendering::Sampling::Filter::Nearest,
+             .mipmaps = CE::Rendering::Sampling::MipmapFilter::None,
+             .anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled}
+        );
+        images_ = std::make_shared<const CE::Rendering::Resources::Material>(std::move(appearance));
+
+        const auto size = camera_.framebuffer_size();
+        actor_.emplace(std::move(sprite), glm::vec2(static_cast<float>(size.width) * 0.5f, static_cast<float>(size.height) * 0.5f));
+        // [/assets]
+
+        // [score]
+        auto font = engine_.fonts().default_font();
+        auto layout = CE::Text::layout_text(font, "Score: 0", {.pixel_height = 24});
+        score_.emplace(CE::Text::Rendering::upload(CE::Text::Rendering::prepare(std::move(layout)), resources));
+        // [/score]
+    }
+
+    // [update]
+    void Game::update(const CE::Game::TickContext& tick) {
+        camera_.set_framebuffer_size(tick.framebuffer_size);
+        if (tick.input.button(quit_).pressed()) {
+            tick.request_stop();
+            return;
+        }
+
+        const float direction = (tick.input.button(right_).held() ? 1.0f : 0.0f) - (tick.input.button(left_).held() ? 1.0f : 0.0f);
+        const float width = static_cast<float>(tick.framebuffer_size.width);
+        const float half_actor = static_cast<float>(actor_->sprite->definition().grid.frame.width) * actor_scale_ * 0.5f;
+        const float margin = std::min(half_actor, width * 0.5f);
+        actor_->position.x =
+            std::clamp(actor_->position.x + direction * 160.0f * static_cast<float>(tick.delta_seconds), margin, width - margin);
+        actor_->position.y = static_cast<float>(tick.framebuffer_size.height) * 0.5f;
+        if (tick.input.button(next_cell_).pressed())
+            actor_->cell = (actor_->cell + 1) % actor_->sprite->definition().grid.cell_count();
+    }
+    // [/update]
+
+    // [render]
+    void Game::prepare_render_frame(CE::Rendering::FrameWriter& frame) const {
+        auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
+        const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+
+        CE::Rendering::DrawStyle2D image_style;
+        image_style.material = images_;
+        image_style.scale = actor_scale_;
+        image_style.model_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(actor_->position, 0.0f));
+        pass.add(CE::Rendering::Submission::resolve_sprite(*actor_->sprite, actor_->cell, image_style, context));
+
+        CE::Rendering::DrawStyle2D text_style;
+        text_style.model_matrix =
+            glm::translate(glm::mat4(1.0f), glm::vec3(24.0f, static_cast<float>(camera_.framebuffer_size().height) - 48.0f, 0.0f));
+        pass.add(CE::Rendering::Submission::resolve_text(*score_, text_style, context));
+    }
+    // [/render]
+
+    // [cleanup]
+    void Game::deinit_platform() {
+        for (auto& binding : bindings_) {
+            if (binding != 0) {
+                static_cast<void>(engine_.input().bindings().unbind(binding));
+                binding = 0;
+            }
+        }
+        score_.reset();
+        actor_.reset();
+        images_.reset();
+    }
+    // [/cleanup]
+}

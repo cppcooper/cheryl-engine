@@ -1,0 +1,46 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Dispatch · engine integration
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Context"]:::neighbor
+    k1["PlatformDispatcher"]:::focal
+    k2["GameRuntime"]:::neighbor
+    k3["SimulationDispatcher"]:::focal
+    k4["PlatformDispatcher::<br/>Submission"]:::focal
+    k5["SimulationDispatcher::<br/>Submission"]:::focal
+    k6["Diagnostics::<br/>DispatchStats"]:::neighbor
+    k7["Text::Rendering::<br/>Updater"]:::neighbor
+    k8["UI::TGUI::<br/>SceneUploader"]:::neighbor
+    k9["UI::RmlUi::<br/>SceneUploader"]:::neighbor
+    k10("Events::<br/>platform_delivery()"):::neighbor
+    k11("Events::<br/>simulation_delivery()"):::neighbor
+    k0 --> k1
+    k2 --> k1
+    k2 --> k3
+    k1 --> k0
+    k1 --> k4
+    k3 --> k5
+    k1 --> k6
+    k3 --> k6
+    k7 --> k4
+    k8 --> k4
+    k9 --> k4
+    k10 --> k4
+    k11 --> k5
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

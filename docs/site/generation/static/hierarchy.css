@@ -1,0 +1,55 @@
+/* Keep Exhale's semantic lists and links; show the ancestry of nested files. */
+#file-hierarchy {
+    overflow-x: auto;
+}
+
+#file-hierarchy ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 1.35rem;
+}
+
+#file-hierarchy > ul {
+    padding-left: 0;
+}
+
+#file-hierarchy li {
+    position: relative;
+    margin: 0;
+}
+
+#file-hierarchy ul ul > li::before,
+#file-hierarchy ul ul > li::after {
+    content: "";
+    position: absolute;
+    left: -1rem;
+    border-color: #a8b0b8;
+    border-style: solid;
+}
+
+#file-hierarchy ul ul > li::before {
+    top: 0.8rem;
+    width: 0.75rem;
+    border-width: 1px 0 0;
+}
+
+#file-hierarchy ul ul > li::after {
+    top: 0;
+    bottom: 0;
+    border-width: 0 0 0 1px;
+}
+
+#file-hierarchy ul ul > li:last-child::after {
+    bottom: auto;
+    height: 0.8rem;
+}
+
+#file-hierarchy dl,
+#file-hierarchy dd,
+#file-hierarchy p {
+    margin: 0;
+}
+
+#file-hierarchy dt {
+    font-weight: normal;
+}

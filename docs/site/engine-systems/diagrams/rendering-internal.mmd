@@ -1,0 +1,54 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Rendering · engine integration
+    accDescr: Local names omit Rendering::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["Runtime::<br/>GameRuntime"]:::neighbor
+    k1["Renderer"]:::focal
+    k2["PresentationSurface"]:::focal
+    k3["Frame"]:::focal
+    k4["OpenGL::<br/>Renderer"]:::focal
+    k5["OpenGL::<br/>GLFWContext"]:::focal
+    k6["OpenGL::<br/>Context"]:::focal
+    k7["FrameWriter"]:::focal
+    k8["PassWriter"]:::focal
+    k9["DrawPacket2D"]:::focal
+    k10["Pass"]:::focal
+    k11["Resources::<br/>Material"]:::neighbor
+    k12["Geometry::<br/>Buffer2D"]:::neighbor
+    k13("Submission::<br/>resolve_sprite()"):::focal
+    k14["Assets::Sprites::<br/>Asset"]:::neighbor
+    k15["Submission::<br/>Context2D"]:::focal
+    k0 --> k1
+    k0 --> k2
+    k0 --> k3
+    k4 --> k1
+    k5 --> k6
+    k6 --> k2
+    k7 --> k3
+    k7 --> k8
+    k8 --> k9
+    k3 --> k10
+    k10 --> k9
+    k1 --> k3
+    k9 --> k11
+    k9 --> k12
+    k13 --> k14
+    k13 --> k15
+    k13 --> k9
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

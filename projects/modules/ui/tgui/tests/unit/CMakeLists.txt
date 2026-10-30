@@ -1,0 +1,7 @@
+file(GLOB_RECURSE tgui_test_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+cheryl_add_test_suite(${TARGET_TEST_MODULE_UI_TGUI}
+    OUTPUT_NAME "${OUTPUT_TEST_MODULE_UI_TGUI}"
+    SOURCES ${tgui_test_sources}
+    LIBRARIES ${LINKAGE_PUBLIC_TEST_MODULE_UI_TGUI}
+    PRIVATE_INCLUDES "${CHERYL_REPOSITORY_ROOT}/projects/engine/src")

@@ -1,0 +1,75 @@
+name: Publish shared Windows dependencies
+
+on:
+  workflow_run:
+    workflows: ['Build and test']
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-windows-dependencies-${{ github.repository }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  publish:
+    if: github.repository == 'cppcooper/cheryl-engine'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    cache-mode: write
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      # This elevated workflow always uses trusted default-branch code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Admit prepared dependency contributions
+        id: admit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/ci/vcpkg_publication.py admit
+      - name: Describe shared dependency pool
+        if: steps.admit.outputs.allowed == 'true'
+        id: pool
+        run: python .github/ci/vcpkg_cache.py describe
+      - name: Restore latest shared dependency pool
+        if: steps.admit.outputs.allowed == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pool.outputs.cache-path }}
+          key: ${{ steps.pool.outputs.cache-key }}
+          restore-keys: ${{ steps.pool.outputs.cache-prefix }}
+      - name: Collect prepared dependency contributions
+        if: steps.admit.outputs.allowed == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.admit.outputs.artifact-ids }}
+          run-id: ${{ steps.admit.outputs.source-run-id }}
+          github-token: ${{ github.token }}
+          path: build/cache/vcpkg-contributions
+      - name: Merge and prune shared dependency pool
+        if: steps.admit.outputs.allowed == 'true'
+        id: merge
+        env:
+          POOL_LIMIT_GIB: ${{ vars.CHERYL_VCPKG_CACHE_LIMIT_GIB || '2' }}
+        run: python .github/ci/vcpkg_cache.py merge --contributions build/cache/vcpkg-contributions --limit-gib $env:POOL_LIMIT_GIB
+      - name: Save updated shared dependency pool
+        if: steps.merge.outputs.changed == 'true'
+        id: save
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pool.outputs.cache-path }}
+          key: ${{ steps.pool.outputs.cache-key }}
+      - name: Retire superseded shared snapshots
+        if: steps.save.outcome == 'success' && steps.merge.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/ci/vcpkg_publication.py retire

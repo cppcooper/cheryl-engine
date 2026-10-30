@@ -1,0 +1,33 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Memory · application object storage
+    accDescr: Local names omit Memory::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>storage owner"]):::app
+    k1["<b>Objects::<br/>Pool</b><br/><br/>get(): Objects::Pool&lt;T&gt;<br/><br/>retrieve_objects(N, args...): T[]<br/><br/>cull(age)<br/><br/>release_culled()"]:::focal
+    k2["<b>Objects::<br/>Reservation</b><br/><br/>Reservation(count, Allocator)<br/><br/>emplace(index, args...): T<br/><br/>remaining_ranges(): Block&lt;T&gt;[]"]:::focal
+    k3(["Application<br/>object type"]):::app
+    k4(["Application-owned game objects"]):::app
+    k5(["Application<br/>cleanup / quiesce()"]):::app
+    k0 --> k1
+    k0 -.-> k2
+    k2 --> k3
+    k4 --> k3
+    k5 -.-> k1
+    k1 --> k3
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

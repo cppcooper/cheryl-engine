@@ -1,0 +1,8 @@
+# Parallel test processes must not rotate or read each other's default log files.
+foreach(cheryl_test IN LISTS @target@_TESTS)
+    string(SHA256 cheryl_test_id "${cheryl_test}")
+    set(cheryl_test_directory
+        "@CHERYL_BUILD_ROOT@/Testing/workspaces/@target@/${CTEST_CONFIGURATION_TYPE}/${cheryl_test_id}")
+    file(MAKE_DIRECTORY "${cheryl_test_directory}")
+    set_tests_properties("${cheryl_test}" PROPERTIES WORKING_DIRECTORY "${cheryl_test_directory}")
+endforeach()

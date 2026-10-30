@@ -1,9 +1,14 @@
-
-build/
-.idea/
+/extern/
 build/
 builds/
-extern/
+cmake-build*/
+
+# Python bytecode caches
+__pycache__/
+
+# Generated documentation, including legacy API output
+/docs/site/generation/generated/
+
 
 .git/
 .idea/
@@ -11,7 +16,11 @@ extern/
 .trash/
 notes/
 
+*.tar.gz
+*.zip
 *.log
+*.png
+*.wav
 
-/cheryl/
-bb-key
+!/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png
+!/projects/apps/first-game/assets/graphics/textures/actor.png

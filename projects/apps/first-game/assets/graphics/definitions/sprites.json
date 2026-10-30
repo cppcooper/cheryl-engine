@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cppcooper/assets/5603c1974bff4054459edb23d36a52869cba863d/schemas/graphics/sprite-tileset-manifest-2.0.schema.json",
+  "asset_class": "sprite-tileset",
+  "version": "2.0",
+  "namespace": "first-game",
+  "texture": "textures/actor.png",
+  "defaults": {
+    "sprite": {"pivot": {"x": 0.5, "y": 0.5}},
+    "tileset": {"pivot": {"x": 0.0, "y": 1.0}}
+  },
+  "sprites": {
+    "actor": {
+      "description": "Two self-authored cells selected by the game; no timed animation clip.",
+      "grid": {
+        "origin": {"x": 0, "y": 0},
+        "frame": {"width": 16, "height": 16},
+        "spacing": {"x": 0, "y": 0},
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    }
+  }
+}
