@@ -271,6 +271,14 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.publish(), "not-release")
         self.assertEqual(self.api.writes, [])
 
+    def test_missing_merge_identity(self):
+        for value in (None, "short"):
+            with self.subTest(value=value):
+                self.api.pulls[0]["merge_commit_sha"] = value
+                self.rejected("merge_commit_sha.*API version")
+        del self.api.pulls[0]["merge_commit_sha"]
+        self.rejected("merge_commit_sha.*API version")
+
     def test_stack_merge(self):
         self.api.parents[1]["sha"] = OTHER
         self.rejected("ordinary merge")

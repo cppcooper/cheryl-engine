@@ -12,4 +12,5 @@ build:
       - python docs/site/generation/bootstrap.py setup --force-pinned
     build:
       html:
-        - python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean --jobs 2 --output "$READTHEDOCS_OUTPUT"
+        # Sphinx reserves one job for preparation; allow three HTML writers.
+        - python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean --jobs 4 --output "$READTHEDOCS_OUTPUT"
