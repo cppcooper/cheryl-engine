@@ -7,9 +7,15 @@
 #include <internals/exceptions.h>
 
 namespace CE::Memory {
-    // Caller-defined length units. larger adds gb; greedy truncates gf*length then
-    // adds gb, requiring finite positive gf and representable growth. Overflow throws
-    // bad_request. exact/unknown policies retain length; neither operation allocates.
+    /** Computes a capacity request without allocating storage.
+     * @param length Requested length in caller-defined units.
+     * @param fit exact/unknown retain length; larger adds gb; greedy truncates gf*length then adds gb.
+     * @param gb Fixed growth margin in the same units as length.
+     * @param gf Finite positive multiplier, consulted only for greedy growth.
+     * @return Adjusted, representable length; it need not describe actual allocated capacity.
+     * @throws CE::Exceptions::bad_request For invalid greedy factors or growth overflow.
+     * @see [CPU resource lifetime](cheryl-guide:resources/resource-lifetime)
+     */
     inline std::size_t adjust_length(std::size_t length, FitPolicy fit, std::size_t gb, double gf) {
         switch (fit) {
             case greedy: {
@@ -31,7 +37,10 @@ namespace CE::Memory {
                 return length;
         }
     }
-    // Reduce one growth tier; exact/unknown becomes exact.
+    /** Reduces greedy to larger and every other non-greedy choice to exact.
+     * @param fit Current allocation-growth choice.
+     * @return Reduced policy; does not allocate or change a block.
+     */
     inline FitPolicy reduce_fit_policy(const FitPolicy fit) {
         switch (fit) {
             case greedy:

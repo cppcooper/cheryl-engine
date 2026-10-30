@@ -1,0 +1,50 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: GUI · engine integration
+    accDescr: Local names omit UI::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["TGUI::<br/>Session"]:::focal
+    k1["Input::<br/>System"]:::neighbor
+    k2["RmlUi::<br/>Session"]:::focal
+    k3["Text::<br/>FontService"]:::neighbor
+    k4["TGUI::<br/>RecordedScene"]:::focal
+    k5["RmlUi::<br/>RecordedScene"]:::focal
+    k6["TGUI::<br/>SceneUploader"]:::focal
+    k7["RmlUi::<br/>SceneUploader"]:::focal
+    k8["Runtime::PlatformDispatcher::<br/>Submission"]:::neighbor
+    k9["Rendering::Resources::<br/>Provider"]:::neighbor
+    k10["TGUI::<br/>Scene"]:::focal
+    k11["RmlUi::<br/>Scene"]:::focal
+    k12["Rendering::<br/>PassWriter"]:::neighbor
+    k0 --> k1
+    k2 --> k1
+    k0 --> k3
+    k2 --> k3
+    k0 --> k4
+    k2 --> k5
+    k6 --> k4
+    k7 --> k5
+    k6 --> k8
+    k7 --> k8
+    k6 --> k9
+    k7 --> k9
+    k6 --> k10
+    k7 --> k11
+    k10 --> k12
+    k11 --> k12
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -16,63 +18,75 @@ namespace CE::Text {
         struct FontAccess;
     }
 
-    /** An explicit font file and zero-based collection face index. */
+    /** An explicit font file and zero-based collection face index; missing files are skipped during loading. */
     struct FontFile {
-        std::filesystem::path path;
-        std::uint32_t face_index{};
+        std::filesystem::path path; ///< Explicit path, relative to the process working directory unless absolute.
+        std::uint32_t face_index{}; ///< Zero-based face in a font collection; zero for ordinary single-face files.
     };
-    /** An installed family requested by name; missing families are skipped during loading. */
+    /** A system-only family request, bypassing application assets; missing families are skipped. */
     struct SystemFontFamily {
-        std::string name;
+        std::string name; ///< Installed family name, matched without ASCII case; cannot be empty or contain NUL.
     };
-    using FontSource = std::variant<FontFile, SystemFontFamily>;
+    /** Plain strings resolve family names or asset filenames, preferring application assets over system fonts.
+     * FontFile selects a path/face directly; SystemFontFamily restricts a name to installed fonts.
+     */
+    using FontSource = std::variant<FontFile, SystemFontFamily, std::string>;
 
-    /** Ordered application choices and optional installed-font discovery. */
+    /** Ordered font names and optional explicit sources, with application and installed-font discovery. */
     struct FontSelection {
-        std::vector<::CE::Text::FontSource> preferred; ///< Files/families in application order.
-        bool automatic_system_fonts = true; ///< Append automatic installed-family choices.
-        /** Unset uses system roots; an empty vector disables installed-font discovery. */
-        std::optional<std::vector<std::filesystem::path>> system_directories;
+        std::vector<::CE::Text::FontSource> preferred; ///< Names or explicit sources in application order; missing entries are skipped.
+        bool automatic_system_fonts = true;            ///< Append automatic family choices, preferring application assets.
+        std::optional<std::vector<std::filesystem::path>> system_directories; ///< Unset uses system roots; empty disables installed discovery.
+        std::vector<std::filesystem::path> asset_directories{"assets"}; ///< Recursive application discovery roots; empty disables it.
+        bool include_family_styles = false; ///< Retain style variants for catalogue registration instead of one best face per family.
     };
+    /** Owned metadata describing a face in a retained FontCollection; paths identify origin, not a live file dependency. */
     struct FontFaceInfo {
-        std::string family;
-        std::string style;
-        std::optional<std::filesystem::path> path;
-        std::uint32_t face_index{};
-        std::uint32_t glyph_count{};
-        bool builtin{};
+        std::string family; ///< Native family name from the selected face.
+        std::string style; ///< Native style name; selection also uses numeric weight and italic metadata.
+        std::optional<std::filesystem::path> path; ///< Source path when file-backed; absent for the embedded fallback.
+        std::uint32_t face_index{}; ///< Zero-based face within the source file/collection.
+        std::uint32_t glyph_count{}; ///< Declared glyph count, not Unicode coverage size.
+        bool builtin{}; ///< True for the embedded safety face.
+        std::uint16_t weight = 400; ///< Declared OpenType weight, or regular/bold fallback metadata.
+        bool italic{}; ///< Declared italic style.
     };
 
     /** Immutable font bytes and ordered scalable Unicode faces. CPU-only loading
-     * snapshots application files and optional installed families, then appends an
-     * embedded DejaVu Sans fallback. Missing installed families are skipped; an
-     * unreadable/unsupported explicit file fails the whole load. No provider is used.
+     * resolves preferred names from application assets before installed fonts, snapshots
+     * the selected bytes, then appends an embedded DejaVu Sans fallback. Missing names
+     * and files are skipped; an unreadable/unsupported explicit file fails the whole
+     * load. No provider is used.
      */
     class FontCollection {
         std::shared_ptr<const Detail::FontCollectionData> data_;
-        explicit FontCollection(std::shared_ptr<const Detail::FontCollectionData> data);
+        CE_API explicit FontCollection(std::shared_ptr<const Detail::FontCollectionData> data);
         friend struct Detail::FontAccess;
+        friend class Font;
 
     public:
-        /** Load an immutable font-byte snapshot without a provider or graphics context.
-         * Invalid selections, explicit file failures and unsupported faces reject
-         * the load; missing installed families are skipped. Allocation failures propagate.
-         * @param selection Ordered application fonts and optional system-discovery policy,
-         * borrowed only for this call.
-         * @return Owned ordered faces ending in the embedded fallback, shared by copies.
-         */
-        [[nodiscard]] static FontCollection load(const ::CE::Text::FontSelection& selection = {});
-        /** @return Borrowed ordered face metadata, empty after moving from the collection.
-         * Keep the retained collection data alive while using the view; this call
-         * performs no discovery or loading.
-         */
-        [[nodiscard]] std::span<const ::CE::Text::FontFaceInfo> faces() const noexcept;
-        /** Test character-map coverage across the retained faces without a provider.
-         * This does not select a font for a whole grapheme or shape text. A moved-from
-         * collection or failure opening a retained face can reject a valid-scalar query.
-         * @param scalar Unicode scalar value; surrogates/out-of-range values return false.
-         * @return Whether at least one face maps the scalar to a glyph.
-         */
-        [[nodiscard]] bool covers(char32_t scalar) const;
+        [[nodiscard]] CE_API static FontCollection load(const ::CE::Text::FontSelection& selection = {});
+        [[nodiscard]] CE_API std::span<const ::CE::Text::FontFaceInfo> faces() const noexcept;
+        [[nodiscard]] CE_API bool covers(char32_t scalar) const;
     };
 }
+
+/** @fn CE::Text::FontCollection CE::Text::FontCollection::load(const FontSelection& selection)
+ * Load an owned immutable CPU snapshot, ending in embedded DejaVu Sans.
+ * Missing names/files and unusable discovery candidates are skipped; invalid names and unreadable/unsupported explicit files reject the load. Allocation failures propagate. No provider/graphics context is used.
+ * @param selection Ordered names/sources and discovery roots, borrowed for this call.
+ * @return Shared immutable ordered faces; copies retain the same bytes.
+ * @see [Font selection](cheryl-guide:assets/text-layout#font-selection)
+ */
+
+/** @fn std::span<const CE::Text::FontFaceInfo> CE::Text::FontCollection::faces() const noexcept
+ * Borrow ordered metadata; empty after move. Keep retained collection data alive while using the view. No discovery or loading occurs.
+ */
+
+/** @fn bool CE::Text::FontCollection::covers(char32_t scalar) const
+ * Test character-map coverage across retained faces. Surrogates/out-of-range values return false; a moved-from collection or face-opening failure may reject valid queries. No whole-grapheme selection or shaping is performed.
+ */
+
+/** @var std::vector<std::filesystem::path> CE::Text::FontSelection::asset_directories
+ * Family names and filenames including extension compare without ASCII case. An application match wins over installed fonts. Defaults are relative to the working directory; explicit FontFile paths are independent of these roots.
+ */

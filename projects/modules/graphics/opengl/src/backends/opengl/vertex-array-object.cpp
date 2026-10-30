@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/vertex-array-object.h>
 #include "upload-check.h"
 

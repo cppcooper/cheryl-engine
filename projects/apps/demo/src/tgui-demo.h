@@ -6,7 +6,6 @@
 #include <core/rendering/render-frame.h>
 
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <string_view>
 
@@ -20,13 +19,14 @@ class DemoUi final {
     std::unique_ptr<TguiState> tgui_state_;
 
 public:
-    // Build application materials on platform, without creating toolkit objects.
-    DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root);
-    // Runtime calls deinit after joining simulation; all widget refs die first.
+    // Prepare upload dependencies on platform, without creating toolkit objects.
+    explicit DemoUi(CE::Runtime::Context& engine);
+    // Runtime calls deinit_platform after joining simulation; all widget refs die first.
     ~DemoUi();
     DemoUi(const DemoUi&) = delete;
     DemoUi& operator=(const DemoUi&) = delete;
-    // First update creates widgets on the actual simulation/UI owner.
+    // Create widgets during the game's simulation initialization.
+    void init_simulation();
     // Returns the panel's camera-reset action, independent of its widget type.
     bool update(const CE::Game::TickContext& tick, const DemoUiStatus& status);
     void write(CE::Rendering::FrameWriter& frame) const;

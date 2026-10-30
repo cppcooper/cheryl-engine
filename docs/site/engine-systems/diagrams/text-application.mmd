@@ -1,0 +1,60 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Text · application font and label choices
+    accDescr: Local names omit Text::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>init_platform()"]):::app
+    k1["<b>Runtime::<br/>Context</b><br/><br/>fonts(): FontService"]:::neighbor
+    k2["<b>FontService</b><br/><br/>configure(FontConfiguration)<br/><br/>default_font(): Font<br/><br/>get(reference): Font"]:::focal
+    k3(["Application-owned UI"]):::app
+    k4["<b>Font</b><br/><br/>reference()"]:::focal
+    k5(["Application<br/>loading work"]):::app
+    k6("layout_text(Font, text, LayoutOptions): ShapedText"):::focal
+    k7["<b>ShapedText</b><br/><br/>glyphs(): ShapedGlyph[]<br/><br/>lines(): TextLine[]"]:::focal
+    k8("Text::Rendering::prepare(<br/>ShapedText,<br/>Text::Rendering::RasterOptions):<br/>Text::Rendering::Prepared"):::focal
+    k9["Text::Rendering::<br/>Prepared"]:::focal
+    k10("Text::Rendering::upload(<br/>Text::Rendering::Prepared,<br/>Rendering::Resources::Provider,<br/>Rendering::Resources::Material):<br/>Text::Rendering::Generation"):::focal
+    k11["Rendering::Resources::<br/>Provider"]:::neighbor
+    k12["Text::Rendering::<br/>Generation"]:::focal
+    k13(["Application<br/>update()"]):::app
+    k14["<b>Text::Rendering::<br/>Updater</b><br/><br/>request(Text::Rendering::Request)<br/><br/>update()<br/><br/>current(): Text::Rendering::Generation"]:::focal
+    k15["Text::Rendering::<br/>Request"]:::focal
+    k16(["Application<br/>prepare_render_frame()"]):::app
+    k17("Rendering::Submission::resolve_text(<br/>Text::Rendering::Generation,<br/>Rendering::DrawStyle2D,<br/>Rendering::Submission::Context2D):<br/>Rendering::DrawPacket2D[]"):::neighbor
+    k18["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k0 --> k1
+    k1 --> k2
+    k3 --> k4
+    k2 --> k4
+    k5 --> k6
+    k6 --> k4
+    k6 --> k7
+    k5 --> k8
+    k8 --> k7
+    k8 --> k9
+    k0 --> k10
+    k10 --> k11
+    k10 --> k9
+    k10 --> k12
+    k13 --> k14
+    k14 --> k15
+    k14 --> k12
+    k16 --> k17
+    k17 --> k12
+    k17 --> k18
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

@@ -380,3 +380,35 @@ TEST(audio_stream, failure) {
     system->render(output);
     expect_samples(output, 0.25f);
 }
+
+TEST(audio_stream, recovery) {
+    AudioFixture::Wav fixture;
+    fixture.write({2, 48000}, std::vector<float>(2048, 0.125f));
+    const AudioFixture::Wav missing;
+    const AudioFixture::Wav corrupt;
+    {
+        std::ofstream output(corrupt.file(), std::ios::binary | std::ios::trunc);
+        output.exceptions(std::ios::failbit | std::ios::badbit);
+        output << "not an audio file";
+        output.close();
+    }
+    auto system = CE::Audio::Miniaudio::System::open_offline();
+    auto voice = system->play(constant(), {.looping = true});
+    std::array<float, 64> output{};
+    // Failed loads must retire their loader jobs before later streams reuse storage.
+    for (int attempt = 0; attempt < 32; ++attempt) {
+        EXPECT_THROW(static_cast<void>(system->stream(missing.file())), CE::Exceptions::runtime_exception);
+        EXPECT_THROW(static_cast<void>(system->stream(corrupt.file())), CE::Exceptions::runtime_exception);
+        {
+            auto stream = system->stream(fixture.file(), {.paused = true});
+            stream->resume();
+            system->render(output);
+            expect_samples(output, 0.375f);
+            stream->stop();
+        }
+        system->maintain();
+        EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Playing);
+        system->render(output);
+        expect_samples(output, 0.25f);
+    }
+}

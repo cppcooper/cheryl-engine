@@ -1,5 +1,5 @@
 #include <internals/exceptions.h>
-#include <internals/stack-trace-internal.h>
+#include "stack-trace-internal.h"
 #include <format>
 
 namespace {
@@ -53,3 +53,5 @@ namespace {
 
 ::CE::Exceptions::failed_operation::failed_operation(const char* location_, uint32_t line_, const char* info_) noexcept
 : ::CE::Exceptions::runtime_exception("failed_operation", location_, line_, info_) {}
+
+CE::Exceptions::exception_base::~exception_base() = default;

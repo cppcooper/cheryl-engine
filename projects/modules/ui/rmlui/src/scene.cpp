@@ -1,5 +1,7 @@
 #include <ui/rmlui/scene.h>
 
+#include <assets/resources/shader-asset-builder.h>
+
 #include <core/engine/engine-context.h>
 #include <ext/matrix_clip_space.hpp>
 #include <internals/exceptions.h>
@@ -22,7 +24,7 @@ namespace CE::UI::RmlUi {
 
         void validate_material(const std::shared_ptr<const CE::Rendering::Resources::Material>& material) {
             if (!material)
-                throw Exceptions::invalid_args(CE_HERE, "RmlUi draw needs an application-supplied material");
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi draw needs a compatible material");
             const auto& pipeline = material->definition().pipeline->definition();
             const auto& state = pipeline.state;
             if (pipeline.vertex_layout != CE::Rendering::Geometry::Layout2D::Position3UV2Color4 ||
@@ -67,6 +69,7 @@ namespace CE::UI::RmlUi {
     struct SceneUploader::State {
         const CE::Diagnostics::DomainId domain;
         const std::thread::id owner;
+        Materials defaults;
         std::map<std::weak_ptr<const CE::Assets::Images::Decoded>, std::weak_ptr<const CE::Rendering::Resources::Image>, std::owner_less<>>
             images;
 
@@ -76,6 +79,30 @@ namespace CE::UI::RmlUi {
 
     SceneUploader::SceneUploader(const CE::Rendering::Resources::Provider& provider)
     : state_(std::make_shared<State>(provider)) {}
+
+    Scene SceneUploader::upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording) const {
+        if (std::this_thread::get_id() != state_->owner || provider.diagnostic_id() != state_->domain)
+            throw Exceptions::failed_operation(CE_HERE, "RmlUi upload requires its original provider and platform owner");
+        if (recording.draws().empty())
+            return Scene{};
+        if (!state_->defaults.solid || !state_->defaults.textured) {
+            auto* builder = provider.shader_asset_builder();
+            if (!builder)
+                throw Exceptions::failed_operation(CE_HERE, "RmlUi defaults require a provider with built-in 2D materials");
+            Materials candidate;
+            candidate.solid = builder->build_builtin_material(
+                CE::Rendering::Materials::Builtin2D::SolidColor, CE::Rendering::Pipelines::Blend::PremultipliedAlpha
+            );
+            candidate.textured = builder->build_builtin_material(
+                CE::Rendering::Materials::Builtin2D::TexturedColor, CE::Rendering::Pipelines::Blend::PremultipliedAlpha
+            );
+            if (!candidate.solid || !candidate.textured)
+                throw Exceptions::failed_operation(CE_HERE, "RmlUi provider returned missing built-in 2D materials");
+            validate_materials(recording, candidate);
+            state_->defaults = std::move(candidate);
+        }
+        return upload(provider, recording, state_->defaults);
+    }
 
     Scene
     SceneUploader::upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording, const Materials& materials) const {
@@ -120,6 +147,12 @@ namespace CE::UI::RmlUi {
             scene.draws_.push_back(std::move(packet));
         }
         return scene;
+    }
+
+    std::future<Scene> SceneUploader::submit(const CE::Runtime::PlatformDispatcher::Submission& platform, RecordedScene recording) const {
+        return platform.submit([uploader = *this, recording = std::move(recording)](CE::Runtime::Context& engine) {
+            return uploader.upload(engine.resources(), recording);
+        });
     }
 
     std::future<Scene>

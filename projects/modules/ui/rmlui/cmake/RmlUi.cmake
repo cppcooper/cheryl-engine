@@ -41,10 +41,13 @@ function(cheryl_add_rmlui_source)
     if(NOT EXISTS "${CHERYL_RMLUI_SOURCE}/CMakeLists.txt")
         message(FATAL_ERROR "CHERYL_RMLUI_SOURCE must point to a RmlUi 6.3 source checkout")
     endif()
-    if(DEFINED RMLUI_FONT_ENGINE AND NOT RMLUI_FONT_ENGINE STREQUAL "freetype")
-        message(FATAL_ERROR "Cheryl UI needs RMLUI_FONT_ENGINE=freetype; use a dedicated dependency configuration")
+    if(DEFINED RMLUI_FONT_ENGINE AND NOT RMLUI_FONT_ENGINE STREQUAL "none")
+        message(FATAL_ERROR "Cheryl UI needs RMLUI_FONT_ENGINE=none; Engine owns font rasterization")
     endif()
-    set(RMLUI_FONT_ENGINE freetype)
+    # Upstream creates this cache entry with a freetype default even when a
+    # normal variable selects none. Seed the cache without replacing user input.
+    set(RMLUI_FONT_ENGINE none CACHE STRING "Font engine to build RmlUi with")
+    set(RMLUI_FONT_ENGINE none)
     set(optional_features RMLUI_SAMPLES RMLUI_TESTS RMLUI_SHELL RMLUI_LUA_BINDINGS
         RMLUI_LOTTIE_PLUGIN RMLUI_SVG_PLUGIN RMLUI_HARFBUZZ_SAMPLE
         RMLUI_IME_SAMPLE_USE_NOTO_FONTS RMLUI_TRACY_PROFILING RMLUI_CUSTOM_CONFIGURATION)
@@ -55,15 +58,31 @@ function(cheryl_add_rmlui_source)
         set(${feature} OFF)
     endforeach()
     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-    if(NOT DEFINED BUILD_SHARED_LIBS)
-        set(BUILD_SHARED_LIBS OFF)
-    endif()
+    set(BUILD_SHARED_LIBS ON)
     add_subdirectory("${CHERYL_RMLUI_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/rmlui" EXCLUDE_FROM_ALL)
+    set(font_source "${CHERYL_RMLUI_SOURCE}/Source/Core/FontEngineDefault")
+    foreach(source IN ITEMS FontEngineInterfaceDefault FontFace FontFaceHandleDefault FontFaceLayer FontFamily FontProvider)
+        target_sources(rmlui_core PRIVATE "${font_source}/${source}.cpp")
+    endforeach()
+    target_sources(rmlui_core PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../private/font-provider.cpp")
+    target_include_directories(rmlui_core PRIVATE "${font_source}")
+    target_compile_features(rmlui_core PRIVATE cxx_std_17)
+    set_target_properties(rmlui_core PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN YES
+        RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}"
+        LIBRARY_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}"
+        ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+    set_property(TARGET rmlui_core PROPERTY CHERYL_RMLUI_ENGINE_SERVICES TRUE)
+    set_property(TARGET rmlui_core PROPERTY CHERYL_RMLUI_RASTERIZER_ABI 1)
+    set_property(TARGET rmlui_core APPEND PROPERTY EXPORT_PROPERTIES
+        CHERYL_RMLUI_ENGINE_SERVICES CHERYL_RMLUI_RASTERIZER_ABI CHERYL_RMLUI_PLACEHOLDER_FIX)
+    set_property(TARGET rmlui_core PROPERTY CHERYL_OWNED_UI_DEPENDENCY TRUE)
     get_directory_property(rmlui_version DIRECTORY "${CHERYL_RMLUI_SOURCE}" DEFINITION PROJECT_VERSION)
     if(NOT rmlui_version STREQUAL "6.3")
         message(FATAL_ERROR "Cheryl UI requires RmlUi 6.3; selected source reports ${rmlui_version}")
     endif()
     cheryl_fix_rmlui_placeholder()
     set_property(TARGET rmlui_core PROPERTY CHERYL_RMLUI_PLACEHOLDER_FIX TRUE)
-    set(RMLUI_FONT_ENGINE freetype PARENT_SCOPE)
+    set(RMLUI_FONT_ENGINE none PARENT_SCOPE)
 endfunction()

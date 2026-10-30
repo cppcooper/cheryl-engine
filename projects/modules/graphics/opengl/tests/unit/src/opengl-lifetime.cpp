@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #include <backends/opengl/resource-lifetime.h>
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/glslprogram.h>
@@ -163,6 +164,20 @@ TEST(opengl_lifetime, owner_context_validation) {
     EXPECT_NO_THROW(lifetime.require_current());
     // No handles were registered, so this source test needs no actual OpenGL calls.
     EXPECT_NO_THROW(lifetime.shutdown());
+}
+
+TEST(opengl_lifetime, retained_domain_token) {
+    using namespace CE::Rendering;
+    auto source = std::make_shared<GraphicsDomainOwner>();
+    const auto token = source->token();
+    {
+        auto lifetime = std::make_shared<ResourceLifetime>(std::this_thread::get_id(), [] { return true; }, source);
+        EXPECT_EQ(lifetime->graphics_domain().snapshot(), token.snapshot());
+        EXPECT_EQ(token.snapshot().status, GraphicsDomainStatus::Available);
+    }
+    EXPECT_EQ(token.snapshot().reason, GraphicsDomainReason::Abandoned);
+    source->make_available();
+    EXPECT_EQ(token.snapshot().sequence, 2u);
 }
 
 TEST(opengl_lifetime, registry_growth_failure) {

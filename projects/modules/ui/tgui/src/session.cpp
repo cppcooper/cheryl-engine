@@ -1,13 +1,17 @@
 #include <ui/tgui/session.h>
 
 #include "dependency-contract.h"
+#include "font.h"
 #include <ui/tgui/input.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/text/font-service.h>
 
-#include <TGUI/Backend/Font/FreeType/BackendFontFreeType.hpp>
 #include <TGUI/Backend/Window/Backend.hpp>
 #include <TGUI/Container.hpp>
 #include <TGUI/Keyboard.hpp>
+#include <TGUI/Loading/Deserializer.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -17,6 +21,11 @@
 
 namespace CE::UI::TGUI {
     namespace {
+        SessionOptions manual_options(SessionOptions options) {
+            options.automatic_view = false;
+            options.automatic_time = false;
+            return options;
+        }
         std::mutex backend_mutex;
 
         class Backend final : public tgui::Backend {
@@ -44,7 +53,7 @@ namespace CE::UI::TGUI {
                     throw Exceptions::failed_operation(CE_HERE, "TGUI already has an active backend/session");
                 backend_ = std::make_shared<Backend>();
                 backend_->setRenderer(std::make_shared<Renderer>(options.maximum_texture_size));
-                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<tgui::BackendFontFreeType>>());
+                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<Detail::FontBackend>>());
                 backend_->setFontScale(options.font_scale);
                 tgui::setBackend(backend_);
             }
@@ -95,6 +104,23 @@ namespace CE::UI::TGUI {
             }
         };
 
+        class FontAliases final {
+            tgui::Deserializer::DeserializeFunc previous_ = tgui::Deserializer::getFunction(tgui::ObjectConverter::Type::Font);
+
+        public:
+            explicit FontAliases(const std::function<std::optional<tgui::Font>(const std::string&)>& resolve) {
+                tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, [resolve, previous = previous_](const tgui::String& value) {
+                    const auto name = tgui::Deserializer::deserialize(tgui::ObjectConverter::Type::String, value).getString().toStdString();
+                    if (const auto font = resolve(name))
+                        return tgui::ObjectConverter{*font};
+                    return previous(value);
+                });
+            }
+            ~FontAliases() { tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, previous_); }
+            FontAliases(const FontAliases&) = delete;
+            FontAliases& operator=(const FontAliases&) = delete;
+        };
+
         bool normalized(const tgui::Vector2f point) {
             return std::isfinite(point.x) && std::isfinite(point.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
         }
@@ -140,6 +166,11 @@ namespace CE::UI::TGUI {
             bool width = false;
             bool height = false;
         };
+        struct NativeFont {
+            CE::Text::Font source;
+            CE::Text::FontStyle style;
+            tgui::Font font;
+        };
 
         CE::Input::System& input;
         const CE::Input::Routing::TargetId target;
@@ -151,11 +182,15 @@ namespace CE::UI::TGUI {
         std::uint64_t focus_epoch = 0;
         bool drawable = false;
         bool pointer_view = false;
+        std::uint64_t automatic_time_updates = 0;
         std::unordered_map<tgui::Widget*, ManagedSize> managed_sizes;
         // Destruction order keeps the backend alive through GUI/font teardown.
         BackendLease backend;
         std::shared_ptr<RenderTarget> render_target = std::make_shared<RenderTarget>();
         Gui gui{render_target};
+        std::vector<NativeFont> native_fonts;
+        std::unordered_map<std::string, CE::Text::Font> engine_fonts;
+        std::optional<FontAliases> font_aliases;
 
         State(CE::Input::System& source, const CE::Input::Routing::TargetId id, const SessionOptions options)
         : input(source),
@@ -163,12 +198,55 @@ namespace CE::UI::TGUI {
           capabilities{source.supports_focus(), source.supports(CE::Input::Capture::Channel::Text)},
           events(source.capture(CE::Input::Capture::Channel::Events)),
           backend(options) {}
+
+        tgui::Font font(const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "TGUI needs a resolved Engine font");
+            for (const auto& cached : native_fonts)
+                if (cached.source.faces().data() == selected.faces().data() && cached.style.weight == style.weight &&
+                    cached.style.italic == style.italic)
+                    return cached.font;
+            auto native = std::make_shared<Detail::FontBackend>();
+            native->load(selected, style);
+            native->setFontScale(tgui::getBackend()->getFontScale());
+            tgui::Font result(native, selected.reference());
+            native_fonts.push_back({selected, style, result});
+            return result;
+        }
     };
 
     Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
         if (target == 0)
             throw Exceptions::invalid_args(CE_HERE, "TGUI requires a nonzero focus target");
-        state_ = std::make_unique<State>(input, target, options);
+        if (options.automatic_view || options.automatic_time)
+            throw Exceptions::invalid_args(CE_HERE, "Automatic runtime services require a Context");
+        state_ = std::make_shared<State>(input, target, options);
+    }
+
+    Session::Session(
+        CE::Input::System& input,
+        const CE::Text::FontService& fonts,
+        const CE::Input::Routing::TargetId target,
+        const SessionOptions options
+    ) : Session(input, target, options) {
+        auto& state = owner();
+        for (const auto& font : fonts.all())
+            state.engine_fonts.emplace(font.reference(), font);
+        const auto default_font = state.font(fonts.default_font(), {});
+        tgui::Font::setGlobalFont(default_font);
+        state.gui.setFont(default_font);
+        state.font_aliases.emplace([&state](const std::string& reference) -> std::optional<tgui::Font> {
+            const auto found = state.engine_fonts.find(reference);
+            return found == state.engine_fonts.end() ? std::nullopt : std::optional{state.font(found->second, {})};
+        });
+    }
+
+    Session::Session(CE::Runtime::Context& engine, const CE::Input::Routing::TargetId target, const SessionOptions options)
+    : Session(engine.input(), engine.fonts(), target, manual_options(options)) {
+        if (options.automatic_view)
+            follow_view(engine.simulation_view());
+        if (options.automatic_time)
+            follow_time(engine.services());
     }
 
     Session::~Session() = default;
@@ -187,10 +265,41 @@ namespace CE::UI::TGUI {
         return owner().capabilities;
     }
 
+    tgui::Font Session::font(const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+        return owner().font(selected, style);
+    }
+
+    void Session::set_font(tgui::Widget::Ptr widget, const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+        auto& state = owner();
+        if (!widget)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI font assignment needs a widget");
+        const auto native = state.font(selected, style);
+        widget->getRenderer()->setFont(native);
+    }
+
     void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         auto& state = owner();
         if (logical.width < 0 || logical.height < 0 || framebuffer.width < 0 || framebuffer.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "TGUI window dimensions must be nonnegative");
+        view_attachment_.reset();
+        apply_view(state, logical, framebuffer);
+    }
+
+    void Session::follow_view(const CE::Runtime::SimulationViewSource& source) {
+        static_cast<void>(owner());
+        auto attachment = source.watch([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationViewChanged& change) {
+            if (const auto state = weak.lock()) {
+                apply_view(*state, change.current.logical_size, change.current.framebuffer_size);
+                CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                    "subsystem=ui toolkit=tgui operation=view_apply source={} revision={} seed={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
+                    change.current.source, change.current.revision, change.seed, change.current.logical_size.width,
+                    change.current.logical_size.height, change.current.framebuffer_size.width, change.current.framebuffer_size.height);
+            }
+        });
+        view_attachment_ = std::move(attachment);
+    }
+
+    void Session::apply_view(State& state, const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         state.pointer_view = logical.width > 0 && logical.height > 0;
         state.drawable = state.pointer_view && framebuffer.width > 0 && framebuffer.height > 0;
         state.render_target->set_pixel_scale(
@@ -257,6 +366,31 @@ namespace CE::UI::TGUI {
 
     void Session::update_time(const double seconds) {
         auto& state = owner();
+        if (time_attachment_.attached())
+            throw Exceptions::failed_operation(CE_HERE, "Detach automatic UI time before manual advancement");
+        apply_time(state, seconds);
+    }
+
+    void Session::follow_time(const CE::Runtime::RuntimeServices& services) {
+        static_cast<void>(owner());
+        auto attachment = services.on_step([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationStepStarting& phase) {
+            if (const auto state = weak.lock()) {
+                apply_time(*state, phase.delta_seconds);
+                if (++state->automatic_time_updates == 1 || state->automatic_time_updates % 120 == 0)
+                    CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                        "subsystem=ui toolkit=tgui operation=time_apply session={} step={} delta_seconds={} sample_period=120",
+                        phase.session, phase.step, phase.delta_seconds);
+            }
+        });
+        time_attachment_ = std::move(attachment);
+    }
+
+    void Session::detach_time() {
+        static_cast<void>(owner());
+        time_attachment_.reset();
+    }
+
+    void Session::apply_time(State& state, const double seconds) {
         const auto maximum = std::chrono::duration<double>(std::chrono::nanoseconds::max()).count();
         if (!std::isfinite(seconds) || seconds < 0 || seconds >= maximum)
             throw Exceptions::invalid_args(CE_HERE, "TGUI timing requires a finite nonnegative representable duration");
@@ -334,6 +468,8 @@ namespace CE::UI::TGUI {
     }
 
     void Session::close_after_quiescence() {
+        time_attachment_.reset();
+        view_attachment_.reset();
         state_.reset();
     }
 }

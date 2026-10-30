@@ -8,8 +8,37 @@
 #include <atomic>
 #include <chrono>
 
+#if defined(__linux__) && (defined(__GNUC__) || defined(__clang__))
+// Keep the hook with the diagnostics owner so static display consumers retain it.
+// Wayland's libdecor GTK plugin leaves Fontconfig and desktop-module allocations
+// behind after GLFW window destruction and termination. Mesa also retains a
+// once-only EGL allocation; its unloaded driver has no module name at leak check.
+// Match those external stacks, leaving engine/application allocations visible.
+// A strong application __lsan_default_suppressions overrides these defaults;
+// returning an empty string restores the unfiltered dependency reports.
+extern "C" CE_DETAIL_EXPORT __attribute__((weak)) const char* __lsan_default_suppressions() {
+    return "leak:libfontconfig.so.1\n"
+           "leak:libwindow-decorations-gtk-module.so\n"
+           "leak:libcolorreload-gtk-module.so\n"
+           "leak:_glfwInitEGL\n";
+}
+#endif
+
 namespace CE::Platform::GLFW::Detail {
     thread_local unsigned int NativeCallbackScope::depth_ = 0;
+
+    NativeCallbackScope::NativeCallbackScope() noexcept {
+        ++depth_;
+    }
+
+    NativeCallbackScope::~NativeCallbackScope() {
+        --depth_;
+    }
+
+    bool NativeCallbackScope::active() noexcept {
+        return depth_ != 0;
+    }
+
     namespace {
         std::atomic<GLFWerrorfun> previous_callback{nullptr};
         std::atomic<::CE::Diagnostics::DomainId> domain{0};

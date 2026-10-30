@@ -1,0 +1,266 @@
+# Audio ownership and playback
+
+Use this reference to manage independent playback, voice controls and output
+shutdown. For a first sound, follow
+[miniaudio preparation and output](../modules/miniaudio.md#preparation-and-output):
+link `Cheryl::Audio::Miniaudio`, create an application-owned system, prepare a clip and
+call `play()`. This page defines the lifetime and failure rules around that sequence.
+
+The public [audio contracts](../../../projects/engine/include/cheryl/audio.h) belong
+to Engine and contain no SDK, device or graphics types. Applications own an audio
+system independently of `CE::Runtime::Context` and compose a selected audio module through
+its public CMake target. Engine has no reverse dependency on that module.
+
+## Clips and voices
+
+`CE::Audio::Clip::from_samples` takes owned interleaved float PCM, with mono/stereo
+channels and a sample rate between 8 and 192 kHz. Data is nonempty, frames are
+complete, and every sample is finite. The nominal sample range is `[-1, 1]`;
+storage does not clamp samples or change their rate. Copies share immutable
+storage. Moving preserves the original valid snapshot. Clip creation does not
+open a device. Its frame count and duration describe source audio, independently
+of a mixer's output rate.
+
+`CE::Audio::System::play` creates a voice with an independent cursor. Voices can share
+a clip without sharing playback progress. `stream` opens file-backed playback for
+music; the file must remain available until playback ends. Decode and initial file
+opening are synchronous preparation operations, so applications perform them at
+loading boundaries or dispatch owned decode requests through their worker groups.
+
+```mermaid
+flowchart LR
+    accTitle: Shared clips and independent voices
+    accDescr: An audio system retains two voices with independent playback cursors. Both voices can use the same immutable clip storage.
+    system["Audio system"] -->|retains playback| first["Voice A and cursor A"]
+    system -->|retains playback| second["Voice B and cursor B"]
+    first -->|reads| clip["Shared immutable clip"]
+    second -->|reads| clip
+```
+
+Voice and master volumes are normalized linear gains in `[0, 1]`, with zero as
+mute. Invalid/non-finite gains throw. Multiple voices are mixed; overlapping loud
+sources can exceed nominal PCM amplitude and applications manage their mix levels.
+
+| Operation/state | Behavior |
+| --- | --- |
+| Initial playback | Starts immediately, or starts `Paused` when requested. |
+| `pause` | Pauses a playing voice and preserves progress. |
+| `resume` | Resumes a paused voice; other live states are unchanged. |
+| `resume_after(delay)` | Arms a paused voice; `Scheduled` becomes `Playing` when the output clock reaches its start. |
+| `stop` | Leaves the voice `Stopped` until explicit restart. |
+| Natural end | Reports `Finished`; explicit restart is required. |
+| `restart` | Requests source frame zero and starts playback. |
+| `set_looping` | Changes the loop policy without restarting stopped/finished playback. |
+| System closure | Surviving handles report `Closed`; their controls throw. |
+
+Snapshots copy playback state, volume, loop policy, playback rate and known
+source duration.
+Backends supporting outcomes also supply system/voice identity, generation and
+an immutable optional terminal fact as described below.
+They are observations, not an atomic freeze of native playback. Live decoder
+cursors are outside the initial API; reading them concurrently with mixing needs
+additional synchronization. No game callback runs on the mixing thread.
+
+## Change playback speed
+
+Opt in when creating a voice, then retain that handle to control it. With
+`audio` and `effect` from [the miniaudio setup](../modules/miniaudio.md#preparation-and-output),
+replace its effect-play line with:
+
+```cpp
+auto voice = audio->play(effect, {.volume = 0.5f, .variable_rate = true});
+voice->set_playback_rate(2.0f);
+const auto observed_rate = voice->snapshot().playback_rate;
+```
+
+`set_playback_rate()` accepts a finite multiplier in `[0.125, 8]`; `1` is normal,
+`2` plays twice as fast and `0.5` half as fast. Pitch follows speed. This is not
+pitch-preserving time stretching or an independent pitch control. A successful
+restart preserves the selected rate. Snapshot duration remains the original
+source duration, not the rate-adjusted wall time or a remaining-time estimate.
+
+The same `PlaybackOptions::variable_rate` option applies to `stream()`. Select it
+before playback; miniaudio rejects rate changes on a voice opened without it,
+including an attempt to set rate `1`. Normal voices avoid the extra variable-rate
+processing path and its latency. Other backends can reject this optional control;
+choose a supporting backend or use an application fallback when speed is required.
+Do not assume the base interface guarantees support.
+
+During game updates, call `voice->set_playback_rate(rate)` when the desired rate
+changes, using the retained live voice. Validate the game's rate against the audio
+range rather than passing an uncapped world-speed value. Controls take effect at
+backend processing boundaries; they do not retime already queued device output.
+
+## Schedule a delayed start
+
+Prepare a paused voice, then arm it using a `std::chrono::duration`. With the
+existing miniaudio `audio` system and decoded `effect`, a 22 ms delayed effect is:
+
+```cpp
+auto delayed = audio->play(effect, {.volume = 0.5f, .paused = true});
+delayed->resume_after(std::chrono::milliseconds{22});
+```
+
+Include `<chrono>`. A paused voice from `stream()` uses the same operation.
+Preparing the voice first keeps synchronous source opening outside the delay.
+`resume_after()` measures finite nonnegative seconds from control admission on
+the output clock; zero resumes immediately. Miniaudio rounds positive delays up
+to output frames and rejects a delay or deadline outside its frame-counter range.
+The base Voice implementation rejects this optional capability with `bad_request`,
+including zero, so other backends need not silently pretend to schedule playback.
+
+While waiting, the snapshot reports `PlaybackState::Scheduled`. Device mixing
+advances the deadline independently of simulation; offline output advances only
+through `render()`. Neither `maintain()` nor notification pumping advances time.
+Keep `Scheduled` alongside `Playing` when tracking active effects. Releasing the
+handle does not cancel an armed start; maintenance retains it until inactive.
+
+| Control | Effect on a pending start |
+| --- | --- |
+| `pause()` | Cancels the deadline, keeps the source cursor, and reports `Paused`. |
+| `resume()` after pause | Resumes immediately; it does not restore a cancelled delay. |
+| `resume_after()` while already Scheduled/Playing | Leaves playback unchanged; pause first to choose another delay. |
+| `stop()` | Cancels and reports `Stopped`; delayed resume cannot restart it. |
+| `restart()` | Cancels and immediately restarts source frame zero, preserving volume, looping and playback rate. |
+| Output closure | Cancels playback; surviving handles report `Closed`. |
+
+Scheduling itself creates no generation or terminal notification. Completion,
+stop, restart/replacement and closure retain their ordinary outcome rules. Invalid
+delays, frame-clock overflow and native start failure leave the paused voice unarmed.
+Changing playback rate changes source speed/pitch without scaling its output-clock
+delay. Buffered output, decoder readiness and resampler latency still affect
+audible onset; this API promises neither wall-clock deadlines nor hardware
+sample accuracy.
+
+For a volley, prepare its voices paused and arm each with its own delay. Individual
+calls measure from their own admission; this is not an atomic group or a shared
+absolute timestamp. Keep a premixed clip when exact relative sample offsets are
+required. Delayed starts remove dependence on a later simulation tick without
+providing absolute-time or batch scheduling.
+
+## Playback outcomes
+
+`CE::Audio::playback_ended_event` reports one logical terminal outcome for each
+admitted playback generation. The miniaudio backend implements it; other audio
+systems can leave this optional extension unsupported. Its plain `PlaybackEnded`
+payload owns checked system/voice identity, generation, terminal reason/sequence/
+observation time and cumulative loss information. It retains no Voice or native
+objects. Voice identity stays stable across restart; a successful restart admits
+the next generation and clears only that new generation's terminal fact.
+
+| Terminal reason | Selection |
+| --- | --- |
+| `Completed` | Native EOF was observed before another terminal operation. |
+| `Stopped` | Stop succeeded, including when a restart stops the old voice but cannot start its replacement. |
+| `Replaced` | A new generation successfully replaced unfinished playback. |
+| `OutputClosed` | Output closed before another terminal outcome was observed. |
+| `Reclaimed` | Maintenance reclaimed an unreferenced inactive generation, such as paused playback. |
+
+Failed initial play/stream admits no generation and fabricates no outcome.
+Replacement preparation failure preserves the old generation. Failure to stop
+it admits no successor. After a successful old stop, a failed replacement start
+ends the old generation as Stopped unless Completed was already observed.
+Successful restart marks an unfinished predecessor Replaced. Pause/resume and
+loop iterations do not create terminal outcomes.
+
+Terminal facts never change within a generation: observing EOF before stop or
+close preserves Completed. `set_looping()` cannot resurrect completed playback.
+After output closes, `VoiceSnapshot.state` reports Closed while its terminal
+reason remains available. These are owner-observed logical outcomes rather than
+sample-accurate claims about a mixer race.
+
+### Publish on an explicit owner
+
+Call `audio->publish_events_to(bus.publisher())` to choose a weak route and
+designate the calling thread as notification owner. The backend stages terminal
+records under its audio mutex, and `publish_notifications()` invokes listeners
+outside that mutex on the designated owner. Neither controls, close, maintenance
+nor the mixer invoke game listeners directly. Without prior configuration, the
+first pump designates its caller; an empty route discards publication attempts.
+Route changes require that same owner outside an active pump.
+
+Each pump observes completion even for externally retained voices and drains
+only through its entry sequence cutoff. A listener's newly staged outcomes wait
+for a later pump; recursive pumping rejects. The source reserves terminal-counter
+capacity before native effects so admitted unfinished generations can still end
+during noexcept close. Observation storage is a separate bound: miniaudio defaults
+to 1,024 preallocated records, configurable when opening output. Overflow drops
+the oldest pending record rather than rejecting playback or waiting for observers.
+
+`notification_snapshot()` exposes source sequence, closure, capacity, pending
+count and loss count/range. System ID zero means unsupported; unsupported default
+routing/pump operations throw. A retained Voice's current-generation snapshot
+recovers its terminal fact after a gap. Neither snapshot recovers superseded
+generation history. Each retained record gets one publication attempt; bus/queue
+failure has no automatic retry or exactly-once delivery guarantee.
+
+```mermaid
+sequenceDiagram
+    accTitle: Audio outcomes are delivered by the owner pump
+    accDescr: Stop stages a terminal outcome under the audio lock. The owner pump removes staged records and notifies listeners outside that lock. Explicit close can be followed by a final pump; destruction discards unpublished observations.
+    participant Game as Producer
+    participant Audio as Audio system
+    participant Owner as Notification owner
+    participant Bus as Chosen EventBus
+    participant Listener
+    Game->>Audio: voice.stop()
+    Audio->>Audio: Commit terminal fact and stage record
+    Audio-->>Game: return without callbacks
+    Owner->>Audio: publish_notifications()
+    Audio->>Bus: notify(playback_ended_event, record)
+    Bus->>Listener: callback(record)
+    Bus-->>Audio: return
+    Audio-->>Owner: return
+```
+
+## Lifetime and scheduling
+
+Controls, submissions, snapshots and maintenance are synchronized across
+application producers. Their order follows control admission, rather than a
+deterministic simulation clock. Device playback progresses on its own clock
+without render or simulation admission. Offline processing is explicitly selected;
+an unavailable native device must not silently produce inaudible success.
+
+Skipping world updates for a pause does not pause device playback. Retain the
+music/effect voices that should pause and call their `pause()`/`resume()` controls
+at the game's transition boundary. Decide which menu sounds continue, and track
+which voices the pause suspended so resume does not start independently paused
+playback. Keep audio maintenance, and notification pumping when used, running
+while the world is paused.
+
+Calling `play()` on successive simulation ticks gives tick scheduling. Use
+[`resume_after()`](#schedule-a-delayed-start) on prepared paused voices for an
+output-clock delay; use a premixed PCM clip when a group needs exact relative
+sample offsets.
+
+The system retains active playback after the application releases its voice
+handle. Call `maintain` regularly to reclaim completed/stopped/paused voices that
+have no application handles. Maintenance does not advance playback. Discarded
+looping voices remain active until system closure; retain their handles when they
+need individual control.
+
+Create the system before playback. Settle all producers before destroying it.
+`close` is idempotent, stops output, retires native voices before their mixer/device,
+and leaves surviving handles safe. A system cannot reopen; construct another
+system for a new session. Audio need not share the graphics owner's thread, and
+this contract does not add audio to the runtime's existing adapter teardown.
+
+For final observations, settle producers, call `close()`, then
+`publish_notifications()` on the designated owner before releasing subscriptions
+and the system. Publication remains allowed after close; destruction only cleans
+up and discards unpublished records. The optional
+[runtime notification pump](../modules/miniaudio.md#runtime-notification-pump)
+does not transfer audio lifetime or producer settlement to Runtime.
+
+## Backends and limits
+
+The [miniaudio module](../modules/miniaudio.md) supplies CPU
+decode, explicit device/offline output and streamed playback. Its independent
+consumer provides native observation without a game, window or graphics module.
+Linux root-assembly native stereo output and sustained WAV streaming are accepted;
+the module guide owns reusable validation and compressed-stream, composition and
+platform coverage limits.
+
+World, entity and collision organization belongs
+to the game or its application-selected modules. FMOD is a later optional backend;
+Studio authoring formats/capabilities require a separate contract.

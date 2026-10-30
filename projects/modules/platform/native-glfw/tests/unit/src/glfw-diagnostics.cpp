@@ -1,3 +1,4 @@
+#include "backends/native-glfw/test-access.h"
 #include <gtest/gtest.h>
 #include <core/display/glfw-diagnostics.h>
 

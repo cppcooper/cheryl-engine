@@ -61,16 +61,20 @@ namespace CE::Math {
      * Spans/proxies borrow this array. Access is unsynchronized, including writes
      * to different bits in one word; whole-word access can modify unused high bits.
      * Native storage/byte order is not a portable serialized representation.
+     * @tparam Bits Positive logical bit count, enforced by static_assert; starts with all bits zero.
+     * @see [Utility contracts](cheryl-guide:runtime/utility-contracts)
      */
     template <std::size_t Bits> class BitArray {
         static_assert(Bits > 0);
 
     public:
+        /** Smallest supported backing word not wider than native size_t. */
         using word_type = ::CE::Math::Detail::bit_word_t<Bits>;
+        /** Borrowed write-through bit proxy; see mutable operator[] for assignment and lifetime rules. */
         using Reference = ::CE::Math::Detail::BitReference<word_type>;
 
-        static constexpr std::size_t word_bits = ::CE::Math::Detail::bit_word_bits<Bits>;
-        static constexpr std::size_t word_count = ::CE::Math::Detail::bit_word_count<Bits>;
+        static constexpr std::size_t word_bits = ::CE::Math::Detail::bit_word_bits<Bits>; ///< Bits per backing word.
+        static constexpr std::size_t word_count = ::CE::Math::Detail::bit_word_count<Bits>; ///< Words required for Bits, rounding up.
 
         Reference operator[](std::size_t index) noexcept;
         bool operator[](std::size_t index) const noexcept;
@@ -138,20 +142,42 @@ namespace CE::Math {
         }
     }
 
+    /** Borrows a writable bit proxy; indexing performs no allocation.
+     * @param index Zero-based bit index, strictly below Bits; asserted, not a checked release error.
+     * @return Proxy borrowing this array's backing word. Assignment from bool writes that
+     * bit; assignment from another proxy copies its current bit value, not its binding.
+     * Explicit bool conversion samples the bit. Keep this array alive through proxy use;
+     * copied/moved arrays have separate storage and do not retarget existing proxies.
+     * Writes, including different bits sharing a word, require caller synchronization.
+     * @see [Packed bit arrays](cheryl-guide:runtime/utility-contracts)
+     */
     template <std::size_t Bits> typename BitArray<Bits>::Reference BitArray<Bits>::operator[](const std::size_t index) noexcept {
         assert(index < Bits);
         return {word(index), mask(index)};
     }
 
+    /** Reads one bit as an independent bool value.
+     * @param index Zero-based bit index below Bits; violations are assertion-only.
+     * @return Current bit value; no pointer/proxy or synchronization is retained.
+     */
     template <std::size_t Bits> bool BitArray<Bits>::operator[](const std::size_t index) const noexcept {
         assert(index < Bits);
         return (word(index) & mask(index)) != 0;
     }
 
+    /** Borrows contiguous mutable backing words in least-significant-bit index order.
+     * @return Fixed-extent word span borrowing this array. It does not mask unused high bits.
+     * Caller mutations and synchronization operate on whole words; this is native storage,
+     * not a portable byte serialization. Keep the owning array alive through use.
+     */
     template <std::size_t Bits> auto BitArray<Bits>::words() noexcept -> std::span<word_type, word_count> {
         return std::span<word_type, word_count>{&word(0), word_count};
     }
 
+    /** Borrows a read-only span of contiguous native backing words.
+     * @return Fixed-extent view valid while this array lives, including any unused high bits.
+     * It is a live view, not a snapshot; reads must not race mutation of the same words.
+     */
     template <std::size_t Bits> auto BitArray<Bits>::words() const noexcept -> std::span<const word_type, word_count> {
         return std::span<const word_type, word_count>{&word(0), word_count};
     }
@@ -178,6 +204,12 @@ namespace CE::Math {
         }
     }
 
+    /** Writes Bits binary digits, highest bit first and without separators or a prefix.
+     * @tparam Bits Positive logical width; unused high storage bits are omitted.
+     * @param out Borrowed destination stream; its state/error policy controls failures.
+     * @param bits Borrowed packed array, read synchronously without locking.
+     * @return The same stream for chaining. Stream errors/exception masks are preserved.
+     */
     template <std::size_t Bits> std::ostream& operator<<(std::ostream& out, const BitArray<Bits>& bits) {
         for (std::size_t i = Bits; i > 0; --i) {
             out << (bits[i - 1] ? '1' : '0');

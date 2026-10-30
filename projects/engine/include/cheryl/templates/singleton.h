@@ -50,7 +50,6 @@ namespace CE::State {
         }
 
     public:
-        // Observe publication without creating or waiting. Null also means construction is still in progress.
         [[nodiscard]] static Type* get_existing() noexcept { return storage().published.load(std::memory_order_acquire); }
 
         template <typename... Args> static Type& initialize(Args&&... args) {
@@ -62,13 +61,6 @@ namespace CE::State {
             return *get_existing();
         }
 
-        /** Retrieve a published instance, constructing it once when these arguments permit it.
-     * Constructors must not recursively initialize/get the same singleton.
-     * Later argument values do not replace an existing instance. Construction
-     * failures publish nothing; unavailable nonconstructing reads throw.
-     * @param args Forwarded constructor arguments on the first successful call.
-     * @return Borrowed process-lifetime instance; its operations have their own thread contract.
-     */
         template <typename... Args> static Type& get(Args&&... args) {
             if constexpr (std::is_constructible_v<Type, Args...>) {
                 construct(std::forward<Args>(args)...);
@@ -155,3 +147,70 @@ namespace CE::State {
     };
 
 }
+
+/** @fn template<class Type> Type* CE::State::Singleton<Type>::get_existing() noexcept
+ * @brief Observes a published instance without constructing or waiting.
+ * @return Borrowed pointer or null when no instance is published, including construction in progress.
+ * Reads are synchronized; the pointer does not pin storage against process teardown.
+ * Later operations obey Type's own thread contract. Quiesce users before static destruction.
+ */
+
+/** @fn template<class Type> template<typename... Args> Type& CE::State::Singleton<Type>::initialize(Args&&... args)
+ * @brief Performs exactly one successful explicit initialization.
+ * @tparam Args Constructor argument types; must permit construction in this template's access context.
+ * @param args Perfect-forwarded only to the winning construction.
+ * @return Borrowed process-lifetime instance, not an owning reference.
+ * @throws CE::Exceptions::bad_request When another successful construction already won.
+ * Constructor failures publish nothing and allow retry. Concurrent construction
+ * is serialized; constructors must not recursively initialize/get the same singleton.
+ */
+
+/** @fn template<class Type> template<typename... Args> Type& CE::State::Singleton<Type>::get(Args&&... args)
+ * @brief Retrieves the instance, constructing it once when these arguments allow it.
+ * @tparam Args Candidate constructor argument types.
+ * @param args Forwarded on the first successful constructible call; later argument values are ignored.
+ * @return Borrowed process-lifetime instance. Access does not establish Type's operation thread safety.
+ * @throws CE::Exceptions::failed_operation When no instance is published and construction is unavailable.
+ * A default-constructible Type can be constructed by get(); otherwise an argument-free
+ * get only observes publication and need not wait for construction in progress.
+ * Constructor failures propagate without publication and permit retry. Recursive
+ * construction of this same singleton is unsupported.
+ * @see [Singleton contracts](cheryl-guide:runtime/utility-contracts)
+ */
+
+/** @fn template<class Type> Type* CE::State::FriendSingleton<Type>::get_existing() noexcept
+ * @brief Observes a published instance without constructing or waiting.
+ * @return Borrowed pointer or null when no instance is published, including construction in progress.
+ * Reads are synchronized; the pointer does not pin storage against process teardown.
+ * Later operations obey Type's own thread contract. Quiesce users before static destruction.
+ */
+
+/** @fn template<class Type> template<typename... Args> Type& CE::State::FriendSingleton<Type>::initialize(Args&&... args)
+ * @brief Performs exactly one successful explicit initialization.
+ * @tparam Args Constructor argument types; must permit construction in this template's access context.
+ * @param args Perfect-forwarded only to the winning construction.
+ * @return Borrowed process-lifetime instance, not an owning reference.
+ * @throws CE::Exceptions::bad_request When another successful construction already won.
+ * Constructor failures publish nothing and allow retry. Concurrent construction
+ * is serialized; constructors must not recursively initialize/get the same singleton.
+ */
+
+/** @fn template<class Type> template<typename... Args> Type& CE::State::FriendSingleton<Type>::get(Args&&... args)
+ * @brief Retrieves the instance, constructing it once when these arguments allow it.
+ * @tparam Args Candidate constructor argument types.
+ * @param args Forwarded on the first successful constructible call; later argument values are ignored.
+ * @return Borrowed process-lifetime instance. Access does not establish Type's operation thread safety.
+ * @throws CE::Exceptions::failed_operation When no instance is published and construction is unavailable.
+ * A default-constructible Type can be constructed by get(); otherwise an argument-free
+ * get only observes publication and need not wait for construction in progress.
+ * Constructor failures propagate without publication and permit retry. Recursive
+ * construction of this same singleton is unsupported.
+ * @see [Singleton contracts](cheryl-guide:runtime/utility-contracts)
+ */
+
+/** @fn template<class Type> CE::State::FriendSingleton<Type>::FriendSingleton()
+ * @brief Allows a derived singleton wrapper to construct its base without creating Type.
+ * Type must befriend FriendSingleton<Type> for inaccessible construction.
+ * The default unique_ptr deleter still requires an accessible Type destructor.
+ * This protected constructor performs no publication or allocation.
+ */

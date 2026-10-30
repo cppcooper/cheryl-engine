@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/resource-provider.h>
 
 #include "program-builder.h"
@@ -14,6 +15,9 @@
 #include <utility>
 
 namespace CE::Rendering::OpenGL {
+    ::CE::Rendering::GraphicsDomain ResourceProvider::graphics_domain() const noexcept {
+        return renderer_.graphics_domain();
+    }
     std::shared_ptr<CE::Rendering::Resources::Image> ResourceProvider::create_image(const CE::Assets::Images::Decoded& image) {
         const auto width = static_cast<std::size_t>(image.size.width);
         const auto height = static_cast<std::size_t>(image.size.height);

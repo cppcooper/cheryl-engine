@@ -6,7 +6,9 @@
 #include <assets/types/2d/font-upload-internal.h>
 #include <assets/types/2d/font-bake-internal.h>
 #include <assets/types/2d/font-stb-allocation-internal.h>
+#include <assets/submission/draw2d.h>
 #include <testing/failing-memory-resource.h>
+#include <testing/material-builder.h>
 #include <internals/exceptions.h>
 
 #include <array>
@@ -72,8 +74,10 @@ namespace {
     };
 
     struct RasterUploadProvider final : CE::Rendering::Resources::Provider {
+        CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
         int geometry_calls = 0;
         int atlas_calls = 0;
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return &builder; }
         std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded&) override { return {}; }
         std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
         std::shared_ptr<CE::Rendering::Geometry::Buffer2D> upload_geometry(
@@ -161,7 +165,9 @@ namespace {
         std::weak_ptr<CE::Rendering::Geometry::Vertex2D> cpu_vertices;
         std::weak_ptr<CE::Rendering::Geometry::Buffer2D> uploaded_geometry;
         std::weak_ptr<CE::Rendering::Resources::Image> uploaded_atlas;
+        CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
 
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return &builder; }
         std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded&) override { return {}; }
         std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
 
@@ -430,6 +436,15 @@ TEST(font_upload, retained_backend_resources) {
     auto font = std::make_shared<CE::Text::Legacy::AsciiFont>(CE::Text::Legacy::Detail::upload_baked_font(
         provider, std::move(vertices), alpha, CE::Rendering::Geometry::PixelSize{3, 1}, advances, 12
     ));
+    ASSERT_TRUE(font->material_handle());
+    EXPECT_EQ(font->material_handle(), provider.builder.values.at(CE::Rendering::Materials::Builtin2D::Textured));
+    {
+        const auto draws = CE::Rendering::Submission::resolve_text(*font, "A", {}, {});
+        ASSERT_EQ(draws.size(), 1u);
+        EXPECT_EQ(draws.front().material, font->material_handle());
+        EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(draws.front().parameters.at("image")).unit, 0u);
+    }
+    EXPECT_EQ(provider.builder.requests.size(), 1u);
     alpha.fill(0);
     advances.fill(0);
     EXPECT_TRUE(provider.cpu_vertices.expired());

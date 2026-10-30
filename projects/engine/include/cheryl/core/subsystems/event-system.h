@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "event-bus.h"
 #include <templates/singleton.h>
 
@@ -13,20 +15,24 @@ namespace CE::Events {
         ::CE::Events::EventBus bus_;
 
     public:
+        /** Default-bus alias with the identical EventBus::Callback contract. */
         using Callback = ::CE::Events::EventBus::Callback;
+        /** Default-bus alias with the identical EventBus::Registration contract. */
         using Registration = ::CE::Events::EventBus::Registration;
+        /** Default-bus alias with the identical EventBus::Delivery contract. */
         using Delivery = ::CE::Events::EventBus::Delivery;
+        /** Default-bus alias with the identical EventBus::ErrorHandler contract. */
         using ErrorHandler = ::CE::Events::EventBus::ErrorHandler;
 
         EventSystem() = default;
         [[nodiscard]] ::CE::Events::EventBus& bus() { return bus_; }
-        Registration register_listener(
+        CE_API Registration register_listener(
             const std::string& event,
             Callback callback,
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         );
-        void dispatch(const std::string& event, const std::any& payload);
+        CE_API void dispatch(const std::string& event, const std::any& payload);
         template <::CE::Events::EventPayload Payload>
         Registration register_listener(
             const ::CE::Events::EventChannel<Payload>& event,
@@ -46,3 +52,75 @@ namespace CE::Events {
         bool unregister_and_wait(const Registration& registration) { return bus_.unregister_and_wait(registration); }
     };
 }
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Events::EventSystem>::storage() -> Storage&;
+}
+
+/**
+ * @fn CE::Events::EventSystem::EventSystem()
+ * @brief Construct a facade owning its own bus; Singleton access selects the process default facade.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn CE::Events::EventBus& CE::Events::EventSystem::bus()
+ * @brief Borrow the facade's bus without changing its delivery thread or listener lifetime.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn Registration CE::Events::EventSystem::register_listener(const std::string& event, Callback callback, Delivery delivery, ErrorHandler errors)
+ * @brief Forward to the owned bus's register_listener operation.
+ * @see CE::Events::EventBus::register_listener
+ * The payload, error-delivery, invalidation and wait contracts are identical; global access does not choose a callback thread.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn void CE::Events::EventSystem::dispatch(const std::string& event, const std::any& payload)
+ * @brief Forward to the owned bus's dispatch operation.
+ * @see CE::Events::EventBus::dispatch
+ * The payload, error-delivery, invalidation and wait contracts are identical; global access does not choose a callback thread.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn bool CE::Events::EventSystem::unregister_listener(const Registration& registration)
+ * @brief Forward to the owned bus's unregister_listener operation.
+ * @see CE::Events::EventBus::unregister_listener
+ * The payload, error-delivery, invalidation and wait contracts are identical; global access does not choose a callback thread.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn void CE::Events::EventSystem::wait_for_listener(const Registration& registration) const
+ * @brief Forward to the owned bus's wait_for_listener operation.
+ * @see CE::Events::EventBus::wait_for_listener
+ * The payload, error-delivery, invalidation and wait contracts are identical; global access does not choose a callback thread.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn bool CE::Events::EventSystem::unregister_and_wait(const Registration& registration)
+ * @brief Forward to the owned bus's unregister_and_wait operation.
+ * @see CE::Events::EventBus::unregister_and_wait
+ * The payload, error-delivery, invalidation and wait contracts are identical; global access does not choose a callback thread.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn template<CE::Events::EventPayload Payload> CE::Events::EventSystem::Registration CE::Events::EventSystem::register_listener(const CE::Events::EventChannel<Payload>& event, typename CE::Events::EventChannel<Payload>::Callback callback, Delivery delivery, ErrorHandler errors)
+ * @brief Register an owned typed listener on the default facade's bus.
+ * @see CE::Events::EventBus::register_listener
+ * Exact name/type isolation, persistent identifiers and deferred error/capture lifetime are unchanged.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */
+
+/**
+ * @fn template<CE::Events::EventPayload Payload, typename Value> void CE::Events::EventSystem::dispatch(const CE::Events::EventChannel<Payload>& event, Value&& payload)
+ * @brief Forward exact-type owned payload dispatch to this facade's bus.
+ * @see CE::Events::EventBus::dispatch
+ * Payload construction, immediate exceptions and deferred error reporting obey the owned bus contract.
+ * @see [Detailed guide](cheryl-guide:runtime/event-delivery)
+ */

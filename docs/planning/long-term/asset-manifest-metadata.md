@@ -13,7 +13,7 @@ an artwork-owner decision before additional semantics can be encoded safely.
 - Buch dungeon sheet: locate metadata matching the 23×24 grid of 16-pixel cells
   (368×384 occupied pixels), or explicitly replace the sheet and remap it. Metadata
   for a different revision/layout cannot safely supply this sheet's named slices.
-  The [download catalog](../../assets/catalog.md#dungeon-tileset) identifies its source.
+  The [download catalog](../../site/assets/catalog.md#dungeon-tileset) identifies its source.
 - Colored/Orc buildings and Mage City: add per-cell gameplay names only if the engine
   needs semantic lookup below the existing regional/color view level.
 - Character Customizer: decide whether runtime customization loads composited exports
@@ -24,11 +24,11 @@ an artwork-owner decision before additional semantics can be encoded safely.
   geometry, but no durations or verified action names. Do not infer animation timing
   or material/FX intent. Invaders' draw scale is a submission setting; irregular
   Rover frames remain separately addressable entries. The
-  [recovery contract](../../assets/asset-manifests.md#recovered-college-definitions)
+  [recovery contract](../../site/assets/asset-manifests.md#recovered-college-definitions)
   records pivot evidence and retained originals.
 
 Tile selection uses the declared rules;
-the [selection contract](../../assets/asset-values-and-playback.md#tile-selection)
+the [selection contract](../../site/assets/asset-values-and-playback.md#tile-selection)
 does not infer missing artwork semantics.
 Additional downloaded dungeon packages await separate manifests in the
 [long-term plan](README.md#additional-dungeon-asset-manifests).

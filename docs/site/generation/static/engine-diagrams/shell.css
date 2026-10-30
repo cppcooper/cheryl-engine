@@ -1,0 +1,245 @@
+.engine-diagram-caption {
+    margin: 0.3rem 0 1.5rem;
+    font-size: 0.85rem;
+}
+.engine-diagram pre.mermaid {
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+}
+.engine-diagram pre.mermaid p {
+    font: inherit;
+    margin: 0;
+}
+.engine-explorer-page,
+.engine-explorer-page body {
+    height: 100%;
+    overflow: hidden;
+}
+.engine-explorer-page .wy-nav-side {
+    width: 272px;
+}
+.engine-explorer-page .wy-side-scroll {
+    width: 292px;
+}
+.engine-explorer-page .wy-side-nav-search {
+    width: 272px;
+}
+.engine-explorer-page .wy-menu-vertical a {
+    font-size: 12px;
+}
+.engine-explorer-page .wy-nav-top {
+    display: none;
+}
+.engine-explorer-page .wy-nav-content-wrap {
+    position: absolute;
+    inset: 0 0 0 272px;
+    margin-left: 0;
+}
+.engine-explorer-page .wy-nav-content {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    height: 100%;
+}
+.engine-explorer-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #263b56;
+    background: #fff;
+}
+.engine-explorer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 14px 22px;
+    border-bottom: 1px solid #dce3ed;
+    flex-shrink: 0;
+}
+.engine-explorer-header h1 {
+    font: 650 18px system-ui, sans-serif;
+    margin: 3px 0 0;
+    color: #263b56;
+}
+.engine-explorer-breadcrumb {
+    font-size: 11px;
+    color: #557395;
+}
+.engine-explorer-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+}
+.engine-explorer-links a {
+    white-space: nowrap;
+    color: #42658d;
+}
+.engine-explorer-links button,
+#engine-system-guide {
+    padding: 7px 10px;
+    border: 1px solid #cbd9ea;
+    border-radius: 5px;
+    background: #f3f7fc;
+    font: 12px system-ui, sans-serif;
+    color: #305c96;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.engine-explorer-header .cheryl-appearance {
+    margin: 0;
+    gap: 6px;
+    flex-wrap: nowrap;
+    font-size: 12px;
+}
+.engine-explorer-header .cheryl-appearance select {
+    font-size: 11px;
+    min-height: 30px;
+}
+.engine-explorer-layouts {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 20px;
+    border-bottom: 1px solid #dce3ed;
+    background: #edf1f6;
+    font-size: 10px;
+    color: #62718a;
+}
+.engine-explorer-layouts nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.engine-explorer-layouts nav > span {
+    margin-right: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.engine-explorer-layouts button {
+    padding: 5px 10px;
+    background: transparent;
+    color: #4c6380;
+    border: 0;
+    border-radius: 4px;
+    font: 11px system-ui, sans-serif;
+    cursor: pointer;
+}
+.engine-explorer-layouts button[aria-pressed="true"] {
+    background: #fff;
+    color: #214c87;
+    box-shadow: 0 1px 3px #243b5618;
+    font-weight: 600;
+}
+#engine-explorer-frame {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    border: 0;
+    background: white;
+}
+.engine-explorer-fallback {
+    padding: 24px;
+    overflow: auto;
+}
+.engine-explorer-enabled .engine-explorer-fallback {
+    display: none;
+}
+.engine-explorer-revision {
+    font-size: 9px;
+    padding: 5px 18px;
+    border-top: 1px solid #dce3ed;
+    color: #76869b;
+    margin: 0;
+}
+.engine-explorer-page[data-engine-diagram-layout="wide"] .wy-nav-side,
+.engine-explorer-page[data-engine-diagram-layout="wide"] #engine-navigation-toggle {
+    display: none;
+}
+.engine-explorer-page[data-engine-diagram-layout="wide"] .wy-nav-content-wrap,
+.engine-navigation-hidden .wy-nav-content-wrap {
+    left: 0;
+}
+.engine-navigation-hidden .wy-nav-side {
+    transform: translateX(-100%);
+}
+html[data-theme="dark"] .engine-explorer-shell {
+    background: #1b2737;
+    color: #dbe8fa;
+}
+html[data-theme="dark"] .engine-explorer-header h1 {
+    color: #d9e8fa;
+}
+html[data-theme="dark"] .engine-explorer-header,
+html[data-theme="dark"] .engine-explorer-revision {
+    border-color: #40516b;
+}
+html[data-theme="dark"] .engine-explorer-layouts {
+    background: #172231;
+    border-color: #35475f;
+    color: #c0cddd;
+}
+html[data-theme="dark"] .engine-explorer-layouts button {
+    color: #b5c8e2;
+}
+html[data-theme="dark"] .engine-explorer-layouts button[aria-pressed="true"],
+html[data-theme="dark"] .engine-explorer-links button,
+html[data-theme="dark"] #engine-system-guide {
+    background: #253b58;
+    color: #c8dffd;
+    border-color: #4d688b;
+}
+@media (max-width:1100px) {
+    .engine-explorer-page .wy-nav-content-wrap {
+        left: 0;
+    }
+    .engine-explorer-page .wy-nav-side {
+        transform: translateX(-100%);
+        z-index: 300;
+    }
+    .engine-navigation-open .wy-nav-side {
+        transform: none;
+        left: 0;
+    }
+    .engine-navigation-open body::after {
+        content: "";
+        position: fixed;
+        z-index: 280;
+        inset: 0;
+        background: #18293a55;
+    }
+    .engine-explorer-links .optional {
+        display: none;
+    }
+    .engine-navigation-open #engine-navigation-toggle {
+        position: relative;
+        z-index: 301;
+    }
+}
+@media (max-width:700px) {
+    .engine-explorer-header {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    .engine-explorer-header h1 {
+        font-size: 15px;
+    }
+    .engine-explorer-links {
+        gap: 7px;
+    }
+    .engine-explorer-links button,
+    #engine-system-guide {
+        padding: 7px;
+        font-size: 10px;
+    }
+    .engine-explorer-header .cheryl-appearance,
+    .engine-explorer-layouts > span {
+        display: none;
+    }
+    .engine-explorer-layouts {
+        padding: 6px 10px;
+    }
+}

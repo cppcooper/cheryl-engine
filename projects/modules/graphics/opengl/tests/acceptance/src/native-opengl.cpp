@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #if CHERYL_NATIVE_INPUT
 
 #include <gtest/gtest.h>
@@ -6,15 +7,17 @@
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/pipeline.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <assets/submission/draw2d.h>
 #include <assets/types/2d/unicode-text.h>
+#include <assets/types/2d/graphic.h>
 #include <assets/types/2d/ffont.h>
 #include <backends/opengl/resource-provider.h>
 #include <backends/opengl/texture.h>
 #include <core/display/window.h>
 #include <core/display/display-system.h>
 #include <core/controls/input-system.h>
-#include <core/controls/glfw-bindings.h>
+#include <core/controls/button-codes.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/render-frame.h>
@@ -28,6 +31,7 @@
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
+#include "backends/native-glfw/test-access.h"
 #include <GLFW/glfw3.h>
 #if defined(__linux__) && defined(CHERYL_NATIVE_X11_TESTS)
 #define GLFW_EXPOSE_NATIVE_X11
@@ -44,6 +48,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
+#include <exception>
 #include <fstream>
 #include <functional>
 #include <future>
@@ -52,6 +57,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -202,7 +208,7 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
 
     std::shared_ptr<const CE::Rendering::Resources::Material> legacy_font_material(CE::Rendering::Resources::Provider& resources) {
         auto& native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(resources);
-        const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/shaders/shader2d";
+        const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/graphics/shaders/shader2d";
         CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {shaders.string() + ".vert", shaders.string() + ".frag"};
         definition.parameters = {
@@ -470,6 +476,191 @@ void main() {
     };
 }
 
+TEST(native_opengl, builtin_materials) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = engine->resources();
+    renderer.initialize();
+    auto* builder = resources.shader_asset_builder();
+    ASSERT_NE(builder, nullptr);
+    using Kind = CE::Rendering::Materials::Builtin2D;
+    using Blend = CE::Rendering::Pipelines::Blend;
+    std::vector<std::shared_ptr<const CE::Rendering::Resources::Material>> retained;
+    std::array<GLuint, 2> programs{};
+    renderer.set_viewport({64, 64});
+    renderer.set_clear_colour(0, 0, 0, 1);
+    for (const auto blend : {Blend::StraightAlpha, Blend::PremultipliedAlpha}) {
+        for (const auto kind : {Kind::SolidColor, Kind::TexturedColor}) {
+            const auto material = builder->build_builtin_material(kind, blend);
+            ASSERT_TRUE(material);
+            EXPECT_EQ(builder->build_builtin_material(kind, blend), material);
+            EXPECT_EQ(material->definition().pipeline->definition().state.blend, blend);
+            retained.push_back(material);
+            const bool textured = kind == Kind::TexturedColor;
+            const bool premultiplied = blend == Blend::PremultipliedAlpha;
+            const glm::vec4 color = textured ? (premultiplied ? glm::vec4{0.25f, 0.5f, 0.125f, 0.5f} : glm::vec4{0.5f, 1, 0.25f, 0.5f})
+                                             : glm::vec4{premultiplied ? 0.5f : 1.0f, 0, 0, 0.5f};
+            const std::array<CE::Rendering::Geometry::Vertex2DColor, 3> vertices{
+                {{0, 0, 0, 0, 0, color.r, color.g, color.b, color.a},
+                 {128, 0, 0, 0, 0, color.r, color.g, color.b, color.a},
+                 {0, 128, 0, 0, 0, color.r, color.g, color.b, color.a}}
+            };
+            const auto geometry = resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
+            CE::Rendering::DrawStyle2D style;
+            style.material = material;
+            if (textured) {
+                CE::Assets::Images::Decoded image{
+                    {1, 1}, premultiplied ? std::vector<unsigned char>{64, 32, 128, 128} : std::vector<unsigned char>{128, 64, 255, 128}
+                };
+                style.parameters.emplace("image", CE::Rendering::Parameters::ImageBinding{resources.create_image(image), 0});
+            }
+            CE::Rendering::Frame frame;
+            {
+                CE::Rendering::FrameWriter writer(frame);
+                auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 64.0f, 0.0f), glm::mat4{1});
+                pass.add(CE::Rendering::resolve_draw_packet(geometry, 0, 3, style, pass.semantics(), {}, pass.constraints()));
+            }
+            renderer.clear();
+            renderer.render(frame);
+            std::array<unsigned char, 4> pixel{};
+            glReadBuffer(GL_BACK);
+            glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+            EXPECT_NEAR(pixel[0], textured ? 16 : 128, 1);
+            EXPECT_NEAR(pixel[1], textured ? 16 : 0, 1);
+            EXPECT_NEAR(pixel[2], textured ? 16 : 0, 1);
+            EXPECT_EQ(pixel[3], 255);
+            GLint program = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+            if (blend == Blend::StraightAlpha)
+                programs[textured ? 1 : 0] = static_cast<GLuint>(program);
+            else
+                EXPECT_EQ(static_cast<GLuint>(program), programs[textured ? 1 : 0]);
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        }
+    }
+    EXPECT_NE(programs[0], programs[1]);
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(static_cast<Kind>(99), Blend::StraightAlpha)), CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(Kind::SolidColor, static_cast<Blend>(99))), CE::Exceptions::invalid_args
+    );
+    std::exception_ptr foreign_error;
+    std::thread foreign([&] {
+        try {
+            static_cast<void>(builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha));
+        } catch (...) {
+            foreign_error = std::current_exception();
+        }
+    });
+    foreign.join();
+    ASSERT_TRUE(foreign_error);
+    EXPECT_THROW(std::rethrow_exception(foreign_error), CE::Exceptions::failed_operation);
+    {
+        CE::Rendering::OpenGL::ResourceProvider other(renderer);
+        EXPECT_NE(other.shader_asset_builder()->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha), retained.front());
+    }
+    const std::weak_ptr<const CE::Rendering::Resources::Material> lifetime = retained.front();
+    retained.clear();
+    EXPECT_TRUE(lifetime.expired());
+    glUseProgram(0);
+    renderer.maintain_resources();
+    EXPECT_EQ(glIsProgram(programs[0]), GL_FALSE);
+    EXPECT_EQ(glIsProgram(programs[1]), GL_FALSE);
+    const auto warm = builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha);
+    ASSERT_TRUE(warm);
+    renderer.deinitialize();
+    EXPECT_THROW(
+        static_cast<void>(builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha)), CE::Exceptions::failed_operation
+    );
+}
+
+TEST(native_opengl, asset_materials) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = engine->resources();
+    renderer.initialize();
+    renderer.set_clear_colour(0, 0, 0, 1);
+    using Kind = CE::Rendering::Materials::Builtin2D;
+    using Blend = CE::Rendering::Pipelines::Blend;
+    std::vector<std::shared_ptr<const CE::Rendering::Resources::Material>> retained;
+    std::array<GLuint, 2> programs{};
+    for (const auto blend : {Blend::StraightAlpha, Blend::PremultipliedAlpha}) {
+        const bool premultiplied = blend == Blend::PremultipliedAlpha;
+        for (const auto kind : {Kind::Textured, Kind::TexturedStrip}) {
+            const auto material = CE::Assets::Shaders::build_builtin_material(resources, kind, blend);
+            ASSERT_TRUE(material);
+            EXPECT_EQ(CE::Assets::Shaders::build_builtin_material(resources, kind, blend), material);
+            EXPECT_TRUE(material->definition().sampling.empty());
+            retained.push_back(material);
+            const auto image = resources.create_image(
+                {{1, 1}, premultiplied ? std::vector<unsigned char>{64, 32, 128, 128} : std::vector<unsigned char>{128, 64, 255, 128}}
+            );
+            CE::Rendering::DrawStyle2D style;
+            style.scale = 16;
+            style.alpha = 0.5f;
+            style.model_matrix = glm::translate(glm::mat4{1}, glm::vec3{8, 52, 0});
+            CE::Rendering::Frame frame;
+            {
+                CE::Rendering::FrameWriter writer(frame);
+                auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 0.0f, 64.0f), glm::translate(glm::mat4{1}, glm::vec3{16, -12, 0}));
+                const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+                if (kind == Kind::Textured) {
+                    const auto graphic = CE::Assets::Graphics::Asset::from_image(image, resources, {0, 0}, material);
+                    pass.add(CE::Rendering::Submission::resolve_graphic(graphic, style, context));
+                } else {
+                    const std::array<CE::Rendering::Geometry::Vertex2D, 4> vertices{
+                        {{0, -1, 0, 0, 0}, {1, -1, 0, 1, 0}, {0, 0, 0, 0, 1}, {1, 0, 0, 1, 1}}
+                    };
+                    auto geometry = resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::TriangleStrip);
+                    CE::Assets::Sprites::Definition definition;
+                    definition.grid.frame = {1, 1};
+                    definition.grid.rows = definition.grid.columns = 1;
+                    const CE::Assets::Sprites::Asset sprite({std::move(geometry), image, definition, material});
+                    pass.add(CE::Rendering::Submission::resolve_sprite(sprite, 0, style, context));
+                }
+            }
+            const auto pixel = draw_pixel(renderer, frame);
+            EXPECT_NEAR(pixel[0], 32, 1);
+            EXPECT_NEAR(pixel[1], 16, 1);
+            EXPECT_NEAR(pixel[2], 64, 1);
+            EXPECT_EQ(pixel[3], 255);
+            std::array<unsigned char, 4> outside{};
+            glReadPixels(48, 48, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, outside.data());
+            EXPECT_EQ(outside, (std::array<unsigned char, 4>{0, 0, 0, 255}));
+            GLint program = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+            if (kind == Kind::Textured)
+                programs[premultiplied ? 1 : 0] = static_cast<GLuint>(program);
+            else
+                EXPECT_EQ(static_cast<GLuint>(program), programs[premultiplied ? 1 : 0]);
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        }
+    }
+    EXPECT_NE(programs[0], programs[1]);
+    {
+        const std::array<unsigned char, 1> coverage{128};
+        auto atlas = resources.create_font_atlas(coverage, {1, 1});
+        const auto graphic = CE::Assets::Graphics::Asset::from_image(atlas, resources, {0, 0});
+        CE::Rendering::DrawStyle2D style;
+        style.scale = 64;
+        style.model_matrix = glm::translate(glm::mat4{1}, glm::vec3{0, 64, 0});
+        CE::Rendering::Frame frame;
+        CE::Rendering::FrameWriter writer(frame);
+        auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 0.0f, 64.0f), glm::mat4{1});
+        pass.add(CE::Rendering::Submission::resolve_graphic(graphic, style, {pass.semantics(), pass.parameters(), pass.constraints()}));
+        const auto pixel = draw_pixel(renderer, frame);
+        for (std::size_t channel = 0; channel < 3; ++channel)
+            EXPECT_NEAR(pixel[channel], 128, 1);
+        EXPECT_EQ(pixel[3], 255);
+    }
+    renderer.deinitialize();
+}
+
 TEST(native_opengl, ui_clipping_color) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -679,27 +870,56 @@ TEST(native_opengl, debug_output) {
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
     auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
     auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& context = dynamic_cast<CE::Rendering::OpenGL::Context&>(engine->surface());
+    void* previous_callback = nullptr;
+    void* previous_user = nullptr;
+    GLboolean previous_enabled = GL_FALSE;
+    GLboolean previous_synchronous = GL_FALSE;
+    bool supported = false;
+    {
+        CE::Rendering::OpenGL::Renderer probe(context);
+        probe.initialize();
+        supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
+        if (supported) {
+            glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &previous_callback);
+            glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &previous_user);
+            previous_enabled = glIsEnabled(GL_DEBUG_OUTPUT);
+            previous_synchronous = glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        }
+        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        probe.deinitialize();
+    }
     renderer.set_native_diagnostics(true);
     renderer.initialize();
-    const bool supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
     if (supported) {
         void* callback = nullptr;
         void* user = nullptr;
         glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
         glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &user);
         EXPECT_NE(callback, nullptr);
-        EXPECT_EQ(user, nullptr);
-        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), GL_TRUE);
+        if (previous_callback) {
+            EXPECT_EQ(callback, previous_callback);
+            EXPECT_EQ(user, previous_user);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT), previous_enabled);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), previous_synchronous);
+        } else {
+            EXPECT_EQ(user, nullptr);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), GL_TRUE);
+        }
     }
     renderer.clear();
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
-    auto& context = dynamic_cast<CE::Rendering::OpenGL::Context&>(engine->surface());
     context.make_current();
     if (supported) {
         void* callback = nullptr;
+        void* user = nullptr;
         glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
-        EXPECT_EQ(callback, nullptr);
+        glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &user);
+        EXPECT_EQ(callback, previous_callback);
+        EXPECT_EQ(user, previous_user);
+        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT), previous_enabled);
+        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), previous_synchronous);
     }
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     context.release_current();
@@ -748,9 +968,22 @@ TEST(native_opengl, retained_frame_reload) {
     renderer.initialize();
     NativeShaderFiles files;
     auto& materials = CE::Assets::Materials::Manager::get();
+    engine->resources().publish_events_to(engine->events().publisher());
+    using CatalogueChange = CE::Assets::Cache::AssetCatalogueChanged<const CE::Rendering::Resources::Material, std::filesystem::path>;
+    std::vector<CatalogueChange> catalogue_changes;
+    const auto catalogue_observer = engine->events().register_listener(
+        CE::Assets::Cache::asset_catalogue_changed_event<const CE::Rendering::Resources::Material, std::filesystem::path>,
+        [&](const CatalogueChange& change) {
+            catalogue_changes.push_back(change);
+            if (change.kind == CE::Assets::Cache::CatalogueChangeKind::Replaced)
+                throw std::runtime_error("Optional reload observer failure after successful commit");
+        });
     const auto key = files.directory / "material";
     materials.load(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto old = materials.get_asset(key);
+    const auto old_generation = materials.asset_snapshot(key).generation;
+    ASSERT_TRUE(old_generation);
+    EXPECT_EQ(old_generation->graphics_domain.snapshot(), renderer.graphics_domain().snapshot());
     auto geometry = fullscreen_triangle(engine->resources());
     std::weak_ptr<const CE::Rendering::Resources::Material> old_owner = old;
     std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = geometry;
@@ -770,8 +1003,15 @@ TEST(native_opengl, retained_frame_reload) {
     materials.reload(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto current = materials.get_asset(key);
     ASSERT_NE(old, current);
+    ASSERT_EQ(catalogue_changes.size(), 2);
+    EXPECT_EQ(catalogue_changes[0].kind, CE::Assets::Cache::CatalogueChangeKind::Published);
+    EXPECT_EQ(catalogue_changes[1].kind, CE::Assets::Cache::CatalogueChangeKind::Replaced);
+    EXPECT_EQ(catalogue_changes[1].previous->generation, old_generation->generation);
+    EXPECT_EQ(catalogue_changes[1].current->generation, materials.asset_snapshot(key).generation->generation);
     retain_draw(new_frame, geometry, current);
     materials.clear_assets();
+    ASSERT_EQ(catalogue_changes.size(), 3);
+    EXPECT_EQ(catalogue_changes.back().kind, CE::Assets::Cache::CatalogueChangeKind::Reset);
     old.reset();
     current.reset();
     geometry.reset();
@@ -803,6 +1043,8 @@ TEST(native_opengl, retained_frame_reload) {
     EXPECT_EQ(glIsBuffer(buffer), GL_FALSE);
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
+    EXPECT_EQ(old_generation->graphics_domain.snapshot().sequence, 2);
+    catalogue_observer.disconnect();
 }
 
 TEST(native_opengl, failed_reload_cleanup) {
@@ -1217,6 +1459,7 @@ namespace {
 
     struct NativeRuntimeGame : CE::Game::AbstractGame {
         CE::Runtime::Context& engine;
+        const CE::Platform::FramebufferSize expected_framebuffer_size;
         NativeShaderFiles files;
         std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry;
         std::shared_ptr<const CE::Rendering::Resources::Material> material;
@@ -1227,8 +1470,11 @@ namespace {
         std::optional<CE::Input::Actions::Id> observed_action;
 
         explicit NativeRuntimeGame(CE::Runtime::Context& context)
-        : engine(context) {}
-        void init() override {
+        : engine(context), expected_framebuffer_size(context.display().active_window()->framebuffer_size()) {
+            EXPECT_GT(expected_framebuffer_size.width, 0);
+            EXPECT_GT(expected_framebuffer_size.height, 0);
+        }
+        void init_platform() override {
             geometry = fullscreen_triangle(engine.resources());
             material = material_builder(files.stages(), {1, 0, 0, 1})(engine.resources());
             if (after_init)
@@ -1241,7 +1487,7 @@ namespace {
             ticks.back().records.assign(tick.input.records().begin(), tick.input.records().end());
             if (observed_action)
                 ticks.back().observed_button = tick.input.button(*observed_action);
-            EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{64, 64}));
+            EXPECT_EQ(tick.framebuffer_size, expected_framebuffer_size);
             after_update();
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
@@ -1249,7 +1495,7 @@ namespace {
             auto pass = frame.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
             pass.add({geometry, material, 0, 3, material->resolve({}, {}, {}, {})});
         }
-        void deinit() override {
+        void deinit_platform() override {
             material.reset();
             geometry.reset();
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -1390,8 +1636,8 @@ namespace {
                     throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
             };
         }
-        void init() override {
-            NativeRuntimeGame::init();
+        void init_platform() override {
+            NativeRuntimeGame::init_platform();
             observed->platform_owner = std::this_thread::get_id();
             geometry->bind();
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &observed->vao);
@@ -1446,7 +1692,7 @@ namespace {
             EXPECT_FALSE(image_owner.expired());
             release_cpu.set_value();
         }
-        void deinit() override {
+        void deinit_platform() override {
             ++deinits;
             EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
             if (completion.valid())
@@ -1454,7 +1700,7 @@ namespace {
             if (jobs)
                 EXPECT_EQ(jobs->status().completed, 1u);
             EXPECT_EQ(observed->platform_completions, 1u);
-            NativeRuntimeGame::deinit();
+            NativeRuntimeGame::deinit_platform();
             image.reset();
             // Exercise real loss of the current binding, not a fake GL query.
             // Maintenance will reject it, then renderer shutdown must rebind its
@@ -1780,8 +2026,8 @@ TEST(native_opengl, x11_input_recovery) {
             std::future<void> gate;
             game.after_init = [&] {
                 auto& native = observed->native();
-                for (const auto key : {GLFW_KEY_A, GLFW_KEY_B, GLFW_KEY_C})
-                    (void)native.bindings().bind_button({native.keyboard_id(), CE::Platform::GLFW::gainput_key(key)}, typing_action);
+                for (const auto key : {KeyboardKey::A, KeyboardKey::B, KeyboardKey::C})
+                    (void)native.bindings().bind_button({native.keyboard_id(), key}, typing_action);
                 old_events = native.capture(CE::Input::Capture::Channel::Events);
                 old_text = native.capture(CE::Input::Capture::Channel::Text);
                 old_focus = native.routing().focus(7);
@@ -1927,24 +2173,24 @@ TEST(native_opengl, input_reattach) {
     const auto keyboard = input.keyboard_id();
     const auto mouse = input.mouse_id();
     const auto gamepad = input.gamepad_id();
-    auto* keyboard_device = input.manager().GetDevice(keyboard);
-    ASSERT_NE(keyboard_device, nullptr);
-    ASSERT_NE(input.manager().GetDevice(mouse), nullptr);
-    ASSERT_NE(input.manager().GetDevice(gamepad), nullptr);
+    const auto keyboard_device = input.device(keyboard).identity;
+    ASSERT_NE(keyboard_device, 0u);
+    ASSERT_NE(input.device(mouse).identity, 0u);
+    ASSERT_NE(input.device(gamepad).identity, 0u);
     EXPECT_NO_THROW(input.poll());
-    const auto gainput_time = input.manager().GetTime();
+    const auto gainput_time = input.backend_time_ms();
     std::this_thread::sleep_for(std::chrono::milliseconds{2});
     EXPECT_NO_THROW(input.poll());
-    EXPECT_GT(input.manager().GetTime(), gainput_time);
+    EXPECT_GT(input.backend_time_ms(), gainput_time);
     input.deinitialize();
     input.deinitialize();
     EXPECT_THROW(input.poll(), CE::Exceptions::failed_operation);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    EXPECT_EQ(input.device(keyboard).identity, keyboard_device);
     input.initialize(window);
     EXPECT_EQ(input.keyboard_id(), keyboard);
     EXPECT_EQ(input.mouse_id(), mouse);
     EXPECT_EQ(input.gamepad_id(), gamepad);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    EXPECT_EQ(input.device(keyboard).identity, keyboard_device);
     EXPECT_NO_THROW(input.poll());
     // Context destruction detaches from the live window and releases Gainput once.
 }
@@ -1984,7 +2230,7 @@ TEST(native_opengl, input_window) {
     ASSERT_NE(other_window, nullptr);
     input.initialize(engine->window());
     const auto keyboard = input.keyboard_id();
-    auto* device = input.manager().GetDevice(keyboard);
+    const auto device = input.device(keyboard).identity;
     input.deinitialize();
 #if defined(_WIN32)
     EXPECT_THROW(input.initialize(*other_window), CE::Exceptions::failed_operation);
@@ -1993,7 +2239,7 @@ TEST(native_opengl, input_window) {
     EXPECT_NO_THROW(input.initialize(*other_window));
 #endif
     EXPECT_EQ(input.keyboard_id(), keyboard);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), device);
+    EXPECT_EQ(input.device(keyboard).identity, device);
     EXPECT_NO_THROW(input.poll());
 }
 
@@ -2003,6 +2249,70 @@ namespace {
         CE::Events::EventSystem::Registration registration;
         ~ResizeRegistration() { events.unregister_listener(registration); }
     };
+}
+
+TEST(native_opengl, close_intent) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
+    ASSERT_TRUE(window.supports_close_intent());
+    EXPECT_FALSE(window.consume_close_intent());
+    for (int intent = 0; intent != 2; ++intent) {
+        glfwSetWindowShouldClose(window.native_handle(), GLFW_TRUE);
+        EXPECT_TRUE(window.should_close());
+        EXPECT_TRUE(window.consume_close_intent());
+        EXPECT_FALSE(window.should_close());
+        EXPECT_FALSE(window.consume_close_intent());
+    }
+}
+
+TEST(native_opengl, shutdown_negotiation) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+        auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
+        class CloseGame final : public CE::Game::AbstractGame {
+            GLFWwindow* window_;
+            const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        public:
+            explicit CloseGame(GLFWwindow* window) : window_(window) {}
+            void init_platform() override { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
+            void quiesce() override {}
+            void deinit_platform() override {}
+            void update(const CE::Game::TickContext&) override {
+                if (std::chrono::steady_clock::now() >= deadline_)
+                    throw std::runtime_error("Native shutdown negotiation watchdog");
+            }
+            void prepare_render_frame(CE::Rendering::FrameWriter&) const override {}
+        } game(window.native_handle());
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::vector<std::uint64_t> intents;
+        std::vector<std::uint64_t> requests;
+        auto policy = runtime.set_shutdown_policy([&](const auto& request, CE::Runtime::ShutdownDecision decision) {
+            requests.push_back(request.id);
+            if (requests.size() == 1)
+                EXPECT_TRUE(decision.cancel());
+            else
+                EXPECT_TRUE(decision.accept());
+        });
+        engine->events().register_listener(CE::Platform::window_close_requested_event, [&](const auto& event) {
+            intents.push_back(event.intent);
+            EXPECT_FALSE(window.should_close());
+        });
+        engine->events().register_listener(CE::Runtime::shutdown_request_cancelled_event, [&](const auto&) {
+            glfwSetWindowShouldClose(window.native_handle(), GLFW_TRUE);
+        });
+        EXPECT_NO_THROW(runtime.run());
+        ASSERT_EQ(intents.size(), 2u);
+        EXPECT_NE(intents[0], intents[1]);
+        ASSERT_EQ(requests.size(), 2u);
+        EXPECT_NE(requests[0], requests[1]);
+        EXPECT_FALSE(window.should_close());
+        EXPECT_EQ(runtime.lifecycle().snapshot().cause, CE::Runtime::ShutdownCause::AcceptedRequest);
+        EXPECT_EQ(runtime.lifecycle().snapshot().outcome, CE::Runtime::RuntimeOutcome::Completed);
+    }
 }
 
 TEST(native_opengl, resize_events) {

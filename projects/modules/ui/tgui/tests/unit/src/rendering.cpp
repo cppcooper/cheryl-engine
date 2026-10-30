@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <ui/tgui/rendering.h>
+#include <assets/resources/decoded-image.h>
 #include <internals/exceptions.h>
+
+#include <TGUI/Loading/ImageLoader.hpp>
 
 #include <algorithm>
 #include <array>
@@ -45,6 +48,17 @@ TEST(ui_tgui_texture, owned_pixels) {
     EXPECT_EQ(texture.snapshot()->rgba.front(), 0);
     EXPECT_EQ(first->size.width, 1u);
     EXPECT_EQ(first->rgba.front(), 255);
+}
+
+TEST(ui_tgui_texture, engine_decode) {
+    constexpr std::array<unsigned char, 26> data{0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 32, 0x28, 0, 0, 255, 255, 255, 0, 0, 128};
+    tgui::Vector2u size;
+    const auto pixels = tgui::ImageLoader::loadFromMemory(data.data(), data.size(), size);
+    ASSERT_TRUE(pixels);
+    const auto expected = CE::Assets::Images::decode(std::span<const unsigned char>{data});
+    EXPECT_EQ(size, (tgui::Vector2u{1, 2}));
+    EXPECT_TRUE(std::equal(expected.rgba.begin(), expected.rgba.end(), pixels.get()));
+    EXPECT_FALSE(tgui::ImageLoader::loadFromMemory(nullptr, 0, size));
 }
 
 TEST(ui_tgui_texture, hit_pixels) {

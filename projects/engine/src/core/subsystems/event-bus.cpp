@@ -1,6 +1,7 @@
 #include <core/subsystems/event-bus.h>
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
+#include <internals/failure-reporting.h>
 
 #include <limits>
 #include <algorithm>
@@ -83,6 +84,57 @@ namespace CE::Events {
 
     EventBus::DeliveryTicket::DeliveryTicket(std::shared_ptr<Listener> value)
     : listener(std::move(value)), failure(listener->cancellation) {}
+
+    void EventBus::report_notification_failure(const ErrorHandler& errors, std::exception_ptr failure) noexcept {
+        if (errors) {
+            try {
+                errors(failure);
+                return;
+            } catch (...) {
+                ::CE::Diagnostics::report_failure("event notification error sink", std::current_exception());
+            }
+        }
+        ::CE::Diagnostics::report_failure("event notification", std::move(failure));
+    }
+
+    void EventBus::notify_channel(
+        const std::string_view event,
+        const std::type_index type,
+        const std::any& payload,
+        const ErrorHandler& errors
+    ) noexcept {
+        notify_state(*state_, event, type, payload, errors);
+    }
+
+    void EventBus::notify_state(
+        State& state,
+        const std::string_view event,
+        const std::type_index type,
+        const std::any& payload,
+        const ErrorHandler& errors
+    ) noexcept {
+        std::vector<std::shared_ptr<Listener>> snapshot;
+        try {
+            std::lock_guard lock(state.mutex);
+            if (state.closed)
+                throw ::CE::Exceptions::failed_operation(CE_HERE, "EventBus is closed");
+            ++state.dispatches;
+            const auto found = state.channels.find(ChannelView{event, type});
+            if (found == state.channels.end())
+                return;
+            snapshot = found->second;
+        } catch (...) {
+            report_notification_failure(errors, std::current_exception());
+            return;
+        }
+        for (const auto& listener : snapshot) {
+            try {
+                deliver(listener, payload);
+            } catch (...) {
+                report_notification_failure(errors, std::current_exception());
+            }
+        }
+    }
 
     EventBus::DeliveryTicket::~DeliveryTicket() {
         if (entered.load(std::memory_order_acquire))
@@ -196,22 +248,29 @@ namespace CE::Events {
     bool EventBus::unregister_listener(const Registration& registration) {
         if (registration.bus_.lock() != state_)
             return false;
-        auto listener = registration.listener_.lock();
+        return registration.disconnect();
+    }
+
+    bool EventBus::Registration::disconnect() const {
+        auto state = bus_.lock();
+        auto listener = listener_.lock();
+        if (!state)
+            return false;
         if (!listener)
             return false;
         bool removed = false;
         {
-            std::lock_guard lock(state_->mutex);
+            std::lock_guard lock(state->mutex);
             // Publish invalidation before detaching. A concurrent close must
             // never miss a removed listener whose invocation gate is still open.
             invalidate(listener);
-            const auto channel = state_->channels.find(listener->event);
-            if (channel != state_->channels.end()) {
+            const auto channel = state->channels.find(listener->event);
+            if (channel != state->channels.end()) {
                 removed = std::erase(channel->second, listener) != 0;
                 if (removed)
-                    --state_->active;
+                    --state->active;
                 if (channel->second.empty())
-                    state_->channels.erase(channel);
+                    state->channels.erase(channel);
             }
         }
         // The local owner releases callback captures after the registry unlocks.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/controls/input-record.h>
 #include <TGUI/Event.hpp>
 
@@ -7,6 +9,7 @@
 
 namespace CE::UI::TGUI {
     /** Translate one application-selected record without changing its source.
+     * @see [Input translation](cheryl-guide:modules/tgui#input-translation)
      * The caller owns capture/focus/routing and passes keyboard/Text records only
      * to their selected consumer. Coordinates remain logical window units, floored
      * to TGUI's integer coordinates; configure the GUI's input view accordingly.
@@ -16,5 +19,5 @@ namespace CE::UI::TGUI {
      * return no event. TGUI has no key-release event; modifier state still belongs
      * to the complete original record stream. Press and Repeat both become KeyPressed.
      */
-    [[nodiscard]] std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record);
+    [[nodiscard]] CE_UI_TGUI_API std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record);
 }

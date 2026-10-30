@@ -1,0 +1,54 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart LR
+    accTitle: Runtime · engine integration
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["GameRuntime"]:::focal
+    k1["Context"]:::focal
+    k2["Game::<br/>AbstractGame"]:::focal
+    k3["Rendering::<br/>Frame"]:::neighbor
+    k4["Rendering::<br/>Renderer"]:::neighbor
+    k5["Input::<br/>System"]:::neighbor
+    k6["RuntimeLifecycle"]:::focal
+    k7["Platform::<br/>DisplaySystem"]:::neighbor
+    k8["Rendering::<br/>PresentationSurface"]:::neighbor
+    k9["Rendering::Resources::<br/>Provider"]:::neighbor
+    k10["PlatformDispatcher"]:::neighbor
+    k11["Workers::<br/>Group"]:::neighbor
+    k12["Events::<br/>EventBus"]:::neighbor
+    k13["Text::<br/>FontService"]:::neighbor
+    k14["Game::<br/>TickContext"]:::focal
+    k15["Rendering::<br/>FrameWriter"]:::neighbor
+    k16["Input::<br/>Tick"]:::neighbor
+    k0 --> k1
+    k0 --> k2
+    k0 --> k3
+    k0 --> k4
+    k0 --> k5
+    k0 --> k6
+    k1 --> k7
+    k1 --> k8
+    k1 --> k9
+    k1 --> k10
+    k1 --> k11
+    k1 --> k12
+    k1 --> k13
+    k2 --> k14
+    k2 --> k15
+    k14 --> k16
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

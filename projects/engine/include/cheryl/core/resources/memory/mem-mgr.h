@@ -7,13 +7,14 @@
 #include <bit>
 
 namespace CE::Memory {
+    /** One coherent shared byte-domain snapshot, independent of formatting/logging. */
     struct Stats {
-        ::CE::Diagnostics::DomainId domain = 0;
-        std::size_t total_bytes = 0;
-        std::size_t available_bytes = 0;
-        std::size_t owners = 0;
-        std::size_t ranges = 0;
-        std::size_t pending_release = 0;
+        ::CE::Diagnostics::DomainId domain = 0; ///< Shared void-block bookkeeping identity across growth-policy facades.
+        std::size_t total_bytes = 0; ///< Bytes in recorded backing owners, including checked-out and reusable ranges.
+        std::size_t available_bytes = 0; ///< Bytes in reusable pool records.
+        std::size_t owners = 0; ///< Recorded full backing allocations.
+        std::size_t ranges = 0; ///< Recorded split sections, not a count of live user objects.
+        std::size_t pending_release = 0; ///< Whole-owner records queued for release_culled().
     };
     /** Recycles byte ranges, aligning/growing a request before checkout and tracking owners,
      * sections, and pooled remainders through CE::Memory::AbstractBlockManager<void>. Public operations
@@ -33,6 +34,7 @@ namespace CE::Memory {
         const std::shared_ptr<::CE::Memory::ByteReleaseContext> release_context_ = std::make_shared<::CE::Memory::ByteReleaseContext>();
 
     public:
+        /** Retained return interface that may outlive this facade. */
         using release_context_type = ::CE::Memory::ByteReleaseContext;
 
         Manager() = default;
@@ -84,9 +86,36 @@ namespace CE::Memory {
         );
     };
 
+    /** Manager whose default growth adds no spare bytes; it still reuses the shared byte pool. */
     using ExactManager = Manager<1.0, 0>;
+    /** Manager with default 4x request growth plus 4096 bytes, over the shared byte pool. */
     using CachedManager = Manager<4.0, 4096>;
+    /** Byte-manager growth policy scaled for T; lengths remain bytes and no T construction occurs. */
     template <typename T> using ObjectMemoryManager = Manager<1.29, sizeof(T) * 64>;
 }
 
 #include "mem-mgr.hpp"
+
+/**
+ * @fn template<double growth_factor_, int32_t growth_base_> CE::Memory::Manager<growth_factor_, growth_base_>::Manager()
+ * @brief Create a live byte-manager facade and retained release context over shared void bookkeeping.
+ * @tparam growth_factor_ Positive default multiplier used only by greedy growth.
+ * @tparam growth_base_ Nonnegative default added-byte allowance.
+ * No backing allocation occurs until checkout/preallocation. Different growth-policy specializations share the same byte domain.
+ */
+
+/**
+ * @fn template<double growth_factor_, int32_t growth_base_> CE::Memory::Manager<growth_factor_, growth_base_>::~Manager()
+ * @brief Expire the legacy facade liveness token. Previously captured byte release contexts continue to return retained ranges without dereferencing this facade; quiesce direct facade callers before destruction.
+ */
+
+/**
+ * @fn template<double growth_factor_, int32_t growth_base_> std::weak_ptr<void> CE::Memory::Manager<growth_factor_, growth_base_>::lifetime_token() const
+ * @return Weak legacy liveness observation; it neither pins this facade nor synchronizes concurrent teardown. Capture only while the facade is live.
+ */
+
+/**
+ * @fn template<double growth_factor_, int32_t growth_base_> std::shared_ptr<CE::Memory::ByteReleaseContext> CE::Memory::Manager<growth_factor_, growth_base_>::release_context() const
+ * @return Retained shared byte-domain return context; capture while this facade lives, then final returns may outlive it. No user-byte synchronization is implied.
+ * @see [CPU memory lifetime](cheryl-guide:resources/resource-lifetime)
+ */

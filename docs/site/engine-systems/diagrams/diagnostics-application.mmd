@@ -1,0 +1,44 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Diagnostics · application observations
+    accDescr: Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application<br/>report"]):::app
+    k1["<b>Runtime::<br/>GameRuntime</b><br/><br/>diagnostics(): Runtime::RuntimeStats"]:::neighbor
+    k2["Runtime::<br/>RuntimeStats"]:::focal
+    k3(["Application<br/>live observations"]):::app
+    k4["<b>Workers::<br/>Group</b><br/><br/>status(): Workers::GroupStatus<br/><br/>policy(): Workers::GroupPolicy"]:::neighbor
+    k5["Workers::<br/>GroupStatus"]:::focal
+    k6["<b>Runtime::<br/>PlatformDispatcher</b><br/><br/>diagnostics(): Diagnostics::DispatchStats"]:::neighbor
+    k7["Diagnostics::<br/>DispatchStats"]:::focal
+    k8["<b>Events::<br/>EventBus</b><br/><br/>diagnostics(): Events::EventStats"]:::neighbor
+    k9["Events::<br/>EventStats"]:::focal
+    k10["<b>Logging::<br/>Logger</b><br/><br/>info(fmt, args...)"]:::neighbor
+    k11["Workers::<br/>GroupPolicy"]:::focal
+    k0 --> k1
+    k1 --> k2
+    k0 --> k2
+    k3 --> k4
+    k4 --> k5
+    k3 --> k6
+    k6 --> k7
+    k3 --> k8
+    k8 --> k9
+    k0 -.-> k10
+    k4 --> k11
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

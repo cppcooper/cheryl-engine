@@ -16,6 +16,7 @@ namespace CE::Memory::Objects {
      * owners capture that context and never consult static storage during release.
      */
     template <typename T> struct Constructor {
+        /** Retained synchronized per-slot raw/live/busy state; user constructors/destructors run outside its mutex. */
         class Context {
             enum class Phase { raw, constructing, live, destroying };
             std::mutex mutex_;
@@ -84,7 +85,6 @@ namespace CE::Memory::Objects {
                 }
             }
 
-            /** Forget only inactive slots; a live or busy range remains unchanged. */
             void erase(T* first, T* last) {
                 bool active = false;
                 {
@@ -118,3 +118,59 @@ namespace CE::Memory::Objects {
         static void erase(T* first, T* last) { release_context()->erase(first, last); }
     };
 }
+
+/**
+ * @fn template<typename T> template<typename... Args> void CE::Memory::Objects::Constructor<T>::Context::construct(T* pointer, std::size_t count, Args&&... args)
+ * @brief Construct or replace slots one at a time, excluding overlapping busy-slot operations.
+ * @param pointer Caller-owned aligned contiguous storage for count T objects, retained through the call.
+ * @param count Number of slots; zero performs no slot operations.
+ * @param args Arguments forwarded repeatedly; a move can leave later calls with moved-from values.
+ * A tracked live object is destroyed before replacement. Busy slots throw bad_request; user exceptions propagate with the current slot marked raw, earlier completed slots remain live, and later slots are untouched. No batch rollback occurs. Different slots may proceed concurrently/reentrantly; accesses to object data need caller synchronization.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::Objects::Constructor<T>::Context::destroy(T* pointer, std::size_t count)
+ * @brief Destroy tracked live slots one at a time, skipping raw/untracked slots.
+ * @param pointer Contiguous storage kept valid through destruction.
+ * @param count Slot count, one by default.
+ * Overlapping construction/destruction on a busy slot throws bad_request. User destructor exceptions propagate after marking that slot raw; completed earlier destructions are not rolled back. Does not deallocate or erase tracking records.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::Objects::Constructor<T>::Context::erase(T* first, T* last)
+ * @brief Forget an entirely inactive half-open slot range atomically under the tracker lock.
+ * @param first First slot in comparable backing storage.
+ * @param last One-past-last slot.
+ * If any slot is live or busy, throws bad_request without erasing the range. Does not destroy objects or free storage; use after tracked lifetimes end.
+ */
+
+/**
+ * @fn template<typename T> std::shared_ptr<typename CE::Memory::Objects::Constructor<T>::Context> CE::Memory::Objects::Constructor<T>::release_context()
+ * @return Retained shared tracking context for this exact T specialization. Capture it before static/facade teardown for final-owner operations; it does not retain the underlying object storage.
+ */
+
+/**
+ * @fn template<typename T> template<typename... Args> void CE::Memory::Objects::Constructor<T>::construct(T* pointer, std::size_t count, Args... args)
+ * @brief Forward batch construction/replacement to the shared per-T context.
+ * @param pointer Caller-owned aligned contiguous storage.
+ * @param count Number of slots.
+ * @param args Arguments copied/moved into this call and repeatedly forwarded to slot construction.
+ * The Context per-slot synchronization, partial-effects and user-exception rules apply. This does not allocate backing or return it to a pool.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::Objects::Constructor<T>::destroy(T* pointer, std::size_t count)
+ * @brief Destroy tracked live slots through the shared T context without releasing backing storage.
+ * @param pointer Stable contiguous storage.
+ * @param count Slot count, one by default.
+ * Raw/untracked slots are skipped; busy conflicts and user exceptions propagate under Context rules.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::Objects::Constructor<T>::erase(T* first, T* last)
+ * @brief Forget a raw half-open tracking range through the shared T context.
+ * @param first First slot.
+ * @param last One-past-last slot in the same comparable storage.
+ * A live/busy range rejects atomically; no object destruction/deallocation occurs.
+ * @see [CPU memory lifetime](cheryl-guide:resources/resource-lifetime)
+ */

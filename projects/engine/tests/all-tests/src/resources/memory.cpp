@@ -232,8 +232,8 @@ TEST(memory, duplicate_returns) {
     const auto configuration = log.initial_configuration();
     const auto path = log.get_file_path();
     EXPECT_EQ(path.filename(), "memory.log");
-    log.set_level_logger(spdlog::level::critical);
-    log.set_level_filesink(spdlog::level::critical);
+    log.set_level_logger(CE::Logging::Level::critical);
+    log.set_level_filesink(CE::Logging::Level::critical);
     auto& manager = CE::Memory::ExactManager::get();
     const auto block = manager.checkout_chunk(64, 64);
     manager.return_chunk(block);

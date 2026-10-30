@@ -1,24 +1,61 @@
 #include <ui/rmlui/session.h>
 #include <ui/rmlui/input.h>
 
+#include "font.h"
+
 #include <internals/compile-time-logging.hpp>
 #include <internals/exceptions.h>
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/text/font-service.h>
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/StringUtilities.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace CE::UI::RmlUi {
     namespace {
+        SessionOptions manual_options(SessionOptions options) {
+            options.automatic_view = false;
+            options.automatic_time = false;
+            return options;
+        }
         std::mutex library_mutex;
         bool library_owned = false;
+
+        void load_faces(
+            const std::vector<const CE::Text::FontFace*>& faces, const Rml::String& family, const bool fallback
+        ) {
+            const bool normal = std::any_of(faces.begin(), faces.end(), [](const auto* face) { return !face->style.italic; });
+            const bool italic = std::any_of(faces.begin(), faces.end(), [](const auto* face) { return face->style.italic; });
+            const auto load = [&](const CE::Text::FontFace& face, const bool slanted) {
+                if (face.face_index > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+                    !Rml::LoadFontFace(
+                        {face.bytes.data(), face.bytes.size()}, family,
+                        slanted ? Rml::Style::FontStyle::Italic : Rml::Style::FontStyle::Normal,
+                        static_cast<Rml::Style::FontWeight>(face.style.weight), fallback, static_cast<int>(face.face_index)
+                    ))
+                    throw Exceptions::failed_operation(CE_HERE, "Cannot register the Engine font with RmlUi");
+            };
+            for (const auto* face : faces) {
+                load(*face, face->style.italic);
+                // Core requires an exact style match before it can choose weight.
+                // Complete an absent style with the available family's faces.
+                if (!normal)
+                    load(*face, false);
+                if (!italic)
+                    load(*face, true);
+            }
+        }
 
         class System final : public Rml::SystemInterface {
         public:
@@ -46,6 +83,8 @@ namespace CE::UI::RmlUi {
         };
 
         class LibraryLease final {
+            std::unique_ptr<Rml::FontEngineInterface> fonts_ = Detail::make_font_engine();
+
         public:
             LibraryLease(System& system, RenderTarget& renderer) {
                 const std::lock_guard lock(library_mutex);
@@ -54,17 +93,17 @@ namespace CE::UI::RmlUi {
                     throw Exceptions::failed_operation(CE_HERE, "RmlUi already has an active session or host-installed interfaces");
                 Rml::SetSystemInterface(&system);
                 Rml::SetRenderInterface(&renderer);
+                Rml::SetFontEngineInterface(fonts_.get());
                 try {
                     if (!Rml::Initialise())
-                        throw Exceptions::failed_operation(
-                            CE_HERE, "RmlUi initialization failed; verify the required stock FreeType configuration"
-                        );
+                        throw Exceptions::failed_operation(CE_HERE, "RmlUi initialization failed with the Engine font service");
                 } catch (...) {
                     // Core 6.3 cannot Shutdown a partially initialized SDK. Its
                     // dependency contract prevents missing default interfaces;
                     // never leave our failed constructor's storage installed.
                     Rml::SetSystemInterface(nullptr);
                     Rml::SetRenderInterface(nullptr);
+                    Rml::SetFontEngineInterface(nullptr);
                     throw;
                 }
                 library_owned = true;
@@ -113,6 +152,13 @@ namespace CE::UI::RmlUi {
     }
 
     struct Session::State {
+        enum class FontOwner { Engine, Explicit, Fallback };
+        struct FontRegistration {
+            FontOwner owner;
+            CE::Text::Font source;
+            bool complete = false;
+        };
+
         CE::Input::System& input;
         const CE::Input::Routing::TargetId target;
         const std::thread::id thread = std::this_thread::get_id();
@@ -124,10 +170,14 @@ namespace CE::UI::RmlUi {
         CE::Input::Modifiers modifier_state = CE::Input::Modifiers::None;
         bool drawable = false;
         bool pointer_view = false;
+        std::uint64_t automatic_time_updates = 0;
         bool pointer_active = false;
         // Reverse destruction shuts down contexts/fonts before renderer/system
         // storage and memory-loaded font bytes disappear.
         std::vector<std::vector<unsigned char>> font_bytes;
+        std::unordered_map<Rml::String, FontRegistration> engine_fonts;
+        std::size_t fallback_family = 0;
+        bool fallbacks_loaded = false;
         System system;
         RenderTarget renderer;
         LibraryLease library;
@@ -146,6 +196,69 @@ namespace CE::UI::RmlUi {
             context->SetDensityIndependentPixelRatio(1);
             context->EnableMouseCursor(false);
         }
+
+        FontRegistration& reserve_font(const CE::Text::Font& selected) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi needs a resolved Engine font");
+            const auto& reference = selected.reference();
+            const auto lower = Rml::StringUtilities::ToLower(reference);
+            const auto [registration, inserted] = engine_fonts.try_emplace(lower, FontRegistration{FontOwner::Engine, selected});
+            if (!inserted) {
+                if (registration->second.owner != FontOwner::Engine || registration->second.source.reference() != reference ||
+                    registration->second.source.faces().data() != selected.faces().data())
+                    throw Exceptions::invalid_args(CE_HERE, "RmlUi font-family names must identify one Engine font without case collisions");
+            }
+            return registration->second;
+        }
+
+        Rml::String font_family(const CE::Text::Font& selected) {
+            auto& registration = reserve_font(selected);
+            const auto& reference = selected.reference();
+            if (registration.complete)
+                return reference;
+            // Retain the immutable memory before publishing views to Core.
+            std::vector<const CE::Text::FontFace*> faces;
+            for (const auto& face : selected.faces()) {
+                if (!face.fallback)
+                    faces.push_back(&face);
+            }
+            load_faces(faces, reference, false);
+            registration.complete = true;
+            return reference;
+        }
+
+        void load_fallbacks(const CE::Text::Font& selected, const bool primary_only = false) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi needs a resolved Engine fallback font");
+            Rml::String family;
+            std::size_t family_index = 0;
+            std::vector<const CE::Text::FontFace*> faces;
+            for (const auto& face : selected.faces()) {
+                if (primary_only ? face.fallback : (!face.fallback && !face.builtin))
+                    continue;
+                if (family.empty() || face.family_index != family_index) {
+                    if (!faces.empty())
+                        load_faces(faces, family, true);
+                    faces.clear();
+                    family_index = face.family_index;
+                    do {
+                        family = "__cheryl_fallback_" + std::to_string(fallback_family++);
+                    } while (engine_fonts.contains(family));
+                    engine_fonts.emplace(family, FontRegistration{FontOwner::Fallback, selected});
+                }
+                faces.push_back(&face);
+            }
+            if (!faces.empty())
+                load_faces(faces, family, true);
+            fallbacks_loaded = true;
+        }
+
+        void reserve_explicit(const Rml::String& family) {
+            const auto lower = Rml::StringUtilities::ToLower(family);
+            const auto [registration, inserted] = engine_fonts.try_emplace(lower, FontRegistration{FontOwner::Explicit, {}});
+            if (!inserted && registration->second.owner != FontOwner::Explicit)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi explicit font loading conflicts with an Engine font family");
+        }
     };
 
     Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
@@ -153,7 +266,35 @@ namespace CE::UI::RmlUi {
             throw Exceptions::invalid_args(CE_HERE, "RmlUi requires a nonzero focus target");
         if (options.maximum_texture_size < 1024)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi's stock font atlas needs a texture bound of at least 1024");
-        state_ = std::make_unique<State>(input, target, options);
+        if (options.automatic_view || options.automatic_time)
+            throw Exceptions::invalid_args(CE_HERE, "Automatic runtime services require a Context");
+        state_ = std::make_shared<State>(input, target, options);
+    }
+
+    Session::Session(
+        CE::Input::System& input,
+        const CE::Text::FontService& fonts,
+        const CE::Input::Routing::TargetId target,
+        const SessionOptions options
+    ) : Session(input, target, options) {
+        auto& state = owner();
+        const auto catalogue = fonts.all();
+        for (const auto& font : catalogue)
+            static_cast<void>(state.reserve_font(font));
+        const auto default_font = fonts.default_font();
+        for (const auto& fallback : fonts.fallbacks())
+            state.load_fallbacks(fallback, true);
+        for (const auto& font : catalogue)
+            static_cast<void>(state.font_family(font));
+        set_font(*state.context->GetRootElement(), default_font);
+    }
+
+    Session::Session(CE::Runtime::Context& engine, const CE::Input::Routing::TargetId target, const SessionOptions options)
+    : Session(engine.input(), engine.fonts(), target, manual_options(options)) {
+        if (options.automatic_view)
+            follow_view(engine.simulation_view());
+        if (options.automatic_time)
+            follow_time(engine.services());
     }
 
     Session::~Session() = default;
@@ -172,9 +313,10 @@ namespace CE::UI::RmlUi {
     }
 
     bool Session::load_font(const std::filesystem::path& file, const Rml::String& family, const bool fallback) {
-        (void)owner();
+        auto& state = owner();
         if (family.empty())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi font registration needs a family name");
+        state.reserve_explicit(family);
         const auto utf8 = file.u8string();
         return Rml::LoadFontFace(
             Rml::String(utf8.begin(), utf8.end()), family, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Auto, fallback
@@ -185,15 +327,51 @@ namespace CE::UI::RmlUi {
         auto& state = owner();
         if (bytes.empty() || family.empty())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi memory font registration needs bytes and a family name");
+        state.reserve_explicit(family);
         state.font_bytes.emplace_back(bytes.begin(), bytes.end());
         const auto& copy = state.font_bytes.back();
         return Rml::LoadFontFace({copy.data(), copy.size()}, family, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Auto, fallback);
+    }
+
+    Rml::String Session::font_family(const CE::Text::Font& selected) {
+        auto& state = owner();
+        static_cast<void>(state.reserve_font(selected));
+        if (!state.fallbacks_loaded)
+            state.load_fallbacks(selected);
+        return state.font_family(selected);
+    }
+
+    void Session::set_font(Rml::Element& element, const CE::Text::Font& selected) {
+        auto& state = owner();
+        if (&element != state.context->GetRootElement() && element.GetContext() != state.context)
+            throw Exceptions::invalid_args(CE_HERE, "RmlUi font assignment needs an element in this session");
+        if (!element.SetProperty("font-family", font_family(selected)))
+            throw Exceptions::failed_operation(CE_HERE, "Cannot assign the Engine font to the RmlUi element");
     }
 
     void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         auto& state = owner();
         if (logical.width < 0 || logical.height < 0 || framebuffer.width < 0 || framebuffer.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi window dimensions must be nonnegative");
+        view_attachment_.reset();
+        apply_view(state, logical, framebuffer);
+    }
+
+    void Session::follow_view(const CE::Runtime::SimulationViewSource& source) {
+        static_cast<void>(owner());
+        auto attachment = source.watch([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationViewChanged& change) {
+            if (const auto state = weak.lock()) {
+                apply_view(*state, change.current.logical_size, change.current.framebuffer_size);
+                CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                    "subsystem=ui toolkit=rmlui operation=view_apply source={} revision={} seed={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
+                    change.current.source, change.current.revision, change.seed, change.current.logical_size.width,
+                    change.current.logical_size.height, change.current.framebuffer_size.width, change.current.framebuffer_size.height);
+            }
+        });
+        view_attachment_ = std::move(attachment);
+    }
+
+    void Session::apply_view(State& state, const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         state.pointer_view = logical.width > 0 && logical.height > 0;
         state.drawable = state.pointer_view && framebuffer.width > 0 && framebuffer.height > 0;
         state.renderer.set_view({logical.width, logical.height});
@@ -202,6 +380,31 @@ namespace CE::UI::RmlUi {
 
     void Session::update_time(const double delta_seconds) {
         auto& state = owner();
+        if (time_attachment_.attached())
+            throw Exceptions::failed_operation(CE_HERE, "Detach automatic UI time before manual advancement");
+        apply_time(state, delta_seconds);
+    }
+
+    void Session::follow_time(const CE::Runtime::RuntimeServices& services) {
+        static_cast<void>(owner());
+        auto attachment = services.on_step([weak = std::weak_ptr(state_)](const CE::Runtime::SimulationStepStarting& phase) {
+            if (const auto state = weak.lock()) {
+                apply_time(*state, phase.delta_seconds);
+                if (++state->automatic_time_updates == 1 || state->automatic_time_updates % 120 == 0)
+                    CE_LOG_DEBUG(CE::Logging::Categories::engine,
+                        "subsystem=ui toolkit=rmlui operation=time_apply session={} step={} delta_seconds={} sample_period=120",
+                        phase.session, phase.step, phase.delta_seconds);
+            }
+        });
+        time_attachment_ = std::move(attachment);
+    }
+
+    void Session::detach_time() {
+        static_cast<void>(owner());
+        time_attachment_.reset();
+    }
+
+    void Session::apply_time(State& state, const double delta_seconds) {
         if (!std::isfinite(delta_seconds) || delta_seconds < 0 || !std::isfinite(state.system.elapsed + delta_seconds))
             throw Exceptions::invalid_args(CE_HERE, "RmlUi timing needs a finite nonnegative simulation duration");
         state.system.elapsed += delta_seconds;
@@ -323,6 +526,8 @@ namespace CE::UI::RmlUi {
     }
 
     void Session::close_after_quiescence() {
+        time_attachment_.reset();
+        view_attachment_.reset();
         state_.reset();
     }
 }

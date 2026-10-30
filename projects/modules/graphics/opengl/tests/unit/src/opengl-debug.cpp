@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #include <gtest/gtest.h>
 #include <backends/opengl/debug-output.h>
 

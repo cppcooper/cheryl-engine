@@ -7,6 +7,7 @@
 #include <core/game-framework/game-runtime.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
+#include <testing/material-builder.h>
 
 #include "../../support/document.h"
 #include <RmlUi/Core/Core.h>
@@ -131,12 +132,22 @@ namespace {
         void draw(std::size_t, std::size_t) const override {}
     };
 
+    Materials materials();
+
     class Resources final : public CE::Rendering::Resources::Provider {
         RuntimeState& state_;
+        CE::Testing::MaterialBuilder builder_;
 
     public:
         explicit Resources(RuntimeState& state)
-        : state_(state) {}
+        : state_(state) {
+            const auto supplied = materials();
+            builder_.values = {
+                {CE::Rendering::Materials::Builtin2D::SolidColor, supplied.solid},
+                {CE::Rendering::Materials::Builtin2D::TexturedColor, supplied.textured}
+            };
+        }
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return &builder_; }
         std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& data) override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             auto image = std::make_shared<MemoryImage>(data);
@@ -264,64 +275,68 @@ namespace {
         CE::Runtime::Context& engine_;
         RuntimeState& state_;
         SceneUploader uploader_;
-        Materials materials_;
         std::unique_ptr<Session> session_;
         Rml::Element* picture_ = nullptr;
         Scene current_;
         std::future<Scene> pending_;
         bool blue_submitted_ = false;
+        bool automatic_time_ = false;
 
     public:
-        Game(CE::Runtime::Context& engine, RuntimeState& state)
-        : engine_(engine), state_(state), uploader_(engine.resources()) {}
-        void init() override { materials_ = materials(); }
-        void deinit() override {
+        Game(CE::Runtime::Context& engine, RuntimeState& state, bool automatic_time = false)
+        : engine_(engine), state_(state), uploader_(engine.resources()), automatic_time_(automatic_time) {}
+        void init_platform() override {}
+        void deinit_platform() override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             picture_ = nullptr;
             session_.reset(); // The runtime has joined simulation before this hook.
             current_ = {};
             pending_ = {};
-            materials_ = {};
             state_.game_stopped = true;
+        }
+        void init_simulation() override {
+            state_.simulation = std::this_thread::get_id();
+            if (automatic_time_)
+                session_ = std::make_unique<Session>(engine_, 7, SessionOptions{.automatic_view = true, .automatic_time = true});
+            else {
+                session_ = std::make_unique<Session>(engine_.input(), 7);
+                session_->follow_view(engine_.simulation_view());
+            }
+            const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
+            // RmlUi strips the leading slash from absolute image URLs.
+            // Anchor the document at the fixtures and use relative names.
+            // Its URL parser uses '|' for Windows drive separators.
+            const auto document_url = Rml::StringUtilities::Replace(
+                (image_path.parent_path() / "runtime.rml").generic_string(), ':', '|'
+            );
+            auto& document = RmlUiTests::document(*session_, document_url,
+                automatic_time_ ? RmlUiTests::DocumentSetup::Runtime : RmlUiTests::DocumentSetup::Manual);
+            document.SetInnerRML(
+                "<div>Queued RmlUi</div><img id='picture' src='" + image_path.filename().generic_string() +
+                "' style='width:20px; height:20px;' />"
+            );
+            picture_ = document.GetElementById("picture");
+            if (!picture_)
+                throw std::runtime_error("Missing runtime image");
+            auto recording = session_->record();
+            // Change the native image before the queued upload sees its old pixels.
+            picture_->SetAttribute("src", std::filesystem::path{CHERYL_RMLUI_TEST_BLUE_IMAGE}.filename().generic_string());
+            pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording));
         }
         void update(const CE::Game::TickContext& tick) override {
             EXPECT_EQ(tick.logical_size.width, 320);
             EXPECT_EQ(tick.logical_size.height, 240);
             EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{640, 480}));
-            if (!session_) {
-                state_.simulation = std::this_thread::get_id();
-                session_ = std::make_unique<Session>(engine_.input(), 7);
-                session_->set_view(tick.logical_size, tick.framebuffer_size);
-                const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
-                // RmlUi strips the leading slash from absolute image URLs.
-                // Anchor the document at the fixtures and use relative names.
-                // Its URL parser uses '|' for Windows drive separators.
-                const auto document_url = Rml::StringUtilities::Replace(
-                    (image_path.parent_path() / "runtime.rml").generic_string(), ':', '|'
-                );
-                auto& document = RmlUiTests::document(*session_, document_url);
-                document.SetInnerRML(
-                    "<div>Queued RmlUi</div><img id='picture' src='" + image_path.filename().generic_string() +
-                    "' style='width:20px; height:20px;' />"
-                );
-                picture_ = document.GetElementById("picture");
-                if (!picture_)
-                    throw std::runtime_error("Missing runtime image");
-                auto recording = session_->record();
-                // Change the native image before the queued upload sees its old pixels.
-                picture_->SetAttribute("src", std::filesystem::path{CHERYL_RMLUI_TEST_BLUE_IMAGE}.filename().generic_string());
-                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording), materials_);
-            } else {
-                EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
-                (void)adopt_scene(pending_, current_);
-                if (state_.red_seen.load() && !blue_submitted_) {
-                    pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record(), materials_);
-                    blue_submitted_ = true;
-                }
-                if (state_.blue_seen.load())
-                    tick.request_stop();
+            EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
+            (void)adopt_scene(pending_, current_);
+            if (state_.red_seen.load() && !blue_submitted_) {
+                pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), session_->record());
+                blue_submitted_ = true;
             }
-            session_->update_time(tick.delta_seconds);
+            if (state_.blue_seen.load())
+                tick.request_stop();
+            if (!automatic_time_)
+                session_->update_time(tick.delta_seconds);
             session_->handle_input(tick.input.records(), true);
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
@@ -330,7 +345,7 @@ namespace {
         }
     };
 
-    void run_ui(const CE::Runtime::RunMode mode) {
+    void run_ui(const CE::Runtime::RunMode mode, bool automatic_time = false) {
         RuntimeState state;
         EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
         {
@@ -338,9 +353,14 @@ namespace {
                 std::make_unique<Display>(), std::make_unique<Surface>(state), std::make_unique<Renderer>(state),
                 std::make_unique<Resources>(state), std::make_unique<Input>(state)
             );
-            Game game(engine, state);
+            Game game(engine, state, automatic_time);
             CE::Runtime::GameRuntime runtime(engine, game, mode);
             runtime.run();
+            const auto* builder = dynamic_cast<const CE::Testing::MaterialBuilder*>(engine.resources().shader_asset_builder());
+            ASSERT_NE(builder, nullptr);
+            EXPECT_EQ(builder->requests.size(), 2u);
+            for (const auto owner : builder->owners)
+                EXPECT_EQ(owner, state.platform);
             EXPECT_TRUE(state.red_seen.load());
             EXPECT_TRUE(state.blue_seen.load());
             EXPECT_TRUE(state.game_stopped);
@@ -386,4 +406,9 @@ TEST(ui_rmlui_runtime, sequential) {
 
 TEST(ui_rmlui_runtime, concurrent) {
     run_ui(CE::Runtime::RunMode::Concurrent);
+}
+
+TEST(ui_rmlui_runtime, automatic_time) {
+    run_ui(CE::Runtime::RunMode::Sequential, true);
+    run_ui(CE::Runtime::RunMode::Concurrent, true);
 }

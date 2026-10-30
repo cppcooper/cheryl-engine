@@ -1,6 +1,7 @@
 #include <assets/types/2d/unicode-text.h>
 
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <internals/exceptions.h>
 #include "../../../text/font-internal.h"
 
@@ -84,14 +85,16 @@ namespace CE::Text::Rendering {
         std::vector<GlyphDraw> draws,
         std::shared_ptr<CE::Rendering::Geometry::Buffer2D> positioned_geometry,
         std::vector<DrawRun> runs,
-        const bool positioned_runs
+        const bool positioned_runs,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
     )
     : layout_(std::move(layout)),
       pages_(std::move(pages)),
       draws_(std::move(draws)),
       positioned_geometry_(std::move(positioned_geometry)),
       runs_(std::move(runs)),
-      positioned_runs_(positioned_runs) {}
+      positioned_runs_(positioned_runs),
+      material_(std::move(material)) {}
 
     Prepared prepare(ShapedText layout, const RasterOptions options) {
         const auto extent = options.maximum_page_extent;
@@ -196,7 +199,13 @@ namespace CE::Text::Rendering {
         return result;
     }
 
-    Generation upload(Prepared prepared, CE::Rendering::Resources::Provider& provider) {
+    Generation upload(
+        Prepared prepared,
+        CE::Rendering::Resources::Provider& provider,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
+    ) {
+        if (!material && !prepared.draws_.empty())
+            material = CE::Assets::Shaders::build_builtin_material(provider, CE::Rendering::Materials::Builtin2D::Textured);
         std::vector<PageResources> pages;
         pages.reserve(prepared.pages_.size());
         for (const auto& page : prepared.pages_) {
@@ -220,7 +229,7 @@ namespace CE::Text::Rendering {
         }
         return Generation(
             std::move(prepared.layout_), std::move(pages), std::move(prepared.draws_), std::move(positioned_geometry),
-            std::move(prepared.runs_), prepared.positioned_runs_
+            std::move(prepared.runs_), prepared.positioned_runs_, std::move(material)
         );
     }
 }

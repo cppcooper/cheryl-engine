@@ -1,0 +1,41 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: Runtime · practical tick and frame boundary
+    accDescr: Local names omit Runtime::; ambiguous nested namespaces remain qualified. Arrows point toward dependencies. Application roles are rounded; named API operations have rounded corners. Dashed arrows mark optional choices.
+    k0["GameRuntime"]:::focal
+    k1["Game::<br/>AbstractGame"]:::focal
+    k2["Game::<br/>TickContext"]:::focal
+    k3["Input::<br/>Tick"]:::neighbor
+    k4["Rendering::<br/>FrameWriter"]:::neighbor
+    k5["Rendering::<br/>Frame"]:::neighbor
+    k6["Rendering::<br/>PassWriter"]:::neighbor
+    k7["Rendering::<br/>Pass"]:::neighbor
+    k8["Rendering::<br/>DrawPacket2D"]:::neighbor
+    k9["Rendering::<br/>Renderer"]:::neighbor
+    k0 --> k1
+    k1 --> k2
+    k2 --> k3
+    k1 --> k4
+    k4 --> k5
+    k4 --> k6
+    k5 --> k7
+    k7 --> k8
+    k0 --> k9
+    k9 --> k5
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

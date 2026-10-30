@@ -17,9 +17,9 @@ namespace CE::Assets {
      * own inputs. Native use still requires the original live backend domain.
      */
     struct Content2D {
-        const std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry;
-        const std::shared_ptr<CE::Rendering::Resources::Image> texture;
-        const std::shared_ptr<const CE::Rendering::Resources::Material> material;
+        const std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry; ///< Retained immutable uploaded geometry; null is permitted by direct construction.
+        const std::shared_ptr<CE::Rendering::Resources::Image> texture; ///< Retained image contents in the same usable backend domain as the geometry.
+        const std::shared_ptr<const CE::Rendering::Resources::Material> material; ///< Optional retained material recipe/handle; consumers choose fallback when absent.
 
         Content2D(
             std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry,
@@ -31,3 +31,13 @@ namespace CE::Assets {
 }
 
 #endif
+
+/**
+ * @fn CE::Assets::Content2D::Content2D(std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry, std::shared_ptr<CE::Rendering::Resources::Image> texture, std::shared_ptr<const CE::Rendering::Resources::Material> material)
+ * @brief Retain uploaded handles without selecting a frame or validating compatibility.
+ * @param geometry Retained geometry, possibly null for manually assembled values.
+ * @param texture Retained image, possibly null for manually assembled values.
+ * @param material Optional retained material; this constructor creates no default or native resource.
+ * Handles can outlive caches, but native use still requires their original live backend domain. Loader/submission paths validate their own inputs.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback#resources-and-caches)
+ */

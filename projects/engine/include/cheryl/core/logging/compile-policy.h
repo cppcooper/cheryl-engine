@@ -1,8 +1,15 @@
 #pragma once
-#include <spdlog/common.h>
+#include "types.h"
 
 namespace CE::Logging::Compile {
-    enum LogLevel { FATAL_ = 1 << 0, ERROR_ = 1 << 1, WARNING_ = 1 << 2, INFO_ = 1 << 3, DEBUG_ = 1 << 4, TRACE_ = 1 << 5 };
+    /** Compile-time severity mask bits; combine bits for enabled(), not runtime_level(). */
+    enum LogLevel { FATAL_ = 1 << 0, ///< Critical writes and their trace behavior.
+        ERROR_ = 1 << 1, ///< Error records.
+        WARNING_ = 1 << 2, ///< Warning records.
+        INFO_ = 1 << 3, ///< Informational records.
+        DEBUG_ = 1 << 4, ///< Development diagnostics.
+        TRACE_ = 1 << 5 ///< Detailed tracing.
+    };
 }
 
 // These definitions must agree in every translation unit sharing Cheryl headers.
@@ -33,45 +40,80 @@ static_assert(CHERYL_LOG_COMPILED_MASK >= 0 && (CHERYL_LOG_COMPILED_MASK & ~0x3f
 static_assert(CTWriteMask == CHERYL_LOG_COMPILED_MASK, "Conflicting Cheryl logging masks");
 
 namespace CE::Logging::Compile {
-    inline constexpr unsigned compiled_mask = CHERYL_LOG_COMPILED_MASK;
-    inline constexpr int profile = CHERYL_LOG_PROFILE; // Developer, support, release.
+    inline constexpr unsigned compiled_mask = CHERYL_LOG_COMPILED_MASK; ///< Target-wide enabled severity bits; identical across sharing translation units.
+    inline constexpr int profile = CHERYL_LOG_PROFILE; ///< Target profile ID: Developer=0, Support=1, Release=2.
 
-    [[nodiscard]] constexpr bool enabled(const unsigned levels) noexcept { return (compiled_mask & levels) != 0; }
+    [[nodiscard]] constexpr bool enabled(const unsigned levels) noexcept {
+        return (compiled_mask & levels) != 0;
+    }
 
-    [[nodiscard]] constexpr unsigned severity_bit(const spdlog::level level) noexcept {
+    [[nodiscard]] constexpr unsigned severity_bit(const ::CE::Logging::Level level) noexcept {
         switch (level) {
-            case spdlog::level::critical:
+            case ::CE::Logging::Level::critical:
                 return FATAL_;
-            case spdlog::level::err:
+            case ::CE::Logging::Level::err:
                 return ERROR_;
-            case spdlog::level::warn:
+            case ::CE::Logging::Level::warn:
                 return WARNING_;
-            case spdlog::level::info:
+            case ::CE::Logging::Level::info:
                 return INFO_;
-            case spdlog::level::debug:
+            case ::CE::Logging::Level::debug:
                 return DEBUG_;
-            case spdlog::level::trace:
+            case ::CE::Logging::Level::trace:
                 return TRACE_;
             default:
                 return 0;
         }
     }
 
-    [[nodiscard]] constexpr spdlog::level runtime_level(const LogLevel level) noexcept {
+    [[nodiscard]] constexpr ::CE::Logging::Level runtime_level(const LogLevel level) noexcept {
         switch (level) {
             case FATAL_:
-                return spdlog::level::critical;
+                return ::CE::Logging::Level::critical;
             case ERROR_:
-                return spdlog::level::err;
+                return ::CE::Logging::Level::err;
             case WARNING_:
-                return spdlog::level::warn;
+                return ::CE::Logging::Level::warn;
             case INFO_:
-                return spdlog::level::info;
+                return ::CE::Logging::Level::info;
             case DEBUG_:
-                return spdlog::level::debug;
+                return ::CE::Logging::Level::debug;
             case TRACE_:
-                return spdlog::level::trace;
+                return ::CE::Logging::Level::trace;
         }
-        return spdlog::level::off;
+        return ::CE::Logging::Level::off;
     }
 }
+
+/**
+ * @fn constexpr bool CE::Logging::Compile::enabled(unsigned levels) noexcept
+ * @brief Test whether any supplied severity bit is compiled.
+ * @param levels LogLevel bit mask, possibly a combination.
+ * @return True when compiled_mask intersects levels; this says nothing about runtime logger/sink gates.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn constexpr unsigned CE::Logging::Compile::severity_bit(CE::Logging::Level level) noexcept
+ * @brief Convert one runtime severity to its compile-time bit.
+ * @return Matching bit, or zero for off/unknown values. No logging or initialization occurs.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn constexpr CE::Logging::Level CE::Logging::Compile::runtime_level(LogLevel level) noexcept
+ * @brief Convert one compile-time severity bit to a runtime level.
+ * @param level A single recognized bit, not a mask combination.
+ * @return Matching runtime level, or off for unrecognized/combined values.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/** @def CHERYL_LOG_PROFILE
+ * Target-wide logging profile ID (0 Developer, 1 Support, 2 Release). Use the library target's public configuration in every sharing translation unit; fallback uses NDEBUG.
+ */
+/** @def CHERYL_LOG_COMPILED_MASK
+ * Target-wide six-bit severity mask. A disabled branch is compiled out; changing runtime levels cannot restore it. Must agree across translation units.
+ */
+/** @def CTWriteMask
+ * Legacy alias for CHERYL_LOG_COMPILED_MASK, supported only as a consistent target-wide override, never a per-include switch.
+ */

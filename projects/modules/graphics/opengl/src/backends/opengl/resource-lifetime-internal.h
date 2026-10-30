@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <backends/opengl/resource-lifetime.h>
 
 #include <cstddef>
@@ -11,10 +13,10 @@
 
 namespace CE::Rendering::OpenGL::Detail {
     struct LifetimeAccess {
-        static std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime>
+        CE_OPENGL_API static std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime>
         create(std::thread::id owner, std::function<bool()> is_current, std::shared_ptr<std::pmr::memory_resource> entry_memory);
-        static std::size_t capacity(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
-        static std::size_t size(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
+        CE_OPENGL_API static std::size_t capacity(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
+        CE_OPENGL_API static std::size_t size(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
     };
 
     // allocate_shared retains a rebound allocator in its control block. Own the

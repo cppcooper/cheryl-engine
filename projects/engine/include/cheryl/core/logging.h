@@ -1,10 +1,10 @@
 #pragma once
+
+/** @file
+ * @brief Logging facades and the application-owned process logging lifetime. Link Cheryl::Engine.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
 #include "logging/log-names.h"
-#include "logging/osink.h"
 #include "logging/log.h"
 #include "logging/logger.h"
-
-#ifdef ST_ON_SIGNALS
-#include <backward.hpp>
-extern backward::SignalHandling sh;
-#endif
+#include "logging/process-lifetime.h"

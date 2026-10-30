@@ -1,0 +1,43 @@
+name: Manage versions
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      prepare_release:
+        description: Prepare the next stable project version and release PR.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: versions-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  versions:
+    name: Maintain development and release versions
+    if: github.repository == 'cppcooper/cheryl-engine' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Update version PR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PREPARE_RELEASE: ${{ inputs.prepare_release || false }}
+        run: |
+          if [ "$PREPARE_RELEASE" = true ]; then
+            python .github/ci/versions.py prepare-release
+          else
+            python .github/ci/versions.py maintain
+          fi

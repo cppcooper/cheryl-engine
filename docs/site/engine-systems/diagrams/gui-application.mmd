@@ -1,0 +1,59 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: system-ui, sans-serif
+    fontSize: 14px
+  flowchart:
+    htmlLabels: true
+    curve: linear
+    nodeSpacing: 22
+    rankSpacing: 38
+    padding: 12
+---
+flowchart TB
+    accTitle: GUI · application-owned sessions and publication
+    accDescr: Local names omit UI::; ambiguous nested namespaces remain qualified. Arrows point toward the API or type used, not call order or data flow. Methods beneath type names are selected application entry points; Implement hooks marks engine-invoked overrides. Dashed arrows mark optional choices.
+    k0(["Application-owned UI"]):::app
+    k1["<b>TGUI::<br/>Session</b><br/><br/>gui(): tgui::BackendGui<br/><br/>handle_input(Input::Events::Record[], pointer_selected)<br/><br/>request_keyboard_focus(Input::Routing::KeyboardPolicy)<br/><br/>record(): TGUI::RecordedScene"]:::focal
+    k2["<b>RmlUi::<br/>Session</b><br/><br/>context(): Rml::Context<br/><br/>handle_input(Input::Events::Record[], pointer_selected)<br/><br/>request_keyboard_focus(Input::Routing::KeyboardPolicy)<br/><br/>record(): RmlUi::RecordedScene"]:::focal
+    k3["Input::Events::<br/>Record"]:::neighbor
+    k4["Input::Routing::<br/>KeyboardPolicy"]:::neighbor
+    k5["Text::<br/>Font"]:::neighbor
+    k6["TGUI::<br/>RecordedScene"]:::focal
+    k7["RmlUi::<br/>RecordedScene"]:::focal
+    k8(["Application<br/>init_platform()"]):::app
+    k9["<b>TGUI::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider,<br/>TGUI::RecordedScene):<br/>TGUI::Scene<br/><br/>submit(<br/>Runtime::PlatformDispatcher::Submission,<br/>TGUI::RecordedScene):<br/>TGUI::Scene"]:::focal
+    k10["<b>RmlUi::<br/>SceneUploader</b><br/><br/>upload(<br/>Rendering::Resources::Provider,<br/>RmlUi::RecordedScene):<br/>RmlUi::Scene<br/><br/>submit(<br/>Runtime::PlatformDispatcher::Submission,<br/>RmlUi::RecordedScene):<br/>RmlUi::Scene"]:::focal
+    k11["<b>TGUI::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter)"]:::focal
+    k12["<b>RmlUi::<br/>Scene</b><br/><br/>write(Rendering::FrameWriter)"]:::focal
+    k13(["Application<br/>prepare_render_frame()"]):::app
+    k14["Rendering::<br/>FrameWriter"]:::neighbor
+    k0 -.-> k1
+    k0 -.-> k2
+    k0 --> k3
+    k0 --> k4
+    k0 --> k5
+    k1 --> k6
+    k2 --> k7
+    k8 -.-> k9
+    k8 -.-> k10
+    k9 --> k11
+    k10 --> k12
+    k13 -.-> k11
+    k13 -.-> k12
+    k11 --> k14
+    k12 --> k14
+    k9 --> k6
+    k0 -.-> k9
+    k10 --> k7
+    k0 -.-> k10
+    k1 --> k3
+    k1 --> k4
+    k2 --> k3
+    k2 --> k4
+    classDef focal fill:#e7f3ef,stroke:#387d6b,color:#153d33,stroke-width:1.2px
+    classDef neighbor fill:#f0f3f8,stroke:#8c9bb1,color:#35445b,stroke-width:1px
+    classDef app fill:#fff2df,stroke:#c09452,color:#674515,stroke-dasharray:5 3
+    classDef system fill:#eaf0fc,stroke:#617fab,color:#263f69,stroke-width:1.2px
+    linkStyle default stroke:#7e8fa7,stroke-width:1.2px

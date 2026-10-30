@@ -1,5 +1,9 @@
 {
   "version": "@VERSION_PROJECT_CHERYL@",
+  "component_versions": {@sdk_component_versions@},
+  "linkage": "@sdk_linkage@",
+  "engine_library": "@sdk_engine_library@",
+  "engine_import_library": "@sdk_engine_import_library@",
   "system": "@CMAKE_SYSTEM_NAME@",
   "system_version": "@CMAKE_SYSTEM_VERSION@",
   "architecture": "@CMAKE_SYSTEM_PROCESSOR@",
@@ -9,14 +13,21 @@
   "msvc_runtime": "@sdk_msvc_runtime@",
   "logging_profile": "@sdk_log_profile@",
   "native_versions": {"icu": "@ICU_VERSION@", "freetype": "@FREETYPE_VERSION_STRING@"},
+  "dependency_ownership": [@sdk_dependency_ownership@],
+  "shared_runtime_dependencies": [@sdk_shared_runtime_dependencies@],
+  "windows_minimum_version": "@sdk_windows_minimum_version@",
+  "public_template_dependencies": ["CTTI", "GLM", "CLI11 (when Startup is selected)", "selected UI toolkit headers"],
   "features": {
-    "native_glfw": "@CHERYL_BUILD_NATIVE_GLFW@",
-    "native_input": "@CHERYL_NATIVE_INPUT@",
-    "opengl": "@CHERYL_BUILD_OPENGL@",
-    "tgui": "@CHERYL_BUILD_UI_TGUI@",
-    "rmlui": "@CHERYL_BUILD_UI_RMLUI@",
-    "miniaudio": "@CHERYL_BUILD_AUDIO_MINIAUDIO@",
-    "hwloc": "@CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC@",
-    "json": "@CHERYL_BUILD_WORKER_TOPOLOGY_JSON@"
+    "startup": "@sdk_startup@",
+    "startup_opengl": "@sdk_startup_opengl@",
+    "workers": "@sdk_workers@",
+    "native_glfw": "@sdk_native_glfw@",
+    "native_input": "@sdk_native_input@",
+    "opengl": "@sdk_opengl@",
+    "tgui": "@sdk_tgui@",
+    "rmlui": "@sdk_rmlui@",
+    "miniaudio": "@sdk_miniaudio@",
+    "hwloc": "@sdk_hwloc@",
+    "json": "@sdk_json@"
   }
 }

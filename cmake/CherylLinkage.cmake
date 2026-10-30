@@ -9,9 +9,7 @@ set(LINKAGE_PUBLIC_LIB_ENGINE
         Threads::Threads
         ${TARGET_LIB_ENGINE_S_LOGGING_CONFIG}
         ctti
-        spdlog::spdlog
         glm::glm-header-only
-        Backward::Interface
 )
 
 set(LINKAGE_INTERFACE_LIB_ENGINE
@@ -19,10 +17,11 @@ set(LINKAGE_INTERFACE_LIB_ENGINE
 )
 
 set(LINKAGE_PRIVATE_LIB_ENGINE
+        spdlog::spdlog
+        Backward::Interface
         Freetype::Freetype
         harfbuzz::harfbuzz
-        ICU::uc
-        ICU::i18n
+        Cheryl::ICU
 )
 
 set(LINKAGE_PUBLIC_LIB_ENGINE_S_SIGNAL_HANDLERS
@@ -67,11 +66,10 @@ set(LINKAGE_PRIVATE_LIB_MODULE_NATIVE_GLFW_INPUT_LINUX
 set(LINKAGE_PUBLIC_LIB_MODULE_OPENGL
         Cheryl::Engine
         Cheryl::NativeGLFW
-        ${TARGET_LIB_MODULE_OPENGL_S_GL46}
 )
 
 set(LINKAGE_PRIVATE_LIB_MODULE_OPENGL
-        glfw
+        ${TARGET_LIB_MODULE_OPENGL_S_GL46}
         OpenGL::GL
 )
 
@@ -163,8 +161,7 @@ set(LINKAGE_PUBLIC_TEST_WORKER_TOPOLOGY_COMPOSITION
         ${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE})
 
 set(LINKAGE_PUBLIC_TEST_MODULE_NATIVE_GLFW
-        Cheryl::NativeGLFW
-        glfw)
+        Cheryl::NativeGLFW)
 
 set(LINKAGE_PUBLIC_TEST_MODULE_OPENGL
         Cheryl::OpenGL)

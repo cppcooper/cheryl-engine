@@ -21,7 +21,6 @@ jobs:
       group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     env:
-      CHERYL_DOCS_CACHE_DIR: ${{ runner.temp }}/cheryl-engine/docs-tools
       PYTHONDONTWRITEBYTECODE: '1'
     defaults:
       run:
@@ -35,27 +34,42 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
+      - name: Select documentation cache directory
+        run: |
+          printf 'CHERYL_DOCS_CACHE_DIR=%s/cheryl-engine/docs-tools\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Identify documentation tool cache
+        id: tool-cache
+        run: python -c 'import sys; sys.path.insert(0, "docs/site/generation"); from bootstrap import environment_identity; print("identity=" + environment_identity())' >> "$GITHUB_OUTPUT"
+      - name: Describe shared Actions environment
+        id: environment
+        run: python .github/ci/dependencies.py environment-prefix --profile docs
+      - name: Restore documentation tools
+        id: tools
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
+          key: ${{ steps.environment.outputs.environment-prefix }}-tools-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/site/generation/requirements.txt', 'docs/site/generation/native-tools.json', 'docs/site/generation/bootstrap.py') }}
+      - name: Prepare pinned documentation tools
+        run: python docs/site/generation/bootstrap.py setup --force-pinned
       - name: Check documentation tooling
         run: |
           python .github/scripts/test_sync_docs_stable.py
-          python -m unittest discover -s docs/generation/tests -p 'test_*.py'
-      - name: Identify documentation tool cache
-        id: tool-cache
-        run: python -c 'import sys; sys.path.insert(0, "docs/generation"); from bootstrap import environment_identity; print("identity=" + environment_identity())' >> "$GITHUB_OUTPUT"
-      - name: Restore documentation tools
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          python docs/site/generation/bootstrap.py exec --force-pinned -- python -m unittest discover -s docs/site/generation/tests -p 'test_*.py'
+      - name: Save shared documentation tools
+        if: steps.environment.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
-          key: docs-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/generation/requirements.txt', 'docs/generation/native-tools.json', 'docs/generation/bootstrap.py') }}
+          key: ${{ steps.tools.outputs.cache-primary-key }}
       - name: Generate and check documentation
         run: |
-          mkdir -p docs/generation/generated
-          python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py 2>&1 | tee docs/generation/generated/generation.log
+          mkdir -p docs/site/generation/generated
+          python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean 2>&1 | tee docs/site/generation/generated/generation.log
       - name: Retain checked HTML
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: documentation-html-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: docs/generation/generated/html/
+          path: docs/site/generation/generated/html/
           if-no-files-found: error
           retention-days: 30
       - name: Retain documentation diagnostics
@@ -64,10 +78,10 @@ jobs:
         with:
           name: documentation-diagnostics-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            docs/generation/generated/*.log
-            docs/generation/generated/Doxyfile
-            docs/generation/generated/xml/
-            docs/generation/generated/html/revision.json
+            docs/site/generation/generated/*.log
+            docs/site/generation/generated/Doxyfile
+            docs/site/generation/generated/xml/
+            docs/site/generation/generated/html/revision.json
           if-no-files-found: warn
           retention-days: 30
 

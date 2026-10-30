@@ -32,12 +32,13 @@ namespace CE::Text::Legacy {
         return entry == loaded_assets.end() ? nullptr : entry->second;
     }
 
-    void Manager::clear_assets() noexcept {
-        decltype(loaded_assets) retired;
-        {
-            std::unique_lock lock(assets_mutex_);
-            retired.swap(loaded_assets);
-            default_font_path_.clear();
-        }
+    void Manager::clear_assets() noexcept { Store::clear_assets(); }
+    void Manager::clear_metadata() noexcept { default_font_path_.clear(); }
+}
+
+namespace CE::State {
+    template <> auto Singleton<CE::Text::Legacy::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
     }
 }

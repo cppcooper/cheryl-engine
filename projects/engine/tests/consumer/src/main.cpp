@@ -1,6 +1,7 @@
 #include <cheryl/core/engine/worker-pool.h>
 #include <cheryl/core/subsystems/event-bus.h>
 #include <cheryl/core/logging.h>
+#include <cheryl/core/rendering/camera.h>
 
 #include <any>
 #include <string_view>
@@ -10,8 +11,13 @@
 #endif
 
 bool exercise_resources();
+bool exercise_fonts();
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
+    CE::Rendering::Camera2D camera;
+    camera.set_framebuffer_size({640, 480});
+    const bool camera_size = camera.framebuffer_size() == CE::Platform::FramebufferSize{640, 480};
     CE::Events::EventBus events;
     int observed = 0;
     const auto registration = events.register_listener("consumer", [&](const std::any& value) { observed = std::any_cast<int>(value); });
@@ -23,6 +29,24 @@ int main() {
     const auto typed_registration = events.register_listener(typed, [&](const int& value) { typed_observed = value; });
     events.dispatch(typed, 9);
     events.unregister_and_wait(typed_registration);
+
+    struct DamageTaken {
+        int amount;
+    };
+    const CE::Events::EventChannel<DamageTaken> damage_taken{"damage-taken"};
+    int health = 100;
+    const auto notification_registration =
+        events.register_listener(damage_taken, [&](const DamageTaken& damage) { health -= damage.amount; });
+    events.notify(damage_taken, DamageTaken{13});
+    events.unregister_and_wait(notification_registration);
+    if (health != 87)
+        return 1;
+
+    const auto publisher = events.publisher();
+    typed_observed = 0;
+    const auto published_registration = events.register_listener(typed, [&](const int& value) { typed_observed = value; });
+    publisher.notify(typed, 9);
+    events.unregister_and_wait(published_registration);
 
     CE::Workers::Pool workers{1};
     const auto group = workers.make_group();
@@ -36,5 +60,7 @@ int main() {
                            std::string_view{CE::Logging::Categories::assets} == "assets" &&
                            std::string_view{CE::Logging::Categories::memory} == "memory" &&
                            std::string_view{CE::Logging::Categories::cheryl} == "cheryl";
-    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && log_names ? 0 : 1;
+    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && exercise_fonts() && log_names && camera_size
+               ? 0
+               : 1;
 }

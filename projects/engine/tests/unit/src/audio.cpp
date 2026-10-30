@@ -6,6 +6,20 @@
 #include <utility>
 #include <vector>
 
+namespace {
+    // Existing backends need not implement the optional scheduling extension.
+    class UnscheduledVoice final : public CE::Audio::Voice {
+    public:
+        CE::Audio::VoiceSnapshot snapshot() const override { return {.state = CE::Audio::PlaybackState::Paused}; }
+        void pause() override {}
+        void resume() override {}
+        void stop() override {}
+        void restart() override {}
+        void set_volume(float) override {}
+        void set_looping(bool) override {}
+    };
+}
+
 TEST(audio_clip, owned) {
     std::vector<float> source{0.25f, -0.5f, 0.75f, -1.0f};
     const auto clip = CE::Audio::Clip::from_samples({2, 48000}, source);
@@ -48,5 +62,19 @@ TEST(audio_clip, volume) {
     for (const float volume : {-0.01f, 1.01f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
         EXPECT_THROW((CE::Audio::PlaybackOptions{volume}).validate(), CE::Exceptions::invalid_args);
         EXPECT_THROW(CE::Audio::validate_volume(volume), CE::Exceptions::invalid_args);
+    }
+}
+
+TEST(audio_clip, delay) {
+    using Seconds = std::chrono::duration<double>;
+    for (const double seconds : {0.0, 0.022, 1.0})
+        EXPECT_NO_THROW(CE::Audio::validate_start_delay(Seconds{seconds}));
+    UnscheduledVoice voice;
+    EXPECT_THROW(voice.resume_after(Seconds{0}), CE::Exceptions::bad_request);
+    EXPECT_THROW(voice.resume_after(Seconds{0.022}), CE::Exceptions::bad_request);
+    for (const double seconds : {-0.001, std::numeric_limits<double>::infinity(),
+             -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+        EXPECT_THROW(CE::Audio::validate_start_delay(Seconds{seconds}), CE::Exceptions::invalid_args);
+        EXPECT_THROW(voice.resume_after(Seconds{seconds}), CE::Exceptions::invalid_args);
     }
 }

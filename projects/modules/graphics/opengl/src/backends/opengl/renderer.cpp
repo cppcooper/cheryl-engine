@@ -2,7 +2,7 @@
 #include "renderer-internal.h"
 #include "upload-check.h"
 #include "debug-output.h"
-#include <backends/opengl/gl.h>
+#include "gl-internal.h"
 #include <backends/opengl/pipeline.h>
 
 #include <internals/exceptions.h>
@@ -60,6 +60,7 @@ namespace CE::Rendering::OpenGL {
 
     Renderer::~Renderer() {
         destroying_ = true;
+        DomainPublication publication{*this};
         if (initialized_) {
             try {
                 deinitialize();
@@ -72,6 +73,7 @@ namespace CE::Rendering::OpenGL {
     }
 
     void Renderer::initialize() {
+        DomainPublication publication{*this};
         if (initialized_) {
             resources_->require_owner();
             context_.make_current();
@@ -101,8 +103,9 @@ namespace CE::Rendering::OpenGL {
             if (!context_.is_current())
                 throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL context was lost during renderer startup");
             // Publish the domain only after loading and default state succeed.
-            resources_ =
-                std::make_shared<ResourceLifetime>(std::this_thread::get_id(), [&context = context_] { return context.is_current(); });
+            resources_ = std::make_shared<ResourceLifetime>(
+                std::this_thread::get_id(), [&context = context_] { return context.is_current(); }, domain_
+            );
         } catch (...) {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
@@ -134,12 +137,13 @@ namespace CE::Rendering::OpenGL {
         }
         CE_LOG_INFO(
             ::CE::Logging::Categories::rendering,
-            "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
-            resources_->diagnostics().domain, native_major_, native_minor_
+            "subsystem=renderer domain={} graphics_domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
+            resources_->diagnostics().domain, graphics_domain().snapshot().id, native_major_, native_minor_
         );
     }
 
     void Renderer::deinitialize() {
+        DomainPublication publication{*this};
         Detail::DebugOutput::Scope observation(debug_output_.get());
         if (!initialized_)
             return;
@@ -159,8 +163,9 @@ namespace CE::Rendering::OpenGL {
             if (debug_output_)
                 debug_output_->report(true);
             CE_LOG_INFO(
-                ::CE::Logging::Categories::rendering, "subsystem=renderer domain={} operation=shutdown outcome=completed",
-                resources_->diagnostics().domain
+                ::CE::Logging::Categories::rendering,
+                "subsystem=renderer domain={} graphics_domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain,
+                graphics_domain().snapshot().id
             );
             CE_LOG_DEBUG(
                 ::CE::Logging::Categories::rendering,
