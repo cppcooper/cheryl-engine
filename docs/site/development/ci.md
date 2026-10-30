@@ -84,8 +84,9 @@ enabled only for a `main` push in `cppcooper/cheryl-engine`, after SDK assembly.
 
 1. The project version is explicitly `x.y.0` in CMake. Exactly one merged PR from
    this repository's `develop` to `main` has title `Release x.y.0` matching it.
-2. The checked revision is that PR's ordinary two-parent merge commit; its second
-   parent is the PR's develop head. Squash/rebase merges do not qualify.
+2. The checked revision is that PR's ordinary two-parent merge commit with the
+   develop head as its second parent, or a squash commit whose parent is the PR's
+   main base and whose tree equals the develop head. Rebase merges do not qualify.
 3. The revision remains current `main`, and the latest documentation workflow
    attempt for the same revision completes **Documentation checks** successfully.
    The publisher waits up to ten minutes; Read the Docs publication is a separate
@@ -100,6 +101,12 @@ published exact match is unchanged. Conflicting tags or assets fail rather than
 being moved or overwritten. Workflow concurrency serializes release publication.
 These are current automation rules; a successful local assembly does not prove
 GitHub permissions, artifact collection or hosted publication.
+
+Maintenance PRs may target `main` from this repository's `hotfix/*` branches when
+every project and component version remains unchanged and the title does not
+start with `Release `. These PRs run validation without requesting another stable
+release. Other PRs targeting `main` retain the develop promotion and release-title
+requirements above.
 
 ### Actions cache retention
 
