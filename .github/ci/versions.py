@@ -387,6 +387,14 @@ def check_release(event, git):
     if pull.get("base", {}).get("ref") != "main":
         return None
     head = pull.get("head", {})
+    if (head.get("repo", {}).get("full_name") == REPOSITORY
+            and head.get("ref", "").startswith("hotfix/")
+            and not pull.get("title", "").startswith("Release ")):
+        before = read_versions(git.text(commit_id(pull["base"].get("sha")), VERSION_FILE))
+        after = read_versions(git.text(commit_id(head.get("sha")), VERSION_FILE))
+        if not before or before != after:
+            raise ValueError("Maintenance PRs must preserve every project and component version")
+        return None
     if head.get("ref") != "develop" or head.get("repo", {}).get("full_name") != REPOSITORY:
         raise ValueError("Stable release PRs must use this repository's develop branch")
     value = read_versions(git.text(commit_id(head.get("sha")), VERSION_FILE)).get(PROJECT)

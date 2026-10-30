@@ -64,7 +64,7 @@ jobs:
       - name: Generate and check documentation
         run: |
           mkdir -p docs/site/generation/generated
-          python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean 2>&1 | tee docs/site/generation/generated/generation.log
+          python docs/site/generation/bootstrap.py exec --force-pinned -- python docs/site/generation/build.py --clean --jobs 4 2>&1 | tee docs/site/generation/generated/generation.log
       - name: Retain checked HTML
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

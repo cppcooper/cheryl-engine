@@ -33,8 +33,9 @@ class GitHubApi:
         self.opener = build_opener(NoRedirect())
 
     def _send(self, method, path, url, data=None, *, content_type="application/json", length=None, missing_ok=False):
+        # Release identity requires merge_commit_sha, removed by API version 2026-03-10.
         headers = {"Accept": "application/vnd.github+json", "Authorization": "Bearer " + self.token,
-                   "X-GitHub-Api-Version": "2026-03-10", "User-Agent": "cheryl-release-automation"}
+                   "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "cheryl-release-automation"}
         if data is not None:
             headers["Content-Type"] = content_type
         if length is not None:
