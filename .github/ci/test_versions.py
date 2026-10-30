@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -80,12 +81,18 @@ class FakeApi:
     def __init__(self, git):
         self.git = git
         self.releases = [{"tag_name": "v4.0.0", "draft": False, "prerelease": False, "published_at": "2026-10-20"}]
+        self.release_pulls = [{"title": "Release 4.0.0", "state": "closed", "merged_at": "2026-10-20",
+                               "merge_commit_sha": STABLE,
+                               "head": {"ref": "develop", "sha": A, "repo": {"full_name": versions.REPOSITORY}},
+                               "base": {"ref": "main", "sha": MAIN, "repo": {"full_name": versions.REPOSITORY}}}]
         self.refs, self.pulls, self.calls, self.commits, self.tree_files, self.commit_trees = {}, [], [], [], {}, {}
 
     def pages(self, path, field=None, **query):
         self.calls.append(("GET", path, None, query))
         if path == "/releases":
             return self.releases
+        if path == f"/commits/{STABLE}/pulls":
+            return self.release_pulls
         if path == "/pulls":
             return [pull for pull in self.pulls if pull["base"]["ref"] == query["base"]
                     and pull["head"]["ref"] == query["head"].split(":", 1)[1]]
@@ -96,6 +103,10 @@ class FakeApi:
         if method == "GET" and path.startswith("/git/ref/heads/"):
             revision = self.refs.get(path.removeprefix("/git/ref/heads/"))
             return {"object": {"sha": revision}} if revision else None
+        if method == "GET" and path.startswith("/commits/"):
+            revision = path.rsplit("/", 1)[1]
+            return {"sha": revision, "parents": [{"sha": parent} for parent in self.git.parents(revision)],
+                    "commit": {"tree": {"sha": self.commit_trees.get(revision, revision)}}}
         if method == "GET" and path.startswith("/contents/"):
             text = self.git.files[query["ref"]].get(path.removeprefix("/contents/"))
             if text is None and query.get("missing_ok"):
@@ -137,6 +148,68 @@ class FakeApi:
             pull.update(body)
             return pull
         raise AssertionError((method, path))
+
+
+class SquashHistoryTests(unittest.TestCase):
+    def test_release_cycle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            git = versions.Git(source)
+
+            def command(*arguments):
+                return git.output("-c", "user.name=cppcooper", "-c",
+                                  "user.email=cppcooper@users.noreply.github.com", *arguments).strip()
+
+            def commit(path, text):
+                destination = source / path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(text, encoding="utf-8")
+                command("add", "--", path)
+                command("commit", "--quiet", "-m", "Updates fixture")
+                return git.resolve("HEAD")
+
+            command("init", "--quiet", "--initial-branch=main")
+            base = commit(versions.VERSION_FILE, TEXT)
+            command("switch", "--quiet", "-c", "develop")
+            command("switch", "--quiet", "-c", "fixes-develop")
+            commit("projects/engine/src/example.cpp", "released engine\n")
+            commit("projects/modules/platform/native-glfw/src/window.cpp", "released module\n")
+            command("switch", "--quiet", "develop")
+            command("merge", "--squash", "fixes-develop")
+            command("commit", "--quiet", "-m", "Integrates fixes")
+            promoted = git.resolve("HEAD")
+            command("switch", "--quiet", "main")
+            command("merge", "--squash", "develop")
+            command("commit", "--quiet", "-m", "Releases 4.0.0")
+            stable = {"revision": git.resolve("HEAD"), "tag": "v4.0.0"}
+            command("switch", "--quiet", "develop")
+            command("merge", "--no-ff", "main", "-m", "Synchronizes main")
+
+            class Api:
+                def pages(self, path):
+                    if path != f"/commits/{stable['revision']}/pulls":
+                        raise AssertionError(path)
+                    return [{"title": "Release 4.0.0", "state": "closed", "merged_at": "2026-10-20",
+                             "merge_commit_sha": stable["revision"],
+                             "head": {"ref": "develop", "sha": promoted, "repo": {"full_name": versions.REPOSITORY}},
+                             "base": {"ref": "main", "sha": base, "repo": {"full_name": versions.REPOSITORY}}}]
+
+                def request(self, method, path):
+                    if method != "GET" or not path.startswith("/commits/"):
+                        raise AssertionError((method, path))
+                    revision = path.rsplit("/", 1)[1]
+                    return {"sha": git.resolve(revision), "parents": [{"sha": parent} for parent in git.parents(revision)],
+                            "commit": {"tree": {"sha": command("show", "-s", "--format=%T", revision)}}}
+
+            automation = versions.Automation(Api(), git)
+            initial = automation.initial_state(stable, git.resolve("HEAD"))
+            self.assertEqual(initial["source_revision"], promoted)
+            self.assertEqual(automation.planned_versions(initial, git.resolve("HEAD")), versions.read_versions(TEXT))
+            changed = commit("projects/engine/src/example.cpp", "new development\n")
+            actual = automation.planned_versions(initial, changed)
+            self.assertEqual(actual[versions.PROJECT], "4.0.1")
+            self.assertEqual(actual[versions.ENGINE], "4.0.1")
+            self.assertEqual(actual["VERSION_PROJECT_MODULE_NATIVE_GLFW"], "1.0.0")
 
 
 class PolicyTests(unittest.TestCase):
@@ -228,6 +301,64 @@ class AutomationTests(unittest.TestCase):
         initial = self.automation.initial_state(self.automation.stable_release(), B)
         self.assertEqual(initial["source_revision"], A)
         self.assertNotEqual(initial["source_revision"], STABLE)
+
+    def squash_release(self):
+        self.git.parents_by_revision[STABLE] = [MAIN]
+        self.git.files[STABLE] = dict(self.git.files[A])
+        self.api.commit_trees[STABLE] = A
+
+    def test_squash_bootstrap(self):
+        self.squash_release()
+        initial = self.automation.initial_state(self.automation.stable_release(), B)
+        self.assertEqual(initial["source_revision"], A)
+        self.assertEqual(initial["versions"], versions.read_versions(TEXT))
+
+    def test_squash_sync(self):
+        self.squash_release()
+        self.git.parents_by_revision[C] = [A, STABLE]
+        self.git.files[C] = dict(self.git.files[A])
+        self.git.paths[C] = set()
+        self.git.refs["HEAD"] = self.git.refs["refs/remotes/origin/develop"] = C
+        self.assertIsNone(self.automation.maintain())
+        self.assertFalse(self.api.commits)
+        self.assertFalse(self.api.pulls)
+
+    def test_squash_new_work(self):
+        self.squash_release()
+        self.git.parents_by_revision[C] = [A, STABLE]
+        self.git.files[C] = dict(self.git.files[A])
+        self.git.paths[C] = set()
+        self.git.parents_by_revision[B] = [C]
+        self.automation.maintain()
+        actual = versions.read_versions(self.git.text(GENERATED, versions.VERSION_FILE))
+        self.assertEqual(actual[versions.PROJECT], "4.0.1")
+        self.assertEqual(actual[versions.ENGINE], "4.0.1")
+        self.assertEqual(actual["VERSION_PROJECT_MODULE_NATIVE_GLFW"], "1.0.0")
+
+    def test_squash_pending_work(self):
+        self.squash_release()
+        self.git.parents_by_revision[C] = [B, STABLE]
+        self.git.files[C] = dict(self.git.files[B])
+        self.git.paths[C] = set()
+        self.git.refs["HEAD"] = self.git.refs["refs/remotes/origin/develop"] = C
+        self.automation.maintain()
+        actual = versions.read_versions(self.git.text(GENERATED, versions.VERSION_FILE))
+        self.assertEqual(actual[versions.PROJECT], "4.0.1")
+        self.assertEqual(actual[versions.ENGINE], "4.0.1")
+
+    def test_squash_missing_pull(self):
+        self.squash_release()
+        self.api.release_pulls = []
+        with self.assertRaisesRegex(ValueError, "release PR"):
+            self.automation.maintain()
+        self.assertFalse(self.api.commits)
+
+    def test_squash_foreign_history(self):
+        self.squash_release()
+        self.git.parents_by_revision[B] = [MAIN]
+        with self.assertRaisesRegex(ValueError, "develop revision"):
+            self.automation.maintain()
+        self.assertFalse(self.api.commits)
 
     def test_maintenance(self):
         pull = self.automation.maintain()

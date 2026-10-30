@@ -49,10 +49,12 @@ class FakeApi:
         self.main = SHA
         self.main_revisions = []
         self.parents = [{"sha": OTHER}, {"sha": HEAD}]
+        self.tree = {"sha": "d" * 40}
+        self.head_commit = {"sha": HEAD, "commit": {"tree": copy.deepcopy(self.tree)}}
         self.pulls = [{"number": 21, "title": "Release 4.0.0", "state": "closed",
                        "merged_at": "2026-10-15T12:00:00Z", "merge_commit_sha": SHA,
                        "head": {"ref": "develop", "sha": HEAD, "repo": {"full_name": self.repository}},
-                       "base": {"ref": "main", "repo": {"full_name": self.repository}}}]
+                       "base": {"ref": "main", "sha": OTHER, "repo": {"full_name": self.repository}}}]
         self.runs = [{"id": 10, "head_sha": SHA, "head_branch": "main", "event": "push",
                       "head_repository": {"full_name": self.repository}, "status": "completed"}]
         self.jobs = {10: [{"name": "Documentation checks", "status": "completed", "conclusion": "success"}]}
@@ -89,7 +91,9 @@ class FakeApi:
             revision = self.main_revisions.pop(0) if self.main_revisions else self.main
             return {"ref": "refs/heads/main", "object": {"type": "commit", "sha": revision}}
         if method == "GET" and path == f"/commits/{SHA}":
-            return {"sha": SHA, "parents": copy.deepcopy(self.parents)}
+            return {"sha": SHA, "parents": copy.deepcopy(self.parents), "commit": {"tree": copy.deepcopy(self.tree)}}
+        if method == "GET" and path == f"/commits/{HEAD}":
+            return copy.deepcopy(self.head_commit)
         if method == "GET" and path == f"/git/ref/tags/{TAG}":
             return copy.deepcopy(self.tag)
         if method == "GET" and path.startswith("/git/tags/"):
@@ -273,7 +277,51 @@ class ReleaseTests(unittest.TestCase):
 
     def test_squash_merge(self):
         self.api.parents = self.api.parents[:1]
-        self.rejected("ordinary merge")
+        self.assertEqual(self.publish(), "published")
+        self.assertEqual(self.api.tag["object"]["sha"], SHA)
+        self.assertEqual(self.api.release["target_commitish"], SHA)
+        self.assertFalse(self.api.release["draft"])
+        self.assertEqual(len(self.api.uploaded), 6)
+        self.api.writes.clear()
+        self.assertEqual(self.publish(), "unchanged")
+        self.assertEqual(self.api.writes, [])
+
+    def test_merge_parents(self):
+        for parents in ([], self.api.parents + [{"sha": OTHER}], None, [None], [{"sha": "short"}]):
+            with self.subTest(parents=parents):
+                self.api.parents = parents
+                self.rejected("merge or squash commit")
+
+    def test_squash_base(self):
+        self.api.parents = self.api.parents[:1]
+        for base in (HEAD, None, "short"):
+            with self.subTest(base=base):
+                self.api.pulls[0]["base"]["sha"] = base
+                self.rejected("PR base as its only parent")
+
+    def test_squash_tree(self):
+        self.api.parents = self.api.parents[:1]
+        self.api.head_commit["commit"]["tree"]["sha"] = OTHER
+        self.rejected("same tree as its develop PR head")
+
+    def test_squash_missing_tree(self):
+        self.api.parents = self.api.parents[:1]
+        for tree in (None, {}, {"sha": "short"}):
+            with self.subTest(tree=tree):
+                self.api.tree = tree
+                self.rejected("valid release commit tree")
+
+    def test_squash_head(self):
+        self.api.parents = self.api.parents[:1]
+        for commit in (None, {"sha": OTHER}, {"sha": HEAD}, {"sha": HEAD, "commit": {"tree": None}}):
+            with self.subTest(commit=commit):
+                self.api.head_commit = commit
+                self.rejected("valid release commit tree")
+
+    def test_squash_docs(self):
+        self.api.parents = self.api.parents[:1]
+        self.api.jobs[10][0]["conclusion"] = "failure"
+        self.rejected("Documentation checks did not succeed")
 
     def test_stale(self):
         self.api.main = OTHER

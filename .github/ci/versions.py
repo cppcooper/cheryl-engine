@@ -234,11 +234,20 @@ class Automation:
 
     def initial_state(self, stable, head):
         revision = stable["revision"]
-        if not self.git.ancestor(revision, head):
-            parents = self.git.parents(revision)
+        parents = self.git.parents(revision)
+        if len(parents) == 1:
+            from release import release_pull
+            pull = release_pull(self.api, revision, stable["tag"][1:])
+            if pull is None:
+                raise ValueError("Cannot identify the develop release PR for the squashed stable release")
+            # The main squash omits develop's ancestry even after it is merged back.
+            revision = pull["head"]["sha"]
+        elif not self.git.ancestor(revision, head):
             if len(parents) < 2 or not self.git.ancestor(parents[1], head):
                 raise ValueError("Cannot identify the develop revision promoted by the stable release; review branch ancestry")
             revision = parents[1]
+        if not self.git.ancestor(revision, head):
+            raise ValueError("The develop revision promoted by the stable release is outside develop history")
         return {"format": 1, "kind": "maintenance", "source_revision": revision,
                 "versions": read_versions(self.git.text(revision, VERSION_FILE)),
                 "stable_tag": stable["tag"], "stable_revision": stable["revision"]}

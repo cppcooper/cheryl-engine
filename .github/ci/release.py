@@ -76,6 +76,15 @@ def project_version(versions):
     return version
 
 
+def commit_tree(commit, revision):
+    value = commit.get("commit") if isinstance(commit, dict) and commit.get("sha") == revision else None
+    tree = value.get("tree") if isinstance(value, dict) else None
+    identifier = tree.get("sha") if isinstance(tree, dict) else None
+    if not isinstance(identifier, str) or not REVISION.fullmatch(identifier):
+        raise RuntimeError("GitHub did not return a valid release commit tree")
+    return identifier
+
+
 def release_pull(api, revision, version):
     matches = []
     for pull in api.pages(f"/commits/{revision}/pulls"):
@@ -103,12 +112,21 @@ def release_pull(api, revision, version):
     parents = commit.get("parents") if isinstance(commit, dict) else None
     head = pull["head"].get("sha")
     if (not isinstance(commit, dict) or commit.get("sha") != revision
-            or not isinstance(parents, list) or len(parents) != 2
+            or not isinstance(parents, list) or len(parents) not in (1, 2)
             or not isinstance(head, str) or not REVISION.fullmatch(head)
             or any(not isinstance(parent, dict) or not isinstance(parent.get("sha"), str)
-                   or not REVISION.fullmatch(parent["sha"]) for parent in parents)
-            or parents[1].get("sha") != head):
+                   or not REVISION.fullmatch(parent["sha"]) for parent in parents)):
+        raise RuntimeError("A release must identify a valid merge or squash commit and develop PR head")
+    if len(parents) == 2 and parents[1]["sha"] != head:
         raise RuntimeError("A release must be an ordinary merge with the develop PR head as its second parent")
+    if len(parents) == 1:
+        base = pull["base"].get("sha")
+        if not isinstance(base, str) or not REVISION.fullmatch(base) or parents[0]["sha"] != base:
+            raise RuntimeError("A squash release must have the release PR base as its only parent")
+        # A squash has no ancestry link to develop; verify the exact promoted snapshot.
+        promoted = api.request("GET", f"/commits/{head}")
+        if commit_tree(commit, revision) != commit_tree(promoted, head):
+            raise RuntimeError("A squash release must have the same tree as its develop PR head")
     return pull
 
 
