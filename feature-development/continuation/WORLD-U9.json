@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U9",
+  "starting_head": "1115bc97a42d78555fce31e13a142df6196a7e95",
+  "assignment_manifest": "coordination/assignments/local-revival-20261031/manifest.json",
+  "task_sha256": "3fc8ee9b8d161266a409ca2abbdcbd1a7f87c21ffed8d398474c391b17c84d00",
+  "recovery": "Fresh-session recovery in same owned clone; predecessor thread unavailable and existing runtime archived by coordinator.",
+  "predecessor_receipt": {
+    "path": "feature-development/continuation/WORLD-U8.json",
+    "sha256": "40168346e4a9d5633833bc4f391b0437c8285adbbcb309081666d8d121e64caa",
+    "status": "blocked",
+    "checks_passed": false,
+    "treatment": "Reviewed actual repair source; no completed benchmark acceptance inferred."
+  },
+  "status": "ready",
+  "checks_passed": true,
+  "selected_acceptance": "Bounded matched list/map slab/reuse experiment with actual existing Engine pool and standard allocator; no tuned backend/cache/graphics/platform certification.",
+  "implemented": [
+    "Real unchanged standard containers, literal sequence/pair oracles, fixed seed and512-live limit.",
+    "Ordered/shuffled insert, full scans/map hit-miss, erase/refill, two churn rounds, sparse occupancy/refill/clear;16 surviving anchor references.",
+    "Separate observed service-forwarding pass proves actual typed/byte Engine routing, address reuse, per-owner occupancy and raw backing culling.",
+    "Finite optimized sampler uses unwrapped public allocator types, fresh-owner cold and one within-process warm trace per process; raw samples/counts/quantiles and clock overhead/exclusions retained.",
+    "No production allocator/source/backend or growth policy changed; no necessary defect exposed."
+  ],
+  "checks": {
+    "debug_tests": 49,
+    "failed": 0,
+    "skipped": 0,
+    "debug_seconds": 15.05,
+    "new_matched_traces": 16,
+    "new_constructor_refusal_containers": 4,
+    "existing_focused_regressions": 48,
+    "release_timing_processes": 56,
+    "release_timed_traces": 112,
+    "release_observation_processes": 8,
+    "release_child_exits_zero": 64,
+    "samples_per_case_backend_temperature_phase": 7,
+    "summary_rows": 312,
+    "optimized_engine_source_translation_units": 91,
+    "normal_shared_engine_link_verified": true,
+    "format_verified": true,
+    "initial_compile_exit": 1,
+    "corrected_compile_exit": 0
+  },
+  "actual_measurements": {
+    "total_phase_latency_ns": [
+      {
+        "container": "list",
+        "order": "ordered",
+        "backend": "std",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 79148,
+        "p95_ns": 190519,
+        "max_ns": 190519
+      },
+      {
+        "container": "list",
+        "order": "ordered",
+        "backend": "std",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 70712,
+        "p95_ns": 196937,
+        "max_ns": 196937
+      },
+      {
+        "container": "list",
+        "order": "ordered",
+        "backend": "pool",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 2509454,
+        "p95_ns": 2933579,
+        "max_ns": 2933579
+      },
+      {
+        "container": "list",
+        "order": "ordered",
+        "backend": "pool",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 1088564,
+        "p95_ns": 1204726,
+        "max_ns": 1204726
+      },
+      {
+        "container": "list",
+        "order": "shuffled",
+        "backend": "std",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 82574,
+        "p95_ns": 89056,
+        "max_ns": 89056
+      },
+      {
+        "container": "list",
+        "order": "shuffled",
+        "backend": "std",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 75260,
+        "p95_ns": 75852,
+        "max_ns": 75852
+      },
+      {
+        "container": "list",
+        "order": "shuffled",
+        "backend": "pool",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 2548677,
+        "p95_ns": 3197830,
+        "max_ns": 3197830
+      },
+      {
+        "container": "list",
+        "order": "shuffled",
+        "backend": "pool",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 1185617,
+        "p95_ns": 1247422,
+        "max_ns": 1247422
+      },
+      {
+        "container": "map",
+        "order": "ordered",
+        "backend": "std",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 688647,
+        "p95_ns": 1317077,
+        "max_ns": 1317077
+      },
+      {
+        "container": "map",
+        "order": "ordered",
+        "backend": "std",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 570839,
+        "p95_ns": 1713455,
+        "max_ns": 1713455
+      },
+      {
+        "container": "map",
+        "order": "ordered",
+        "backend": "pool",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 3165432,
+        "p95_ns": 3846038,
+        "max_ns": 3846038
+      },
+      {
+        "container": "map",
+        "order": "ordered",
+        "backend": "pool",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 1660475,
+        "p95_ns": 1899824,
+        "max_ns": 1899824
+      },
+      {
+        "container": "map",
+        "order": "shuffled",
+        "backend": "std",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 677968,
+        "p95_ns": 1009868,
+        "max_ns": 1009868
+      },
+      {
+        "container": "map",
+        "order": "shuffled",
+        "backend": "std",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 621580,
+        "p95_ns": 967631,
+        "max_ns": 967631
+      },
+      {
+        "container": "map",
+        "order": "shuffled",
+        "backend": "pool",
+        "temperature": "cold",
+        "count": 7,
+        "p50_ns": 3392599,
+        "p95_ns": 4266291,
+        "max_ns": 4266291
+      },
+      {
+        "container": "map",
+        "order": "shuffled",
+        "backend": "pool",
+        "temperature": "warm",
+        "count": 7,
+        "p50_ns": 1849040,
+        "p95_ns": 2257443,
+        "max_ns": 2257443
+      }
+    ],
+    "allocator_calls_returns_constructs_destroys_per_trace": 1776,
+    "engine_returned_address_reuses_per_trace": 1256,
+    "engine_first_refill_reuses_of_256": 248,
+    "standard_address_reuses": {
+      "list_ordered": 1263,
+      "other_cases": 1264
+    },
+    "engine_byte_backing_owner_creations_per_fresh_trace": 8,
+    "engine_slots_per_owner": 65,
+    "engine_total_capacity": 520,
+    "full_live": 512,
+    "sparse_live": 16,
+    "sparse_live_per_owner": 2,
+    "node_size_alignment_bytes": {
+      "list": [
+        24,
+        8
+      ],
+      "map": [
+        48,
+        8
+      ]
+    },
+    "retained_byte_backing_bytes": {
+      "list": 12528,
+      "map": 25064
+    },
+    "typed_slot_capacity_bytes": {
+      "list": 12480,
+      "map": 24960
+    },
+    "typed_metadata_full": {
+      "live_records": 522,
+      "spare_nodes": 2564,
+      "bank_capacity_entries": 3078,
+      "calculated_bank_payload_bytes": 57456
+    },
+    "typed_metadata_after_cull": {
+      "live_records": 0,
+      "spare_nodes": 3078,
+      "bank_capacity_entries": 3094,
+      "calculated_bank_payload_bytes": 57712
+    },
+    "metadata_resource_requests": null,
+    "metadata_resource_total_bytes": null,
+    "recorded_byte_backing_bytes_after_explicit_cull": 0,
+    "clock_pairs": {
+      "processes": 56,
+      "probes_per_process": 32,
+      "process_p50_min_ns": 20,
+      "process_p50_max_ns": 40,
+      "max_ns": 150
+    },
+    "detailed_observations": "build/world-u9-logs/facts.json"
+  },
+  "evidence": [
+    "build/world-u9-logs/preflight.json",
+    "build/world-u9-logs/source-review.json",
+    "build/world-u9-logs/commands.jsonl",
+    "build/world-u9-logs/debug-build.log",
+    "build/world-u9-logs/debug-build-fixed.log",
+    "build/world-u9-logs/correctness.log",
+    "build/world-u9-logs/correctness.xml",
+    "build/world-u9-logs/release-configure.log",
+    "build/world-u9-logs/release-build.log",
+    "build/world-u9-logs/ownership.json",
+    "build/world-u9-logs/format-check.exit",
+    "build/world-u9-logs/measurements/plan.json",
+    "build/world-u9-logs/measurements/commands.jsonl",
+    "build/world-u9-logs/measurements/observations.json",
+    "build/world-u9-logs/measurements/samples.jsonl",
+    "build/world-u9-logs/measurements/summary.json",
+    "build/world-u9-logs/facts.json",
+    "build/world-u9-logs/preservation.json",
+    "build/world-u9-logs/tested-source-hashes.json",
+    "build/world-u9-logs/final-review.log"
+  ],
+  "limitations": [
+    "No metadata resource request/total-byte counter in normal shared State: fields null. Record/bank capacities are not allocation request counts. Bank payload bytes exclude nodes/buckets, State/control/tracker/directory, byte metadata, heap overhead and RSS.",
+    "Standard upstream heap/arena allocations and RSS unmeasured; standard allocator calls and address reuse are observed. Engine owner creation/lengths are actual single-threaded no-cull backing observations.",
+    "Single-host seven-sample descriptive phase timing; p95=max by nearest rank. Phase sum excludes startup, between-phase checks/output, setup outside phases and culling; clock and Engine service costs remain included. No affinity/frequency isolation/cache counters/locality benefit/tuned policy.",
+    "Timed warm trace is the second trace in each of seven separate processes, using the same retained process-local owners; cold means fresh process/zero Engine backing owners, not cold caches or new libc arena.",
+    "Debug ASan/UBSan retained with prior command-local detect_leaks=0 accommodation; leak checking unverified. CPU-only GNU/Linux C++23 shared source-tree evidence; installed/static/other libraries/platforms/graphics/input/fun remain unverified.",
+    "Explicit culling releases all recorded raw backing; empty metadata banks remain cached. No whole-process allocation-free or complete process-memory cleanup claim.",
+    "Initial harness compile failure is retained; corrected private helper and vendor system-include treatment preserve strict own-code warnings. No production allocator repair was needed."
+  ],
+  "next_action": "Command center reviews committed WORLD-U9 receipt and raw comparison including unavailable total metadata counters. Worker2 stops/idle after this unit; coordinator alone selects any follow-up/integration, existing publisher alone handles backup."
+}

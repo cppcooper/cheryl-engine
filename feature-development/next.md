@@ -1,3 +1,164 @@
+# WORLD-U9 — matched allocator slab/reuse comparison complete
+
+Fresh-session recovery starts at exact clean feat/tilemap
+`1115bc97a42d78555fce31e13a142df6196a7e95`. The local-revival-20261031 manifest,
+worker-2 branch/clone and task SHA256 match. The old thread is unavailable; its
+archived runtime and old receipts remain unchanged. U8's blocked benchmark
+receipt was not treated as completed acceptance: reviewed its actual reservation,
+release and rebind implementation first (build/world-u9-logs/source-review.json).
+No necessary producer defect was exposed. The existing allocators/backends and
+all production Engine headers/sources remain unchanged.
+
+Implemented a real private std::list/std::map consumer plus a finite measurement
+driver in projects/engine/tests/memory-consumer. Plain timed instantiations use
+exactly std::allocator or existing ObjectPoolAllocator. Separate observed
+forwarders call the same services and verify actual typed AND byte registry
+ownership. WINT-024 matches compact/detailed views. The standalone
+[WORLD-U9 receipt](continuation/WORLD-U9.json) is ready/checks_passed=true for this
+bounded CPU experiment, with the measurement limitations below.
+
+## Consumer and focused verification
+
+Fixed seed 0x9e3779b9, literal ordered/shuffled and survivor sequences, literal
+key/value pairs, 16 key groups, maximum 512 live records. Ordered/shuffled insert,
+complete traversal, map hit/miss queries, erase-half/refill, two churn rounds,
+sparse 16-live occupancy/refill and final clear share identical operations/content
+on both backends. Every checkpoint checks complete useful values/order and 16
+surviving anchor addresses. Seven stages scan 16 times; maps also query every
+present key and 32 absent keys 16 times per stage. Each trace allocates/returns 1776
+nodes and the observed passes verify 1776 construction/destruction pairs. Both
+container types also reject a throwing value while preserving the predecessor
+and permitting later insertion. No erased iterator/reference is used.
+
+One Debug ASan/UBSan CTest invocation passes 49/49, 0 failed/skipped, 15.05 s:
+48 existing memory/resource/block cases plus allocator_trace.matched (16 actual
+matched plain/observed traces and four container constructor-refusal cases).
+This includes U8 rebind laws, retained/extracted nodes, metadata refusal/release
+and over-aligned throwing-node regressions. The old 178-case campaign is not
+claimed rerun. detect_leaks=0:halt_on_error=1 and UBSAN halt_on_error remain the
+existing command-local tracing accommodation; leak checking remains unverified.
+
+Initial debug-build exits 1 on harness std::erase ADL collision and pinned GLM
+conversion diagnostics. Renamed the private helper and used the existing world
+consumer's SYSTEM treatment for vendor GLM, retaining strict own-code Werror.
+Corrected Debug build and separate Release build exit 0; formatter check exits 0.
+No allocator repair, warning relaxation or sanitizer change was needed.
+
+## Declared and executed measurement
+
+New clone-local build/world-u9-release is necessary because prior configurations
+are Debug. Normal shared Engine and consumer compile with -O3 -DNDEBUG, C++23;
+91 actual Engine source translation units are checked optimized. Dynamic
+imports/loader resolve the normal clone-local libcheryl-engine.so.4 and import
+its domain function. There is no copied implementation/MemoryCPU archive.
+The existing Debug configuration is reused incrementally; display outputs and
+configuration are untouched.
+
+measurements/plan.json is written before timing: eight observation processes,
+seven fresh processes per container/order/backend (56 timing processes), each
+with one cold and one subsequent within-process warm trace. All 64 child exits 0;
+112 timed traces and 312 per-phase/temperature summary rows have exactly 7 samples
+each. The serial driver holds ONE admitted shared native lock/resource scope for
+the batch, equivalent to a CTest selection. Its inherited-lock check refuses
+unwrapped invocation. The 600-second budget starts after lock admission; actual
+batch work is 0.488 s. No retry, download, installation or admission refusal occurred.
+Build/config/test wall logs include real queue waiting; live waits were retained.
+
+Cold Engine entry asserts zero backing owners; warm entry asserts retained
+owners. This is owner/process coldness, not cold caches or a fresh libc arena.
+Backend order alternates. Phase times include actual allocator locks, metadata
+reservation/lookup, shared owners, first rebound-pool acquisition, construction/
+destruction, useful reductions and the same map result checks. They exclude
+inter-phase literal/address validation, observed counters/snapshots, stdout,
+process/DSO startup and container/payload-adapter setup outside measured phases.
+Clear is measured; final empty-container teardown/culling is outside timing.
+Two steady_clock reads are included per phase. 32 clock-pair probes per process
+have process medians 20..40 ns, observed maximum 150 ns; no cost is subtracted.
+
+Values below are quantiles of each trace's SUM of measured phases, not end-to-end
+wall latency or sums of separate quantiles. Nearest rank gives p95=max at n=7.
+All raw ns samples and per-phase p50/p95/max/counts are saved, not just totals.
+
+| Container/order | Allocator | State | n | p50 µs | p95 µs | max µs |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| list/ordered | std | cold | 7 | 79.148 | 190.519 | 190.519 |
+| list/ordered | std | warm | 7 | 70.712 | 196.937 | 196.937 |
+| list/ordered | pool | cold | 7 | 2509.454 | 2933.579 | 2933.579 |
+| list/ordered | pool | warm | 7 | 1088.564 | 1204.726 | 1204.726 |
+| list/shuffled | std | cold | 7 | 82.574 | 89.056 | 89.056 |
+| list/shuffled | std | warm | 7 | 75.260 | 75.852 | 75.852 |
+| list/shuffled | pool | cold | 7 | 2548.677 | 3197.830 | 3197.830 |
+| list/shuffled | pool | warm | 7 | 1185.617 | 1247.422 | 1247.422 |
+| map/ordered | std | cold | 7 | 688.647 | 1317.077 | 1317.077 |
+| map/ordered | std | warm | 7 | 570.839 | 1713.455 | 1713.455 |
+| map/ordered | pool | cold | 7 | 3165.432 | 3846.038 | 3846.038 |
+| map/ordered | pool | warm | 7 | 1660.475 | 1899.824 | 1899.824 |
+| map/shuffled | std | cold | 7 | 677.968 | 1009.868 | 1009.868 |
+| map/shuffled | std | warm | 7 | 621.580 | 967.631 | 967.631 |
+| map/shuffled | pool | cold | 7 | 3392.599 | 4266.291 | 4266.291 |
+| map/shuffled | pool | warm | 7 | 1849.040 | 2257.443 | 2257.443 |
+
+The Engine pool has a slower median phase sum in every selected case/temperature.
+Warm reuse reduces its cold cost, but does not beat standard allocation here. The
+single-host short trace is descriptive: no isolated CPU/frequency/affinity,
+confidence interval, cache counters, cache-hit percentage or general workload
+speed/locality conclusion. No backend was tuned to change this result.
+
+## Actual storage observations and limits
+
+Each observed trace has 1776 allocator calls/returns and construction/destruction
+pairs for BOTH backends. Standard allocator address reuse is 1263 for ordered list
+and 1264 for the other cases; it also reuses freed addresses. These are allocator
+boundary calls/returned-address matches, not OS allocation counts or heap bytes.
+The Engine reuses 1256 returned addresses, including 248 of 256 allocations at the
+first refill. Address matches count allocation events, not unique addresses.
+
+All four fresh Engine observation processes record eight byte backing owners
+created during initial growth, with no later owner growth in churn/refill. Each
+typed backing owner has 65 slots (520 total), not an assumed 64. Full occupancy is
+512/520; sparse occupancy is 16/520, exactly 2 live anchors in each of 8 owners.
+Live nodes remain unmoved. List nodes are 24 bytes/alignment 8; map nodes 48/alignment 8.
+Retained raw byte backing is 12,528 bytes for list and 25,064 for map; typed slot
+capacity accounts for 12,480 and 24,960 bytes respectively. These registry lengths
+and owner creations describe this single-threaded no-cull trace's actual backing
+requests, not malloc/OS/RSS overhead. Standard upstream heap/arena ownership and
+actual malloc charges are not intercepted or measured.
+
+At full occupancy the typed State has 522 live metadata records, 2564 spare nodes
+and 3078 bank capacity entries. Bank payload capacity calculates to 57,456 bytes,
+later 57,712 bytes at 3094 entries; this is capacity*sizeof(node_handle wrapper),
+not total metadata allocation bytes. After explicit typed/byte culling, recorded
+raw backing/live slots/owner counts are 0, while 3078 spare nodes and 57,712 bytes
+of bank payload capacity remain cached. Pool/tracker/directory/control blocks,
+collection-node/bucket allocations, byte-domain metadata, heap overhead and RSS
+are additional. Normal new_delete_resource has no observation counter here:
+actual total metadata request/byte fields are explicitly null. No count is
+inferred from capacities, and U8's separate 5344-byte fixture is not reused as
+this trace's metadata measurement. No global interception/resource substitution.
+
+## Evidence, preservation and next action
+
+All configure/build/native work uses /mnt/projects/cheryl-features/scripts/build
+from this clone, one job and shared lock. Exact argv/cwd/env/immediate exits are
+in build/world-u9-logs/commands.jsonl and measurements/commands.jsonl. Key files:
+preflight.json, source-review.json, correctness.xml/log, ownership.json/log,
+measurements/plan.json, observations.json, samples.jsonl, summary.json, every
+raw child log/exit, facts.json, preservation.json and tested-source-hashes.json.
+The complete evidence is bounded below 8 MiB. Failed first compile is retained.
+
+No sibling/protected source, dependency/ref/config/output, shared assignment or
+historical archive changed. No push/publication, integration, service, worker
+subagent or automatic next unit. CPU results do not establish graphical/input/
+visual/fun acceptance. Installed/static/other standard libraries/platforms,
+complete metadata/RSS charges, cache behavior and leak checking remain unverified.
+
+Exact next action: command center reviews this committed U9 receipt and raw
+comparison, including metadata observability limits. Retain the current backend
+without tuning in this unit. Worker 2 stops/idle; only the coordinator selects any
+follow-up or integration, and the existing publisher alone handles backup.
+
+---
+
 # WORLD-U8 — checked allocator repair; benchmark BLOCKED
 
 Starting EXACT clean reviewed feat/tilemap HEAD

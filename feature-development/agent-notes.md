@@ -1,13 +1,13 @@
 # World integration contracts and provenance
 
-WORLD-U8 is the current standalone continuation on exact clean reviewed U7
-`bb3a0421d4d6fdc7d1a609ada441a04282288b6c`. The manifest-bound committed U7 receipt
-hash and ten nonempty logs match; reviewed170 passing CPU names remain historical
-execution, not allocator conformance certification. This invocation implements the
-three specified boundary repairs and178 passing accumulated CPU cases. No timing
-was attempted; U8's full benchmark receipt is BLOCKED/false. WINT-019 corrects the
-old cross-type conclusion; WINT-022/023 record reservation and the bounded stop.
-Older receipts/archives are immutable; next.md owns exact evidence/next action.
+WORLD-U9 is the current fresh-session continuation from exact clean
+1115bc97a42d78555fce31e13a142df6196a7e95. Actual U8 source invariants were reviewed
+before use; its blocked benchmark receipt was not accepted as complete.
+49/49 Debug law/release/real-caller checks pass. 112 optimized cold/warm traces
+match useful results; eight 65-slot owners and 1256 returned-address reuses coexist
+with slower pool median phase sums in every selected case. Total metadata requests/
+bytes remain null; no cache gain is claimed. WINT-024 records the caller/method;
+next.md and WORLD-U9.json own actual evidence, limits and the idle handoff.
 
 WORLD-U1 is a new coordinator assignment after the completed finite queue. It
 starts at clean tilemap `edf710a79ef4fc59c7949f7bc78d9bf7d617e29a`, fetches only
@@ -22,7 +22,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–023 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–024 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records
@@ -1297,3 +1297,56 @@ WORLD-U8 receipt is therefore blocked/false despite passing repair checks. Next
 action is coordinator review of this source/evidence before any separately selected
 measurement assignment. Do not auto-resume, append jobs or silently mark the
 benchmark ready. Graphics/fun/leaks/packaging/platform/durability remain open.
+
+## WINT-024 — Compare the existing allocators with a matched finite trace
+
+The private memory-consumer trace links normal shared Cheryl::Engine and keeps
+std::list/std::map. Timed instantiations use exactly std::allocator or
+ObjectPoolAllocator, with no forwarding counter in their allocation path. Each
+fresh process performs one cold trace and one warm trace, clearing and destroying
+its container between them while retaining the Engine's ordinary shared pools.
+Cold Engine entry requires zero backing owners; warm entry requires retained
+owners. This is fresh owner storage, not a claim of empty hardware caches or a
+fresh libc heap. No production allocator, growth policy or container is changed.
+
+The caller expands literal local sequences/pairs into 16 independent key groups.
+Seed 0x9e3779b9 must reproduce the literal 32-entry shuffled permutation. The
+maximum is 512 live records; half erasure leaves 256, refill returns to 512,
+two bounded erase/refill rounds keep the same limit, sparse occupancy leaves
+16 anchor nodes, and final refill restores 512 before clear. Every checkpoint
+checks the complete list sequence or sorted map pairs and every anchor's value
+and address. Seven stages scan the entire container 16 times; map stages also
+query every present key and two guaranteed misses per group, 16 times. All useful
+reductions must match the independent literal oracle. Constructor refusal on
+both standard-container types preserves the old value/address and permits later
+insertion. Existing focused allocator law/release/aligned-node cases remain the
+producer regression owner.
+
+Separate Observed allocators forward all allocation/construction/destruction to
+the same actual standard or Engine service. A bounded address log counts each
+allocation whose numerical address appeared in an earlier valid return; this is
+not a count of unique addresses. Engine addresses must lie in both the actual
+rebound typed registry and shared byte registry. Erase/refill must reuse freed
+Engine addresses. Every trace requires 1776 allocation/return pairs and balanced
+construction/destruction. No erased reference is dereferenced. Untimed snapshots
+report each typed backing owner's capacity/live slots, actual byte owner counts
+and bytes, and the real metadata record/spare/bank sizes. Bank payload bytes are
+capacity times node-handle wrapper size, a capacity calculation; they exclude
+collection nodes, timestamp buckets, State, trackers, directory/control blocks,
+raw heap overhead and RSS. The normal explicit new_delete_resource exposes no
+request counter: total metadata requests/bytes remain null, not estimated. No
+resource substitution or global interception is used. After explicit typed and
+byte culling, recorded raw backing is zero; empty metadata capacity can remain.
+
+The finite driver writes its plan before any observed/timing invocation: eight
+observation processes plus seven fresh processes per container/order/backend
+(56 timing processes, 112 cold/warm traces), a 600-second admission budget and
+no retries. Shared lock waits remain live. Backend order alternates. Raw logs,
+immediate exits and per-phase samples are retained; nearest-rank p50/p95/max
+always includes actual count (seven; p95 therefore equals maximum). Per-process
+32 clock-pair probes show timer cost, without subtracting it. Phase sums exclude
+inter-phase validation and are not end-to-end latency. Engine bookkeeping and
+locks remain included; observations, oracle/address checks, output, process/DSO
+loading and facade/container setup outside the measured phases are excluded.
+No hardware counters, cache benefit, affinity isolation, tuned policy or broad
+platform/graphics/fun acceptance is claimed. next.md owns actual results/limits.

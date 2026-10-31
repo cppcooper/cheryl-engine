@@ -1,14 +1,14 @@
 # World integration decisions
 
-Current unit: standalone WORLD-U8 on exact clean reviewed U7 parent
-`bb3a0421d4d6fdc7d1a609ada441a04282288b6c`. Manifest receipt, selection and review
-hashes match. U7's170 passes/routing remain real but review found three allocator
-boundary defects. This checkpoint implements the related repair, with178/178
-accumulated Debug ASan/UBSan passes retaining ALL170 U7 names. WINT-019 is corrected;
-WINT-022/023 record metadata and scope. WORLD-U8 BENCHMARK remains BLOCKED: no
-optimized configuration, matched bounded benchmark trace or timing samples were
-implemented/executed in this repair-focused invocation. The standalone receipt is
-blocked/false; coordinator review is the next action, never automatic continuation.
+Current unit: WORLD-U9 completes the real matched allocator comparison on exact
+clean parent 1115bc97a42d78555fce31e13a142df6196a7e95. Source review leaves U8's
+producer repair unchanged. 49/49 focused Debug checks and 112 optimized cold/warm
+traces pass. The pool uses eight 65-slot owners and reuses 1256 returned addresses,
+but is slower by median measured phase sum in every case. Metadata request/total-byte counters
+remain unavailable; bank capacities and owner geometry are explicit. WINT-024
+records this bounded experiment; next.md owns commands/raw evidence/limits.
+U8's blocked receipt remains immutable historical evidence; no tuning or automatic
+follow-on is selected.
 
 WORLD-U1 implements a private combined CPU caller on exact candidate
 aca49bdbfc5ac8d1f736d78f9f4ad8f4f815b56d. Executed checks pass 90 shared-Engine,
@@ -260,3 +260,13 @@ blocked: no fair optimized samples, slab-fullness/reuse trace or tuning column i
 claimed. This trades completion of the selected measurement for a reviewed repair
 foundation. Confidence is high in178 executed CPU cases; timing/locality evidence
 is absent. Coordinator must review before selecting further work.
+
+## WINT-024 — Compare the existing allocators with a matched finite trace
+
+Keep std::list/std::map and the ordinary Engine pool unchanged. Use literal
+expectations, a fixed seed, 512 live elements, two churn rounds and sparse refill.
+Time the plain allocator types in fresh processes, then repeat within each
+process for warm reuse. Separate observed forwarding allocators prove Engine
+routing, occupancy and freed addresses. Report unavailable metadata request/byte
+totals explicitly. This costs a private consumer, without production API changes
+or tuning. Confidence is bounded by the executed evidence in next.md.
