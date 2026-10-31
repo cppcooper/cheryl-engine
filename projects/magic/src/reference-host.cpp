@@ -25,7 +25,7 @@ namespace Magic::Reference {
                 const auto& schema = catalog.operations[i];
                 if (schema.key.empty() || schema.key.size() > 64 || schema.max_quantity == 0 || schema.max_quantity > 1'000'000 ||
                     schema.max_duration_ticks > 8'640'000 || schema.max_coordinate_mm > 1'000'000 || schema.appearances > 3 ||
-                    static_cast<unsigned>(schema.primitive) >= primitive_count)
+                    schema.sound_kinds > 1 || static_cast<unsigned>(schema.primitive) >= primitive_count)
                     return false;
                 for (char c : schema.key)
                     if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-'))
@@ -46,7 +46,8 @@ namespace Magic::Reference {
                    l.disguises <= c.disguises && l.witnesses <= c.witnesses && l.max_instance <= c.max_instance && l.wards <= c.wards &&
                    l.restrictions <= c.restrictions && l.transmutations <= c.transmutations && l.creations <= c.creations &&
                    l.max_mechanic_instance <= c.max_mechanic_instance && l.remains <= c.remains && l.servants <= c.servants &&
-                   l.max_servant_instance <= c.max_servant_instance && l.max_slow_instance <= c.max_slow_instance;
+                   l.max_servant_instance <= c.max_servant_instance && l.max_slow_instance <= c.max_slow_instance && l.sounds <= c.sounds &&
+                   l.sound_listeners <= c.sound_listeners && l.max_sound_instance <= c.max_sound_instance;
         }
         const ActorView& actor(const Snapshot& world, ActorId id) {
             if (id.slot >= actor_capacity || id.generation == 0 || !world.actors[id.slot].present || world.actors[id.slot].id != id)
@@ -104,7 +105,7 @@ namespace Magic::Reference {
                 const auto& y = b.operations[i];
                 if (x.key != y.key || x.primitive != y.primitive || x.max_quantity != y.max_quantity ||
                     x.max_duration_ticks != y.max_duration_ticks || x.max_coordinate_mm != y.max_coordinate_mm ||
-                    x.appearances != y.appearances)
+                    x.appearances != y.appearances || x.sound_kinds != y.sound_kinds)
                     return false;
             }
             return true;
@@ -391,6 +392,13 @@ namespace Magic::Reference {
                 next.slow_plans[i].reset();
             }
         }
+        for (std::size_t i = 0; i < sound_capacity; ++i) {
+            meter.spend();
+            if (next.sounds.influences[i].instance && next.sounds.influences[i].listener == id) {
+                next.sounds.influences[i] = {};
+                next.sound_plans[i].reset();
+            }
+        }
         for (std::size_t i = 0; i < disguise_capacity; ++i) {
             meter.spend();
             auto& d = next.perception.disguises[i];
@@ -549,7 +557,14 @@ namespace Magic::Reference {
                     const auto bound = static_cast<std::int32_t>(schema.max_coordinate_mm);
                     return point.x >= -bound && point.x <= bound && point.y >= -bound && point.y <= bound;
                 };
-                if (std::holds_alternative<Interruption>(effect.payload)) {
+                if (auto sound = std::get_if<DecoySound>(&effect.payload)) {
+                    supported = effect.primitive == Primitive::Sound && effect.quantity == 0 && effect.duration_ticks == 0 &&
+                                sound->kind == SoundKind::Footsteps && (schema.sound_kinds & 1u) && sound->duration_ticks > 0 &&
+                                sound->duration_ticks <= schema.max_duration_ticks && point_valid(sound->offset) &&
+                                in_coordinates(sound->offset) &&
+                                (meaning.delivery == Delivery::Contact || meaning.delivery == Delivery::Burst ||
+                                 meaning.delivery == Delivery::ItemEvent);
+                } else if (std::holds_alternative<Interruption>(effect.payload)) {
                     supported = effect.primitive == Primitive::Interrupt && effect.quantity == 0 && effect.duration_ticks == 0 &&
                                 meaning.delivery == Delivery::Pending;
                 } else if (auto animation = std::get_if<Animation>(&effect.payload)) {
@@ -613,7 +628,8 @@ namespace Magic::Reference {
         const auto& m = plan->meaning();
         for (const auto& e : m.effects) {
             meter.spend(); // Count the added envelope scan, including legacy inscriptions.
-            if (e.primitive != Primitive::Heal && e.primitive != Primitive::Fire && e.primitive != Primitive::Slow)
+            if (e.primitive != Primitive::Heal && e.primitive != Primitive::Fire && e.primitive != Primitive::Slow &&
+                e.primitive != Primitive::Sound)
                 meter.fail(Error::UnsupportedEntry);
         }
         if (m.entry.kind != EntryKind::Engraved || m.entry.mode != CastingMode::Release || m.entry.trigger != Trigger::ItemTouch ||
@@ -736,8 +752,8 @@ namespace Magic::Reference {
         struct Writes {
             int health = 0;
             std::uint32_t quantity = 0;
-            bool slow = false;
-            std::size_t effect_index = 0;
+            bool slow = false, sound = false;
+            std::size_t effect_index = 0, sound_effect = 0;
         };
         std::array<Writes, actor_capacity> writes{};
         for (std::size_t e = 0; e < meaning.effects.size(); ++e) {
@@ -747,7 +763,12 @@ namespace Magic::Reference {
                 if (!selected[effect.binding][i])
                     continue;
                 auto& write = writes[i];
-                if (effect.primitive == Primitive::Slow) {
+                if (effect.primitive == Primitive::Sound) {
+                    if (write.sound)
+                        meter.fail(Error::Overlap);
+                    write.sound = true;
+                    write.sound_effect = e;
+                } else if (effect.primitive == Primitive::Slow) {
                     if (write.slow)
                         meter.fail(Error::Overlap);
                     write.slow = true;
@@ -781,6 +802,8 @@ namespace Magic::Reference {
                 static_cast<void>(damage(data.id, write.quantity, state, meter));
             if (write.slow)
                 add_slow(plan, write.effect_index, data.id, source, state, meter);
+            if (write.sound)
+                add_sound(plan, write.sound_effect, data.id, source, state, meter);
         }
     }
 
@@ -933,6 +956,11 @@ namespace Magic::Reference {
                     if (d.instance && d.until_tick <= target && (!due || d.until_tick < *due))
                         due = d.until_tick;
                 }
+                for (const auto& sound : next.sounds.influences) {
+                    meter.spend();
+                    if (sound.instance && sound.until_tick <= target && (!due || sound.until_tick < *due))
+                        due = sound.until_tick;
+                }
                 const auto mechanics_due = mechanic_due(next, target, meter);
                 if (mechanics_due && (!due || *mechanics_due < *due))
                     due = mechanics_due;
@@ -957,6 +985,13 @@ namespace Magic::Reference {
                     if (next.perception.disguises[i].instance && next.perception.disguises[i].until_tick <= *due) {
                         next.perception.disguises[i] = {};
                         next.disguise_plans[i].reset();
+                    }
+                }
+                for (std::size_t i = 0; i < sound_capacity; ++i) {
+                    meter.spend();
+                    if (next.sounds.influences[i].instance && next.sounds.influences[i].until_tick <= *due) {
+                        next.sounds.influences[i] = {};
+                        next.sound_plans[i].reset();
                     }
                 }
                 expire_mechanics(next, *due, meter);
@@ -1355,12 +1390,13 @@ namespace Magic::Reference {
         check_mechanics(state, meter);
         check_life(state, meter);
         check_slows(state, meter);
+        check_sounds(state, meter);
     }
     std::expected<Checkpoint, Failure> ReferenceHost::checkpoint() const {
         try {
             Meter meter(limits_);
             meter.spend(
-                220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0)
+                223 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 71 : 0)
             ); // bounded catalog metadata/key copy, in addition to fixed State overhead
             continuation(state_, tickets_issued_, meter);
             return Checkpoint(std::make_shared<const Checkpoint::Data>(Checkpoint::Data{state_, catalog_, limits_, tickets_issued_}));
@@ -1374,8 +1410,8 @@ namespace Magic::Reference {
             if (!checkpoint.data_)
                 meter.fail(Error::InvalidCheckpoint);
             const auto& data = *checkpoint.data_;
-            // Catalog is bounded (fourteen keys, at most64 bytes each); charge identity comparison before copying.
-            meter.spend(220 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 70 : 0));
+            // Catalog is bounded (fifteen keys, at most64 bytes each); charge identity comparison before copying.
+            meter.spend(223 + (catalog_.operations.size() > 3 ? (catalog_.operations.size() - 3) * 71 : 0));
             if (data.limits != limits_ || !same_catalog(data.catalog, catalog_))
                 meter.fail(Error::IncompatibleCheckpoint);
             continuation(data.state, data.tickets_issued, meter);
@@ -1396,6 +1432,8 @@ namespace Magic::Reference {
     case Error::value:                                                                                                                     \
         return #value
         switch (error) {
+            case Error::SoundLimit:
+                return "SoundLimit";
             case Error::MissingRemains:
                 return "MissingRemains";
             case Error::SpentRemains:

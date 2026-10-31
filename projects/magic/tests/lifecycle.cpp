@@ -169,7 +169,7 @@ int main() {
         c.operations.push_back(c.operations.back());
         refuses(R::ReferenceHost::create(c), R::Error::InvalidCatalog);
         c = game();
-        c.operations.back().primitive = static_cast<Primitive>(14);
+        c.operations.back().primitive = static_cast<Primitive>(15);
         refuses(R::ReferenceHost::create(c), R::Error::InvalidCatalog);
         check(!compile(animate(), c));
     });
@@ -634,10 +634,10 @@ int main() {
     });
     test("owned life projection exact300 work and one-short299", [] {
         R::HostLimits l;
-        l.work = 332;
+        l.work = 348;
         Fixture exact(l);
         check(take(exact.host->life()).remains[0].id == R::RemainsId{0, 1});
-        l.work = 331;
+        l.work = 347;
         Fixture shorted(l);
         auto before = shorted.host->snapshot();
         refuses(shorted.host->life(), R::Error::WorkLimit);
@@ -663,7 +663,7 @@ int main() {
             auto command = take(host->command_authority(owner, servant));
             auto before = host->snapshot();
             auto result = host->command_attack(command, target);
-            if (work == 358)
+            if (work == 374)
                 check(
                     result && (*result)->damage == R::DamageResolution{3, 0, 3} && host->snapshot().actors[target.slot].data.health == 47
                 );
@@ -674,11 +674,11 @@ int main() {
                 take(host->command_authority(owner, servant));
             }
         };
-        scenario(358);
-        scenario(357);
+        scenario(374);
+        scenario(373);
     });
     test("dispel exact1148 work and one-short1147 preserves instance payment", [] {
-        for (auto work : {1180u, 1179u}) {
+        for (auto work : {1196u, 1195u}) {
             R::HostLimits l;
             l.work = work;
             Fixture f(l);
@@ -688,9 +688,9 @@ int main() {
             ok(f.host->replace_catalog(c));
             auto p = take(compile(dispel(), c));
             R::Request request{f.caster, {}, {}, {}, {}, ref};
-            if (work == 1180) {
+            if (work == 1196) {
                 auto result = f.cast(p, request);
-                check(result->usage.work == 1180 && f.host->snapshot().actors[0].data.mana == 80);
+                check(result->usage.work == 1196 && f.host->snapshot().actors[0].data.mana == 80);
             } else
                 f.unchanged([&] { refuses(f.host->prepare(p, request), R::Error::WorkLimit); });
         }

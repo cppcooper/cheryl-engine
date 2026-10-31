@@ -31,6 +31,8 @@ namespace Magic {
         }
         std::string_view primitive_name(Primitive primitive) {
             switch (primitive) {
+                case Primitive::Sound:
+                    return "emit";
                 case Primitive::Heal:
                     return "heal";
                 case Primitive::Fire:
@@ -417,7 +419,28 @@ namespace Magic {
                 expect("{");
                 if (effect.language.text == "Common") {
                     const auto operation = take();
-                    if (operation.text == "interrupt") {
+                    if (operation.text == "emit") {
+                        effect.primitive = Primitive::Sound;
+                        effect.appearance = take();
+                        expect("at");
+                        expect("G0");
+                        expect("offset");
+                        effect.x = quantity();
+                        effect.y = quantity();
+                        expect("from");
+                        expect("this");
+                        expect("listener");
+                        expect("captured");
+                        expect("at");
+                        expect("activation");
+                        expect("for");
+                        effect.duration = quantity();
+                        expect("audible");
+                        expect("only");
+                        expect("to");
+                        expect("this");
+                        expect("listener");
+                    } else if (operation.text == "interrupt") {
                         effect.primitive = Primitive::Interrupt;
                         expect("bound");
                         expect("pending");
@@ -520,14 +543,14 @@ namespace Magic {
                     } else
                         fail(
                             Code::UnknownPhrase, operation.span,
-                            "Unknown Common operation; use heal, fire damage, multiply speed by, show, discern, ward absorb, forbid attack, relocate, shatter, transmute, create, animate, dispel or interrupt."
+                            "Unknown Common operation; use heal, fire damage, multiply speed by, show, discern, ward absorb, forbid attack, relocate, shatter, transmute, create, animate, dispel, interrupt or emit footsteps."
                         );
                     if (effect.primitive != Primitive::Disguise && effect.primitive != Primitive::Discern &&
                         effect.primitive != Primitive::Ward && effect.primitive != Primitive::Restrict &&
                         effect.primitive != Primitive::Relocate && effect.primitive != Primitive::Shatter &&
                         effect.primitive != Primitive::Transmute && effect.primitive != Primitive::Create &&
                         effect.primitive != Primitive::Animate && effect.primitive != Primitive::Dispel &&
-                        effect.primitive != Primitive::Interrupt) {
+                        effect.primitive != Primitive::Interrupt && effect.primitive != Primitive::Sound) {
                         effect.quantity = quantity();
                         if (effect.primitive == Primitive::Slow) {
                             expect("for");
@@ -598,7 +621,7 @@ namespace Magic {
                 spend(1);
                 if (schema.key.empty() || schema.key.size() > max_key || schema.max_quantity == 0 || schema.max_quantity > max_quantity ||
                     schema.max_duration_ticks > max_time || schema.max_coordinate_mm > max_quantity || schema.appearances > 3 ||
-                    static_cast<unsigned>(schema.primitive) >= primitive_count)
+                    schema.sound_kinds > 1 || static_cast<unsigned>(schema.primitive) >= primitive_count)
                     fail(
                         Code::InvalidCatalog, {},
                         "Catalog needs valid unique primitive schemas, 1..64-byte symbolic keys and bounded positive quantities."
@@ -892,7 +915,23 @@ namespace Magic {
                 effect.key = copy(operation.key, raw.span);
                 effect.binding = target;
                 const bool perception = raw.primitive == Primitive::Disguise || raw.primitive == Primitive::Discern;
-                if (raw.primitive == Primitive::Animate || raw.primitive == Primitive::Dispel || raw.primitive == Primitive::Interrupt) {
+                if (raw.primitive == Primitive::Sound) {
+                    if (raw.appearance.text != "footsteps")
+                        fail(Code::UnknownPhrase, raw.appearance.span, "Only registered footsteps are supported.");
+                    if (!(operation.sound_kinds & 1u))
+                        fail(Code::UnsupportedOperation, raw.appearance.span, "Current schema disables footsteps.");
+                    if ((meaning.entry.kind == EntryKind::Spoken && meaning.delivery != Delivery::Contact &&
+                         meaning.delivery != Delivery::Burst) ||
+                        (meaning.entry.kind == EntryKind::Engraved && meaning.delivery != Delivery::ItemEvent))
+                        fail(Code::UnsupportedCombination, raw.span, "Sound needs contact, burst listeners or an accepted item toucher.");
+                    effect.payload = DecoySound{
+                        SoundKind::Footsteps,
+                        {coordinate(raw.x, operation.max_coordinate_mm), coordinate(raw.y, operation.max_coordinate_mm)},
+                        value(raw.duration, Dimension::Time, true, operation.max_duration_ticks)
+                    };
+                } else if (
+                    raw.primitive == Primitive::Animate || raw.primitive == Primitive::Dispel || raw.primitive == Primitive::Interrupt
+                ) {
                     if (syntax.effects.size() != 1)
                         fail(Code::UnsupportedComposition, raw.span, "Animation, dispelling and interruption are standalone operations.");
                     if (meaning.entry.kind != EntryKind::Spoken || meaning.onset_ticks != 0 || meaning.bindings.size() != 1)
@@ -1005,7 +1044,9 @@ namespace Magic {
                 }
                 for (const auto& prior : meaning.effects) {
                     spend(1, raw.span);
-                    const bool same_field = (prior.primitive == Primitive::Slow) == (effect.primitive == Primitive::Slow);
+                    const bool same_field = (prior.primitive == Primitive::Sound || effect.primitive == Primitive::Sound)
+                                                ? prior.primitive == effect.primitive
+                                                : (prior.primitive == Primitive::Slow) == (effect.primitive == Primitive::Slow);
                     if (prior.binding == effect.binding && same_field)
                         fail(
                             Code::UnsupportedComposition, raw.span,
@@ -1013,7 +1054,8 @@ namespace Magic {
                         );
                 }
                 meaning.effects.push_back(std::move(effect));
-                const auto concept_rule = raw.primitive == Primitive::Interrupt   ? Rule::CommonInterrupt
+                const auto concept_rule = raw.primitive == Primitive::Sound       ? Rule::CommonSound
+                                          : raw.primitive == Primitive::Interrupt ? Rule::CommonInterrupt
                                           : raw.primitive == Primitive::Animate   ? Rule::CommonAnimate
                                           : raw.primitive == Primitive::Dispel    ? Rule::CommonDispel
                                           : raw.primitive == Primitive::Transmute ? Rule::CommonTransmute
@@ -1084,7 +1126,20 @@ namespace Magic {
                 append(output, "    on ");
                 append(output, meaning.bindings[effect.binding].name);
                 append(output, " bridge Common@1 { ");
-                if (std::holds_alternative<Interruption>(effect.payload)) {
+                if (auto sound = std::get_if<DecoySound>(&effect.payload)) {
+                    append(output, "emit footsteps at G0 offset ");
+                    auto signed_number = [&](std::int32_t coordinate) {
+                        if (coordinate < 0)
+                            append(output, "-");
+                        number(output, static_cast<std::uint64_t>(coordinate < 0 ? -static_cast<std::int64_t>(coordinate) : coordinate));
+                    };
+                    signed_number(sound->offset.x);
+                    append(output, " mm ");
+                    signed_number(sound->offset.y);
+                    append(output, " mm from this listener captured at activation for ");
+                    number(output, static_cast<std::uint64_t>(sound->duration_ticks) * 10);
+                    append(output, " ms audible only to this listener");
+                } else if (std::holds_alternative<Interruption>(effect.payload)) {
                     append(output, "interrupt bound pending action instant");
                 } else if (auto animation = std::get_if<Animation>(&effect.payload)) {
                     append(output, "animate bound remains for ");
@@ -1258,6 +1313,8 @@ namespace Magic {
 
     std::string_view rule_key(Rule rule) noexcept {
         switch (rule) {
+            case Rule::CommonSound:
+                return "common.sound@1";
             case Rule::CommonHeal:
                 return "common.heal@1";
             case Rule::CommonFire:

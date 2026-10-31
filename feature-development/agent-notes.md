@@ -1802,3 +1802,184 @@ refusal/lifetime/restore acceptance are complete. The standalone MAGIC-M9 receip
 is ready/true for coordinator review; stop and remain idle after the local
 checkpoint. No production Engine/AI/physics/graphics, platform/leak/allocator-fault,
 security, disk/process/cross-version durability or human fun acceptance is claimed.
+
+# MAGIC-M10 — selected caller and design before APIs
+
+Exact clean initial6981116f5addb774421bfa7e3550b093a2e5f8b8 / feat/magic,
+resumed saved thread01a193d7-0490-7501-8f62-289b0a73c2a2. The local-continuation-
+20261031-02 manifest binds worker-3/MAGIC-M10. Task/receipt digests match; actual
+M9 source and55 saved hashes /28 passing CTest records are inspected, alongside
+M6 perception and M8 real staged touch/pending behavior. This is a new bounded
+unit, not implicit acceptance of a ready label or new coordination authority.
+
+Small proposed ordinary caller, before dependent APIs (shortened error handling):
+
+```cpp
+auto rune = host.install(footsteps_and_heal, funder).value();
+auto touch = host.admit_touch(17, rune, listenerA).value();
+// Owner may move A before activation; the authored G0 offset is captured then.
+host.touch(touch).value();
+auto a = host.bind_listener(listenerA).value();
+auto b = host.bind_listener(listenerB).value();
+auto heard = host.hear(a).value();
+// At tick50: A at(2100,30), offset(-2000,0) -> footsteps at(100,30).
+// B hears none; A hp50->53; rune charge1->0 exactly once; physical objects/knowledge unchanged.
+```
+
+Proposed exact Common clause:
+`emit footsteps at G0 offset -2000 mm 0 mm from this listener captured at activation for 2000 ms audible only to this listener`.
+Use existing contact recipient, burst membership or accepted item toucher as
+listener. Explicit G0 offset avoids inventing facing/behind semantics; the
+resolved world point freezes at activation and never follows later movement.
+One registered Footsteps meaning and one appended operation/concept suffice.
+Sound may compose with scalar Heal/Fire/Slow through the existing together
+activation; duplicate sound writes to one listener in a single activation refuse.
+Standalone restrictions for other existing domains remain.
+
+Choose eight inline sound rows/retained plan handles, at most four distinct active
+listeners (all downward-only), checked monotonic instance horizon1m. Independent
+casts coexist even at the same point/kind; sample order is increasing instance,
+not free-slot order. Opaque incarnation/actor-generation ListenerRef authorizes
+only native sampling, not casting. Owned Hearing returns listener, sample tick
+and only that listener's perceived point/kind; no object, physics, sound asset,
+truth flag, provenance leak or automatic knowledge/witness is created. Trusted
+SoundSnapshot separately owns exact origin/instance/effect/lifetime metadata.
+
+Restore retains actual sound/pending/item plans, facts and identities but renews
+listener refs, tickets and touch events. Listener removal retires its exact sound
+rows; reused actor/sound slots cannot inherit old authority. A dead listener
+cannot sample until live again; sources survive caster/item departure until
+absolute expiry. No exact Sound dispelling is selected in this unit.
+
+Allocation: all new mutable records/scratch/results are fixed arrays/value fields;
+shared immutable owners are copied. Reuse the real staged host and existing
+allocation model for cold plans/outputs; no heap registry or Engine allocator
+migration. A neutral ActivationSource name with compatible SlowSource alias
+shares the same cast/item origin contract without making sound depend on Slow.
+Confidence high in ownership/isolation; medium in reversible offset/overlap/fixture
+policy. Core admission, isolation, authority, expiry, source lifetime, capacity,
+late refusal, event charge/fact atomicity and checkpoint renewal need executed
+native proof. No audio backend, new language pack or public Engine/AI/physics/
+graphics integration is selected. Stop after this unit; evidence is ignored M10.
+
+## M10-042 — typed meaning and composition
+
+DecoySound is a distinct typed payload with registered SoundKind::Footsteps,
+WorldPoint offset and duration ticks. Common says the offset's G0/world-mm frame,
+that it is relative to this listener at activation, and that only this listener
+hears it. There is no facing/behind assumption, audio asset path, loudness,
+propagation, physics emitter or arbitrary executable content. Fifteenth primitive
+Sound and twenty-first rule CommonSound are appended; prior ordinals stay stable.
+OperationSchema appends Footsteps bit0 (default1) after existing aggregate fields;
+0 disables admission and unknown bits refuse. Current key AND primitive, kind,
+offset/duration and resolved-point bounds are checked before adoption.
+
+Sound accepts the existing spoken willing contact (immediate), spoken burst
+(instant/delayed membership) and one-charge accepted-touch item route. It can
+share an activation with Heal/Fire/Slow. Sound occupies its own field; repeated
+sound writes on one declared binding refuse at compile time, overlapping selected
+bindings at runtime, and scalar health/Slow conflict rules stay intact. Other
+newer domains keep their standalone envelopes. Selection still resolves against
+one pre-activation world; no sequential VM or implicit target bridge is added.
+
+## M10-043 — owned listener perception, lifetime and bounds
+
+SoundSnapshot is trusted native-owner inspection, separate from normal Hearing.
+Each of eight inline rows records instance, exact listener generation, frozen
+capture anchor/resolved point, kind, onset/absolute expiry, original effect index,
+plan bytes and exact cast caster/action or item generation/touch fact. State
+retains the actual immutable plan. Four distinct active listeners is a separate
+caller-tightenable cap. Same-kind/same-point sounds from independent casts coexist;
+no oldest-entry eviction, implicit replacement, multiplication or sound merging.
+
+bind_listener issues an opaque current-incarnation/exact-generation native
+sampling capability. It grants no spell or item-event authority. hear rechecks
+that capability and a current living listener, then returns owned listener ID,
+current simulation tick and only their perceived kind/point values. It exposes
+neither other listeners' sounds nor source/hidden truth/witness records. Samples
+sort by monotonic instance through fixed eight-slot scratch, so reused slots do
+not reorder older sounds. Sampling is pure and produces no knowledge entries;
+old Hearing values remain dated observations after expiry, restore or destruction.
+
+The world point is captured from the listener's actual activation-time position
+plus authored G0 offset using checked int64 sums. World and live schema coordinate
+bounds are distinct refusals; later listener movement does not move the point.
+Absolute [onset, expiry) is enforced through the same staged clock/expiry loop,
+before same-tick pending activation. Exact listener removal/servant retirement
+clears those rows/handles; a reused actor slot never inherits them. Death blocks
+sampling but leaves the original expiry; trusted later health restoration permits
+sampling the same still-live contribution. Source caster/item departure does not
+erase an already active sound. No object subject is bound or created. Exact Sound
+dispelling remains unselected and refuses in the closed existing dispel grammar.
+
+## M10-044 — event composition, restoration and resources
+
+Accepted-touch engraving directly uses the real existing installation/prepayment,
+opaque admission, current schema/eligibility checks and candidate adoption. Touch
+captures the point when activation is accepted, then commits all scalar/sound
+writes, charge consumption and fact receipt together. A late capacity/work/
+coordinate refusal preserves the original charge, heal/damage, rows/counter and
+usable event. Delayed spoken work pays once at release and captures listeners'
+current points at activation; whole-advance failure restores earlier expiry and
+all preceding staged activations. No universal callback/event interpreter is added.
+
+ActivationSource gives neutral naming to the existing exact cast/item-origin value;
+SlowSource is a compatible alias, preserving old callers and M9 fields. Captured
+sound anchor is retained, so checkpoint validation recomputes the frozen point
+without silently recapturing a moved listener. Validation checks current schema,
+limits/version, generations, source fact/history, effect/kind/duration/point,
+unique instances/source-listener-effect tuples and distinct listener capacity.
+Restore retains actual sound/pending/engraved/scalar plans, issues a fresh owner
+incarnation and revokes old listener refs, tickets and touch events. Logical IDs
+and deliberate whole-world rewind remain distinct from renewed live authority.
+Changing the cast schema does not retroactively suppress an already heard active
+sound; it can refuse new casts/touches or capture of incompatible retained plans.
+
+Mutable records, samples and ordering scratch are fixed arrays/value fields;
+shared plan owners are retained rather than reconstructed. New data-heavy heap
+containers or an Engine allocator migration are unnecessary and are not claimed.
+Existing cold strings/control blocks/outcome/checkpoint allocation stays unchanged.
+The common logical State copy base324 becomes340 (eight rows/eight handles).
+Empty sound continuation adds24 units (eight rows, sixteen listener-count cells),
+and copying/comparing each catalog schema adds one mask-field unit. Thus empty
+three-schema checkpoint716 becomes759, without raising the16384 work ceiling.
+Type sizes and logical work exclude allocator metadata, separately owned plans,
+outputs/checkpoints and caller-retained capabilities; they are not heap/RSS/CPU
+or audio latency measurements. Native results and limits follow below.
+
+## M10 partial executable checkpoint — invocation boundary
+
+configure-01/build-01 succeed using existing GNU16.2.1/Linux Debug ASan+UBSan and
+one-job native wrapper. sound-01 executes29/30 cases successfully and the real
+spoken-plus-engraved caller passes. The failing combined horizon fixture reaches
+TimeLimit at tick200/max_tick200 before InstanceLimit. The test now isolates
+those independent horizons. Three additional cases cover positive per-listener
+burst points/provenance, cross-binding overlap atomicity and sampling work limits;
+33 sound cases are written. build-02 successfully compiles the complete private
+project with these changes. No corrected/additional sound case or full M10
+regression has yet executed. All initial failure evidence remains honest.
+
+Measured by sound-01: sound application459/one-short458 work; row136bytes,
+SoundSnapshot1104, Hearing128 and ReferenceHost12776 in this build. Other exact
+assertions (sample365/364, empty checkpoint759/758; existing life348/347,
+servant attack374/373, long-key dispel1196/1195, interruption388/387) are compiled
+but NOT claimed executed. Old unknown-primitive refusal moves14->15 because
+Sound occupies ordinal14; old literal case names remain intact.
+
+build-03, requested after correcting the directly relevant registry-count
+comment, remains queued in retained native session6545. A single later tool
+wait consumed roughly31 minutes and returned at23:11:40 UTC, near the invocation
+hour ceiling. No resource/quota/auth/network refusal or native immediate exit
+was observed for build-03. Do not cancel, resubmit or bypass its shared lock.
+Its log currently has the exact command but no fabricated exit. No executable
+logic changed after successful build-02; all final source/fixture hashes live in
+ignored M10/checkpoint-source-hashes.json and are not labelled fully tested.
+
+This is a useful implemented/partly executed local checkpoint, status partial,
+checks_passed false. The old M9 receipt/immutable plans are unchanged. Coordinator
+next drains the retained build, then runs the private30-entry CTest campaign
+through the exact wrapper, preserving warnings and command-local sanitizer
+accommodations. Review actual failures before completing selected acceptance.
+Sound core/ordinary caller and accepted touch behavior work in executed evidence;
+no final regression, graphics/audio/backend/human or durable-production acceptance
+is implied. Stop this unit after local checkpoint; no automatic next task.

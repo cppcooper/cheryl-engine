@@ -621,11 +621,11 @@ int main() {
     });
     test("checkpoint capture and restore work exact348 and one-short347", [] {
         HostLimits l;
-        l.work = 716; // Historical name retained; M9 inline copies +32 and empty Slow continuation +32 over M8.
+        l.work = 759; // Historical name retained; M10 copy +16, sound validation +24, and three schema-mask fields +3 over M9.
         Fixture exact(l);
         auto cp = take(exact.h->checkpoint());
         ok(exact.h->restore(cp));
-        l.work = 715;
+        l.work = 758;
         Fixture short_host(l);
         short_host.unchanged([&] { rejects(short_host.h->checkpoint(), Error::WorkLimit); });
     });

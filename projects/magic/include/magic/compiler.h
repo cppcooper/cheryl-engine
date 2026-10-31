@@ -75,9 +75,17 @@ namespace Magic {
         Create,
         Animate,
         Dispel,
-        Interrupt
+        Interrupt,
+        Sound
     };
-    inline constexpr std::size_t primitive_count = 14;
+    inline constexpr std::size_t primitive_count = 15;
+    enum class SoundKind : std::uint8_t { Footsteps };
+    struct DecoySound {
+        SoundKind kind = SoundKind::Footsteps;
+        WorldPoint offset; // G0 displacement from this listener, resolved and frozen at activation.
+        std::uint32_t duration_ticks = 0;
+        bool operator==(const DecoySound&) const = default;
+    };
     enum class Intent { Attack };
     struct Absorption {
         std::uint32_t capacity_dp = 0, duration_ticks = 0;
@@ -142,7 +150,8 @@ namespace Magic {
         Creation,
         Animation,
         Dispelling,
-        Interruption>;
+        Interruption,
+        DecoySound>;
     [[nodiscard]] std::string_view appearance_name(Appearance form) noexcept;
     enum class EntryKind { Spoken, Engraved };
     enum class CastingMode { Release };
@@ -231,13 +240,14 @@ namespace Magic {
         CommonCreate,
         CommonAnimate,
         CommonDispel,
-        CommonInterrupt
+        CommonInterrupt,
+        CommonSound
     };
     using RuleMask = std::uint32_t;
-    inline constexpr RuleMask all_rules = 1048575;
+    inline constexpr RuleMask all_rules = 2097151;
     [[nodiscard]] constexpr RuleMask rule_bit(Rule rule) noexcept {
         const auto index = static_cast<unsigned>(rule);
-        return index < 20 ? static_cast<RuleMask>(1u << index) : 0;
+        return index < 21 ? static_cast<RuleMask>(1u << index) : 0;
     }
     [[nodiscard]] std::string_view rule_key(Rule rule) noexcept;
     struct Provenance {
@@ -258,6 +268,7 @@ namespace Magic {
         std::uint32_t max_duration_ticks = 8'640'000;
         std::uint8_t appearances = 3;                // Registered forms: OpenArch bit0, StoneWall bit1; caller may disable either.
         std::uint32_t max_coordinate_mm = 1'000'000; // Absolute G0 payload coordinate; independently tightenable, including zero.
+        std::uint8_t sound_kinds = 1;                // Footsteps bit0. No asset name, loudness, audio backend or arbitrary callback.
     };
 
     struct Catalog {

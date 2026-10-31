@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "milestone_id": "MAGIC-M10",
+  "starting_head": "6981116f5addb774421bfa7e3550b093a2e5f8b8",
+  "branch": "feat/magic",
+  "thread_id": "01a193d7-0490-7501-8f62-289b0a73c2a2",
+  "task_sha256": "08ff39388bba0b9592ff0780aa80872421017d46b2747efa807b2f5859d86deb",
+  "manifest": "/mnt/projects/cheryl-features/coordination/assignments/local-continuation-20261031-02/manifest.json",
+  "status": "partial",
+  "checks_passed": false,
+  "implemented_contracts": [
+    "Typed DecoySound Footsteps, exact Common G0 offset captured at activation, contact/burst/accepted-touch route, scalar Heal/Fire/Slow composition.",
+    "Eight owned sound rows with real plans, original effect and exact cast/item provenance; four distinct active listeners, monotonic instance horizon and independent expiry.",
+    "Opaque incarnation/generation-bound ListenerRef; pure owned listener/kind/point/tick Hearing isolated from other listeners and physical truth/knowledge.",
+    "Atomic touch/scalar/sound/charge/fact adoption, whole-step expiry/refusal, source lifetime, listener retirement and checkpoint renewal; no Sound dispelling selected."
+  ],
+  "observed_verification": {
+    "configure_01_exit": 0,
+    "build_01_exit": 0,
+    "sound_01_exit": 8,
+    "initial_sound_cases_passed": 29,
+    "initial_sound_cases_failed": 1,
+    "ordinary_caller_passed": true,
+    "caller_values": "Spoken A footsteps(100,30), B none, expiry100/mana90; rune at100 captures(2300,40)+(-2000,0)=(300,40), hp53/mana70/charge0, restore revokes old listener/event authority, frozen point expires300; wall/truth/knowledge unchanged.",
+    "initial_failure": "Combined horizon fixture hit TimeLimit at tick200/max_tick200 before its InstanceLimit assertion; corrected to isolate horizons. Correction not yet executed.",
+    "build_02_exit": 0,
+    "final_sound_cases_written": 33,
+    "retained_prior_contract_cases": 343,
+    "prior_checks": "M9 source/evidence hashes inspected; no claim that its ready label establishes new M10 regression acceptance.",
+    "build_03": "Retained session6545 waits in shared native queue; no immediate exit or refusal received. Only relevant registry-count comment changed since build02; no executable logic changed.",
+    "unexecuted": [
+      "Corrected horizon case plus three added focused cases",
+      "Full accumulated 30-entry private Magic regression including existing Slow/servant/dispel/pending/item contracts"
+    ]
+  },
+  "measurements_observed": {
+    "sound_application_work": 459,
+    "sound_application_one_short": 458,
+    "sound_row_bytes": 136,
+    "sound_snapshot_bytes": 1104,
+    "hearing_bytes": 128,
+    "reference_host_bytes": 12776,
+    "fixed_copy_work": 340,
+    "sounds_cap": 8,
+    "active_listeners_cap": 4,
+    "instance_horizon": 1000000,
+    "measurement_limit": "Observed in sound-01 before test-only corrections; logical work/type sizes exclude heap/RSS/control blocks/retained outputs. Empty checkpoint759/758 and sample365/364 assertions are compiled but not yet executed."
+  },
+  "commands": [
+    {
+      "log": "feature-development/magic/logs/M10/build-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--target",
+        "magic_sound_checks",
+        "magic_sound_demo",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 0,
+      "state": "complete",
+      "elapsed_seconds_including_queue": 16.268
+    },
+    {
+      "log": "feature-development/magic/logs/M10/build-02.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 0,
+      "state": "complete",
+      "elapsed_seconds_including_queue": 70.824
+    },
+    {
+      "log": "feature-development/magic/logs/M10/build-03.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": null,
+      "state": "retained native queue session 6545; no completion or refusal observed",
+      "elapsed_seconds_including_queue": null
+    },
+    {
+      "log": "feature-development/magic/logs/M10/configure-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "-S",
+        "projects/magic",
+        "-B",
+        "projects/magic/build",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DMAGIC_SANITIZERS=ON"
+      ],
+      "exit_status": 0,
+      "state": "complete",
+      "elapsed_seconds_including_queue": 2.911
+    },
+    {
+      "log": "feature-development/magic/logs/M10/sound-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "ctest",
+        "--test-dir",
+        "projects/magic/build",
+        "-R",
+        "^magic_sound_(contracts|caller)$",
+        "--output-on-failure",
+        "-V",
+        "-j1"
+      ],
+      "exit_status": 8,
+      "state": "complete",
+      "elapsed_seconds_including_queue": 0.084
+    }
+  ],
+  "evidence": [
+    "feature-development/magic/logs/M10/predecessor-review.json",
+    "feature-development/magic/logs/M10/configure-01.log",
+    "feature-development/magic/logs/M10/build-01.log",
+    "feature-development/magic/logs/M10/sound-01.log",
+    "feature-development/magic/logs/M10/build-02.log",
+    "feature-development/magic/logs/M10/build-03.log",
+    "feature-development/magic/logs/M10/static-review.json",
+    "feature-development/magic/logs/M10/checkpoint-source-hashes.json"
+  ],
+  "limitations": [
+    "Partial executable acceptance: full selected regression and corrected/additional cases not run; checks_passed remains false.",
+    "Approximately31 minutes were consumed by one tool wait; near the invocation hour ceiling with the original native command still retained. No resource/quota/auth/network refusal was returned; no cancellation/resubmission/bypass performed.",
+    "Trusted GNU16.2.1/Linux headless Debug ASan+UBSan only; ASAN_OPTIONS=detect_leaks=0 and UBSAN_OPTIONS=halt_on_error=1 remain command-local.",
+    "No real audio/backend/assets, volume/occlusion/propagation/rhythm, human perception/fun or production Engine/AI/physics/graphics acceptance.",
+    "Fixed inline records and existing cold plan/output owners; no Engine allocator migration, fault injection, allocation-free or RSS claim.",
+    "Checkpoint is current-runtime owned memory with intentional rewind and fresh authority, not disk/process/crash/cross-version or external exactly-once durability.",
+    "Exact Sound dispelling is deliberately unsupported."
+  ],
+  "next_action": "Coordinator drains/polls the retained build session6545 (build-03.log), preserving its queue ownership. After a successful build, run ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --output-on-failure -V -j1 from this clone. Inspect and fix actual failures, then update this receipt only after all33 sound cases, caller and old343 contracts pass. No new unit, push or integration is selected."
+}

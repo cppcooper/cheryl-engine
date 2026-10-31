@@ -15,6 +15,7 @@ namespace Magic::Reference {
     inline constexpr std::size_t item_capacity = 8;
     inline constexpr std::size_t touch_capacity = 16;
     inline constexpr std::size_t slow_capacity = 16;
+    inline constexpr std::size_t sound_capacity = 8;
     inline constexpr std::size_t object_capacity = 4, disguise_capacity = 8, witness_capacity = 16;
     struct ObjectId {
         std::uint32_t slot = 0;
@@ -100,7 +101,8 @@ namespace Magic::Reference {
         ServantLimit,
         InvalidCapability,
         ForeignCapability,
-        MissingInfluence
+        MissingInfluence,
+        SoundLimit
     };
     struct Failure {
         Error code;
@@ -166,6 +168,13 @@ namespace Magic::Reference {
         bool operator==(const RemainsId&) const = default;
     };
     class ReferenceHost;
+    class ListenerRef {
+        std::shared_ptr<const void> owner_;
+        ActorId listener_;
+        friend class ReferenceHost;
+    public:
+        ListenerRef() = default;
+    };
     // Trusted-owner bound inputs, not authority to cast; restore revokes their incarnation.
     class InfluenceRef {
         std::shared_ptr<const void> owner_;
@@ -229,6 +238,8 @@ namespace Magic::Reference {
         std::size_t remains = 4, servants = 4;
         std::uint64_t max_servant_instance = 1'000'000;
         std::uint64_t max_slow_instance = 1'000'000;
+        std::size_t sounds = sound_capacity, sound_listeners = 4;
+        std::uint64_t max_sound_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
     struct ItemId {
@@ -236,12 +247,42 @@ namespace Magic::Reference {
         std::uint64_t generation = 0;
         bool operator==(const ItemId&) const = default;
     };
-    struct SlowSource {
+    struct ActivationSource {
         ActorId caster; // historical generation for spoken work; absent for item work
         std::uint64_t action = 0;
         std::optional<ItemId> item = {};
         std::uint64_t fact = 0;
-        bool operator==(const SlowSource&) const = default;
+        bool operator==(const ActivationSource&) const = default;
+    };
+    using SlowSource = ActivationSource;
+    struct SoundInfluence {
+        std::uint64_t instance = 0;
+        ActorId listener;
+        ActivationSource source;
+        std::size_t effect_index = 0;
+        SoundKind kind = SoundKind::Footsteps;
+        Point captured_anchor, point;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        std::size_t plan_bytes = 0;
+        bool operator==(const SoundInfluence&) const = default;
+    };
+    struct SoundSnapshot {
+        std::uint32_t version = 1;
+        std::array<SoundInfluence, sound_capacity> influences;
+        std::uint64_t instances_issued = 0;
+        bool operator==(const SoundSnapshot&) const = default;
+    };
+    struct HeardSound {
+        SoundKind kind = SoundKind::Footsteps;
+        Point point;
+        bool operator==(const HeardSound&) const = default;
+    };
+    struct Hearing {
+        ActorId listener;
+        std::uint64_t tick = 0;
+        std::array<HeardSound, sound_capacity> sounds;
+        std::size_t count = 0;
+        bool operator==(const Hearing&) const = default;
     };
     struct SlowInfluence {
         std::uint64_t instance = 0;
@@ -478,6 +519,8 @@ namespace Magic::Reference {
             std::array<PlanHandle, disguise_capacity> disguise_plans;
             SlowSnapshot slows;
             std::array<PlanHandle, slow_capacity> slow_plans;
+            SoundSnapshot sounds;
+            std::array<PlanHandle, sound_capacity> sound_plans;
         };
         struct Prepared {
             PlanHandle plan;
@@ -500,6 +543,10 @@ namespace Magic::Reference {
         void validate_lifecycle(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
         void check_life(const State& state, Meter& meter) const;
         void check_slows(const State& state, Meter& meter) const;
+        void check_sounds(const State& state, Meter& meter) const;
+        Point sound_point(const Effect& effect, Point anchor, Meter& meter) const;
+        void
+        add_sound(const PlanHandle& plan, std::size_t effect, ActorId listener, ActivationSource source, State& state, Meter& meter) const;
         void refresh_slow(State& state, ActorId actor, Meter& meter) const;
         void add_slow(const PlanHandle& plan, std::size_t effect, ActorId actor, SlowSource source, State& state, Meter& meter) const;
         void retire_actor(State& state, ActorId actor, Meter& meter) const;
@@ -565,6 +612,10 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_restriction(std::uint64_t instance, ActorId actor) const;
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_slow(std::uint64_t instance, ActorId actor) const;
         [[nodiscard]] std::expected<SlowSnapshot, Failure> slows() const;
+        // Trusted owner inspection and current-incarnation listener sampling, separate from cast/event authority.
+        [[nodiscard]] std::expected<SoundSnapshot, Failure> sounds() const;
+        [[nodiscard]] std::expected<ListenerRef, Failure> bind_listener(ActorId listener) const;
+        [[nodiscard]] std::expected<Hearing, Failure> hear(const ListenerRef& listener) const;
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

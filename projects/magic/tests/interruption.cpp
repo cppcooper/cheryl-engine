@@ -171,7 +171,7 @@ int main() {
         check(less.host->snapshot().actors[1].data.health == 46);
     });
     test("release exact340 work one-short339 preserves usable ticket and queue", [] {
-        for (auto work : {372u, 371u}) {
+        for (auto work : {388u, 387u}) {
             R::HostLimits l;
             l.work = work;
             Fixture f(l);
@@ -179,9 +179,9 @@ int main() {
             auto ref = take(f.host->bind_pending(1));
             auto ticket = take(f.host->prepare(f.stop, f.request(ref)));
             auto before = f.host->snapshot();
-            if (work == 372) {
+            if (work == 388) {
                 auto result = take(f.host->release(ticket));
-                check(result->usage.work == 372 && result->interrupted_action == 1);
+                check(result->usage.work == 388 && result->interrupted_action == 1);
             } else {
                 refuses(f.host->release(ticket), R::Error::WorkLimit);
                 check(f.host->snapshot() == before);
