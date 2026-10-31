@@ -1,81 +1,104 @@
-# Procedural-generation handoff after blocked PROCGEN-U16
+# PROCGEN-U17 partial: Engine-backed weather memory and bounded CPU updates
 
-U16 starts from exact clean aacfa6a55b2944068882b6c8ca4d39bc681a6ec0 on
-feat/procedural-generation. Actual committed U15 ready/true source/receipt/logs and
-the coordinator climate-runtime-predecessors review were checked. This is one
-standalone follow-up; older plans, receipts, archives and WORLD sources remain
-unchanged. No U17, new queue, integration or background service starts.
+Fresh-session recovery starts at exact clean
+`b1bc851778fee46fd97658a554de1cc30da2d9bf` on `feat/procedural-generation` in the
+same owned clone. The local-revival manifest owns this unit. The unavailable old
+thread/runtime remains archived; U16 is still **blocked/checks_passed=false**.
+No sibling repairs, integration, external boards, services or publication are used.
 
-Implemented/executed subset: an opt-in Release baseline caller uses actual U8
-terrain -> physical baseline -> U14 weather -> U15 regional owner -> bounded
-advance -> complete move adoption -> two overlapping regional reads with tick/
-sample age -> separately measured old/report/final-owner destruction. Production
-algorithms, replay versions, owned buffers and all old test names remain unchanged.
-No simplified substitute solver, optimizer, new allocator domain or worker thread.
+The useful implemented subset now builds actual Engine memory/object services.
+Opt-in `PROCGEN_ENGINE_MEMORY` links source-tree `Cheryl::MemoryCPU`: the existing
+Engine diagnostics, exceptions and logging implementations plus the exact pinned
+ctti/backward-cpp/spdlog closure. It must not be linked alongside another Engine
+implementation. Block storage includes pointer helpers instead of the graphics
+math umbrella. The default standalone configuration remains available.
 
-Observed GNU16.2.1/Linux Release baseline, strict warnings, no sanitizer/fast-math:
+DefaultAllocator and the class-slot ObjectPoolAllocator use primary allocator
+traits, explicit rebinding, generic subobject construction, count checks and
+retained checkout/return authority. PoolState owns its actual byte-manager facade.
+Native vector growth/copy/move, non-inline string, byte and typed map nodes,
+over-alignment, overflow, generic construction, constructor/duplicate refusals,
+post-facade growth, final lifetime and odd-substep ownership checks execute.
+Instance-free nonstandard traits helpers are removed; inspected in-repo callers
+already pass allocator instances. ObjectAllocator remains an independent legacy
+adapter and was not repaired. Final returns can allocate bookkeeping and retain
+Engine's report-and-terminate policy on failure; no OOM-safe return claim is made.
 
-| Case | Ticks / seconds per tick / substeps / scales | Cold candidate ms | Warm candidate p50 / p95 / max ms | Warm synchronous p95 ms |
-| --- | --- | --- | --- | --- |
-|32x32|1 /60 /4 /2|1.057329|.766715 /.829412 /.829412|.834662|
-|64x48|1 /120 /8 /2|5.195341|4.027616 /4.462149 /4.462149|4.466067|
-|128x128 stress|1 /1000 /64 /4|165.894619|not executed after50ms stop|not measured|
-|128x128 expensive admitted|2 /1000 /64 /4|277.497040|not executed after50ms stop|not measured|
+Actual Engine-backed water/flow/forcing outputs and fixed-shape scratch retain
+live allocation owners. A typed Reservation constructs the scratch owner, which
+outlives its local Pool facade/reservation. Scratch never aliases a published
+state. Regional advance borrows the immutable old weather for its first tick,
+then owns complete candidates, removing an immediately redundant deep copy.
+Original deep-copy checkpoint/state semantics, algorithms/versions, conservative
+work charges, conservation, replay, grouped/resume and refusal behavior remain.
 
-Cold is one fresh-owner update, not an OS-cache reset. Small/representative each
-have cold1,warmup1,warm3; stress/expensive have cold1 only. Twelve accepted evolving
-updates plus one genuine63-versus-required64 substep refusal execute; refusal
-.720178ms/197245 work preserves the prior state. Total update work105780281 within
-predeclared600M/30s bound, with40s runner watchdog. Full campaign499.622994ms is
-not one500ms update. Raw samples/setup/read/adoption/destruction and absent warm
-percentiles remain explicit. No observed update reaches500ms, but representative
-synchronous p95 misses2ms and stress misses50ms. No interactive profile or total
-regional cadence/admission is certified.
+Fresh measurements on the SAME U17 host (Ryzen 7 7840HS, GNU16.2.1, Linux7.2.11,
+glibc2.44, Release -O3, strict warnings, no unsafe FP flags/sanitizer):
 
-BLOCKER: the one wrapped pinned submodule retrieval exits1 with
-`Could not resolve host: github.com` for ctti/backward-cpp/spdlog. Git's own
-scheduled retry is retained in the complete log; no second invocation or sibling/
-protected-cache/system substitution follows. Actual Engine services were inspected:
-Manager/managed blocks for bytes and typed objects Pool/Reservation/Factory/
-Constructor for tracked class lifetimes. Existing allocator-traits/rebind/final/
-count/lifetime gaps remain uncorrected/unverified. No allocator/Engine source
-changes or actual allocation/copy/bookkeeping/reuse/high-water measurements occur.
-All production legacy buffers retain their original standard allocation; fixed
-benchmark setup/sample arrays add no heap adapter. Payload formulas are not RSS
-or measured allocation counts. This is a prerequisite-boundary stop, not acceptance.
+| Path | 32x32 warm candidate p50 / p95 ms | 64x48 warm candidate p50 / p95 ms |
+| --- | --- | --- |
+| Retained U16 binary, freshly run before edits | .681664 / .936311 | 3.513330 / 3.842795 |
+| Engine, original copy, fresh scratch | .633676 / .633776 | 3.318288 / 3.332234 |
+| Engine, original copy, retained scratch | .611023 / .612406 | 3.249860 / 3.260220 |
+| Engine, removed copy, retained scratch | .609341 / .613219 | 3.357661 / 3.367600 |
 
-Separate limitation: the optimized all-target predecessor build exits1 on existing
-traversal-tests.cpp maybe-uninitialized diagnostics under Werror. Warnings were not
-suppressed and unrelated tests were not rewritten. Focused Release baseline builds/
-runs0. Original failure logs remain. Existing Debug/UBSan cache is preserved;
-one accumulated161/161 CTest run passes,0 failures/skips:148 cases/48017 assertions,
-thirteen consumers/49 demonstrations. Conservation/thermal/forcing/grouped/resume/
-regions/snapshot/host/refusal contracts re-execute. Comment/context-label correction
-rebuild yields the identical timed binary, without another timing campaign.
+These are three warm samples, not tail certification or a demonstrated latency
+improvement from copy removal. Final retained synchronous p95 is .616275/3.373451ms.
+128x128 one/two-tick stress candidates take 132.864206/272.479269ms cold; warm
+samples remain absent after the 50ms repetition stop. No observed 500ms update is
+a universal bound. Same timed checksum14967335.747224323 and original per-update
+work hold across all five paths (including final non-retained scratch).
 
-Evidence: builds/procedural-generation/logs/u16/{commands.txt,exits.tsv,
-dependencies.log,build-release.log,build-baseline.log,baseline-raw.jsonl,
-context-before.json,context-after.json,context-deltas.json,timing-summary.json,
-build-debug.log,discovery-debug.json,ctest-debug.log,counts.json,
-binary-equivalence.json,current-source.json,preservation.json}, plus full build/
-flag manifests. Detailed contracts/evidence: CLIMATE-009 and PROCGEN-053..055 in
-matching decisions.md/agent-notes.md. Standalone execution receipt:
-[PROCGEN-U16.json](../../continuation/PROCGEN-U16.json), blocked/checks_passed=false.
-A successful baseline process or correctness suite cannot certify U16 runtime.
+At64x48, representative warm update checkouts fall16 ->8 ->4, with metadata-node
+allocation ranges63..64 ->23..26 ->3..6. Instrumented baseline/weather cell/face
+copy payload falls1,573,760 ->761,856 bytes; soil98,304 bytes remains. Retained
+scratch capacity is345,864 bytes. Final retained warm backing calls are1,0,0,
+so this is NOT allocation-free steady state. Complete final finite campaign
+backing peak6,930,720 bytes, metadata requested peak11,400 bytes and selected
+control requested peak3,912 bytes are process/service observations, not RSS,
+complete application memory or per-feature caps. Cold standard baseline/soil/
+report allocations and descriptor buffers remain outside allocation counters;
+copy counters cover specified payloads, not total memory traffic. No locality gain
+or isolated kernel/copy/metadata latency is claimed.
 
-Assumptions are reversible engineering choices: flat x-fast baseline, sparse
-finite samples, synchronous measurement, two small owned observations, cold meaning
-fresh owner. Confidence high in raw samples/preservation, medium in baseline
-usefulness, low in tail/platform inference. Existing typed APIs establish
-compatibility, not personal taste. Broader platforms/ASan/leaks/durability/GUI/fun/
-physics/forecast/public Engine gaps remain; no cache locality gains are claimed.
+`advance_runtime` admits one tick, width<=64,height<=48,cells<=3072,
+seconds/tick<=120,forcing scales<=2,at most8 substeps,1.5M work/update,4MiB logical
+candidate budget and512KiB retained scratch. A shared allowance admits at most4
+updates/6M work across regions; constructor requests clamp to those hard caps
+and remaining fields are private. Actual successful/refused solver work is charged.
+Exceptions publish nothing and require discarding the batch allowance. Two real
+32x32/64x48 profile calls pass; three128x128 calls refuse before Engine checkout.
+Final campaigns charge106,883,065 work within600M/30s, with40s process watchdog.
+The extra profile calls happen outside timed samples; all raw timings remain explicit.
+This is a synchronous CPU admission profile, not a certified gameplay cadence.
 
-Next concrete action AFTER coordinator/environment resolution: make exact pinned
-Engine dependencies available with working DNS; build the actual narrow CPU service
-link closure; correct/prove primary allocator_traits/container routing and typed
-object lifetime; instrument actual allocations/copies/bookkeeping and migrate the
-measured owner/scratch path. Optimize from that evidence and repeat the SAME bounded
-workloads, then implement/test interactive grid/tick/substep/forcing/total-work
-admission and fixed cadence. Resolve optimized predecessor warning diagnostics
-without weakening warnings. Remain idle now for coordinator review/publisher
-transport; no unchanged retrieval retry or next job is launched.
+Observed checks: Release selected54/54 before and54/54 after optimization;
+Engine-backed Debug/UBSan52/52; preserved default Debug/UBSan161/161. No failures
+or skips. Final oversized-allowance checks also pass Release/UBSan; the rebuilt
+timing binary is byte-identical, so no timing campaign is repeated. The initial source-level probe/access and Reservation sign-conversion
+errors are corrected. Existing allocation-denial fixtures move unchanged into a
+separate test translation unit to fix affected optimized mismatched-new-delete
+warnings; no warning suppression is added. Full optimized all-target/SDK/platform/
+ASan/leak verification is not claimed; U16's unrelated traversal warning remains
+historical unaccepted evidence, not silently repaired.
+
+Evidence: `builds/procedural-generation/logs/u17/commands.txt`, `exits.tsv`,
+`recovery.json`, `dependencies.json`, all configure/build/CTest logs,
+`before/`, `engine-initial/{no-reuse,reuse}/`, `engine-after/{no-reuse,reuse}/`,
+`comparison.json`, both configuration/compile/link manifests, `verification.json`
+`cap-review-binary-equivalence.json` and `preservation.json`. Raw host/cgroup snapshots report no new memory.events
+or CPU-throttling deltas during these timing campaigns. Detailed current choices:
+CLIMATE-009 and PROCGEN-053/054/056..058 in matching decision views.
+Standalone receipt: [PROCGEN-U17.json](../../continuation/PROCGEN-U17.json),
+**partial/checks_passed=false** for the complete runtime goal.
+
+Next bounded action for coordinator selection: implement one weather producer and
+bounded immutable endpoint slots over this admitted profile, with simulation-side
+pin/sample/retire tokens and once-only contiguous interval adoption. Prove late,
+full, stale and restore/reconfiguration cases and producer-side reclamation before
+claiming parallel publication or the2ms foreground target. Immutable baseline and
+remaining hot standard buffers, metadata-allocation failure and wider allocation
+adapters also need explicit scope/evidence. No background producer, interpolation,
+fixed cadence, endpoint backpressure, GUI/platform/forecast/fun acceptance or total
+reader-memory bound is implemented here. Stop after this unit; the existing
+publisher alone handles its checkpoint, with no automatic next milestone.

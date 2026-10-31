@@ -342,39 +342,36 @@ files intentionally change, leaving its layout/equations/charges intact. Ready
 receipt reports worker execution, pending coordinator review. This fourth unit
 ends the finite batch; no fifth job, integration or public extraction starts.
 
-## CLIMATE-009 — Measured predecessor runtime; interactive acceptance blocked (U16)
+## CLIMATE-009 — Engine subset measured; parallel runtime unfinished (U17)
 
-**User requirement; partial executed evidence.** The opt-in Release witness times
-the actual U15 regional advance, complete candidate, move adoption, two regional
-reads and old-state/report destruction. Small32x32 warm candidate p95=.829412ms;
-64x48 p95=4.462149ms;128x128/64-substep cold one/two-tick candidates take
-165.894619/277.497040ms. The representative synchronous path misses2ms and stress
-misses50ms. No500ms update occurs in these samples. No supported interactive
-profile/cadence, optimization or background publisher is implemented or certified.
-Confidence high in saved samples, low in portable latency or sparse-tail inference.
+**User requirement; partial executed evidence.** The same real terrain/weather/
+regional owner path now uses Engine buffers and retained scratch. Fresh U17 host
+baseline and both Engine variants execute under finite bounds. Final32x32/64x48
+warm candidate p95=.613219/3.367600ms (three samples); stress exceeds50ms and has
+no warm samples. Copy/checkouts improve, without a clear copy-removal latency gain.
+Parallel publication, fixed cadence and foreground2ms acceptance remain unfinished.
+U16 stays blocked/false; U17 is partial/false. Confidence high in counts, low in tails.
 
-## PROCGEN-053 — Finite real-owner baseline caller
+## PROCGEN-053 — Finite real-owner comparison witness
 
-**Engineering choice; implemented/executed.** Preserve flat x-fast production
-storage, algorithms and replay. One cold, one warmup and three warm samples are
-planned per admitted case, with30s/600M charged-update-work campaign bounds and a
-40s child watchdog. Stop a case's repetitions above50ms; retain every raw sample
-and report missing warm percentiles explicitly. Twelve evolving accepted updates
-and one genuine substep refusal execute. Fixed setup/sample arrays add no runtime
-heap domain. Tradeoff: a reproducible baseline, not statistical tail certification
-or a replacement engine-backed runtime. Exact allocation/copy counts are unmeasured.
+**Engineering choice; executed U16/U17.** Preserve workloads, algorithm versions,
+complete candidate/adoption/regional reads and separate destruction timers. U17
+freshly runs the retained proven U16 binary on its changed kernel, then compares
+Engine fresh/retained scratch before/after copy removal. Cold1,warmup1,warm3,
+600M/30s and40s watchdog remain; stop repetitions above50ms. Engine counters and
+specified copied payloads replace nulls; profile checks run outside samples.
+Tradeoff: sparse descriptive evidence, not tail certification or a substitute solver.
 
-## PROCGEN-054 — Required Engine boundary remains unverified
+## PROCGEN-054 — Actual Engine CPU memory closure proven in U17
 
-**User allocation direction; inspected, not implemented.** Actual Manager byte
-checkout/reuse, retained managed blocks and typed Pool/Reservation/Factory/
-Constructor are the selected services. Existing final allocator adapters and
-program traits specializations require correction and real container/domain tests
-before adoption. Pinned ctti/backward-cpp/spdlog retrieval exits1 with
-`Could not resolve host: github.com`; no independent retry or substitute domain
-follows. No allocator/header/Engine change or allocation-migration claim is made.
-Confidence high in the prerequisite boundary; service/container runtime proof,
-bookkeeping/copy instrumentation and optimization remain pending.
+**User allocation direction; executed subset.** Exact pinned dependencies now
+match source. Engine-owned MemoryCPU reuses existing diagnostics/exceptions/logging,
+without graphics or duplicate Engine implementation. DefaultAllocator and typed
+ObjectPoolAllocator use primary traits and retain live service authority; a typed
+Reservation owns the reusable workspace. Vector/string/map, typed node/lifetime
+and growth checks pass Release/UBSan. U16's DNS failure remains historical blocked
+evidence. ObjectAllocator, return-time metadata failure, full Engine/SDK and
+platform coverage remain limits. See PROCGEN-056 for the retained contract.
 
 ## PROCGEN-055 — Blocked standalone checkpoint
 
@@ -387,3 +384,34 @@ Receipt is blocked/false because correctness and baseline timings do not satisfy
 engine-backed interactive acceptance. Next action requires resolved pinned-dependency
 availability, then actual service/conformance/migration work and same-workload
 post-change measurements; no automatic follow-up is launched.
+
+## PROCGEN-056 — Retain checkout authority and use primary traits
+
+**Engineering choice; executed.** Byte allocator copies/rebinds retain a live
+Manager, and PoolState owns its byte-manager facade; no teardown singleton lookup
+is needed on the selected paths. Typed allocation accepts an explicit retained
+Pool context. Generic subobjects use ordinary C++ construction; T slots retain
+Constructor tracking. Count/zero/alignment, equality/copy selection, node routing,
+facade teardown and final destruction checks pass. Final metadata failure remains
+fatal under Engine policy, not recoverable allocation acceptance. Confidence high
+in the tested source-tree lifetimes, limited beyond them.
+
+## PROCGEN-057 — Reuse private scratch and remove the first regional weather copy
+
+**Engineering choice; executed.** One fixed-shape typed workspace retains eight
+Engine buffers without aliasing published results. Borrow the old immutable
+weather for the first tick, then own candidates. At64x48 warm checkouts16 ->8 ->4;
+metadata allocation ranges63..64 ->23..26 ->3..6; baseline/weather copied payload
+1,573,760 ->761,856 bytes. Retained scratch345,864 bytes; warm backing calls1,0,0.
+Tradeoff: retained capacity plus remaining output/metadata churn. Sparse elapsed
+samples show no clear copy-removal speedup. Confidence high in counters/equivalence.
+
+## PROCGEN-058 — Bounded synchronous admission and partial U17 checkpoint
+
+**Engineering choice; executed subset.** Admit one tick,<=64x48/3072 cells,
+<=120s/tick,<=2 scales,<=8 substeps and1.5M work/update. Clamp private allowance state to<=4 updates/6M work
+across regions; preserve old state on refusal. Real32x32/64x48 calls pass and128x128
+profiles refuse before Engine checkout. Release54/54 before/after, Engine UBSan
+52/52 and default UBSan161/161 pass. Receipt remains partial/false: parallel endpoint
+publication, cadence, interpolation and foreground acceptance need a new bounded
+proof. Confidence high in work admission; no latency/total-reader-memory guarantee.

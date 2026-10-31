@@ -1,7 +1,12 @@
-// Pre-migration U15 timing witness. Uses real production owners/solver and fixed
-// benchmark storage; no global allocator override or alternative weather solver.
+// Finite real-owner timing witness, with optional actual Engine buffers and
+// retained scratch. No global allocator override or alternative weather solver.
 #include "regional-checks.h"
 #include "moisture-checks.h"
+#include "runtime-admission.h"
+#ifdef PROCGEN_ENGINE_MEMORY
+#include <core/resources/objects/object-reservation.hpp>
+#include <core/logging/process-lifetime.h>
+#endif
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -25,9 +30,16 @@ namespace {
         Index w, h, seconds, ticks, scales;
         bool refused;
     };
+    struct Metrics {
+        std::uint64_t checkout_calls = 0, checkout_bytes = 0;
+        std::uint64_t backing_calls = 0, backing_bytes = 0, metadata_calls = 0, metadata_bytes = 0, control_calls = 0, control_bytes = 0;
+        std::uint64_t copied_baseline = 0, copied_weather = 0, copied_soil = 0;
+        std::size_t retained_scratch = 0, engine_backing_live = 0, engine_metadata_live = 0;
+    };
     struct Sample {
         double update, thread_cpu, adopt, read, destroy_old, destroy_report, age;
         Index work, tick, substeps;
+        Metrics metrics{};
     };
     double elapsed(Clock::time_point begin, Clock::time_point end) {
         return std::chrono::duration<double, std::milli>(end - begin).count();
@@ -37,6 +49,25 @@ namespace {
         if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0)
             throw std::runtime_error("thread CPU timer unavailable");
         return static_cast<double>(ts.tv_sec) * 1000 + static_cast<double>(ts.tv_nsec) / 1e6;
+    }
+    void memory_snapshot(const char* phase, const Case& c) {
+#ifdef PROCGEN_ENGINE_MEMORY
+        auto& manager = CE::Memory::ExactManager::get();
+        const auto state = manager.diagnostics();
+        const auto backing = CE::Memory::Detail::backing_allocations.snapshot();
+        const auto metadata = CE::Memory::Detail::metadata_allocations.snapshot();
+        const auto controls = CE::Memory::Detail::control_allocations.snapshot();
+        std::cout << "{\"kind\":\"engine_memory\",\"case\":\"" << c.name << "\",\"phase\":\"" << phase
+                  << "\",\"domain\":" << state.domain << ",\"backing_bytes\":" << state.total_bytes
+                  << ",\"pooled_bytes\":" << state.available_bytes << ",\"backing_owners\":" << state.owners
+                  << ",\"split_ranges\":" << state.ranges << ",\"native_backing_peak_bytes\":" << backing.peak
+                  << ",\"metadata_live_requested_bytes\":" << metadata.live << ",\"metadata_peak_requested_bytes\":" << metadata.peak
+                  << ",\"selected_control_live_requested_bytes\":" << controls.live << ",\"selected_control_peak_requested_bytes\":" << controls.peak
+                  << "}\n";
+#else
+        static_cast<void>(phase);
+        static_cast<void>(c);
+#endif
     }
     RegionalState setup(const Case& c) {
         const Index cells = c.w * c.h;
@@ -104,16 +135,58 @@ namespace {
                   << ",\"report_destroy_ms\":" << s.destroy_report
                   << ",\"synchronous_total_ms\":" << s.update + s.adopt + s.read + s.destroy_old + s.destroy_report
                   << ",\"sample_age_ms\":" << s.age
-                  << ",\"update_only_ms\":null,\"measured_allocation_calls\":null,\"measured_copy_bytes\":null}\n";
+                  << ",\"copied_baseline_cell_bytes\":" << s.metrics.copied_baseline
+                  << ",\"copied_weather_cell_face_bytes\":" << s.metrics.copied_weather
+                  << ",\"copied_soil_cell_bytes\":" << s.metrics.copied_soil
+#ifdef PROCGEN_ENGINE_MEMORY
+                  << ",\"engine_checkout_calls\":" << s.metrics.checkout_calls << ",\"engine_checkout_requested_bytes\":" << s.metrics.checkout_bytes
+                  << ",\"engine_backing_calls\":" << s.metrics.backing_calls << ",\"engine_backing_bytes\":" << s.metrics.backing_bytes
+                  << ",\"engine_metadata_calls\":" << s.metrics.metadata_calls << ",\"engine_metadata_requested_bytes\":" << s.metrics.metadata_bytes
+                  << ",\"engine_control_calls\":" << s.metrics.control_calls << ",\"engine_control_requested_bytes\":" << s.metrics.control_bytes
+                  << ",\"retained_scratch_capacity_bytes\":" << s.metrics.retained_scratch
+                  << ",\"engine_backing_live_bytes\":" << s.metrics.engine_backing_live
+                  << ",\"engine_metadata_live_bytes\":" << s.metrics.engine_metadata_live
+#else
+                  << ",\"engine_backing_calls\":null,\"engine_metadata_calls\":null"
+#endif
+                  << "}\n";
     }
-    Sample step(std::optional<RegionalState>& current, const Case& c, Index& work, double& consumed) {
+    Sample step(std::optional<RegionalState>& current, const Case& c, Index& work, double& consumed, WeatherWorkspace* scratch) {
         auto budgets = regional_hard_limits;
         budgets.work = std::min(budgets.work, total_work_limit - work);
+        const auto copied_baseline = CopyMetrics::baseline_bytes, copied_weather = CopyMetrics::weather_bytes, copied_soil = CopyMetrics::soil_bytes;
+#ifdef PROCGEN_ENGINE_MEMORY
+        const auto checkout_calls = CE::Memory::Detail::byte_checkout_calls.load();
+        const auto checkout_bytes = CE::Memory::Detail::byte_checkout_requested_bytes.load();
+        const auto backing = CE::Memory::Detail::backing_allocations.snapshot();
+        const auto metadata = CE::Memory::Detail::metadata_allocations.snapshot();
+        const auto controls = CE::Memory::Detail::control_allocations.snapshot();
+#endif
         const auto cpu = cpu_ms();
         const auto begin = Clock::now();
-        auto next = advance_regional(*current, c.ticks, budgets);
+        auto next = scratch ? advance_regional(*current, c.ticks, budgets, *scratch) : advance_regional(*current, c.ticks, budgets);
         const auto end = Clock::now();
         const auto end_cpu = cpu_ms();
+        Metrics metrics;
+        metrics.copied_baseline = CopyMetrics::baseline_bytes - copied_baseline;
+        metrics.copied_weather = CopyMetrics::weather_bytes - copied_weather;
+        metrics.copied_soil = CopyMetrics::soil_bytes - copied_soil;
+        metrics.retained_scratch = scratch ? scratch->retained_bytes() : 0;
+#ifdef PROCGEN_ENGINE_MEMORY
+        metrics.checkout_calls = CE::Memory::Detail::byte_checkout_calls.load() - checkout_calls;
+        metrics.checkout_bytes = CE::Memory::Detail::byte_checkout_requested_bytes.load() - checkout_bytes;
+        const auto after_backing = CE::Memory::Detail::backing_allocations.snapshot();
+        const auto after_metadata = CE::Memory::Detail::metadata_allocations.snapshot();
+        const auto after_controls = CE::Memory::Detail::control_allocations.snapshot();
+        metrics.backing_calls = after_backing.calls - backing.calls;
+        metrics.backing_bytes = after_backing.bytes - backing.bytes;
+        metrics.metadata_calls = after_metadata.calls - metadata.calls;
+        metrics.metadata_bytes = after_metadata.bytes - metadata.bytes;
+        metrics.control_calls = after_controls.calls - controls.calls;
+        metrics.control_bytes = after_controls.bytes - controls.bytes;
+        metrics.engine_backing_live = after_backing.live;
+        metrics.engine_metadata_live = after_metadata.live;
+#endif
         if (!next)
             throw std::runtime_error(
                 "admitted baseline case refused: regional reason=" + std::to_string(static_cast<int>(next.error().reason))
@@ -169,6 +242,7 @@ namespace {
         const auto report = Clock::now();
         next = std::unexpected(RegionalFailure{FailureKind::invalid_input, RegionalReason::weather, 0, {}});
         result.destroy_report = elapsed(report, Clock::now());
+        result.metrics = metrics;
         return result;
     }
     void summary(const Case& c, const char* phase, std::span<const Sample> samples, bool complete) {
@@ -198,16 +272,29 @@ namespace {
         std::cout << "}\n";
     }
 }
-int main() {
+int main(int argc, char** argv) {
     try {
+#ifdef PROCGEN_ENGINE_MEMORY
+        CE::Logging::ProcessLifetime logging;
+#endif
+        const bool reuse = argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--reuse");
+        if (argc > 2 || (argc == 2 && !reuse && std::string_view(argv[1]) != "--no-reuse"))
+            throw std::runtime_error("expected --reuse or --no-reuse");
         std::cout << std::setprecision(17);
         std::cout
-            << "{\"kind\":\"plan\",\"backend\":\"unchanged_stdlib_U15\",\"timer\":\"steady_clock/CLOCK_THREAD_CPUTIME_ID\",\"cold\":1,\"warmup\":1,\"warm_samples\":3,\"wall_limit_s\":30,\"charged_work_limit\":600000000,\"stop_case_above_ms\":50,\"nearest_rank_percentiles\":true,\"allocation_and_copy_measurement\":\"unavailable: pinned CE dependencies missing; no global allocator interception\"}\n";
+            << "{\"kind\":\"plan\",\"backend\":\"see_backend_record\",\"timer\":\"steady_clock/CLOCK_THREAD_CPUTIME_ID\",\"cold\":1,\"warmup\":1,\"warm_samples\":3,\"wall_limit_s\":30,\"charged_work_limit\":600000000,\"stop_case_above_ms\":50,\"nearest_rank_percentiles\":true,\"allocation_and_copy_measurement\":\"instrumented CE backing, collection nodes, selected control blocks and copied cell payloads; excludes cold standard allocations and descriptor buffers\"}\n";
         constexpr std::array cases{
             Case{"small", 32, 32, 60, 1, 2, false}, Case{"representative", 64, 48, 120, 1, 2, false},
             Case{"stress", 128, 128, 1000, 1, 4, false}, Case{"expensive", 128, 128, 1000, 2, 4, false},
             Case{"refused", 128, 128, 1000, 1, 4, true}
         };
+        std::cout << "{\"kind\":\"backend\",\"engine\":"
+#ifdef PROCGEN_ENGINE_MEMORY
+                  << "true"
+#else
+                  << "false"
+#endif
+                  << ",\"reuse_scratch\":" << (reuse ? "true" : "false") << "}\n";
         const auto campaign = Clock::now();
         Index work = 0;
         double consumed = 0;
@@ -216,16 +303,63 @@ int main() {
                 throw std::runtime_error("bounded campaign exhausted");
             const auto setup_start = Clock::now();
             std::optional<RegionalState> current(setup(c));
+#ifdef PROCGEN_ENGINE_MEMORY
+            std::shared_ptr<WeatherWorkspace> scratch_owner;
+            {
+                CE::Memory::Objects::Pool<WeatherWorkspace> facade;
+                CE::Memory::Allocators::ObjectPoolAllocator<WeatherWorkspace> allocator(facade.release_context());
+                CE::Memory::Objects::Reservation<WeatherWorkspace> reservation(1, allocator);
+                scratch_owner = reservation.emplace(0);
+            }
+            WeatherWorkspace* owned_scratch = scratch_owner.get();
+#else
+            WeatherWorkspace scratch_value;
+            WeatherWorkspace* owned_scratch = &scratch_value;
+#endif
+            WeatherWorkspace* scratch = reuse ? owned_scratch : nullptr;
             const auto setup_end = Clock::now();
+            memory_snapshot("setup", c);
             const auto req = regional_requirements(current->weather()).value();
             std::cout << "{\"kind\":\"setup\",\"case\":\"" << c.name << "\",\"ms\":" << elapsed(setup_start, setup_end)
                       << ",\"modeled_state_bytes\":" << req.state_storage_bytes
                       << ",\"modeled_peak_candidate_bytes\":" << req.advance_storage_bytes << "}\n";
             const auto drain = [&]() {
+                const auto prior = checksum(*current);
+#ifdef PROCGEN_ENGINE_MEMORY
+                const auto checkouts = CE::Memory::Detail::byte_checkout_calls.load();
+#endif
+                RuntimeAllowance allowance{std::min(runtime_update_work, total_work_limit - work), 1};
+                auto admitted = advance_runtime(*current, 1, allowance, *owned_scratch);
+                const bool expected = c.w <= 64 && c.h <= 48 && c.seconds <= 120 && c.scales <= 2;
+                if (static_cast<bool>(admitted) != expected || checksum(*current) != prior)
+                    throw std::runtime_error("runtime profile admission/preservation mismatch");
+                if (admitted) {
+                    work += admitted->state.usage().work;
+                    static_cast<void>(ProcGenRegionalChecks::inspect(*current, *admitted));
+                } else {
+                    work += admitted.error().work;
+#ifdef PROCGEN_ENGINE_MEMORY
+                    if (CE::Memory::Detail::byte_checkout_calls.load() != checkouts)
+                        throw std::runtime_error("profile refusal allocated Engine storage");
+#endif
+                }
+                std::cout << "{\"kind\":\"runtime_profile\",\"case\":\"" << c.name
+                          << "\",\"accepted\":" << (admitted ? "true" : "false")
+                          << ",\"charged_work\":" << (admitted ? admitted->state.usage().work : admitted.error().work)
+                          << ",\"prior_state_preserved\":true}\n";
+                admitted = std::unexpected(RegionalFailure{FailureKind::invalid_input, RegionalReason::weather, 0, {}});
                 const auto begin = Clock::now();
                 current.reset();
                 const auto end = Clock::now();
                 std::cout << "{\"kind\":\"final_owner_drain\",\"case\":\"" << c.name << "\",\"ms\":" << elapsed(begin, end) << "}\n";
+                memory_snapshot("state_drained_workspace_retained", c);
+#ifdef PROCGEN_ENGINE_MEMORY
+                const auto workspace_begin = Clock::now();
+                scratch_owner.reset();
+                std::cout << "{\"kind\":\"workspace_drain\",\"case\":\"" << c.name
+                          << "\",\"ms\":" << elapsed(workspace_begin, Clock::now()) << "}\n";
+                memory_snapshot("state_and_workspace_drained", c);
+#endif
             };
             if (c.refused) {
                 auto budgets = regional_hard_limits;
@@ -244,7 +378,7 @@ int main() {
                 continue;
             }
             std::array<Sample, warm_samples> samples{};
-            const auto cold = step(current, c, work, consumed);
+            const auto cold = step(current, c, work, consumed, scratch);
             raw(c, "cold", 0, cold);
             summary(c, "cold", std::span(&cold, 1), true);
             if (cold.update > stop_update_ms) {
@@ -256,7 +390,7 @@ int main() {
             for (std::size_t i = 0; i < warmups; ++i) {
                 if (elapsed(campaign, Clock::now()) > total_seconds_limit * 1000)
                     throw std::runtime_error("wall allowance exhausted");
-                const auto warm = step(current, c, work, consumed);
+                const auto warm = step(current, c, work, consumed, scratch);
                 raw(c, "warmup", i, warm);
                 if (warm.update > stop_update_ms)
                     stopped = true;
@@ -266,7 +400,7 @@ int main() {
                 for (; count < warm_samples; ++count) {
                     if (elapsed(campaign, Clock::now()) > total_seconds_limit * 1000)
                         throw std::runtime_error("wall allowance exhausted");
-                    samples[count] = step(current, c, work, consumed);
+                    samples[count] = step(current, c, work, consumed, scratch);
                     raw(c, "warm", count, samples[count]);
                     if (samples[count].update > stop_update_ms) {
                         ++count;
@@ -278,6 +412,7 @@ int main() {
         }
         if (!std::isfinite(consumed) || consumed == 0)
             throw std::runtime_error("unconsumed output");
+        memory_snapshot("campaign_drained", cases.back());
         std::cout << "{\"kind\":\"finished\",\"charged_work\":" << work << ",\"wall_ms\":" << elapsed(campaign, Clock::now())
                   << ",\"checksum\":" << consumed << ",\"engine_backed_acceptance\":false}\n";
         return 0;

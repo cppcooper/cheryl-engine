@@ -1,5 +1,6 @@
 #pragma once
 #include <internals/exceptions.h>
+#include <templates/allocation-metrics.h>
 #include <unordered_map>
 #include <memory>
 #include <mutex>
@@ -20,7 +21,8 @@ namespace CE::Memory::Objects {
         class Context {
             enum class Phase { raw, constructing, live, destroying };
             std::mutex mutex_;
-            std::unordered_map<T*, Phase> slots_;
+            std::unordered_map<T*, Phase, std::hash<T*>, std::equal_to<T*>,
+                ::CE::Memory::Detail::MetadataAllocator<std::pair<T* const, Phase>>> slots_;
 
             Phase claim(T* pointer, bool construct) {
                 Phase previous = Phase::raw;
@@ -107,7 +109,7 @@ namespace CE::Memory::Objects {
         };
 
         [[nodiscard]] static std::shared_ptr<Context> release_context() {
-            static const auto context = std::make_shared<Context>();
+            static const auto context = std::allocate_shared<Context>(::CE::Memory::Detail::ControlAllocator<Context>{});
             return context;
         }
 

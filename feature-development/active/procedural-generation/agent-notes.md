@@ -2031,7 +2031,15 @@ source/log review and publisher transport. This fourth milestone ends the finite
 climate batch. Any later runtime profiling, storage integration, physical refinement
 or graphical observation needs a separately selected task; no fifth unit starts.
 
-## CLIMATE-009 — U16 actual runtime path and measured boundary
+## CLIMATE-009 — U16 baseline and U17 Engine runtime boundary
+
+Current U17 evidence supersedes the old dependency boundary for this unit only.
+The real Engine closure, byte/typed retained ownership and fixed-shape workspace
+now execute; regional candidate/adoption/read semantics stay synchronous. Fresh
+U17 standard baseline and Engine before/after data are in PROCGEN-057 below.
+Parallel producer/endpoint publication and foreground acceptance remain unfinished;
+U17 is partial/false, and U16 remains blocked/false. The following U16 account is
+historical evidence, not a completed prerequisite or the current source state.
 
 U16 starts from exact clean aacfa6a55b2944068882b6c8ca4d39bc681a6ec0,
 feat/procedural-generation. The committed U15 ready/true receipt, actual regional/
@@ -2065,6 +2073,12 @@ an inferred physical wall-clock timestamp. No new cadence, early interactive
 admission, background computation or publication protocol is implemented.
 
 ## PROCGEN-053 — Bounded baseline and exact workload meaning
+
+U17 retains the workload/sample/timer bounds below. Its opt-in actual Engine mode
+adds measured allocation/copy scopes, fixed-shape scratch, before/after variants
+and separately charged admission probes. The final campaigns include two extra
+positive profile calls and three early profile refusals outside timed samples.
+See PROCGEN-057/058 for current results; the following describes U16's baseline.
 
 Private opt-in `PROCGEN_RUNTIME_BASELINE` requires a separate POSIX optimized
 Release/RelWithDebInfo configuration with UBSan off. All prior Debug targets and
@@ -2147,7 +2161,13 @@ context/hash/printing/independent checking overhead lies outside update timers;
 runner total=.517428270s. Sparse samples/context variability do not establish
 portable p95/deadlines, leak freedom or production durability.
 
-## PROCGEN-054 — Engine allocation prerequisite, source-only inspection
+## PROCGEN-054 — Engine allocation prerequisite and U17 closure
+
+U17 now verifies the three exact pins, builds the narrow actual Engine CPU service
+closure and executes repaired byte/typed adapters with a real weather consumer.
+No source or history is imported from the map branch. See PROCGEN-056/057 below
+for current ownership and executed evidence. The following is the preserved U16
+starting inspection and DNS failure; its blocked receipt stays unchanged.
 
 At exact starting revision, inspect actual
 `projects/engine/include/cheryl/core/resources/memory/{mem-mgr.h,mem-mgr.hpp,
@@ -2247,3 +2267,242 @@ the measured owner/scratch path, then optimize/profile the SAME workloads and
 implement/test bounded interactive admission/cadence. Diagnose optimized old-test
 warnings separately without weakening warnings. This checkpoint launches no U17,
 queue/service,unchanged dependency retry or sibling integration; it remains idle.
+
+## PROCGEN-056 — U17 retained allocator/object-service boundary
+
+Fresh-session recovery in the SAME clone/branch starts at exact clean
+b1bc851778fee46fd97658a554de1cc30da2d9bf. Manifest
+`coordination/assignments/local-revival-20261031/manifest.json` records old thread,
+start mode and task digest. Native old resume has no rollout; archived runtime is
+preserved. No other coordinator, external board, subagent, push, sibling import,
+reset/rebase or protected checkout operation occurs. The current session owns
+this bounded U17. U16 remains blocked/checks_passed=false throughout.
+
+The coordinator's dependency log and actual submodule HEADs match:
+ctti081f283b7d183aaec8c6b0a8649dbd31ba151f45,
+backward51f0700452cf71c57d43c2d028277b24cde32502,
+spdlogdec6a3f61ffee56377f0d32d0d7d6397c899c854. No new retrieval is needed.
+`projects/engine/cmake/MemoryCPU.cmake` builds Engine diagnostics.cpp,
+exceptions.cpp and the existing three logging source files with ctti,
+Backward::Interface, spdlog and Threads. It is a source-tree-only static service
+closure, exclusive with Cheryl::Engine, not a public SDK/graphics target. The
+block header needs pointer helpers, not cemath's GLM/graphics umbrella. Existing
+logging compile-policy.h remains authoritative through NDEBUG; no severity mask
+or warnings are suppressed. Pinned spdlog configuration requires its C++23
+setting before add_subdirectory; the initial missing setting is corrected.
+
+DefaultAllocator no longer derives from std::allocator, is not final and has no
+program allocator_traits specialization. Its types/hooks let the primary traits
+rebind to CE, select copies, propagate moves/swaps and construct arbitrary U.
+Each instance retains a shared live Manager<2.0,4096>. Default instances share a
+per-T facade; converting copies retain the same facade; every facade uses the
+same shared byte domain. Same-type allocations therefore remain interchangeable.
+Explicit shared-facade selection rejects null. Copies/moves retain usable
+checkout authority, including moved-from allocators used for new vector growth.
+Zero checkout returns null; multiplication overflow throws bad_array_new_length
+before checkout; alignment follows T and actual Manager validation.
+
+ObjectPoolAllocator also uses primary traits and explicit node rebinding, retains
+PoolState and accepts a local facade's retained context. It remains a class-slot
+adapter, not a scalar/string allocator. Same-T contexts share bookkeeping;
+rebound class nodes select their corresponding typed state. Construct/destroy of
+T uses Constructor's retained tracker; a different U subobject uses ordinary
+construct_at/destroy_at. PoolState retains an actual ObjectMemoryManager<T>
+facade for later growth, rather than doing singleton lookup during allocation.
+Root owners retain byte release and construction contexts. Existing in-repo
+Factory/asset-manager traits calls already use instances; removed instance-free
+traits helpers are a source compatibility consequence for uninspected external
+callers. ObjectAllocator's older independent specialization remains outside this
+selected include/consumer path and is not described as fixed.
+
+A real retained caller (private procedural types, not a new public weather API):
+
+```cpp
+std::shared_ptr<WeatherWorkspace> owner;
+{
+    CE::Memory::Objects::Pool<WeatherWorkspace> facade;
+    CE::Memory::Allocators::ObjectPoolAllocator<WeatherWorkspace> allocator(facade.release_context());
+    CE::Memory::Objects::Reservation<WeatherWorkspace> slots(1, allocator);
+    owner = slots.emplace(0);
+}
+auto candidate = advance_regional(current, 1, limits, *owner);
+```
+
+Native positive/refusal checks use actual Engine registry ownership for growing/
+copying/moving vector, non-inline CE string, byte-allocated map and typed rebound
+map nodes; primary rebind types/copy selection, generic U construction, over-
+alignment, count overflow/zero, cross-facade return and backing reuse are checked.
+A weak facade expires only after its last byte allocator releases. Typed negative
+construction leaves the slot reserved, duplicate claim refuses, and exactly one
+final destructor runs after facade/reservation teardown. A typed allocator grows
+5000 slots after facade teardown and never initializes the corresponding byte
+singleton. Scratch survives local facade/reservation teardown; numerical fresh/
+retained results and transfers match for three evolving updates. Scratch pointers
+never alias published water/flow, scalar capacity persists, actual substep refusal
+preserves the prior owner, and an odd-substep output survives workspace release.
+
+Final deallocation is noexcept and follows Engine's existing report-and-terminate
+policy on invalid/failed metadata return. Returns still allocate transaction nodes;
+checkout-time return metadata admission and injected metadata-failure recovery are
+NOT implemented/proved. This is not allocation-free or OOM-safe destruction, nor a
+blanket universal allocator conformance/platform proof. Constructor/allocator
+initialization may allocate. No global new interception is introduced in the
+runtime. Existing negative-test overrides are only relocated, unchanged in scope,
+to allocation-denial.cpp for climate/moisture/regional test executables, preserving
+allocation-denial refusal checks and strict optimized warnings.
+
+## PROCGEN-057 — U17 measured scratch/copy optimization on the real pipeline
+
+WeatherState water/flow/forcing vectors and next-water/next-flow/targets/outgoing/
+east/north/potential/soil-evaporation scratch route through actual byte services
+when PROCGEN_ENGINE_MEMORY is enabled. A typed Reservation owns the workspace.
+Its first admitted shape stays fixed; different shapes require another workspace.
+Scratch is private to one exclusive caller and may be overwritten on refusal.
+Every published candidate owns independent output storage and retained byte
+facades; old results may outlive scratch. Existing default std-backed builds stay
+available through the same private CMake target and public usage definitions keep
+each configuration internally consistent. Do not mix opposite-option object ABIs.
+
+Initial measurements show both per-update scratch churn and a full WeatherState
+copy immediately preceding advance_weather's candidate construction. Retain the
+scratch capacity, then remove the regional first copy: borrow old.weather() for
+the first tick and emplace the complete owned next state; subsequent ticks borrow
+that candidate. Soil is still copied; original state remains immutable on every
+refusal. Original model/numerics/replay versions and conservative Work charges
+stay unchanged. Grouped/resume/conservation/host checks execute on both paths.
+
+Instrumentation delegates backing to real Engine Manager. Observed standard
+allocators count actual allocation requests for block transaction set/map nodes
+and construction tracking without recursively using that Manager. Backing shared
+owners, retained facades/contexts, typed roots and reservation claim control blocks
+use observed control allocators. Requested bytes/live/high-water counts exclude
+allocator arena overhead/RSS; independent atomic snapshots are not transactional
+under arbitrary concurrent users. Checkout counts/bytes are successful actual
+Manager calls. Copy counters count baseline-cell, weather-cell/face and explicit
+regional-soil payloads actually copied at their call sites; they exclude descriptor
+buffers, report copies and total machine traffic. Standard baseline/soil/report
+allocations, reservation partition vectors, logging and other cold allocations
+remain outside allocation counters. No global default resource/pool is replaced.
+
+Fresh U16 binary SHA2565aaa452d94cd0e897ab53fadf311be392c15db5ae081295363c13fda2e024f53
+matches the retained proven binary exactly and runs BEFORE edits. U17 kernel is
+Linux7.2.11-arch1-1, unlike historical U16's7.2.6. All fresh comparisons use the same
+Ryzen7 7840HS, GNU16.2.1, glibc2.44,16-CPU affinity and optimized strict C++23 path.
+Release has -O3 -DNDEBUG; no sanitizer, unsafe FP option or warning suppression.
+Service/algorithm native flags and link closure remain in the saved build manifests.
+
+| Path | 32x32 warm p50/p95 ms | 64x48 warm p50/p95 ms | 128x128 cold one/two-tick ms |
+| --- | --- | --- | --- |
+| Fresh U16 standard baseline | .681664/.936311 | 3.513330/3.842795 |157.852960/288.642239|
+| Engine initial, no reuse | .633676/.633776 |3.318288/3.332234|132.013233/265.090648|
+| Engine initial, reuse | .611023/.612406 |3.249860/3.260220|129.623924/257.301605|
+| Engine removed copy, no reuse |.633446/.672680|3.334588/3.395582|133.613750/263.930422|
+| Engine removed copy, reuse |.609341/.613219|3.357661/3.367600|132.864206/272.479269|
+
+Each small/representative row has cold1,warmup1,warm3, with sequential evolving
+owners. Stress has cold1 only after the50ms repetition stop; warm percentiles stay
+null. The resulting maxima/p95 labels are descriptive nearest-rank values of three
+samples, not tail/hard deadline evidence. Copy-removal elapsed times do NOT show
+a clear speedup; do not attribute the fresh-standard comparison to allocators alone.
+Final retained synchronous p95=.616275/3.373451ms, still missing the representative
+2ms reference. No observed500ms sample is a universal timing bound.
+
+At64x48, initial no-reuse/reuse/final reuse warm update checkouts are16/8/4;
+metadata allocation ranges63..64/23..26/3..6. Baseline payload copies fall1,130,496
+->565,248 bytes and weather cell/face copies443,264 ->196,608 bytes; soil98,304
+bytes stays. Combined baseline/weather saving811,904 bytes/update is measured
+payload, not a bandwidth/time estimate. Final scratch capacity345,864 bytes is
+retained independently of old/current results. Warm final backing calls1,0,0
+show actual reuse with remaining churn, not a zero-allocation steady-state claim.
+Selected control calls similarly1,0,0; later warmed samples avoid new backing and
+its control block while still allocating metadata nodes.
+
+Final reuse campaign backing peak6,930,720 bytes, metadata requested peak11,400
+and selected control requested peak3,912 include all finite workload setups, typed
+pool retention, diagnostic observers and final admission probes. They exclude much
+standard-owned state and are NOT an RSS/per-job/global cap. All endpoint readers
+remain caller-owned; no bound on arbitrarily retained old frames is provided.
+Old state, reports, final current owner and workspace destruction have separate raw
+timers. Independent inspection/checksum/printing and profile probes are outside
+candidate timers. The full finite campaign is not one weather update.
+
+All five timed checksums equal14967335.747224323, and corresponding timed Work,
+model ticks and substeps match. Actual pipeline remains terrain -> physical
+baseline -> weather -> regional owner -> bounded advance -> complete move adoption
+-> two overlapping owned regional reads with matching ticks/sample age. There is
+no substitute solver or unused timed path. No new memory.events or CPU throttling
+is recorded in observed owned/ancestor cgroup deltas during the timing campaigns;
+shared host frequency/load/cache differences and instrumentation overhead remain.
+
+## PROCGEN-058 — U17 work admission, verification and partial continuation
+
+`advance_runtime` selects a conservative synchronous CPU profile: one tick,
+width<=64,height<=48,cells<=3072,seconds/tick<=120,forcing scales<=2,<=8 substeps,
+1.5M work/update,4MiB logical candidate allowance and512KiB retained scratch.
+One caller shares <=4 updates/6M work across its regional batch; constructor
+requests clamp to those hard caps and remaining fields are private. Successful
+and refused solver charges consume the allowance. Conservative Work units are not CPU
+instructions. Profile refusals before the solver spend zero and perform no Engine
+checkout. Allocation/programming exceptions preserve the published old state but
+require discarding the batch allowance. This is not a wall-clock or reader-RSS cap.
+
+The final real consumer admits32x32 and64x48, preserves its input while inspecting
+the candidates, and rejects the three128x128 profile requests before Engine
+checkout. Direct128x128 stress still executes only in the separately declared
+finite witness, including the actual required64-versus-allowed63 substep refusal.
+Final runs have12 timed accepted updates plus2 profile updates,1 genuine substep
+refusal and3 early profile refusals;106,883,065 charged work within600M and observed
+campaign446.418187/457.351150ms within30s. Runner watchdog remains40s. No absent
+stress/warm or kernel-only latency is inferred.
+
+All native operations use scripts/build, one job, existing shared admission/lock,
+with live queued sessions retained. Initial configure exit1 is a missing spdlog
+C++ standard setting; first build exit1 includes protected probe access and a real
+Reservation sign-conversion issue. Correct the probe through the synchronized
+registry and cast the checked vector index. Subsequent affected optimized fixture
+builds exit1 on existing inline malloc/free replacement operators; move those
+existing overrides into a separate test translation unit. The full focused
+Release build then passes, with no diagnostics suppressed. These failure logs
+remain evidence, not hidden retries or successful verification.
+
+Executed acceptance of this subset:
+
+- Engine Release selected54/54 before and54/54 after copy removal, including
+  real memory/lifetime/refusal checks, four existing consumers, conservation,
+  replay/thermal/forcing, grouped/resume/regions/snapshots/host and both finite
+  runtime variants. Zero failures/skips.
+- Separate Engine Debug/UBSan52/52, same correctness/lifetime coverage without
+  timing targets. Project and actual Engine closure are instrumented; spdlog is
+  a separately compiled dependency. No ASan/leak claim.
+- Existing default Debug/UBSan configuration rebuilds incrementally and passes
+  all161 retained entries once, preserving the compatible non-Engine-buffer path.
+  No full optimized all-target or platform/installed SDK acceptance follows.
+- Final review hardens the batch allowance against oversized caller requests.
+  The affected Engine memory/admission test passes once more in Release and once
+  in UBSan. The rebuilt timing executable is byte-identical (SHA256
+  ddcb661950b8479cf64aec965e20eab9c653619362fdda23137d7df9903a6cf8), so the existing
+  measured runs remain valid without another timing campaign. These are targeted
+  changed-input checks, not a claim that every suite was repeated afterward.
+
+Evidence root: builds/procedural-generation/logs/u17. It contains commands.txt,
+immediate exits.tsv, configure/build/CTest logs including failures, recovery.json,
+exact dependency pins/log, source/flag/link manifests, before-provenance.json,
+before/, engine-initial/{no-reuse,reuse}/, engine-after/{no-reuse,reuse}/,
+comparison.json, verification.json, cap-review-binary-equivalence.json, final
+cap-review build/test logs and preservation.json. Older U16 evidence,
+receipt, immutable queues/task snapshots, root historical next.md and merged
+WORLD/feature archives remain unchanged. No changes to protected or sibling clones,
+refs, configuration, dependencies, outputs or caches are made.
+
+Continuation PROCGEN-U17 is partial/checks_passed=false for the complete runtime
+goal. The useful Engine allocation/lifetime/work-admission subset is executed;
+parallel producer/immutable publication, interpolation, fixed cadence, bounded
+pinned endpoint/retirement slots and simulation-side no-allocation/no-final-free
+acceptance remain unimplemented. One selected next proof should add that producer/
+endpoint protocol over this admitted profile, with late/full/stale/restore cases
+and once-only contiguous interval adoption. Return metadata failure, the older
+ObjectAllocator, remaining standard hot buffers and wider root Engine/platform
+coverage remain explicit limits. No further unit, recurring coordinator/service,
+publication or integration is launched. Confidence high in measured routing,
+lifetimes/counters and observed preservation, limited for latency portability and
+unexecuted asynchronous/platform/graphics/fun/physics acceptance.

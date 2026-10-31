@@ -1,4 +1,5 @@
 #pragma once
+#include "copy-metrics.h"
 
 #include "elevation.h"
 
@@ -140,6 +141,16 @@ namespace ProcGen {
         friend ClimateResult<ClimateBaseline>
         derive_climate(const Elevation&, std::span<const ClimateSurface>, ClimateRevision, const ClimateContext&, Index, CaveBudgets);
     public:
+        ClimateBaseline(const ClimateBaseline& other)
+        : descriptor_(other.descriptor_), cells_(other.cells_), measured_(other.measured_), usage_(other.usage_) {
+            CopyMetrics::baseline_bytes += cells_.size() * sizeof(ClimateCell);
+        }
+        ClimateBaseline(ClimateBaseline&&) noexcept = default;
+        ClimateBaseline& operator=(ClimateBaseline&&) noexcept = default;
+        ClimateBaseline& operator=(const ClimateBaseline& other) {
+            if (this != &other) *this = ClimateBaseline(other);
+            return *this;
+        }
         [[nodiscard]] const ClimateDescriptor& descriptor() const { return descriptor_; }
         [[nodiscard]] std::span<const ClimateCell> cells() const { return cells_; }
         [[nodiscard]] ClimateMeasurements measurements() const { return measured_; }

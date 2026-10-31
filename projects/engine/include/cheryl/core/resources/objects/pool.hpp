@@ -121,7 +121,7 @@ namespace CE::Memory::Objects {
         if (length > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             throw ::CE::Exceptions::bad_request(CE_HERE, "The requested object storage length cannot be represented.");
         }
-        auto& manager = ::CE::Memory::ObjectMemoryManager<T>::get();
+        auto& manager = *memory_;
         ::CE::Memory::HeapBlock b = manager.checkout_chunk(length * sizeof(T), alignof(T), ::CE::Memory::greedy);
         auto raw = static_cast<T*>(b.head.get());
 
@@ -140,7 +140,7 @@ namespace CE::Memory::Objects {
                 std::terminate();
             }
             byte_context->release_owned(b);
-        });
+        }, ::CE::Memory::Detail::ControlAllocator<T>{});
 
         return {block_root, block_root, b.alignment, len};
     }

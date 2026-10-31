@@ -17,13 +17,13 @@ namespace CE::Memory {
         /** Shared per-T collections retained independently of manager facades. */
         using State = typename ::CE::Memory::BlockManagement<T>::State;
         /** Reusable free-range collection, ordered by checkout suitability. */
-        using Pool = std::set<BlockType, ::CE::Memory::Ordering::PoolOrder<T>>;
+        using Pool = std::set<BlockType, ::CE::Memory::Ordering::PoolOrder<T>, Detail::MetadataAllocator<BlockType>>;
         /** Address-ordered partition sections for split backing allocations. */
-        using Sections = std::set<BlockType, ::CE::Memory::Ordering::HeadOrder<T>>;
+        using Sections = std::set<BlockType, ::CE::Memory::Ordering::HeadOrder<T>, Detail::MetadataAllocator<BlockType>>;
         /** Complete backing-allocation metadata retaining underlying owners. */
-        using Registry = std::set<BlockType, ::CE::Memory::Ordering::RegistryOrder<T>>;
+        using Registry = std::set<BlockType, ::CE::Memory::Ordering::RegistryOrder<T>, Detail::MetadataAllocator<BlockType>>;
         /** Timestamps of complete free owners; not timestamps for every free section. */
-        using Stale = std::unordered_map<BlockType, typename ::CE::Memory::BlockManagement<T>::tpoint>;
+        using Stale = std::unordered_map<BlockType, typename ::CE::Memory::BlockManagement<T>::tpoint, std::hash<BlockType>, std::equal_to<BlockType>, Detail::MetadataAllocator<std::pair<const BlockType, typename ::CE::Memory::BlockManagement<T>::tpoint>>>;
 
     private:
         struct Locked {

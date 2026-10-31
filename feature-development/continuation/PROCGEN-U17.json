@@ -1,0 +1,193 @@
+{
+  "milestone_id": "PROCGEN-U17",
+  "starting_head": "b1bc851778fee46fd97658a554de1cc30da2d9bf",
+  "status": "partial",
+  "checks_passed": false,
+  "recovery": "Explicit local fresh-session recovery in the same owned clone/branch; unavailable predecessor rollout/runtime archived; U16 remains blocked/false.",
+  "implemented_contracts": [
+    "Actual engine-owned source-tree CPU memory/object service closure using exact existing ctti/backward-cpp/spdlog pins, without graphics, fake dependencies or sibling repairs.",
+    "Primary traits for DefaultAllocator and class-slot ObjectPoolAllocator; real vector/string/map/node routing, retained byte/typed checkout authority, count/alignment/copy/generic construction and final lifetime checks.",
+    "Actual Engine weather water/flow/forcing outputs and typed retained fixed-shape scratch; published outputs remain independent and can outlive facade/reservation/workspace.",
+    "Regional first tick borrows immutable old weather, eliminating the immediately redundant WeatherState copy; complete candidate adoption, regional reads/tick age, conservation/replay/grouped/resume/refusals retained.",
+    "Explicit synchronous one-tick grid/time/scales/substep/work/storage admission, shared regional batch allowance and early refusal before Engine checkout.",
+    "Five same-U17-host real pipeline witnesses: fresh retained U16 standard binary; Engine no-reuse/reuse before and after measured copy removal. Actual allocation/copy scopes and missing stress warm samples retained."
+  ],
+  "executed_checks": {
+    "ctest-engine-initial": {
+      "exit": 0,
+      "passed": 54,
+      "failures": 0,
+      "named_assertion_cases": 47,
+      "assertions": 3912,
+      "log": "builds/procedural-generation/logs/u17/ctest-engine-initial.log"
+    },
+    "ctest-engine-after": {
+      "exit": 0,
+      "passed": 54,
+      "failures": 0,
+      "named_assertion_cases": 47,
+      "assertions": 3912,
+      "log": "builds/procedural-generation/logs/u17/ctest-engine-after.log"
+    },
+    "ctest-engine-ubsan": {
+      "exit": 0,
+      "passed": 52,
+      "failures": 0,
+      "named_assertion_cases": 47,
+      "assertions": 3912,
+      "log": "builds/procedural-generation/logs/u17/ctest-engine-ubsan.log"
+    },
+    "ctest-legacy-debug": {
+      "exit": 0,
+      "passed": 161,
+      "failures": 0,
+      "named_assertion_cases": 148,
+      "assertions": 48017,
+      "log": "builds/procedural-generation/logs/u17/ctest-legacy-debug.log"
+    },
+    "ctest-cap-release": {
+      "exit": 0,
+      "passed": 1,
+      "failures": 0,
+      "log": "builds/procedural-generation/logs/u17/ctest-cap-release.log",
+      "scope": "Oversized batch allowance clamps and updated memory/lifetime test"
+    },
+    "ctest-cap-ubsan": {
+      "exit": 0,
+      "passed": 1,
+      "failures": 0,
+      "log": "builds/procedural-generation/logs/u17/ctest-cap-ubsan.log",
+      "scope": "Oversized batch allowance clamps and updated memory/lifetime test"
+    }
+  },
+  "measured_profile": {
+    "host": "Ryzen7 7840HS; GNU16.2.1 C++23 Release -O3 -DNDEBUG; Linux7.2.11-arch1-1/glibc2.44;16 admitted logical CPUs",
+    "timer": "steady_clock/CLOCK_THREAD_CPUTIME_ID; complete candidate, adoption/read and destruction phases; inspection/printing/profile probes outside candidate timers",
+    "sampling": "cold1,warmup1,warm3; stop repetitions after candidate>50ms; 128x128 stress cold1 only; no stress warm percentiles",
+    "bounds": {
+      "campaign_work": 600000000,
+      "campaign_seconds": 30,
+      "native_watchdog_seconds": 40
+    },
+    "comparison": "builds/procedural-generation/logs/u17/comparison.json",
+    "representative_64x48": {
+      "warm_samples": 3,
+      "initial_no_reuse_checkouts": 16,
+      "initial_reuse_checkouts": 8,
+      "final_reuse_checkouts": 4,
+      "initial_no_reuse_metadata_calls": [
+        64,
+        63,
+        63
+      ],
+      "initial_reuse_metadata_calls": [
+        24,
+        26,
+        23
+      ],
+      "final_reuse_metadata_calls": [
+        4,
+        6,
+        3
+      ],
+      "baseline_weather_copied_bytes_before": 1573760,
+      "baseline_weather_copied_bytes_after": 761856,
+      "soil_copied_bytes": 98304,
+      "retained_scratch_capacity_bytes": 345864,
+      "final_backing_calls": [
+        1,
+        0,
+        0
+      ],
+      "fresh_standard_candidate_p95_ms": 3.842795,
+      "initial_engine_reuse_candidate_p95_ms": 3.26022,
+      "final_engine_reuse_candidate_p95_ms": 3.3676,
+      "final_synchronous_p95_ms": 3.373451,
+      "clear_copy_removal_latency_improvement": false
+    },
+    "small_32x32": {
+      "final_candidate_p50_ms": 0.609341,
+      "final_candidate_p95_ms": 0.613219,
+      "final_synchronous_p95_ms": 0.616275
+    },
+    "stress_128x128": {
+      "cold_one_tick_candidate_ms": 132.864206,
+      "cold_two_tick_candidate_ms": 272.479269,
+      "warm_samples": 0,
+      "warm_percentiles": null
+    },
+    "final_campaign": {
+      "timed_accepted_updates": 12,
+      "additional_profile_updates": 2,
+      "real_substep_refusals": 1,
+      "early_profile_refusals": 3,
+      "charged_work": 106883065,
+      "no_reuse_wall_ms": 446.418187,
+      "reuse_wall_ms": 457.35115,
+      "same_timed_checksum_all_paths": 14967335.747224323
+    },
+    "process_service_high_water": {
+      "backing_bytes": 6930720,
+      "metadata_requested_bytes": 11400,
+      "selected_control_requested_bytes": 3912,
+      "is_rss_or_total_application_memory": false
+    },
+    "admission": {
+      "width": 64,
+      "height": 48,
+      "cells": 3072,
+      "ticks_per_update": 1,
+      "model_seconds_per_tick": 120,
+      "forcing_scales": 2,
+      "substeps_per_tick": 8,
+      "work_per_update": 1500000,
+      "batch_updates": 4,
+      "batch_work": 6000000,
+      "logical_candidate_bytes": 4194304,
+      "retained_scratch_bytes": 524288,
+      "certified_interactive_profile": false,
+      "private_clamped_allowance": true
+    },
+    "parallel_publication": false,
+    "new_observed_timing_memory_events": false,
+    "new_observed_timing_cpu_throttling": false,
+    "cap_review_timing_binary_identical": true
+  },
+  "evidence": [
+    "builds/procedural-generation/logs/u17/commands.txt",
+    "builds/procedural-generation/logs/u17/exits.tsv",
+    "builds/procedural-generation/logs/u17/recovery.json",
+    "builds/procedural-generation/logs/u17/dependencies.json",
+    "builds/procedural-generation/logs/u17/coordinator-dependencies.log",
+    "builds/procedural-generation/logs/u17/before-provenance.json",
+    "builds/procedural-generation/logs/u17/before/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u17/engine-initial/no-reuse/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u17/engine-initial/reuse/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u17/engine-after/no-reuse/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u17/engine-after/reuse/baseline-raw.jsonl",
+    "builds/procedural-generation/logs/u17/comparison.json",
+    "builds/procedural-generation/logs/u17/verification.json",
+    "builds/procedural-generation/logs/u17/preservation.json",
+    "builds/procedural-generation/logs/u17/source-manifest.json",
+    "builds/procedural-generation/logs/u17/release-compile_commands.json",
+    "builds/procedural-generation/logs/u17/ubsan-compile_commands.json",
+    "builds/procedural-generation/logs/u17/ctest-engine-initial.log",
+    "builds/procedural-generation/logs/u17/ctest-engine-after.log",
+    "builds/procedural-generation/logs/u17/ctest-engine-ubsan.log",
+    "builds/procedural-generation/logs/u17/ctest-legacy-debug.log",
+    "builds/procedural-generation/logs/u17/cap-review-binary-equivalence.json",
+    "builds/procedural-generation/logs/u17/ctest-cap-release.log",
+    "builds/procedural-generation/logs/u17/ctest-cap-ubsan.log",
+    "builds/procedural-generation/logs/u17/build-cap-release.log",
+    "builds/procedural-generation/logs/u17/build-cap-ubsan.log"
+  ],
+  "limitations": [
+    "Partial complete runtime acceptance: no parallel producer, immutable endpoint pin/retire publication, fixed cadence, interpolation or late/full/stale/restore protocol; no foreground2ms guarantee.",
+    "Sparse warm3 samples are descriptive. Copy/checkouts improve but measured elapsed samples show no clear copy-removal speedup. Stress exceeds50ms and is refused by the runtime profile; absent warm percentiles stay null.",
+    "No allocation-free warm claim: final64x48 warm backing calls1,0,0; metadata3..6 and four output checkouts remain. Baseline/soil/report/descriptor and other cold standard allocations are outside allocation counters; copied payload is not total traffic. High water is service/request accounting, not RSS or a hard per-feature cap.",
+    "Final returns still allocate transaction metadata and follow Engine report-and-terminate on failure; checkout-time return admission and injected metadata-failure recovery remain unproved. ObjectAllocator is an independent untouched legacy adapter; universal allocator/teardown/platform conformance is not certified.",
+    "Private opt-in source-tree CPU closure only; no full Engine/optimized all-target/installed SDK/static-shared ABI/platform/ASan/leak acceptance. Existing U16 unrelated optimized traversal warning evidence is not relabeled passed.",
+    "CPU checks do not establish graphical/platform/human-fun, forecast/physics, durability or unbounded retained-reader acceptance. Logical/batch work caps are not wall-clock or total reader-memory caps; discard allowance after allocation/programming exceptions."
+  ],
+  "next_action": "Stop after U17. For a newly selected bounded unit, implement one weather producer with bounded immutable endpoint slots over this admitted profile; use simulation-side pin/sample/retire tokens and once-only contiguous interval adoption, then test late/full/stale/restore invalidation and producer-side reclamation. Preserve U16 blocked/false. Existing publisher alone handles the local checkpoint; no automatic continuation, push or integration."
+}

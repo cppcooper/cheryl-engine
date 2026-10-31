@@ -130,14 +130,14 @@ namespace CE::Memory::Objects {
             // Complete all allocations before constructing T. The commit below only
             // moves Blocks and cannot fail after a successful constructor.
             remaining_.reserve(remaining_.size() + 1);
-            auto claim = std::make_shared<Claimed>(context_, pointer);
+            auto claim = std::allocate_shared<Claimed>(::CE::Memory::Detail::ControlAllocator<Claimed>{}, context_, pointer);
             auto object = std::shared_ptr<T>(claim, pointer);
             std::construct_at(pointer, std::forward<Args>(args)...);
             claim->constructed = true;
 
             // Transfer the claimed slot out of the reservation. Only the
             // unclaimed left and right pieces remain for its destructor.
-            auto it = remaining_.begin() + range_index;
+            auto it = remaining_.begin() + static_cast<std::ptrdiff_t>(range_index);
             if (before) {
                 *it = std::move(*before);
                 if (after)

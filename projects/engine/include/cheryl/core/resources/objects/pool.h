@@ -18,6 +18,9 @@ namespace CE::Memory::Objects {
     private:
         const std::shared_ptr<typename ::CE::Memory::Objects::Constructor<T>::Context> tracking_ =
             ::CE::Memory::Objects::Constructor<T>::release_context();
+        const std::shared_ptr<::CE::Memory::ObjectMemoryManager<T>> memory_ =
+            std::allocate_shared<::CE::Memory::ObjectMemoryManager<T>>(
+                ::CE::Memory::Detail::ControlAllocator<::CE::Memory::ObjectMemoryManager<T>>{});
 
     public:
         [[nodiscard]] std::shared_ptr<typename ::CE::Memory::Objects::Constructor<T>::Context> construction_context() const {
@@ -45,7 +48,7 @@ namespace CE::Memory::Objects {
         using release_context_type = ::CE::Memory::Objects::PoolState<T>;
 
         Pool()
-        : context_(std::make_shared<release_context_type>()) {}
+        : context_(std::allocate_shared<release_context_type>(::CE::Memory::Detail::ControlAllocator<release_context_type>{})) {}
         [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return context_; }
 
         template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args) {

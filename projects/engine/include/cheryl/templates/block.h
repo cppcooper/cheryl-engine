@@ -23,7 +23,9 @@
  * @brief Legacy FATAL logging shorthand for the memory category; follows the underlying logging macro policy.
  */
 #define MFATAL() UFATAL(::CE::Logging::Categories::memory)
-#include <cemath.h>
+#include <math/pointers.h>
+#include <optional>
+#include "allocation-metrics.h"
 #include <internals/compile-time-logging.hpp>
 #include <core/logging/logger.h>
 #include <functional>
@@ -298,15 +300,15 @@ namespace CE::Memory {
         /** All pool, partition, and culling records retained for one T specialization. */
         struct State {
             const ::CE::Diagnostics::DomainId domain = ::CE::Diagnostics::next_domain_id(); ///< Shared per-T bookkeeping identity.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::PoolOrder<T>>> pool; ///< Mutex and reusable free ranges.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::HeadOrder<T>>> sections; ///< Mutex and partition sections for split owners.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> registry; ///< Mutex and complete backing-allocation owners.
-            std::tuple<std::shared_mutex, std::unordered_map<::CE::Memory::Block<T>, tpoint>> stale; ///< Mutex and timestamps of complete free owners.
-            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> release; ///< Mutex and complete owners queued for culling release.
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::PoolOrder<T>, Detail::MetadataAllocator<Block<T>>>> pool; ///< Mutex and reusable free ranges.
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::HeadOrder<T>, Detail::MetadataAllocator<Block<T>>>> sections; ///< Mutex and partition sections for split owners.
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>, Detail::MetadataAllocator<Block<T>>>> registry; ///< Mutex and complete backing-allocation owners.
+            std::tuple<std::shared_mutex, std::unordered_map<::CE::Memory::Block<T>, tpoint, std::hash<Block<T>>, std::equal_to<Block<T>>, Detail::MetadataAllocator<std::pair<const Block<T>, tpoint>>>> stale; ///< Mutex and timestamps of complete free owners.
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>, Detail::MetadataAllocator<Block<T>>>> release; ///< Mutex and complete owners queued for culling release.
         };
 
         static std::shared_ptr<State> shared_state() {
-            static auto state = std::make_shared<State>();
+            static auto state = std::allocate_shared<State>(Detail::ControlAllocator<State>{});
             return state;
         }
 

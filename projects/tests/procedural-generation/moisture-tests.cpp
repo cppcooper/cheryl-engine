@@ -10,31 +10,8 @@
 #include <string>
 #include <utility>
 
-namespace MoistureAllocation {
-    thread_local bool denied = false;
-}
-void* operator new(std::size_t n) {
-    if (MoistureAllocation::denied)
-        throw std::bad_alloc();
-    if (void* p = std::malloc(n == 0 ? 1 : n))
-        return p;
-    throw std::bad_alloc();
-}
-void* operator new[](std::size_t n) {
-    return ::operator new(n);
-}
-void operator delete(void* p) noexcept {
-    std::free(p);
-}
-void operator delete[](void* p) noexcept {
-    std::free(p);
-}
-void operator delete(void* p, std::size_t) noexcept {
-    std::free(p);
-}
-void operator delete[](void* p, std::size_t) noexcept {
-    std::free(p);
-}
+#include "allocation-denial.h"
+namespace MoistureAllocation = ProcGenTestAllocation;
 
 namespace {
     using namespace ProcGen;

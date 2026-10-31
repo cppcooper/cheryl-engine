@@ -243,6 +243,11 @@ namespace ProcGen {
         }
     }
     RegionalResult<RegionalAdvance> advance_regional(const RegionalState& old, Index ticks, RegionalBudgets budgets) {
+        WeatherWorkspace workspace;
+        return advance_regional(old, ticks, budgets, workspace);
+    }
+    RegionalResult<RegionalAdvance>
+    advance_regional(const RegionalState& old, Index ticks, RegionalBudgets budgets, WeatherWorkspace& scratch) {
         Work work(std::min(budgets.work, regional_hard_limits.work));
         try {
             charge(work, 64);
@@ -254,20 +259,24 @@ namespace ProcGen {
             const auto end = add(old.weather().tick(), ticks);
             const auto minimum = add(add(64, add(mul(8, r.cells), r.faces)), mul(ticks, add(1, add(mul(8, r.cells), r.minimum_tick_work))));
             admit(r.cells, r.advance_fields, r.advance_storage_bytes, minimum, budgets);
+            if (!scratch.accepts(old.weather().baseline().descriptor().domain))
+                fail(FailureKind::invalid_input, RegionalReason::shape);
             charge(work, add(mul(6, r.cells), r.faces));
-            auto weather = old.weather();
+            std::optional<WeatherState> weather;
             std::vector<SoilCell> soil(old.soil().begin(), old.soil().end());
-            std::vector<double> evaporation(soil.size());
+            CopyMetrics::soil_bytes += old.soil().size_bytes();
+            auto& evaporation = scratch.evaporation;
+            evaporation.resize(soil.size());
             RegionalReport report{
                 old.weather().tick(),
                 end,
-                weather.baseline().descriptor().context.calendar.seconds_per_tick,
+                old.weather().baseline().descriptor().context.calendar.seconds_per_tick,
                 std::vector<SoilTransfer>(soil.size()),
                 {}
             };
-            const auto volume = unit(weather);
+            const auto volume = unit(old.weather());
             charge(work, r.cells);
-            report.water.initial_m3 = total(weather, soil) * volume;
+            report.water.initial_m3 = total(old.weather(), soil) * volume;
             for (Index tick = 0; tick < ticks; ++tick) {
                 charge(work);
                 const MoistureBudgets child{
@@ -275,7 +284,8 @@ namespace ProcGen {
                     std::min(budgets.work, regional_hard_limits.work) - work.used(), 1,
                     std::min(budgets.substeps_per_tick, regional_hard_limits.substeps_per_tick)
                 };
-                auto advanced = advance_weather(weather, weather.baseline(), 1, child);
+                const auto& input = weather ? *weather : old.weather();
+                auto advanced = advance_weather(input, input.baseline(), 1, child, scratch);
                 if (!advanced) {
                     charge(work, advanced.error().work);
                     weather_fail(advanced.error());
@@ -309,17 +319,17 @@ namespace ProcGen {
                 auto applied = WeatherDetail::RegionalAccess::evaporate(advanced->state, evaporation, work);
                 if (!applied)
                     weather_fail(applied.error());
-                weather = std::move(advanced->state);
+                weather.emplace(std::move(advanced->state));
             }
             charge(work, r.cells);
             auto& l = report.water;
-            l.final_m3 = total(weather, soil) * volume;
+            l.final_m3 = total(*weather, soil) * volume;
             l.residual_m3 = l.final_m3 + l.overflow_export_m3 - l.initial_m3 - l.replenished_m3;
             l.tolerance_m3 = 1e-10 * std::max(1.0, l.initial_m3 + l.replenished_m3 + l.overflow_export_m3);
             if (!std::isfinite(l.residual_m3) || std::abs(l.residual_m3) > l.tolerance_m3)
                 fail(FailureKind::unsupported, RegionalReason::numeric);
             return RegionalAdvance{
-                RegionalState(std::move(weather), std::move(soil), {work.used(), r.advance_storage_bytes, r.advance_fields}),
+                RegionalState(std::move(*weather), std::move(soil), {work.used(), r.advance_storage_bytes, r.advance_fields}),
                 std::move(report)
             };
         } catch (const Stop& s) {

@@ -11,31 +11,8 @@
 #include <string>
 #include <utility>
 
-namespace ClimateAllocation {
-    thread_local bool denied = false;
-}
-void* operator new(std::size_t size) {
-    if (ClimateAllocation::denied)
-        throw std::bad_alloc();
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-        return memory;
-    throw std::bad_alloc();
-}
-void* operator new[](std::size_t size) {
-    return ::operator new(size);
-}
-void operator delete(void* p) noexcept {
-    std::free(p);
-}
-void operator delete[](void* p) noexcept {
-    std::free(p);
-}
-void operator delete(void* p, std::size_t) noexcept {
-    std::free(p);
-}
-void operator delete[](void* p, std::size_t) noexcept {
-    std::free(p);
-}
+#include "allocation-denial.h"
+namespace ClimateAllocation = ProcGenTestAllocation;
 
 namespace {
     using namespace ProcGen;

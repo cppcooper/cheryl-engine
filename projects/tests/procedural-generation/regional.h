@@ -75,6 +75,7 @@ namespace ProcGen {
         friend RegionalResult<RegionalState> start_regional(const WeatherState&, std::span<const SoilCell>, RegionalBudgets);
         friend RegionalResult<RegionalState> resume_regional(const RegionalCheckpoint&, const ClimateBaseline&, RegionalBudgets);
         friend RegionalResult<RegionalAdvance> advance_regional(const RegionalState&, Index, RegionalBudgets);
+        friend RegionalResult<RegionalAdvance> advance_regional(const RegionalState&, Index, RegionalBudgets, WeatherWorkspace&);
     public:
         static constexpr std::string_view algorithm = "outer_tick_soil_weather";
         [[nodiscard]] const WeatherState& weather() const { return weather_; }
@@ -143,6 +144,7 @@ namespace ProcGen {
     // Regional ledger counts only overflow as export; U14 rain is internal here.
     // Whole request is transactional; <=10 ticks/64 inner steps, no hidden catchup.
     [[nodiscard]] RegionalResult<RegionalAdvance> advance_regional(const RegionalState&, Index ticks, RegionalBudgets);
+    [[nodiscard]] RegionalResult<RegionalAdvance> advance_regional(const RegionalState&, Index ticks, RegionalBudgets, WeatherWorkspace&);
     [[nodiscard]] RegionalResult<RegionalCheckpoint> capture_regional(const RegionalState&, RegionalBudgets);
     [[nodiscard]] RegionalResult<RegionalState>
     resume_regional(const RegionalCheckpoint&, const ClimateBaseline& expected, RegionalBudgets);

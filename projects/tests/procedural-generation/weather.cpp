@@ -221,13 +221,13 @@ namespace ProcGen {
     }
     WeatherState::WeatherState(
         ClimateBaseline b,
-        std::vector<MoistureCell> q,
-        std::vector<FlowCell> f,
+        WeatherBuffer<MoistureCell> q,
+        WeatherBuffer<FlowCell> f,
         WeatherModel m,
         Index t,
         WeatherUsage u,
-        std::vector<double> fe,
-        std::vector<double> fn
+        WeatherBuffer<double> fe,
+        WeatherBuffer<double> fn
     )
     : baseline_(std::move(b)),
       water_(std::move(q)),
@@ -260,10 +260,10 @@ namespace ProcGen {
             charge(work, add(mul(4, r.cells), r.faces));
             return WeatherState(
                 b, {q.begin(), q.end()}, {f.begin(), f.end()}, m, b.descriptor().tick, {work.used(), r.start_storage_bytes, 0, 0},
-                std::vector<double>(
+                WeatherBuffer<double>(
                     static_cast<std::size_t>((b.descriptor().domain.extents()[0] + 1) * b.descriptor().domain.extents()[1])
                 ),
-                std::vector<double>(static_cast<std::size_t>(b.descriptor().domain.extents()[0] * (b.descriptor().domain.extents()[1] + 1)))
+                WeatherBuffer<double>(static_cast<std::size_t>(b.descriptor().domain.extents()[0] * (b.descriptor().domain.extents()[1] + 1)))
             );
         } catch (const Stop& s) {
             auto e = s.failure;
@@ -273,6 +273,11 @@ namespace ProcGen {
     }
     WeatherResult<WeatherAdvance>
     advance_weather(const WeatherState& old, const ClimateBaseline& expected, Index ticks, MoistureBudgets budgets) {
+        WeatherWorkspace workspace;
+        return advance_weather(old, expected, ticks, budgets, workspace);
+    }
+    WeatherResult<WeatherAdvance>
+    advance_weather(const WeatherState& old, const ClimateBaseline& expected, Index ticks, MoistureBudgets budgets, WeatherWorkspace& scratch) {
         Work work(std::min(budgets.work, weather_hard_limits.work));
         try {
             const auto& b = old.baseline();
@@ -328,15 +333,30 @@ namespace ProcGen {
             const auto exact = add(base, add(mul(4, n), mul(ticks, add(per_tick, mul(n, per_step)))));
             if (exact > std::min(budgets.work, weather_hard_limits.work))
                 fail(FailureKind::budget_refused, WeatherReason::work);
+            if (!scratch.accepts(d))
+                fail(FailureKind::invalid_input, WeatherReason::shape);
             charge(work, add(mul(8, r.cells), add(mul(2, r.faces), r.vertices)));
             ClimateBaseline retained = b;
-            std::vector<MoistureCell> water(old.water().begin(), old.water().end()), next_water(static_cast<std::size_t>(r.cells));
-            std::vector<FlowCell> flow(old.flow().begin(), old.flow().end()), next_flow(static_cast<std::size_t>(r.cells));
-            std::vector<double> targets(static_cast<std::size_t>(r.cells)), outgoing(static_cast<std::size_t>(r.cells));
+            WeatherBuffer<MoistureCell> water(old.water().begin(), old.water().end());
+            auto& next_water = scratch.next_water;
+            next_water.resize(static_cast<std::size_t>(r.cells));
+            WeatherBuffer<FlowCell> flow(old.flow().begin(), old.flow().end());
+            scratch.copied_state_bytes += old.water().size_bytes() + old.flow().size_bytes();
+            CopyMetrics::weather_bytes += old.water().size_bytes() + old.flow().size_bytes();
+            auto& next_flow = scratch.next_flow;
+            next_flow.resize(static_cast<std::size_t>(r.cells));
+            auto& targets = scratch.targets;
+            auto& outgoing = scratch.outgoing;
+            targets.resize(static_cast<std::size_t>(r.cells));
+            outgoing.resize(static_cast<std::size_t>(r.cells));
             const auto ef = (w + 1) * h, nf = w * (h + 1);
-            std::vector<double> east(static_cast<std::size_t>(ef)), north(static_cast<std::size_t>(nf));
-            std::vector<double> force_east(static_cast<std::size_t>(ef)), force_north(static_cast<std::size_t>(nf)),
-                potential(static_cast<std::size_t>(r.vertices));
+            auto& east = scratch.east;
+            auto& north = scratch.north;
+            east.resize(static_cast<std::size_t>(ef));
+            north.resize(static_cast<std::size_t>(nf));
+            WeatherBuffer<double> force_east(static_cast<std::size_t>(ef)), force_north(static_cast<std::size_t>(nf));
+            auto& potential = scratch.potential;
+            potential.resize(static_cast<std::size_t>(r.vertices));
             WeatherReport report{
                 {old.tick(),
                  end,

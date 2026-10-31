@@ -30,8 +30,8 @@ namespace CE::Memory {
         static_assert(growth_factor_ > 0, "The growth factor cannot be 0.");
 
     private:
-        std::shared_ptr<void> lifetime_token_ = std::make_shared<int>(0);
-        const std::shared_ptr<::CE::Memory::ByteReleaseContext> release_context_ = std::make_shared<::CE::Memory::ByteReleaseContext>();
+        std::shared_ptr<void> lifetime_token_ = std::allocate_shared<int>(Detail::ControlAllocator<int>{}, 0);
+        const std::shared_ptr<::CE::Memory::ByteReleaseContext> release_context_ = std::allocate_shared<::CE::Memory::ByteReleaseContext>(Detail::ControlAllocator<::CE::Memory::ByteReleaseContext>{});
 
     public:
         /** Retained return interface that may outlive this facade. */
@@ -70,8 +70,13 @@ namespace CE::Memory {
         // retrieve an allocation with the given length - returns a section of an allocation at least big enough to fill the request
         [[nodiscard]] static ::CE::Memory::HeapBlock allocate(size_t length, std::align_val_t alignment) {
             alignment = static_cast<std::align_val_t>(std::bit_ceil(static_cast<std::size_t>(alignment)));
-            auto deleter = [alignment](void* p) { ::operator delete[](p, alignment); };
-            const auto ptr = std::shared_ptr<void>(::operator new[](length, alignment), deleter);
+            auto deleter = [alignment, length](void* p) {
+                ::operator delete[](p, alignment);
+                Detail::backing_allocations.released(length);
+            };
+            auto* raw = ::operator new[](length, alignment);
+            Detail::backing_allocations.acquired(length);
+            const auto ptr = std::shared_ptr<void>(raw, deleter, Detail::ControlAllocator<void>{});
             return {ptr, ptr, ::CE::Memory::Pointers::calculate_alignment(ptr.get()), length};
         }
 

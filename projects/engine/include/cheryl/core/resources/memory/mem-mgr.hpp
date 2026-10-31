@@ -140,9 +140,12 @@ namespace CE::Memory {
         }
         const auto requested_alignment = std::bit_ceil(std::max(alignment, std::size_t{64}));
         const auto align_val = static_cast<std::align_val_t>(requested_alignment);
-        return BlockTransactions<void>::checkout(this->state_, request_length, align_val, [=] {
+        auto result = BlockTransactions<void>::checkout(this->state_, request_length, align_val, [=] {
             return allocate(request_length, align_val);
         });
+        Detail::byte_checkout_calls.fetch_add(1, std::memory_order_relaxed);
+        Detail::byte_checkout_requested_bytes.fetch_add(length, std::memory_order_relaxed);
+        return result;
     }
 
     /** Add reusable backing allocations without checking them out to a caller.

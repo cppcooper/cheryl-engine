@@ -46,13 +46,14 @@ def context():
     return {'monotonic_ns': time.monotonic_ns(), 'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             'platform': platform.platform(), 'cpu_model': model, 'affinity': sorted(os.sched_getaffinity(0)),
             'loadavg': os.getloadavg(), 'meminfo': read('/proc/meminfo'), 'self_cgroup': raw, 'cgroup_limits': groups,
-            'exclusions': 'Python/context/hash/printing outside update timers; native thread CPU clock and steady wall clock in raw samples. No allocation/copy instrumentation or CE domain until pinned dependencies are available.'}
+            'exclusions': 'Python/context/hash/printing outside update timers; see binary backend record for measured Engine allocation and copy scope.'}
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', type=Path, required=True)
     parser.add_argument('--logs', type=Path, required=True)
+    parser.add_argument('--mode', choices=('reuse', 'no-reuse'))
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     args.logs.mkdir(parents=True, exist_ok=True)
@@ -62,7 +63,7 @@ def main():
     started = time.monotonic()
     with (args.logs/'baseline-raw.jsonl').open('w') as stdout, (args.logs/'baseline.stderr.log').open('w') as stderr:
         try:
-            result = subprocess.run([str(binary)], stdout=stdout, stderr=stderr, timeout=40, check=False)
+            result = subprocess.run([str(binary)] + (['--' + args.mode] if args.mode else []), stdout=stdout, stderr=stderr, timeout=40, check=False)
             code = result.returncode
         except subprocess.TimeoutExpired:
             code = 124

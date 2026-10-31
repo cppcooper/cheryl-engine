@@ -1,7 +1,16 @@
 #pragma once
+#ifdef PROCGEN_ENGINE_MEMORY
+#include <core/resources/memory/allocators/default-allocator.hpp>
+#endif
 #include "moisture.h"
 
 namespace ProcGen {
+#ifdef PROCGEN_ENGINE_MEMORY
+    template <class T> using WeatherBuffer = std::vector<T, CE::Memory::Allocators::DefaultAllocator<T>>;
+#else
+    template <class T> using WeatherBuffer = std::vector<T>;
+#endif
+    struct WeatherWorkspace;
     enum class WeatherReason {
         dimensions,
         shape,
@@ -88,26 +97,39 @@ namespace ProcGen {
     class WeatherState {
         friend struct WeatherDetail::RegionalAccess;
         ClimateBaseline baseline_;
-        std::vector<MoistureCell> water_;
-        std::vector<FlowCell> flow_;
+        WeatherBuffer<MoistureCell> water_;
+        WeatherBuffer<FlowCell> flow_;
         WeatherModel model_;
-        std::vector<double> forcing_east_, forcing_north_;
+        WeatherBuffer<double> forcing_east_, forcing_north_;
         Index tick_;
         WeatherUsage usage_;
         WeatherState(
             ClimateBaseline,
-            std::vector<MoistureCell>,
-            std::vector<FlowCell>,
+            WeatherBuffer<MoistureCell>,
+            WeatherBuffer<FlowCell>,
             WeatherModel,
             Index,
             WeatherUsage,
-            std::vector<double>,
-            std::vector<double>
+            WeatherBuffer<double>,
+            WeatherBuffer<double>
         );
         friend WeatherResult<WeatherState>
         start_weather(const ClimateBaseline&, std::span<const MoistureCell>, std::span<const FlowCell>, WeatherModel, MoistureBudgets);
         friend WeatherResult<WeatherAdvance> advance_weather(const WeatherState&, const ClimateBaseline&, Index, MoistureBudgets);
+        friend WeatherResult<WeatherAdvance> advance_weather(const WeatherState&, const ClimateBaseline&, Index, MoistureBudgets, WeatherWorkspace&);
     public:
+        WeatherState(const WeatherState& other)
+        : baseline_(other.baseline_), water_(other.water_), flow_(other.flow_), model_(other.model_),
+          forcing_east_(other.forcing_east_), forcing_north_(other.forcing_north_), tick_(other.tick_), usage_(other.usage_) {
+            CopyMetrics::weather_bytes += water_.size() * sizeof(MoistureCell) + flow_.size() * sizeof(FlowCell) +
+                (forcing_east_.size() + forcing_north_.size()) * sizeof(double);
+        }
+        WeatherState(WeatherState&&) noexcept = default;
+        WeatherState& operator=(WeatherState&&) noexcept = default;
+        WeatherState& operator=(const WeatherState& other) {
+            if (this != &other) *this = WeatherState(other);
+            return *this;
+        }
         static constexpr std::string_view algorithm = "rusanov_regional_weather";
         [[nodiscard]] const ClimateBaseline& baseline() const { return baseline_; }
         [[nodiscard]] std::span<const MoistureCell> water() const { return water_; }
@@ -119,6 +141,26 @@ namespace ProcGen {
         // cancels within roundoff. This does NOT assert divergence-free final wind.
         [[nodiscard]] std::span<const double> forcing_east() const { return forcing_east_; }
         [[nodiscard]] std::span<const double> forcing_north() const { return forcing_north_; }
+    };
+    // Unpublished scratch; one exclusive caller, no retained views. Refusal may
+    // overwrite scratch, while every published state remains independent.
+    struct WeatherWorkspace {
+        std::array<Index, 2> shape{};
+        WeatherBuffer<MoistureCell> next_water;
+        WeatherBuffer<FlowCell> next_flow;
+        WeatherBuffer<double> targets, outgoing, east, north, potential, evaporation;
+        std::uint64_t copied_state_bytes = 0;
+        bool accepts(const Domain& domain) {
+            const std::array wanted{domain.extents()[0], domain.extents()[1]};
+            if (shape[0] && shape != wanted) return false;
+            shape = wanted;
+            return true;
+        }
+        [[nodiscard]] std::size_t retained_bytes() const {
+            return next_water.capacity() * sizeof(MoistureCell) + next_flow.capacity() * sizeof(FlowCell) +
+                (targets.capacity() + outgoing.capacity() + east.capacity() + north.capacity() + potential.capacity() +
+                 evaporation.capacity()) * sizeof(double);
+        }
     };
     struct WeatherReport {
         MoistureReport moisture;
@@ -152,4 +194,6 @@ namespace ProcGen {
     // unsupported wind/potential/temperature without clipping. At most64 substeps/10 ticks.
     // Expected refusal publishes nothing; allocation/programming exceptions escape.
     [[nodiscard]] WeatherResult<WeatherAdvance> advance_weather(const WeatherState&, const ClimateBaseline&, Index ticks, MoistureBudgets);
+    [[nodiscard]] WeatherResult<WeatherAdvance>
+    advance_weather(const WeatherState&, const ClimateBaseline&, Index ticks, MoistureBudgets, WeatherWorkspace&);
 }
