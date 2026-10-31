@@ -33,6 +33,8 @@ namespace CE::Memory::Allocators {
                 return std::static_pointer_cast<::CE::Memory::Objects::PoolState<T>>(it->second);
             }
             template <class T> auto retained() noexcept {
+                [[maybe_unused]]
+                typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::ReleaseContext> probe;
                 std::lock_guard lock(mutex);
                 // A valid allocation registered T before storage publication.
                 return std::static_pointer_cast<::CE::Memory::Objects::PoolState<T>>(types.find(key<T>())->second);
@@ -87,13 +89,17 @@ namespace CE::Memory::Allocators {
         ObjectPoolAllocator(const ObjectPoolAllocator<U>& other) noexcept
         : family_(other.family_) {}
         [[nodiscard]] ObjectPoolAllocator select_on_container_copy_construction() const { return *this; }
-        [[nodiscard]] std::shared_ptr<context_type> context() const { return context_ ? context_ : family_->template acquire<T>(); }
+        [[nodiscard]] std::shared_ptr<context_type> context() const {
+            [[maybe_unused]] typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Context> probe;
+            return context_ ? context_ : family_->template acquire<T>();
+        }
         [[nodiscard]] std::size_t max_size() const noexcept { return Detail::allocator_max_count<T>(); }
 
         /** Positive addressable slots, checked before even a reusable-range lookup.
          * Zero/overflow throws bad_request; alignment is at least alignof(T).
          */
         [[nodiscard]] T* allocate(std::size_t count) {
+            [[maybe_unused]] typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Allocation> probe;
             Detail::check_allocator_count<T>(count);
             return static_cast<T*>(context()->retrieve_block(count).head.get());
         }
@@ -101,7 +107,11 @@ namespace CE::Memory::Allocators {
          * Requires a valid allocation/range. Invalid allocator deallocation violates
          * its precondition; use context()->return_objects for checked service returns.
          */
-        void deallocate(T* pointer, std::size_t count) noexcept { family_->template retained<T>()->return_objects(pointer, count); }
+        void deallocate(T* pointer, std::size_t count) noexcept {
+            [[maybe_unused]]
+            typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Deallocation> probe;
+            family_->template retained<T>()->return_objects(pointer, count);
+        }
 
         /** T uses retained raw/live tracking. A DIFFERENT U is a value subobject
          * (e.g. pair inside a rebound map node), not a whole T slot: construct it
@@ -110,12 +120,15 @@ namespace CE::Memory::Allocators {
          * User exceptions propagate; no storage return or batch rollback occurs.
          */
         template <class U, class... Args> void construct(U* pointer, Args&&... args) {
+            [[maybe_unused]]
+            typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Construction> probe;
             if constexpr (std::is_same_v<T, U>)
                 context()->construction_context()->construct(pointer, 1, std::forward<Args>(args)...);
             else
                 std::construct_at(pointer, std::forward<Args>(args)...);
         }
         template <class U> void destroy(U* pointer) {
+            [[maybe_unused]] typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Destruction> probe;
             if constexpr (std::is_same_v<T, U>)
                 context()->construction_context()->destroy(pointer);
             else

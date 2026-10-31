@@ -116,6 +116,7 @@ namespace CE::Memory::Objects {
     }
 
     template <typename T>::CE::Memory::Block<T> PoolState<T>::allocate(size_t length) {
+        [[maybe_unused]] typename ::CE::Memory::Detail::PoolProbe<T>::template Scope<::CE::Memory::Detail::PoolStep::Backing> probe;
         // Borrow raw bytes from the typed memory manager. The resulting owner handle
         // destroys any tracked T objects and returns those bytes when its final alias dies.
         if (length > std::numeric_limits<std::size_t>::max() / sizeof(T)) {

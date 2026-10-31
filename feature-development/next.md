@@ -1,3 +1,177 @@
+# WORLD-U10 — measured bank admission correction complete
+
+Exact initial clean HEAD: `6a0b31b740b17d30311501a4fcb49b76557c2de8`,
+feat/tilemap, saved thread 01a193d7-0448-71d2-94b2-29837929ee92. Task, receipt,
+manifest and original saved U9 executable/Engine hashes were checked. Reproduced
+U9's SAME seven-sample optimized trace before source edits; its ready label alone
+was not prerequisite acceptance. Production change is confined to metadata-bank
+capacity admission; no raw slab/backend/container replacement or geometry tuning.
+
+## Change and invariant
+
+U8's prepare_bank used exact vector reserve for every growing admitted bound,
+repeatedly allocating/copying its bank. Reserve now grows geometrically with
+checked saturation at max_size. It still stocks the SAME required empty nodes and
+reserves at least bank size + missing nodes + all currently live records BEFORE
+checkout publication. The previous overflow/admission checks remain. No return
+algorithm, valid deallocation work, noexcept/rebind/domain/alignment/lifetime or
+construction policy is weakened. Empty spare keys still retain no backing owners.
+Extra empty vector capacity is the explicit cost, not a per-feature memory budget.
+
+51/51 Debug ASan/UBSan focused checks pass once, 0 failed/skipped, 15.35 s. All 48 U8
+resource/law/release cases remain, plus U9's matched caller and two new regressions.
+The new 512-slot cumulative metadata budget is under 4 MiB; 512 fragmented returns
+under metadata refusal make no new requests and release their backing. Eight
+large-checkout failure positions preserve old owner/section/free partitions and
+return units, permit earlier promised return under refusal, and permit recovery.
+The literal full-sequence/pair, 16 surviving-anchor, over-aligned/throwing-value,
+extracted-node and retained-context cases pass. No whole 178-case/world campaign
+was repeated. Existing command-local detect_leaks=0:halt_on_error=1 and UBSAN
+halt_on_error accommodations remain; leaks are unverified.
+
+## Actual attribution, separate from comparable timing
+
+A small Detail::PoolProbe seam has empty scopes and explicit new_delete_resource
+for normal types. Only anonymous libstdc++ node types in the private GNU-only
+EXCLUDE_FROM_ALL profile target specialize it. That target uses actual std::list/
+std::map, actual ObjectPoolAllocator/PoolState/BlockTransactions and normal shared
+Engine. A counting PMR resource forwards that typed State's metadata allocations
+to new_delete_resource. No global allocator/default-PMR interception is used.
+State and allocator layout are unchanged. The diagnostic resource is process-
+lifetime pinned so borrowed State cleanup cannot outlive it; its own allocation
+is excluded. Normal trace symbols contain no PoolTraceProfile code/counters.
+
+Before AND after: 12 fresh diagnostic processes/24 cold-warm traces each, 3 samples
+per case/temperature. Source scopes separate context, allocation, metadata,
+transaction, locks, backing, return and construction. The saved comparison.json
+also partitions each profiled phase sum into lookup, lock acquisition, reservation,
+backing service, other transaction/adapter work, construction/destruction and
+caller work, without double counting nested intervals. Nested observer updates
+and clocks affect timing; residuals are accounting categories, not pure measured
+instruction cost. Lock scopes measure acquisition, not contention or total hold;
+backing includes byte service/control/tracker setup, not just operator new.
+Medians below are diagnostic observations, not comparable performance samples.
+
+| Inclusive diagnostic scope | List cold before/after µs | List warm before/after µs |
+| --- | ---: | ---: |
+| allocation | 1682.034 / 919.532 | 623.797 / 641.758 |
+| context | 41.678 / 42.208 | 39.782 / 40.838 |
+| checkout | 1536.798 / 766.389 | 476.446 / 492.946 |
+| locks | 101.250 / 109.912 | 99.546 / 117.472 |
+| reservation | 1094.744 / 288.793 | 60.650 / 57.779 |
+| backing | 15.429 / 17.905 | 0.000 / 0.000 |
+| deallocation | 929.491 / 1081.767 | 863.783 / 952.147 |
+| release_context | 37.187 / 38.517 | 37.576 / 41.493 |
+| return | 782.964 / 864.236 | 716.961 / 798.197 |
+| construction | 32.714 / 34.051 | 32.988 / 34.042 |
+| destruction | 31.868 / 33.590 | 32.376 / 33.226 |
+
+The disjoint accounting also places ordered-list other transaction work at
+1112.327/1211.282 us before/after cold and 1033.211/1115.892 us warm. Caller work
+accounts for 173.417/181.146 us cold and 173.616/184.430 us warm. These are medians
+of each profile's residual accounting; separate medians need not add to the
+median total. The full per-sample partitions remain in comparison.json.
+
+Actual typed-State PMR observations agree across all diagnostic cases/samples:
+
+| Metadata observation | Before | After |
+| --- | ---: | ---: |
+| Cold requests | 5160 | 3650 |
+| Cold cumulative requested bytes | 15,195,064 | 489,944 |
+| Retained bytes after clear | 297,752 | 338,344 |
+| Peak bytes | 330,408 | 353,384 |
+| Warm requests/requested bytes | 0/0 | 0/0 |
+
+Cumulative requested bytes fall 96.78%; retained typed metadata rises 40,592 bytes
+(13.63%), peak rises 22,976 bytes. This counts only actual typed-State collection,
+bucket and bank requests, not State/control/directory/tracker allocations, byte-
+domain metadata, allocator/OS overhead or RSS. The normal comparable path still
+has null resource counts; its snapshots expose capacities, not inferred requests.
+At clear, bank capacity grows 3094->5120 entries (computed payload 57,712->98,304
+bytes), with the same 3078 spare nodes. This is a work/memory tradeoff, not a claim
+of reduced retained memory. Warm return remains a different costly path.
+
+## SAME bounded before/after timing
+
+Reused build/world-u9-release. Normal trace compiler command is byte-identical
+to U9's saved command: GNU C++23, -O3 -DNDEBUG, same logging profile and strict
+warnings. Ownership/import/loader evidence resolves ONE normal clone-local shared
+Engine. 91 Engine source compile commands remain optimized, Debug sanitizers remain
+on, and normal/profile binaries have 0/40 diagnostic symbols respectively.
+No backend or platform/toolchain option was changed to favor this trace.
+
+Both baseline and after run the unchanged measure.py: eight observation processes
+plus 56 timing processes, 112 traces each, seven fresh-owner cold and seven second-
+trace within-process warm samples per container/order/backend. Seed 0x9e3779b9,
+maximum 512 live, 1776 allocation/return/construction/destruction pairs, complete
+literal checks, ordered/shuffled insert, scans/queries, erase/refill, two churn
+rounds, sparse occupancy/refill/clear are unchanged. All 128 measurement child
+exit 0. Eight 65-slot owners/520 slots, 1256 returned-address reuses and sparse 16/520
+occupancy remain; explicit observation culling leaves zero recorded raw backing.
+
+Raw samples and 624 per-phase/temperature summary rows (312 each side) were
+recomputed offline; all 4144 raw phase results match useful signatures across
+both backends, temperatures, samples AND before/after. Quantiles are nearest
+rank; at n=7 p95=max. The table shows each trace's sum of measured phases, not
+end-to-end wall latency or the sum of separate quantiles. Full standard allocator
+control results and every phase's count/p50/p95/max are in comparison.json and the
+original summaries. The pool remains slower than standard allocation in all
+selected total-median cases, including after this correction.
+
+| Case | State | n each | Before p50 µs | After p50 µs | Change | Before p95/max µs | After p95/max µs |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| list/ordered | cold | 7 | 2642.595 | 1451.099 | -45.09% | 3126.576 | 2995.473 |
+| list/ordered | warm | 7 | 1032.863 | 1055.287 | +2.17% | 1108.005 | 1350.218 |
+| list/shuffled | cold | 7 | 2455.115 | 1551.822 | -36.79% | 3309.602 | 2245.663 |
+| list/shuffled | warm | 7 | 1171.475 | 1176.314 | +0.41% | 1795.340 | 1409.896 |
+| map/ordered | cold | 7 | 2967.103 | 2551.373 | -14.01% | 4209.223 | 3728.489 |
+| map/ordered | warm | 7 | 1670.957 | 1689.075 | +1.08% | 2221.650 | 1877.610 |
+| map/shuffled | cold | 7 | 3306.810 | 2259.155 | -31.68% | 3759.617 | 3130.628 |
+| map/shuffled | warm | 7 | 1788.208 | 1831.590 | +2.43% | 1937.858 | 2330.491 |
+
+Cold pool medians decrease 14.01..45.09%. Warm medians regress 0.41..2.43%; no warm
+speedup is demonstrated and these small changes have no statistical attribution.
+Tails vary, including the standard controls; n=7, one host and no frequency/CPU/
+affinity isolation or confidence interval support no general performance/SLA
+claim. There are no cache counters or locality/cache-hit claims. Timings include
+actual service bookkeeping, locks, construction and useful caller work; they
+exclude diagnostics/counter resources, process/DSO startup, inter-phase literal/
+anchor checks, output, setup outside phases and culling. Existing two-clock-read
+and 32-probe instrumentation is unchanged; no timer overhead is subtracted.
+
+## Evidence, recovery and stop
+
+Every native build/profile/test/executable used the shared build wrapper, one job,
+existing memory/no-swap controls and retained native lock. Exact commands/cwd/env,
+merged outputs and immediate exits are in build/world-u10-logs/commands.jsonl,
+final-commands.jsonl and each measurement/profile commands file. Corrected Debug
+build's 2940.74 s wall time and profile-after's 2807.19 s include a prolonged tool/
+execution stall; no explicit memory/quota/auth/network refusal was observed. Live
+sessions were retained and later exited0, with no cancellation/resubmission.
+The interruption occurred after final-batch exited0 and before record/commit
+reconciliation. User resumed this SAME unit; no native tests or sampling reran.
+The provisional partial draft is preserved under interrupted-draft/; it was never
+an accepted predecessor. Earlier committed receipts and archives remain immutable.
+
+Key artifacts: preflight.json; baseline/ and after/ plan/commands/raw logs/exits/
+samples/summaries/observations; profile-before/ and profile-after/ plans, raw logs,
+profiles and before binary identity; corrected-inputs.json; correctness.xml/log;
+ownership.json/log; comparison.json; recovery.json; preservation.json and
+source-hashes.json. Existing failed/partial evidence is retained. No download,
+system profiler/install, service, sibling import/integration or push occurred.
+
+[WORLD-U10 receipt](continuation/WORLD-U10.json) is ready/checks_passed=true for
+this bounded GNU/Linux shared-Engine CPU experiment. Installed/static/other
+standard libraries/platforms, complete process metadata/RSS, cache behavior,
+graphical/input/fun acceptance and leak checks remain unverified.
+
+Next action: command center reviews the cold-admission benefit against 40,592
+extra retained typed-metadata bytes and the observed warm regressions before any
+promotion. Worker 2 stops after this local checkpoint. Further warm-return work
+requires a separately selected unit; publisher alone handles backup.
+
+---
+
 # WORLD-U9 — matched allocator slab/reuse comparison complete
 
 Fresh-session recovery starts at exact clean feat/tilemap

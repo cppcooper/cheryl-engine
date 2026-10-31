@@ -23,3 +23,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 add_test(NAME allocator_trace.matched COMMAND tests-allocator-trace --verify)
 set_tests_properties(allocator_trace.matched PROPERTIES TIMEOUT 60 LABELS memory)
+
+# The private probe uses libstdc++ rebound node types; it is never the timing target.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_executable(tests-allocator-profile EXCLUDE_FROM_ALL trace.cpp)
+    target_link_libraries(tests-allocator-profile PRIVATE Cheryl::Engine)
+    target_include_directories(tests-allocator-profile SYSTEM PRIVATE
+        "${CHERYL_REPOSITORY_ROOT}/extern/glm" "${CHERYL_REPOSITORY_ROOT}/extern/glm/glm")
+    target_compile_definitions(tests-allocator-profile PRIVATE CHERYL_POOL_TRACE_PROFILE=1)
+    target_compile_options(tests-allocator-profile PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
+    set_target_properties(tests-allocator-profile PROPERTIES CXX_EXTENSIONS OFF)
+endif()

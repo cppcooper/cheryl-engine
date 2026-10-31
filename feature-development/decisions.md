@@ -1,6 +1,13 @@
 # World integration decisions
 
-Current unit: WORLD-U9 completes the real matched allocator comparison on exact
+Current WORLD-U10 completes the measured bank-admission correction. 51/51 focused
+sanitizer checks pass; identical before/after seven-sample traces and separate
+actual typed-metadata profiles are audited. Cold medians decrease 14..45%, warm
+medians regress 0.4..2.4%, and retained typed metadata increases 40,592 bytes. The
+pool remains slower than std allocation. WINT-025 and next.md record scope,
+tradeoffs, recovery and the ready receipt. No automatic follow-on is selected.
+
+Historical WORLD-U9 completes the real matched allocator comparison on exact
 clean parent 1115bc97a42d78555fce31e13a142df6196a7e95. Source review leaves U8's
 producer repair unchanged. 49/49 focused Debug checks and 112 optimized cold/warm
 traces pass. The pool uses eight 65-slot owners and reuses 1256 returned addresses,
@@ -270,3 +277,13 @@ process for warm reuse. Separate observed forwarding allocators prove Engine
 routing, occupancy and freed addresses. Report unavailable metadata request/byte
 totals explicitly. This costs a private consumer, without production API changes
 or tuning. Confidence is bounded by the executed evidence in next.md.
+
+## WINT-025 — Amortize bank admission without moving work to return
+
+Grow return-bank vector capacity geometrically with checked saturation, preserving
+exact funded nodes and all-live recycling capacity before publication. Separate
+typed-node probes identify cold reservation copies and actual PMR request bytes;
+normal timing has no diagnostic counters. Cold medians improve 14..45%, cumulative
+metadata requests shrink, retained bytes increase 40,592, and warm medians regress
+slightly. 51 sanitizer checks pass. Confidence covers this bounded GNU experiment;
+warm latency, memory tradeoffs and wider platforms require explicit review.

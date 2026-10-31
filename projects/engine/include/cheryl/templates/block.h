@@ -44,6 +44,29 @@ class Test_iManage;
 
 namespace CE::Memory {
 
+    namespace Detail {
+        // Compile-time probe seam for private, single-translation-unit slot types.
+        // Normal services have empty scopes and keep the explicit default resource.
+        enum class PoolStep {
+            Allocation,
+            Context,
+            Checkout,
+            Locks,
+            Reservation,
+            Backing,
+            Deallocation,
+            ReleaseContext,
+            Return,
+            Construction,
+            Destruction,
+            Count
+        };
+        template <class T> struct PoolProbe {
+            template <PoolStep> struct Scope {};
+            static std::pmr::memory_resource* metadata() noexcept { return std::pmr::new_delete_resource(); }
+        };
+    }
+
     /* Header: block.h
  *
  * includes
@@ -326,7 +349,7 @@ namespace CE::Memory {
 
             // The resource is metadata-only and must outlive this State. Normal
             // Engine uses new_delete_resource explicitly, never global default PMR.
-            explicit State(std::pmr::memory_resource* metadata = std::pmr::new_delete_resource())
+            explicit State(std::pmr::memory_resource* metadata = Detail::PoolProbe<T>::metadata())
             : pool(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
               sections(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),
               registry(std::allocator_arg, std::pmr::polymorphic_allocator<>(metadata)),

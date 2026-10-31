@@ -61,6 +61,12 @@ namespace {
     };
     using Pair = std::pair<const int, Record>;
 
+}
+#ifdef CHERYL_POOL_TRACE_PROFILE
+#include "trace-profile.h"
+#endif
+namespace {
+
     // Observation is a separate, untimed pass. No globals or allocation hooks.
     // Addresses are integers after release; an erased iterator is never reused.
     struct Observation {
@@ -514,10 +520,16 @@ int main(int argc, char** argv) {
                     );
                 }
                 std::cout << "{\"kind\":\"sample\",\"temperature\":\"" << temperature << "\"}\n";
+#ifdef CHERYL_POOL_TRACE_PROFILE
+                PoolTraceProfile::begin(argv[2]);
+#endif
                 if (engine)
                     run<Pool>(argv[2], random, true);
                 else
                     run<std::allocator>(argv[2], random, true);
+#ifdef CHERYL_POOL_TRACE_PROFILE
+                PoolTraceProfile::report(argv[2], temperature);
+#endif
             }
         }
         return 0;

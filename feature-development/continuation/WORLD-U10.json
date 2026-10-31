@@ -1,0 +1,354 @@
+{
+  "version": 1,
+  "milestone_id": "WORLD-U10",
+  "starting_head": "6a0b31b740b17d30311501a4fcb49b76557c2de8",
+  "thread_id": "01a193d7-0448-71d2-94b2-29837929ee92",
+  "assignment_manifest": "coordination/assignments/local-continuation-20261031-02/manifest.json",
+  "task_sha256": "f66e7839163888a1c36d855f767b4130f6168346d1de739bd5e8d2238f1770f2",
+  "status": "ready",
+  "checks_passed": true,
+  "predecessor_treatment": "Exact clean HEAD, task/receipt hashes and saved U9 binary/Engine hashes verified; independently reproduced the same seven-sample baseline before edits.",
+  "completed": [
+    "Unchanged optimized shared-Engine baseline: 56 fresh timing processes, 112 cold/warm traces, seven samples per case/backend/temperature/phase, 64 successful timing/observation child exits.",
+    "Separate compile-time typed-node probe: 12 fresh processes and 24 successful cold/warm profiles using actual std::list/std::map and actual Engine pool services. Normal target uses empty probe scopes and the ordinary explicit metadata resource.",
+    "Narrow correction amortizes return-bank vector capacity admission, preserving exact funded node counts and all live-record recycling capacity before publication. Raw slab growth, return algorithms, rebind/domain/lifetime semantics remain unchanged.",
+    "Corrected normal Release consumer and separate profile target compile/link successfully with strict warnings in the saved optimized build.",
+    "51/51 focused Debug ASan/UBSan checks pass, including both new budget/refusal regressions and the matched literal/refusal caller.",
+    "Same seven-sample before/after normal trace:224 total timed traces,128 measurement child exits0; separate diagnostic before/after:48 profiles,24 child exits0.",
+    "Ownership/compiler check passes:one normal shared Engine, same normal compiler command as U9, normal/profile diagnostic symbol counts0/40.",
+    "Offline audit recomputes624 quantile rows and4144 raw phase signatures; existing results reused after explicit same-unit interruption recovery."
+  ],
+  "diagnosis": {
+    "typed_metadata_cold_requests": 5160,
+    "typed_metadata_cold_cumulative_requested_bytes": 15195064,
+    "typed_metadata_live_bytes_after_trace": 297752,
+    "typed_metadata_peak_bytes": 330408,
+    "typed_metadata_warm_requests": 0,
+    "ordered_list_profile_cold_reservation_median_ns": 1094744,
+    "ordered_list_profile_cold_context_median_ns": 41678,
+    "ordered_list_profile_cold_lock_acquisition_median_ns": 101250,
+    "ordered_list_profile_cold_backing_service_median_ns": 15429,
+    "ordered_list_profile_warm_return_median_ns": 716961,
+    "scope": "Three profiles per case/temperature. Inclusive nested source timings include observer overhead. Actual PMR requests cover the private rebound typed State collections/banks, not byte-domain metadata, directory/tracker/control blocks, heap overhead or RSS. Warm return work remains a separate bottleneck.",
+    "post_change_typed_metadata": {
+      "cold_requests": 3650,
+      "cold_cumulative_requested_bytes": 489944,
+      "retained_bytes": 338344,
+      "peak_bytes": 353384,
+      "warm_requests": 0
+    }
+  },
+  "unfinished": [],
+  "evidence": [
+    "build/world-u10-logs/preflight.json",
+    "build/world-u10-logs/commands.jsonl",
+    "build/world-u10-logs/baseline/plan.json",
+    "build/world-u10-logs/baseline/commands.jsonl",
+    "build/world-u10-logs/baseline/samples.jsonl",
+    "build/world-u10-logs/baseline/summary.json",
+    "build/world-u10-logs/profile-before/plan.json",
+    "build/world-u10-logs/profile-before/profiles.json",
+    "build/world-u10-logs/profile-before/binary.json",
+    "build/world-u10-logs/profile-build.log",
+    "build/world-u10-logs/corrected-release-build.log",
+    "build/world-u10-logs/corrected-inputs.json",
+    "build/world-u10-logs/corrected-debug-build.log",
+    "build/world-u10-logs/profile-after.log",
+    "build/world-u10-logs/profile-after/profiles.json",
+    "build/world-u10-logs/final-commands.jsonl",
+    "build/world-u10-logs/correctness.xml",
+    "build/world-u10-logs/correctness.log",
+    "build/world-u10-logs/after/plan.json",
+    "build/world-u10-logs/after/commands.jsonl",
+    "build/world-u10-logs/after/samples.jsonl",
+    "build/world-u10-logs/after/summary.json",
+    "build/world-u10-logs/ownership.json",
+    "build/world-u10-logs/comparison.json",
+    "build/world-u10-logs/recovery.json",
+    "build/world-u10-logs/preservation.json",
+    "build/world-u10-logs/source-hashes.json"
+  ],
+  "limitations": [
+    "Cold medians improve14..45% on the selected finite trace; warm medians regress0.4..2.4% and no warm improvement/significance is claimed. Pool remains slower than standard allocation. Seven samples, varying tails, no isolated CPU/frequency/affinity or general performance guarantee.",
+    "Retained typed metadata increases40,592 bytes; peak increases22,976 bytes. Actual PMR counts cover typed-State metadata only, not byte-domain metadata, State/control/directory/tracker allocations, heap overhead or RSS. Normal timing-path resource counters remain null.",
+    "Nested diagnostic times include observer clocks/counter work; lock scopes measure acquisition, not contention or full hold. Backing includes byte service/control/tracker setup. Diagnostic resource is process-lifetime pinned and its own allocation excluded; it never enters the normal timing target.",
+    "Prolonged execution/tool stall and interruption left an uncommitted provisional partial draft. Retained jobs subsequently exited0 and final checks completed before record reconciliation; the draft remains in ignored evidence. No explicit admission refusal or unchanged retry/bypass occurred.",
+    "Existing command-local ASan detect_leaks=0 accommodation retained; leak checks remain unverified. GNU/Linux C++23 shared source-tree CPU evidence only:installed/static/other libraries/platforms, cache/locality/RSS, graphics/input/fun unverified."
+  ],
+  "next_action": "Command center reviews cold-admission gains against40,592 extra retained typed-metadata bytes and observed warm regressions before any promotion. Worker2 stops after this local checkpoint; publisher alone handles backup; a further warm-return change requires another selected unit.",
+  "checks": {
+    "debug_passed": 51,
+    "failed": 0,
+    "skipped": 0,
+    "debug_seconds": 15.35,
+    "samples_per_case_backend_temperature_phase": 7,
+    "normal_traces_before": 112,
+    "normal_traces_after": 112,
+    "diagnostic_traces_before": 24,
+    "diagnostic_traces_after": 24,
+    "quantile_rows_recomputed": 624,
+    "normal_compiler_command_identical": true,
+    "normal_diagnostic_symbols": 0
+  },
+  "actual_comparison": {
+    "totals_ns": {
+      "list/ordered/std/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 76084,
+          "p95_ns": 80431,
+          "max_ns": 80431
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 78860,
+          "p95_ns": 87335,
+          "max_ns": 87335
+        }
+      },
+      "list/ordered/std/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 70073,
+          "p95_ns": 70804,
+          "max_ns": 70804
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 69055,
+          "p95_ns": 174605,
+          "max_ns": 174605
+        }
+      },
+      "list/ordered/pool/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 2642595,
+          "p95_ns": 3126576,
+          "max_ns": 3126576
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1451099,
+          "p95_ns": 2995473,
+          "max_ns": 2995473
+        }
+      },
+      "list/ordered/pool/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 1032863,
+          "p95_ns": 1108005,
+          "max_ns": 1108005
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1055287,
+          "p95_ns": 1350218,
+          "max_ns": 1350218
+        }
+      },
+      "list/shuffled/std/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 82322,
+          "p95_ns": 88596,
+          "max_ns": 88596
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 79521,
+          "p95_ns": 144331,
+          "max_ns": 144331
+        }
+      },
+      "list/shuffled/std/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 74711,
+          "p95_ns": 85651,
+          "max_ns": 85651
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 72575,
+          "p95_ns": 78361,
+          "max_ns": 78361
+        }
+      },
+      "list/shuffled/pool/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 2455115,
+          "p95_ns": 3309602,
+          "max_ns": 3309602
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1551822,
+          "p95_ns": 2245663,
+          "max_ns": 2245663
+        }
+      },
+      "list/shuffled/pool/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 1171475,
+          "p95_ns": 1795340,
+          "max_ns": 1795340
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1176314,
+          "p95_ns": 1409896,
+          "max_ns": 1409896
+        }
+      },
+      "map/ordered/std/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 655198,
+          "p95_ns": 1047620,
+          "max_ns": 1047620
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 672439,
+          "p95_ns": 1137370,
+          "max_ns": 1137370
+        }
+      },
+      "map/ordered/std/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 592226,
+          "p95_ns": 638305,
+          "max_ns": 638305
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 578168,
+          "p95_ns": 617026,
+          "max_ns": 617026
+        }
+      },
+      "map/ordered/pool/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 2967103,
+          "p95_ns": 4209223,
+          "max_ns": 4209223
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 2551373,
+          "p95_ns": 3728489,
+          "max_ns": 3728489
+        }
+      },
+      "map/ordered/pool/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 1670957,
+          "p95_ns": 2221650,
+          "max_ns": 2221650
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1689075,
+          "p95_ns": 1877610,
+          "max_ns": 1877610
+        }
+      },
+      "map/shuffled/std/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 637821,
+          "p95_ns": 646683,
+          "max_ns": 646683
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 634797,
+          "p95_ns": 1116349,
+          "max_ns": 1116349
+        }
+      },
+      "map/shuffled/std/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 607005,
+          "p95_ns": 955158,
+          "max_ns": 955158
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 596548,
+          "p95_ns": 938533,
+          "max_ns": 938533
+        }
+      },
+      "map/shuffled/pool/cold/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 3306810,
+          "p95_ns": 3759617,
+          "max_ns": 3759617
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 2259155,
+          "p95_ns": 3130628,
+          "max_ns": 3130628
+        }
+      },
+      "map/shuffled/pool/warm/sum": {
+        "baseline": {
+          "count": 7,
+          "p50_ns": 1788208,
+          "p95_ns": 1937858,
+          "max_ns": 1937858
+        },
+        "after": {
+          "count": 7,
+          "p50_ns": 1831590,
+          "p95_ns": 2330491,
+          "max_ns": 2330491
+        }
+      }
+    },
+    "details": "build/world-u10-logs/comparison.json",
+    "cold_median_change_percent": [
+      -45.09,
+      -36.79,
+      -14.01,
+      -31.68
+    ],
+    "warm_median_change_percent": [
+      2.17,
+      0.41,
+      1.08,
+      2.43
+    ],
+    "retained_typed_metadata_delta_bytes": 40592,
+    "bank_capacity_entries": [
+      3094,
+      5120
+    ],
+    "calculated_bank_payload_bytes": [
+      57712,
+      98304
+    ]
+  },
+  "recovery": {
+    "same_unit": true,
+    "provisional_draft": "build/world-u10-logs/interrupted-draft",
+    "retained_sessions_completed": [
+      29523,
+      5737,
+      3859
+    ],
+    "outstanding_native_sessions": [],
+    "native_reruns_on_resume": 0
+  }
+}

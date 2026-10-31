@@ -1,6 +1,42 @@
 # World integration contracts and provenance
 
-WORLD-U9 is the current fresh-session continuation from exact clean
+## WINT-025 — Profiled bank admission correction
+
+WORLD-U10 uses a compile-time Detail::PoolProbe seam: normal scopes are empty and
+metadata remains explicit new_delete_resource. Only anonymous GNU list/map node
+types in the separate private EXCLUDE_FROM_ALL profile executable specialize it.
+Actual Engine transactions/backing, std::list/std::map and their allocator service
+remain the producers. The typed-State counting PMR resource forwards requests,
+never changes global defaults, and is pinned for process lifetime to outlive
+borrowed State cleanup; its own allocation and other service metadata are excluded.
+State/allocator layouts do not change. Normal binary has zero diagnostic symbols,
+and its compiler command exactly matches U9. Profiles are inclusive observations
+with timer/counter cost, not comparable timings or lock-contention measurements.
+
+The only algorithm correction amortizes bank vector reserve with checked growth
+saturation, preserving exact empty-node funding and capacity for every live
+record to recycle BEFORE storage publication. Return work/noexcept behavior,
+rebind/equality/retained contexts, alignment, raw slab geometry and construction
+remain. Both new cumulative-admission and late-growth-refusal regressions pass,
+alongside all 48 U8 laws/releases and the literal matched caller:51/51 with ASan/
+UBSan. No extra resource request occurs during the fragmented refusal returns.
+
+Cold typed metadata requests fall 5160->3650 and cumulative requested bytes fall
+15,195,064->489,944. Retained/peak bytes rise 297,752/330,408->338,344/353,384.
+Warm requests remain zero. Spare nodes remain 3078, while bank capacity grows
+3094->5120 entries, an explicit time/memory tradeoff. Separate source profiles
+identify warm return as remaining work; no total process-memory/cache claim follows.
+
+Before/after normal traces use unchanged operations/compiler/flags, seven samples
+per phase/case/backend/temperature and fresh cold/within-process warm owners. All
+224 normal and 48 diagnostic traces match useful results. Cold medians improve
+14..45%; warm medians regress 0.4..2.4%, with uncertain significance and varying
+tails. Pools still lose to std allocation. next.md contains exact p50/p95/max,
+counts/exclusions, actual evidence and the coordinator review boundary. A long
+stall produced a provisional partial draft; retained jobs and final checks then
+completed, and user resumed record/commit reconciliation in the same unit.
+
+WORLD-U9 was the prior fresh-session continuation from exact clean
 1115bc97a42d78555fce31e13a142df6196a7e95. Actual U8 source invariants were reviewed
 before use; its blocked benchmark receipt was not accepted as complete.
 49/49 Debug law/release/real-caller checks pass. 112 optimized cold/warm traces
@@ -22,7 +58,7 @@ All original text outside rewritten link targets remains preserved, including it
 historical claims/limits. WORLD-U1 statically checks all 65 relevant archived,
 procedural and public CPU implementation/header paths against the candidate.
 Current executed checks and limits belong in [next.md](next.md), with the committed
-[execution receipt](integration/WORLD-U1.json). Stable WINT-001–024 IDs match the
+[execution receipt](integration/WORLD-U1.json). Stable WINT-001–025 IDs match the
 compact decision view; recent agent APIs are compatibility, not user taste evidence.
 
 ## WINT-001 — Preserve exact source history and feature records

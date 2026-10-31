@@ -1,15 +1,17 @@
 #include <cheryl/core/resources/allocators.h>
 #include <core/resources/memory/managed-block.hpp>
 #include <gtest/gtest.h>
+#include <array>
 #include <memory_resource>
 #include <iostream>
 
 namespace {
     struct RefuseMetadata final : std::pmr::memory_resource {
         bool refuse = false;
-        std::size_t requests = 0, denied = 0, bytes = 0, peak = 0, reject_at = 0;
+        std::size_t requests = 0, denied = 0, bytes = 0, peak = 0, reject_at = 0, requested_bytes = 0;
         void* do_allocate(std::size_t n, std::size_t alignment) override {
             ++requests;
+            requested_bytes += n;
             if (refuse || requests == reject_at) {
                 ++denied;
                 throw std::bad_alloc{};
@@ -184,4 +186,60 @@ TEST(allocator_release, admission_failure_preserves_returns) {
     }
     EXPECT_GT(refused, 6u);
     std::cout << "actual metadata admission refusals=" << refused << " of12 positions; earlier return completed\n";
+}
+
+TEST(allocator_release, bounded_metadata_admission) {
+    RefuseMetadata metadata;
+    {
+        auto pool = std::make_shared<ActualPool<Item>>(&metadata);
+        std::array<Item*, 512> slots{};
+        for (auto& slot : slots)
+            slot = pool->retrieve_block(1).head.get();
+        // A caller-visible cumulative metadata budget, not a timing assertion or
+        // a copy of the bank's growth rule. Exact per-slot reserve requested over 15 million bytes.
+        EXPECT_LE(metadata.requested_bytes, 4u * 1024u * 1024u);
+        const auto requests = metadata.requests;
+        metadata.refuse = true;
+        for (std::size_t i = 0; i < slots.size(); ++i)
+            pool->return_objects(slots[(i * 73) % slots.size()], 1);
+        EXPECT_EQ(metadata.requests, requests);
+        EXPECT_EQ(metadata.denied, 0u);
+        EXPECT_EQ(pool->state()->return_units, 0u);
+        metadata.refuse = false;
+        pool->cull(std::chrono::minutes{-1});
+        pool->release_culled();
+        EXPECT_TRUE(std::get<1>(pool->state()->registry).empty());
+        std::cout << "512-slot metadata requests=" << metadata.requests << " requested bytes=" << metadata.requested_bytes
+                  << " peak=" << metadata.peak << '\n';
+    }
+    EXPECT_EQ(metadata.bytes, 0u);
+}
+
+TEST(allocator_release, growth_failure_preserves_returns) {
+    for (std::size_t ordinal = 1; ordinal <= 8; ++ordinal) {
+        RefuseMetadata metadata;
+        auto pool = std::make_shared<ActualPool<Item>>(&metadata);
+        auto first = pool->retrieve_block(1);
+        auto state = pool->state();
+        const auto snapshot = [](const auto& tuple) {
+            const auto& records = std::get<1>(tuple);
+            return std::vector<typename std::decay_t<decltype(records)>::value_type>(records.begin(), records.end());
+        };
+        const auto owners = snapshot(state->registry), sections = snapshot(state->sections), free = snapshot(state->pool);
+        const auto units = state->return_units;
+        metadata.reject_at = metadata.requests + ordinal;
+        EXPECT_THROW(static_cast<void>(pool->retrieve_block(1024)), std::bad_alloc);
+        EXPECT_EQ(snapshot(state->registry), owners);
+        EXPECT_EQ(snapshot(state->sections), sections);
+        EXPECT_EQ(snapshot(state->pool), free);
+        EXPECT_EQ(state->return_units, units);
+        const auto requests = metadata.requests;
+        metadata.refuse = true;
+        pool->return_objects(first.head.get(), 1);
+        EXPECT_EQ(metadata.requests, requests);
+        metadata.refuse = false;
+        auto later = pool->retrieve_objects(1, 73);
+        ASSERT_EQ(later.size(), 1u);
+        EXPECT_EQ(later[0]->value, 73);
+    }
 }

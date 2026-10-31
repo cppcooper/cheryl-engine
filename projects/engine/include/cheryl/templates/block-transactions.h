@@ -36,6 +36,7 @@ namespace CE::Memory {
               registry(std::get<0>(state.registry), std::defer_lock),
               stale(std::get<0>(state.stale), std::defer_lock),
               release(std::get<0>(state.release), std::defer_lock) {
+                [[maybe_unused]] typename Detail::PoolProbe<T>::template Scope<Detail::PoolStep::Locks> probe;
                 std::lock(pool, sections, registry, stale, release);
             }
         };
@@ -118,7 +119,15 @@ namespace CE::Memory {
             if (missing > bank.max_size() - bank.size() || live.size() > bank.max_size() - bank.size() - missing)
                 throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata capacity cannot be represented");
             // Capacity also covers recycling EVERY currently live record; returns never grow this vector.
-            bank.reserve(bank.size() + missing + live.size());
+            const auto minimum = bank.size() + missing + live.size();
+            if (minimum > bank.capacity()) {
+                // Exact reserve on each new slot repeatedly moves the entire bank.
+                // Amortize this vector's admission work, retaining the SAME funded
+                // node count and full recycling capacity before publication.
+                const auto capacity = bank.capacity();
+                const auto grown = capacity <= bank.max_size() - capacity ? capacity + capacity : bank.max_size();
+                bank.reserve(std::max(minimum, grown));
+            }
             while (bank.size() < required) {
                 Records one(live.get_allocator());
                 if constexpr (requires { typename Records::mapped_type; })
@@ -129,6 +138,7 @@ namespace CE::Memory {
             }
         }
         static void prepare_returns(State& state, std::size_t needed) {
+            [[maybe_unused]] typename Detail::PoolProbe<T>::template Scope<Detail::PoolStep::Reservation> probe;
             if (needed > (std::numeric_limits<std::size_t>::max() - 3) / 3)
                 throw ::CE::Exceptions::bad_request(CE_HERE, "Release metadata count cannot be represented");
             prepare_bank(std::get<1>(state.sections), state.section_spares, 3 * needed + 3);
@@ -264,6 +274,7 @@ namespace CE::Memory {
     public:
         template <typename Allocate>
         static BlockType checkout(const std::shared_ptr<State>& state, std::size_t count, std::align_val_t alignment, Allocate allocate) {
+            [[maybe_unused]] typename Detail::PoolProbe<T>::template Scope<Detail::PoolStep::Checkout> probe;
             ::CE::Memory::OptionalBlock<T> fresh;
             for (;;) {
                 {
@@ -281,11 +292,13 @@ namespace CE::Memory {
         }
 
         static ::CE::Memory::OptionalBlock<T> return_block(const std::shared_ptr<State>& state, const BlockType& block) {
+            [[maybe_unused]] typename Detail::PoolProbe<T>::template Scope<Detail::PoolStep::Return> probe;
             Locked lock(*state);
             return return_locked(*state, block, 0, block.length);
         }
 
         static ::CE::Memory::OptionalBlock<T> return_range(const std::shared_ptr<State>& state, T* ptr, std::optional<std::size_t> count) {
+            [[maybe_unused]] typename Detail::PoolProbe<T>::template Scope<Detail::PoolStep::Return> probe;
             Locked lock(*state);
             auto block = section_at(std::get<1>(state->sections), ptr);
             if (!block)
