@@ -13,14 +13,24 @@
 int main(int argc, char** argv) {
     try {
         if (argc >= 2 && std::string_view(argv[1]) == "--play") {
-            if (argc == 3) {
+            if (argc == 3 || argc == 7 || argc == 8) {
                 const std::string_view text = argv[2];
                 std::uint64_t seed = 0;
                 const auto parsed = std::from_chars(text.data(), text.data() + text.size(), seed);
-                if (!text.empty() && parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size())
-                    return OfflineStory::play(seed, std::cin, std::cout, std::cerr);
+                if (!text.empty() && parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size()) {
+                    if (argc == 3)
+                        return OfflineStory::play(seed, std::cin, std::cout, std::cerr);
+                    if (std::string_view(argv[3]) == "--language" && (argc == 7 || std::string_view(argv[7]) == "--assist")) {
+                        const auto profile = OfflineStory::language_profile(argv[4], argv[5], argv[6], argc == 8);
+                        if (profile)
+                            return OfflineStory::play(seed, std::cin, std::cout, std::cerr, *profile);
+                    }
+                }
             }
             std::cerr << "Usage: story-offline --play SEED (unsigned 64-bit decimal).\n";
+            if (argc >= 4 && std::string_view(argv[3]) == "--language")
+                std::cerr
+                    << "Optional: --language PRIMARY TARGET TIER [--assist]; pairs en fr or fr en; tiers 5|15|40|75|100. English interface; authored corpus only.\n";
             return 2;
         }
         if (argc >= 2 && std::string_view(argv[1]) == "--payoff") {

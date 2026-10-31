@@ -662,3 +662,83 @@ TEST(story_play_transcript, input_and_usage_boundaries) {
         EXPECT_NE(r.error.find("Usage: story-offline --play"), std::string::npos);
     }
 }
+
+TEST(story_language_transcript, retained_tiers) {
+    const char* tiers[] = {"5", "15", "40", "75", "100"};
+    const char* units[] = {"1", "3", "8", "15", "20"};
+    for (std::size_t i = 0; i < 5; ++i) {
+        const auto r =
+            child({"--play", "1", "--language", "en", "fr", tiers[i]}, "choose promise\nchoose close\napproach\nchoose deliver\n");
+        ASSERT_EQ(r.code, 0);
+        EXPECT_TRUE(r.error.empty());
+        EXPECT_NE(r.output.find(std::string(i == 4 ? "French" : "Enfrench") + " · " + tiers[i] + "%"), std::string::npos);
+        EXPECT_NE(
+            r.output.find(std::string("target units ") + units[i] + "/20 (retained corpus, not screen/word coverage)"), std::string::npos
+        );
+        EXPECT_NE(r.output.find("Sur le quai du port."), std::string::npos);
+        EXPECT_NE(r.output.find("promise: 2 planks later; no reward now"), std::string::npos);
+        EXPECT_NE(
+            r.output.find("Inventory: 5 coins, 1 plank.\nCommitment: fulfilled; 2 planks delivered. Favor: one relief favor."),
+            std::string::npos
+        );
+        if (i == 4) {
+            EXPECT_NE(r.output.find("deliver - Livrer les matériaux convenus [available]"), std::string::npos);
+            EXPECT_EQ(r.output.find("deliver - Deliver the recorded material"), std::string::npos);
+        }
+        EXPECT_TRUE(r.output.ends_with("Encounter finished.\n"));
+        for (auto word : {"Observer ", "Effects:", "knowledge=", "believes", "attitude", "licensed=", "session=", "definition="})
+            EXPECT_EQ(r.output.find(word), std::string::npos);
+    }
+}
+
+TEST(story_language_transcript, assistance_and_reverse_primary) {
+    const auto r = child(
+        {"--play", "7", "--language", "en", "fr", "100", "--assist"},
+        "assist terms\nassist commit\nassist scene\nassist ask-terms\nchoose ask-terms\nassist scene\nchoose negotiate\nassist commit\nchoose commit\nchoose close\napproach\nchoose deliver\n"
+    );
+    ASSERT_EQ(r.code, 0);
+    EXPECT_TRUE(r.error.empty());
+    EXPECT_EQ(count(r.output, "Assistance refused:"), 2);
+    EXPECT_NE(r.output.find("Primary-language help: Hear what the repair really needs"), std::string::npos);
+    const auto learned = r.output.find("Known revised promise: 1 plank later.");
+    ASSERT_NE(learned, std::string::npos);
+    EXPECT_EQ(r.output.substr(0, learned).find("The urgent work is small"), std::string::npos);
+    EXPECT_EQ(r.output.substr(0, learned).find("promise: 1 plank later"), std::string::npos);
+    EXPECT_NE(
+        r.output.find("Inventory: 5 coins, 2 planks.\nCommitment: fulfilled; 1 plank delivered. Favor: one relief favor."),
+        std::string::npos
+    );
+    const auto reverse = child(
+        {"--play", "1", "--language", "fr", "en", "15", "--assist"},
+        "assist help-now\nchoose help-now\nchoose close\napproach\nchoose acknowledge\n"
+    );
+    ASSERT_EQ(reverse.code, 0);
+    EXPECT_TRUE(reverse.error.empty());
+    EXPECT_NE(reverse.output.find("Français + Anglais · 15%"), std::string::npos);
+    EXPECT_NE(reverse.output.find("Primary-language help: Donner des planches pour les travaux aujourd'hui"), std::string::npos);
+    EXPECT_NE(reverse.output.find("Interface: English."), std::string::npos);
+    EXPECT_NE(reverse.output.find("Inventory: 5 coins, 2 planks.\nCommitment: none. Favor: none."), std::string::npos);
+}
+
+TEST(story_language_transcript, refusal_and_utf8_input) {
+    for (const auto& args :
+         {std::vector<std::string>{"--play", "1", "--language", "en", "fr", "0"},
+          {"--play", "1", "--language", "en", "fr", "50"},
+          {"--play", "1", "--language", "en", "de", "15"},
+          {"--play", "1", "--language", "fr", "fr", "15"},
+          {"--play", "1", "--language", "en", "fr", "15", "--unknown"},
+          {"--play", "1", "--language", "en", "fr"}}) {
+        const auto r = child(args, "choose promise\n");
+        EXPECT_EQ(r.code, 2);
+        EXPECT_TRUE(r.output.empty());
+        EXPECT_NE(r.error.find("Usage:"), std::string::npos);
+    }
+    const auto valid = child({"--play", "1", "--language", "en", "fr", "75"}, "choose é\nquit\n");
+    EXPECT_EQ(valid.code, 1);
+    EXPECT_TRUE(valid.error.empty());
+    EXPECT_NE(valid.output.find("Unknown choice"), std::string::npos);
+    const auto invalid = child({"--play", "1", "--language", "en", "fr", "75"}, "choose \xc3\nchoose promise\n");
+    EXPECT_EQ(invalid.code, 3);
+    EXPECT_NE(invalid.error.find("oversized or malformed"), std::string::npos);
+    EXPECT_EQ(invalid.output.find("2 planks pending"), std::string::npos);
+}

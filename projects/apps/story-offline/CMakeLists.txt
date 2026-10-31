@@ -2,7 +2,7 @@
 add_library(story-offline-model STATIC src/validation.cpp src/encounter.cpp src/fixtures.cpp src/demo.cpp
         src/continuation.cpp src/continuation-fixtures.cpp src/continuation-demo.cpp
         src/bargain.cpp src/bargain-fixtures.cpp src/bargain-demo.cpp
-        src/selection.cpp src/selection-demo.cpp src/payoff.cpp src/payoff-demo.cpp src/play.cpp)
+        src/selection.cpp src/selection-demo.cpp src/payoff.cpp src/payoff-demo.cpp src/play.cpp src/language.cpp)
 target_compile_features(story-offline-model PRIVATE cxx_std_23)
 target_link_libraries(story-offline-model PRIVATE Cheryl::Engine)
 add_executable(story-offline src/main.cpp)

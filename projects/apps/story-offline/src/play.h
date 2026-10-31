@@ -1,6 +1,7 @@
 #pragma once
 
 #include "payoff.h"
+#include "language.h"
 #include <istream>
 
 namespace OfflineStory {
@@ -23,6 +24,7 @@ namespace OfflineStory {
         D::View offer_;
         PlayPhase phase_ = PlayPhase::Bargain;
         std::array<std::uint64_t, 2> preparation_effects_;
+        std::optional<RetainedLanguage> language_;
         PlayDriver(SelectedBargainHandle, BargainEncounter, D::View, std::array<std::uint64_t, 2>);
         friend struct PlayProbe;
     public:
@@ -38,6 +40,9 @@ namespace OfflineStory {
         std::expected<void, D::SessionError> refresh();
         std::expected<void, Error> advance(); // Only a real completed bargain can prepare its one payoff.
         std::expected<void, Error> presence(bool);
+        std::expected<void, LanguageError> set_language(const LanguageProfile&);
+        const std::optional<RetainedLanguage>& language() const noexcept { return language_; }
+        std::expected<std::string, LanguageError> assist(std::string_view) const;
         std::string render(std::size_t frame_bytes = 16384) const; // Bounded, pure presentation of the retained offer/state.
     };
     struct PlayLimits {
@@ -47,5 +52,5 @@ namespace OfflineStory {
     enum class PlayExit { Complete = 0, Early = 1, Usage = 2, Limit = 3, Io = 4, Failure = 5 };
     std::string_view play_help() noexcept;
     PlayExit run_play(PlayDriver&, std::istream&, std::ostream&, std::ostream&, const PlayLimits& = {});
-    int play(std::uint64_t, std::istream&, std::ostream&, std::ostream&);
+    int play(std::uint64_t, std::istream&, std::ostream&, std::ostream&, std::optional<LanguageProfile> = {});
 }

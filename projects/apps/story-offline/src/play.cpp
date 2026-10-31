@@ -49,7 +49,7 @@ namespace OfflineStory {
                     if (c == std::char_traits<char>::eof())
                         return in.bad() || (!in.eof() && in.fail()) ? Line::Io : Line::Eof;
                     if (c == '\n')
-                        return Line::Ready;
+                        return valid_utf8({bytes.data(), size}, true) ? Line::Ready : Line::Invalid;
                     if (size == cap)
                         return Line::Limit; // At most cap+1 detection bytes, no draining.
                     if (static_cast<unsigned char>(c) < 32 && c != '\t' && c != '\r')
@@ -228,16 +228,66 @@ namespace OfflineStory {
             return std::unexpected(observe(displayed.error()));
         return {};
     }
+    std::expected<void, LanguageError> PlayDriver::set_language(const LanguageProfile& profile) {
+        if (!selected_)
+            return std::unexpected(LanguageError::Identity);
+        auto draft = relief_corpus(*selected_->content());
+        if (!draft)
+            return std::unexpected(draft.error());
+        auto retained = RetainedLanguage::retain(
+            *draft, profile, selected_->content()->definition()->id().value, selected_->content()->definition()->revision()
+        );
+        if (!retained)
+            return std::unexpected(retained.error());
+        static_assert(std::is_nothrow_move_assignable_v<RetainedLanguage>);
+        language_ = std::move(*retained);
+        return {};
+    }
+    std::expected<std::string, LanguageError> PlayDriver::assist(std::string_view id) const {
+        if (!language_ || !language_->profile().assistance)
+            return std::unexpected(LanguageError::Disabled);
+        // Never expose a retained future unit or hidden owner state through assistance.
+        const bool scene = id == "scene" && phase_ == PlayPhase::Bargain;
+        bool offered = false;
+        for (const auto& row : offer_.choices)
+            offered = offered || row.id.value == id;
+        if (!scene && !offered)
+            return std::unexpected(LanguageError::NotOffered);
+        const auto key = scene ? std::string_view(offer_.node.value) : id;
+        const auto text = language_->text(key, 1, true);
+        if (!text)
+            return std::unexpected(text.error());
+        return "Primary-language help: " + std::string(*text) + "\n";
+    }
     std::string PlayDriver::render(std::size_t cap) const {
         if (cap > maximum_play_limits.frame_bytes)
             throw FrameLimit{};
         if (!selected_)
             throw std::logic_error("Moved-from play driver");
         Frame f{cap};
+        if (language_) {
+            f.add("\nLanguage: ");
+            f.add(language_->label());
+            f.add("; target units ");
+            f.number(static_cast<int>(language_->target_count()));
+            f.add(
+                "/20 (retained corpus, not screen/word coverage).\nInterface: English. Handoff narration and host messages: English. Assistance: "
+            );
+            f.add(language_->profile().assistance ? "on; assist scene|ID.\n" : "off.\n");
+        }
+        const auto wording = [&](std::string_view id, std::string_view original) -> std::string_view {
+            if (!language_)
+                return original;
+            const auto source = language_->english(id);
+            const auto translated = language_->text(id);
+            if (!source || !translated || *source != original)
+                throw std::logic_error("Unsupported language meaning/revision");
+            return *translated;
+        };
         f.add(phase_ == PlayPhase::Bargain ? "\nRelief bargain - " : "\nRelief handoff - ");
         f.add(speaker());
         f.add("\n");
-        f.add(offer_.text);
+        f.add(phase_ == PlayPhase::Bargain ? wording(offer_.node.value, offer_.text) : std::string_view(offer_.text));
         f.add("\nInventory: ");
         const auto& world = payoff_ ? payoff_->state().world : bargain_.state().world;
         f.quantity(world.facts.coins, "coin", "coins");
@@ -279,7 +329,7 @@ namespace OfflineStory {
             f.add("  ");
             f.add(row.id.value);
             f.add(" - ");
-            f.add(row.text);
+            f.add(wording(row.id.value, row.text));
             f.add(row.available ? " [available]" : " [unavailable]");
             if (!payoff_) {
                 const auto& rule = selected_->content()->rule();
@@ -356,6 +406,19 @@ namespace OfflineStory {
                 if (command == "help") {
                     if (!io.emit(play_help()))
                         return io.failure;
+                    if (driver.language() &&
+                        !io.emit(
+                            "Language help: assist scene|ID shows only a current authored unit in the primary language when enabled.\n"
+                        ))
+                        return io.failure;
+                    continue;
+                }
+                if (driver.language() && (command == "assist" || command.starts_with("assist ") || command.starts_with("assist\t"))) {
+                    const auto help = driver.assist(command.size() > 6 ? trim(command.substr(6)) : std::string_view{});
+                    if (!io.emit(
+                            help ? std::string_view(*help) : "Assistance refused: enable --assist and use scene or a current choice ID.\n"
+                        ))
+                        return io.failure;
                     continue;
                 }
                 if (command == "show") {
@@ -416,10 +479,12 @@ namespace OfflineStory {
             return io.stop(PlayExit::Failure, "Play stopped: preparation or observation failed; prior actions may have committed.\n");
         }
     }
-    int play(std::uint64_t seed, std::istream& in, std::ostream& out, std::ostream& err) {
+    int play(std::uint64_t seed, std::istream& in, std::ostream& out, std::ostream& err, std::optional<LanguageProfile> profile) {
         try {
             auto driver = PlayDriver::start(seed);
             if (!driver)
+                return static_cast<int>(PlayExit::Failure);
+            if (profile && !driver->set_language(*profile))
                 return static_cast<int>(PlayExit::Failure);
             return static_cast<int>(run_play(*driver, in, out, err));
         } catch (const std::exception&) {

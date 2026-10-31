@@ -5,6 +5,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <streambuf>
+#include <type_traits>
+#include <iostream>
 
 namespace OfflineStory {
     struct PlayProbe {
@@ -437,4 +439,440 @@ TEST(story_play, retained_values_and_move) {
     const auto output = run(b, "choose close\napproach\nchoose acknowledge\n");
     EXPECT_EQ(output.exit, S::PlayExit::Complete);
     EXPECT_EQ(S::PlayProbe::payoff(b).state().world.facts.planks, 2);
+}
+
+namespace {
+    S::LanguageProfile profile(unsigned tier = 15, bool assistance = false, bool reverse = false) {
+        return {
+            S::Language::English, reverse ? S::Language::French : S::Language::English,
+            reverse ? S::Language::English : S::Language::French, tier, assistance
+        };
+    }
+    auto corpus(const S::PlayDriver& d) {
+        return S::relief_corpus(*d.selected()->content()).value();
+    }
+    auto retain(const S::LanguageCorpusDraft& c, const S::LanguageProfile& p = profile()) {
+        return S::RetainedLanguage::retain(c, p, c.definition, c.definition_revision);
+    }
+    void same_offer(S::PlayDriver& a, S::PlayDriver& b) {
+        EXPECT_EQ(a.phase(), b.phase());
+        EXPECT_EQ(a.offer().node, b.offer().node);
+        EXPECT_EQ(a.offer().kind, b.offer().kind);
+        ASSERT_EQ(a.offer().choices.size(), b.offer().choices.size());
+        for (std::size_t i = 0; i < a.offer().choices.size(); ++i) {
+            const auto& x = a.offer().choices[i];
+            const auto& y = b.offer().choices[i];
+            EXPECT_EQ(x.id, y.id);
+            EXPECT_EQ(x.available, y.available);
+            EXPECT_EQ(x.selection.session, y.selection.session);
+            EXPECT_EQ(x.selection.node, y.selection.node);
+            EXPECT_EQ(x.selection.step, y.selection.step);
+            EXPECT_EQ(x.selection.choice, y.selection.choice);
+        }
+        EXPECT_EQ(S::PlayProbe::bargain(a).capture().value(), S::PlayProbe::bargain(b).capture().value());
+    }
+    void utf8_lines(std::string_view text) {
+        while (!text.empty()) {
+            const auto end = text.find('\n');
+            EXPECT_TRUE(S::valid_utf8(text.substr(0, end))) << text.substr(0, end);
+            if (end == std::string_view::npos)
+                break;
+            text.remove_prefix(end + 1);
+        }
+    }
+}
+
+TEST(story_language, exact_tiers_and_labels) {
+    auto d = driver();
+    const auto c = corpus(d);
+    constexpr unsigned tiers[] = {5, 15, 40, 75, 100};
+    constexpr std::size_t counts[] = {1, 3, 8, 15, 20};
+    for (bool reverse : {false, true})
+        for (std::size_t t = 0; t < 5; ++t) {
+            const auto p = profile(tiers[t], false, reverse);
+            const auto retained = retain(c, p).value();
+            EXPECT_EQ(retained.target_count(), counts[t]);
+            std::size_t selected = 0;
+            for (std::size_t i = 0; i < 20; ++i) {
+                const auto key = c.units[i].id;
+                EXPECT_EQ(retained.selected(key).value(), i < counts[t]);
+                selected += retained.selected(key).value();
+                const auto language = i < counts[t] ? p.target : p.primary;
+                EXPECT_EQ(retained.text(key).value(), language == S::Language::French ? c.units[i].french : c.units[i].english);
+                EXPECT_EQ(retained.text(key, 1, true).value(), reverse ? c.units[i].french : c.units[i].english);
+            }
+            EXPECT_EQ(selected, counts[t]);
+            const std::string name = tiers[t] == 100 ? (reverse ? "Anglais" : "French") : (reverse ? "Français + Anglais" : "Enfrench");
+            EXPECT_EQ(retained.label(), name + " · " + std::to_string(tiers[t]) + "%");
+            EXPECT_EQ(
+                S::language_label(p, std::nullopt).value(),
+                (tiers[t] == 100 ? (reverse ? "Anglais" : "French") : (reverse ? "Français + Anglais" : "English + French")) +
+                    std::string(" · ") + std::to_string(tiers[t]) + "%"
+            );
+        }
+    EXPECT_EQ(S::language_label(profile(15, false, true), "Franglais").value(), "Franglais · 15%");
+    EXPECT_EQ(S::language_label(profile(100), "Enfrench").value(), "French · 100%");
+    // Existing route seeds all use flavour1. Exercise every authored goal/flavour through the actual selector/driver too.
+    constexpr std::string_view requests[2][2] = {
+        {"Sur le quai du port. La rampe d'aide a besoin d'un appui solide avant la nuit.",
+         "Sur le quai du port. Une rampe instable bloque les chariots d'aide."},
+        {"Sur le quai du port. L'abri d'aide a besoin de planches avant la pluie.",
+         "Sur le quai du port. La pluie traverse le toit de l'abri."}
+    };
+    std::array<bool, 4> seen{};
+    for (std::uint64_t seed = 0; seed < 64 && !std::ranges::all_of(seen, [](bool value) { return value; }); ++seed) {
+        auto varied = driver(seed);
+        const auto& source = *varied.selected()->content();
+        const std::size_t goal = source.request().proposition == "ramp-request" ? 0 : 1;
+        const auto flavour = source.pick().flavour;
+        ASSERT_LT(flavour, 2);
+        if (seen[goal * 2 + flavour])
+            continue;
+        ASSERT_TRUE(varied.set_language(profile(100)));
+        EXPECT_EQ(varied.language()->text("request").value(), requests[goal][flavour]);
+        EXPECT_NE(varied.render().find(requests[goal][flavour]), std::string::npos);
+        EXPECT_EQ(varied.language()->target_count(), 20);
+        seen[goal * 2 + flavour] = true;
+        std::cout << "Language recipe coverage: goal=" << goal << " flavour=" << flavour << " seed=" << seed << '\n';
+    }
+    EXPECT_TRUE(std::ranges::all_of(seen, [](bool value) { return value; }));
+}
+
+TEST(story_language, source_lifetime_and_inline_storage) {
+    static_assert(!std::is_default_constructible_v<S::RetainedLanguage>);
+    static_assert(std::is_trivially_copyable_v<S::RetainedLanguage>);
+    static_assert(sizeof(S::RetainedLanguage) < 24576);
+    const auto retained = [] {
+        auto source = driver();
+        auto c = corpus(source);
+        std::string definition(c.definition);
+        std::array<std::string, 20> ids, en, fr;
+        c.definition = definition;
+        for (std::size_t i = 0; i < 20; ++i) {
+            ids[i] = c.units[i].id;
+            en[i] = c.units[i].english;
+            fr[i] = c.units[i].french;
+            c.units[i] = {ids[i], en[i], fr[i]};
+        }
+        auto owned = retain(c, profile(100)).value();
+        std::size_t text_bytes = 0;
+        for (const auto& unit : c.units)
+            text_bytes += unit.english.size() + unit.french.size();
+        std::cout << "Language retention: units=20 fixed_inline_bytes=" << sizeof(S::RetainedLanguage)
+                  << " paired_text_bytes=" << text_bytes << " per_text_cap=512\n";
+        for (auto* rows : {&ids, &en, &fr})
+            for (auto& s : *rows)
+                s.assign(700, 'x');
+        definition.assign(3000, 'x');
+        return owned;
+    }();
+    auto moved = retained;
+    EXPECT_EQ(moved.text("help-now").value(), "Donner des planches pour les travaux aujourd'hui");
+    EXPECT_EQ(moved.text("help-now", 1, true).value(), "Put boards into the work today");
+    EXPECT_EQ(moved.target_count(), 20);
+    EXPECT_EQ(moved.definition_revision(), 1);
+    EXPECT_TRUE(moved.definition().starts_with("relief-"));
+    utf8_lines(moved.label());
+}
+
+TEST(story_language, profile_refusals_preserve_offer) {
+    for (auto tier : {"0", "1", "10", "50", "101", "-5", "15x", "", "999999999999999999999999"}) {
+        const auto refused = S::language_profile("en", "fr", tier, false);
+        ASSERT_FALSE(refused) << tier;
+        EXPECT_EQ(refused.error(), S::LanguageError::Profile) << tier;
+    }
+    for (auto pair : {std::pair{"de", "fr"}, {"en", "zh"}, {"Enfrench", "fr"}, {"en", "en"}, {"fr", "fr"}})
+        EXPECT_FALSE(S::language_profile(pair.first, pair.second, "15", false));
+    auto d = driver();
+    ASSERT_TRUE(d.set_language(profile()));
+    const auto before = d.render();
+    const auto pair = S::PlayProbe::bargain(d).capture().value();
+    auto invalid = profile(0);
+    EXPECT_FALSE(d.set_language(invalid));
+    invalid = profile();
+    invalid.interface_locale = S::Language::French; // UI coverage is deliberately independent and only English is authored.
+    EXPECT_FALSE(d.set_language(invalid));
+    invalid = profile();
+    invalid.target = static_cast<S::Language>(9);
+    EXPECT_FALSE(d.set_language(invalid));
+    EXPECT_EQ(d.render(), before);
+    EXPECT_EQ(S::PlayProbe::bargain(d).capture().value(), pair);
+}
+
+TEST(story_language, corpus_identity_and_text_refusals) {
+    auto d = driver();
+    const auto good = corpus(d);
+    ASSERT_TRUE(retain(good));
+    for (int defect = 0; defect < 10; ++defect) {
+        auto c = good;
+        switch (defect) {
+            case 0:
+                c.id = "another-corpus";
+                break;
+            case 1:
+                c.revision = 2;
+                break;
+            case 2:
+                c.selection_revision = 2;
+                break;
+            case 3:
+                c.units[0].id = "foreign-unit";
+                break;
+            case 4:
+                c.units[0].revision = 2;
+                break;
+            case 5:
+                c.units[1].id = c.units[0].id;
+                break;
+            case 6:
+                c.units[0].english = "";
+                break;
+            case 7:
+                c.units[0].french = "";
+                break;
+            case 8:
+                c.units[0].french = "\xc3";
+                break;
+            case 9:
+                c.units[0].french = "unsafe\x1b[0m";
+                break;
+        }
+        const auto refused = retain(c);
+        ASSERT_FALSE(refused) << defect;
+        EXPECT_EQ(refused.error(), defect < 6 ? S::LanguageError::Identity : S::LanguageError::Text) << defect;
+    }
+    EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), "foreign-definition", 1));
+    EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), good.definition, 2));
+    auto c = good;
+    std::string long_text(513, 'x');
+    c.units[0].french = long_text;
+    EXPECT_FALSE(retain(c));
+    long_text.pop_back();
+    c.units[0].french = long_text;
+    EXPECT_TRUE(retain(c)); // Exact whole UTF-8 byte bound, not a truncated acceptance.
+    long_text = std::string(510, 'x') + "é";
+    c.units[0].french = long_text;
+    EXPECT_TRUE(retain(c));
+    long_text.pop_back(); // Ends inside an encoded character; rejection must not repair/truncate it.
+    c.units[0].french = long_text;
+    const auto split = retain(c);
+    ASSERT_FALSE(split);
+    EXPECT_EQ(split.error(), S::LanguageError::Text);
+    const auto r = retain(good).value();
+    EXPECT_FALSE(r.text("missing"));
+    EXPECT_FALSE(r.text("request", 2));
+    EXPECT_FALSE(r.selected("missing"));
+    auto changed = d.selected()->content()->sets();
+    for (auto& text : changed.texts)
+        if (text.id == d.selected()->content()->request().proposition)
+            text.flavours[d.selected()->content()->pick().flavour] += " New meaning.";
+    const auto source =
+        S::compose_bargain(
+            changed, d.selected()->content()->catalogue(), d.selected()->content()->context(), d.selected()->content()->pick()
+        )
+            .value();
+    EXPECT_FALSE(S::relief_corpus(*source));
+}
+
+TEST(story_language, original_issued_authority_survives_wording) {
+    auto d = driver(), foreign = driver();
+    const auto original = d.resolve("help-now").value();
+    const auto snapshot = S::PlayProbe::bargain(d).capture().value();
+    for (auto tier : {5u, 15u, 40u, 75u, 100u}) {
+        ASSERT_TRUE(d.set_language(profile(tier, true)));
+        EXPECT_FALSE(d.render().empty());
+        EXPECT_EQ(S::PlayProbe::bargain(d).capture().value(), snapshot);
+    }
+    const auto other = foreign.apply(original);
+    ASSERT_FALSE(other);
+    EXPECT_EQ(other.error().owner, D::SessionError::WrongIncarnation);
+    auto moved = std::move(d);
+    ASSERT_TRUE(moved.apply(original)); // A newly fabricated or reissued token could not prove this.
+    EXPECT_EQ(S::PlayProbe::bargain(moved).effects(), 1);
+    EXPECT_EQ(S::PlayProbe::bargain(moved).state().world.facts.planks, 2);
+    const auto stale = moved.apply(original);
+    ASSERT_FALSE(stale);
+    EXPECT_EQ(stale.error().owner, D::SessionError::StaleSelection);
+    auto rewind = driver();
+    ASSERT_TRUE(rewind.set_language(profile(40, true)));
+    const auto old = rewind.resolve("help-now").value();
+    const auto retained_text = rewind.render();
+    const auto pair = S::PlayProbe::bargain(rewind).capture().value();
+    S::PlayProbe::bargain(rewind).restore(pair).value();
+    ASSERT_TRUE(rewind.refresh());
+    EXPECT_EQ(rewind.render(), retained_text);
+    EXPECT_EQ(rewind.language()->target_count(), 8);
+    ASSERT_TRUE(rewind.set_language(profile(100)));
+    const auto resumed = rewind.apply(old);
+    ASSERT_FALSE(resumed);
+    EXPECT_EQ(resumed.error().owner, D::SessionError::WrongIncarnation);
+}
+
+TEST(story_language, same_actions_same_state_all_tiers) {
+    struct Route {
+        std::uint64_t seed;
+        std::vector<std::string_view> commands;
+        int coins, planks, delivered;
+        S::Obligation obligation;
+        S::PayoffOutcome outcome;
+        bool favor;
+    };
+    const Route routes[] = {
+        {1, {"promise", "close", "approach", "deliver"}, 5, 1, 2, S::Obligation::Fulfilled, S::PayoffOutcome::Fulfilled, true},
+        {3, {"promise", "close", "approach", "deliver"}, 5, 0, 3, S::Obligation::Fulfilled, S::PayoffOutcome::Fulfilled, true},
+        {7,
+         {"ask-terms", "negotiate", "commit", "close", "approach", "deliver"},
+         5,
+         2,
+         1,
+         S::Obligation::Fulfilled,
+         S::PayoffOutcome::Fulfilled,
+         true},
+        {1, {"help-now", "close", "approach", "acknowledge"}, 5, 2, 0, S::Obligation::None, S::PayoffOutcome::Acknowledged, false},
+        {1, {"pay", "close", "approach", "acknowledge"}, 3, 3, 0, S::Obligation::None, S::PayoffOutcome::Acknowledged, false},
+        {1, {"refuse", "close", "approach", "acknowledge"}, 5, 3, 0, S::Obligation::None, S::PayoffOutcome::Acknowledged, false},
+        {1, {"promise", "close", "approach", "break"}, 5, 3, 0, S::Obligation::Broken, S::PayoffOutcome::Broken, false},
+        {1, {"promise", "close", "leave"}, 5, 3, 0, S::Obligation::Pending, S::PayoffOutcome::Left, false}
+    };
+    for (bool reverse : {false, true})
+        for (auto tier : {5u, 15u, 40u, 75u, 100u})
+            for (const auto& route : routes) {
+                SCOPED_TRACE(std::to_string(tier) + "/" + std::to_string(route.seed) + "/" + std::string(route.commands.back()));
+                auto plain = driver(route.seed), localized = driver(route.seed);
+                ASSERT_TRUE(localized.set_language(profile(tier, true, reverse)));
+                const auto selected = localized.selected();
+                for (auto id : route.commands) {
+                    same_offer(plain, localized);
+                    const auto output = localized.render();
+                    utf8_lines(output);
+                    private_free(output);
+                    // Help is pure; unavailable/future units are covered separately.
+                    if (localized.phase() == S::PlayPhase::Bargain)
+                        EXPECT_TRUE(localized.assist("scene"));
+                    if (id == "approach") {
+                        plain.presence(true).value();
+                        localized.presence(true).value();
+                    } else {
+                        choose(plain, id);
+                        choose(localized, id);
+                        if (plain.phase() == S::PlayPhase::Bargain && plain.offer().kind == D::NodeKind::Terminal) {
+                            plain.advance().value();
+                            localized.advance().value();
+                        }
+                    }
+                    EXPECT_EQ(localized.selected(), selected);
+                }
+                same_offer(plain, localized);
+                const auto& s = S::PlayProbe::payoff(localized).state();
+                EXPECT_EQ(s, S::PlayProbe::payoff(plain).state());
+                EXPECT_EQ(s.world.facts.coins, route.coins);
+                EXPECT_EQ(s.world.facts.planks, route.planks);
+                EXPECT_EQ(s.delivered, route.delivered);
+                EXPECT_EQ(s.obligation, route.obligation);
+                EXPECT_EQ(s.outcome, route.outcome);
+                EXPECT_EQ(s.favor, route.favor);
+                EXPECT_EQ(s.world.knowledge[1], S::Knowledge::VerifiedFare);
+                EXPECT_EQ(s.world.knowledge[2], S::Knowledge::None);
+                EXPECT_EQ(S::PlayProbe::payoff(localized).effects(), 1);
+                EXPECT_EQ(S::PlayProbe::bargain(localized).effects(), S::PlayProbe::bargain(plain).effects());
+                EXPECT_EQ(localized.phase(), S::PlayPhase::Complete);
+            }
+}
+
+TEST(story_language, assistance_only_current_public_meaning) {
+    auto d = driver(7);
+    EXPECT_FALSE(d.assist("scene"));
+    ASSERT_TRUE(d.set_language(profile(100)));
+    EXPECT_FALSE(d.assist("scene"));
+    ASSERT_TRUE(d.set_language(profile(100, true)));
+    const auto pair = S::PlayProbe::bargain(d).capture().value();
+    for (auto key : {"terms", "proposal", "commit", "deliver", "lena", "closing", "scene extra"})
+        EXPECT_FALSE(d.assist(key)) << key;
+    EXPECT_EQ(d.assist("ask-terms").value(), "Primary-language help: Hear what the repair really needs\n");
+    private_free(d.assist("scene").value());
+    const auto r = run(d, "assist terms\nassist commit\nassist scene\nassist ask-terms\nshow\nquit\n");
+    EXPECT_EQ(r.exit, S::PlayExit::Early);
+    EXPECT_EQ(S::PlayProbe::bargain(d).capture().value(), pair);
+    EXPECT_EQ(r.out.find("Known revised promise"), std::string::npos);
+    EXPECT_EQ(r.out.find("The urgent work is small"), std::string::npos);
+    EXPECT_EQ(r.out.find("promise: 1 plank"), std::string::npos);
+    private_free(r.out);
+    choose(d, "ask-terms");
+    EXPECT_TRUE(d.assist("scene"));
+    EXPECT_NE(d.render().find("Known revised promise: 1 plank later."), std::string::npos);
+    choose(d, "negotiate");
+    EXPECT_TRUE(d.assist("commit"));
+    EXPECT_FALSE(d.assist("terms"));
+}
+
+TEST(story_language, live_cost_and_presence_refusals) {
+    for (auto tier : {5u, 15u, 40u, 75u, 100u}) {
+        auto d = driver();
+        ASSERT_TRUE(d.set_language(profile(tier, true)));
+        const auto held = d.resolve("help-now").value();
+        EXPECT_NE(d.render().find("cost: 1 plank now"), std::string::npos);
+        EXPECT_NE(d.render().find("cost: 2 coins now"), std::string::npos);
+        EXPECT_NE(d.render().find("promise: 2 planks later; no reward now"), std::string::npos);
+        ASSERT_TRUE(S::PlayProbe::bargain(d).resources(0, 0));
+        const auto pair = S::PlayProbe::bargain(d).capture().value();
+        const auto rejected = d.apply(held);
+        ASSERT_FALSE(rejected);
+        EXPECT_EQ(rejected.error().owner, D::SessionError::Unavailable);
+        EXPECT_EQ(S::PlayProbe::bargain(d).capture().value(), pair);
+        auto p = driver();
+        ASSERT_TRUE(p.set_language(profile(tier)));
+        promise(p);
+        const auto delivery = p.resolve("deliver").value();
+        EXPECT_NE(p.render().find("cost: 2 planks; one relief favor on delivery"), std::string::npos);
+        EXPECT_FALSE(p.apply(delivery));
+        EXPECT_EQ(S::PlayProbe::payoff(p).effects(), 0);
+        p.presence(true).value();
+        // Presence changes eligibility, not dialogue progress. The ORIGINAL token can now pass the owner's live recheck.
+        ASSERT_TRUE(p.apply(delivery));
+        EXPECT_FALSE(p.apply(delivery));
+        EXPECT_EQ(S::PlayProbe::payoff(p).state().delivered, 2);
+    }
+}
+
+TEST(story_language, utf8_input_and_whole_output_limits) {
+    for (const std::string bad :
+         {std::string("\xc3"), std::string("\xc0\xaf"), std::string("\xed\xa0\x80"), std::string("\xf4\x90\x80\x80"), std::string("\x80"),
+          std::string("\xc2\x85")}) {
+        EXPECT_FALSE(S::valid_utf8(bad));
+        auto d = driver();
+        ASSERT_TRUE(d.set_language(profile(100, true)));
+        const auto pair = S::PlayProbe::bargain(d).capture().value();
+        const auto r = run(d, "choose " + bad + "\nchoose promise\n");
+        EXPECT_EQ(r.exit, S::PlayExit::Limit);
+        EXPECT_EQ(S::PlayProbe::bargain(d).capture().value(), pair);
+    }
+    EXPECT_TRUE(S::valid_utf8("Écouter · Français 中文 🛶"));
+    auto exact_input = driver();
+    EXPECT_EQ(run(exact_input, std::string(254, 'x') + "é\nquit\n").exit, S::PlayExit::Early);
+    auto split = driver();
+    EXPECT_EQ(run(split, std::string(255, 'x') + "\xc3\n").exit, S::PlayExit::Limit);
+    auto over = driver();
+    EXPECT_EQ(run(over, std::string(255, 'x') + "é\n").exit, S::PlayExit::Limit);
+    auto reference = driver();
+    ASSERT_TRUE(reference.set_language(profile(100, true)));
+    const auto full = run(reference, "quit\n");
+    utf8_lines(full.out);
+    for (bool short_cap : {false, true}) {
+        auto d = driver();
+        ASSERT_TRUE(d.set_language(profile(100, true)));
+        S::PlayLimits l;
+        l.frame_bytes = d.render().size() - short_cap;
+        const auto r = run(d, "quit\n", l);
+        EXPECT_EQ(r.exit, short_cap ? S::PlayExit::Limit : S::PlayExit::Early);
+        utf8_lines(r.out);
+        EXPECT_EQ(S::PlayProbe::bargain(d).effects(), 0);
+        auto q = driver();
+        ASSERT_TRUE(q.set_language(profile(100, true)));
+        l = {};
+        l.output_bytes = full.out.size() + full.err.size() - short_cap;
+        const auto bounded = run(q, "quit\n", l);
+        EXPECT_EQ(bounded.exit, short_cap ? S::PlayExit::Limit : S::PlayExit::Early);
+        utf8_lines(bounded.out);
+        EXPECT_LE(bounded.out.size() + bounded.err.size(), l.output_bytes);
+    }
 }

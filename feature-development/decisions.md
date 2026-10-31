@@ -459,3 +459,42 @@ input and check final flush. Distinguish completion, early ending, usage, limits
 I/O and preparation failure. This trades unlimited interaction for finite resource
 use. Confidence is high in simulated boundaries, medium in caps; buffering/allocator
 overhead is excluded and failed presentation cannot undo an already committed effect.
+
+## ST-045 — Retain a private twenty-unit bilingual presentation
+
+Freeze eight bargain speech units and twelve action wordings in factory-validated fixed inline
+English/French buffers, bound to the selected definition and corpus/unit/selection
+revision1. Select the canonical prefix of 1/3/8/15/20 whole units for the five
+requested tiers. This trades screen-wide percentage guarantees for exact retained
+corpus counts. Confidence is high in the bounded ownership design; translation
+quality and choosing a larger counting domain require separate evidence.
+
+## ST-046 — Keep language preferences outside game authority
+
+Opt in with `--play SEED --language en fr TIER [--assist]`, or the reverse pair.
+Keep an independently validated English interface locale; expose Enfrench/French
+and primary-localized reverse fallback/Anglais labels. Default and scripted
+callers retain their behavior. Rendering neither assigns world speech nor infers
+character/player proficiency. This trades broader locale support for a reversible
+two-language proof; original issued selections, conditions, costs and outcomes
+remain with U15's real owners. Confidence is high in that separation.
+
+## ST-047 — Restrict optional assistance to the current offer
+
+Assistance defaults off. When explicitly enabled, `assist scene|ID` shows the
+primary-language version of the current bargain speech or an actually offered
+choice; it cannot dump retained future units, handoff narration or observer
+state. This trades unrestricted corpus browsing for the existing player's
+information boundary. Confidence is high in source gating, medium in clarity;
+assistance wording and translation quality remain manually authored, without
+learning, proficiency or human comprehension claims.
+
+## ST-048 — Validate complete UTF-8 within existing terminal bounds
+
+Keep 512 bytes per unit/language, 24 per unit ID and 2048 per source identity in
+fixed arrays. Refuse incomplete/overlong UTF-8, surrogates, out-of-range scalars
+and control text; validate completed input lines inside U15's unchanged bounded
+reader. Whole frame/message admission prevents budget-induced byte slicing.
+This trades silent text fallback for explicit refusal. Confidence is high in
+bounded validation; terminal glyphs, physical stream atomicity and graphical
+rendering are outside this proof.

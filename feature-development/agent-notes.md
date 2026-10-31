@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-044` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-048` IDs;
 [next](next.md) records the next coordinator review action.
 
 U15 adds a standalone private terminal episode from the exact accepted U14
@@ -2113,6 +2113,159 @@ source hashes, full logs/immediate statuses and compile/link rules are preserved
 in next.md/standalone receipt. U14's244+17+17, U13's227+33 and U11's193/194+1/1
 histories stay intact. No unresolved blocker; idle for coordinator review, not
 another queue unit or automatic human gameplay acceptance.
+
+## U16 retained regional-language prototype
+
+Fresh-session recovery on 2026-10-31, same owned clone/branch, exactly clean
+`2d1cecddaf85733579d786792096c20b2a8ab1db`. The local revival manifest's worker-4
+digest is `4c3715d3ee0144679790f72f63f4d2a8d93e4e40153f14a671743492b24a1176`.
+The missing native rollout is not assumed present; thirty committed story source
+hashes agree with U15's saved final audit. Inspected actual resolve/apply/render,
+typed cost gates, handoff eligibility and observer boundaries. No prerequisite is
+inferred from a blocked receipt. The recorded fresh assignment supersedes U15's
+idle boundary only for this standalone unit; historical receipts remain intact.
+
+### ST-045 — One owned corpus with exact whole-unit counts
+
+Private caller, stated in progress before accumulating its implementation:
+
+```text
+story-offline --play 7 --language en fr 15 --assist
+assist scene
+choose ask-terms
+assist scene
+choose negotiate
+choose commit
+choose close
+approach
+choose deliver
+```
+
+`relief_corpus` checks the selected manual sets/catalogue revision, quay location,
+goal, flavour and actual compiled English node/choice text against the authored
+corpus. Changed wording or identity refuses activation. A retained instance owns
+exactly twenty complete paired units: eight bargain speech nodes and twelve
+bargain/payoff choice labels. Two existing English flavours and the ramp/shelter
+propositions have tiny manually authored French counterparts; only the actually
+selected twenty pairs are retained. This is authored prototype content, not a
+professional translation review or model/provider output.
+
+Corpus `relief-en-fr`, unit revisions and selection revision are1. Canonical order
+is request, terms, proposal, helped, paid, promised, refused, closing, ask-terms,
+help-now, pay, promise, negotiate, commit, refuse, close, deliver, break,
+acknowledge, leave. Selection revision1 retains a prefix of1/3/8/15/20 target units
+at5/15/40/75/100%; every remaining unit is primary language. Redraw, assistance,
+move or paired restore does not resample. No byte/word substitution or random
+draw occurs. Requested tiers are user direction; prefix order and counting domain
+are narrow reversible engineering choices. No0% profile exists; the unprofiled
+English caller remains for compatibility.
+
+Counts cover retained eligible units, including mutually exclusive branches,
+not necessarily visited units, screen bytes/words/time, all NPC speech or the
+whole game. Every profiled frame states that denominator and that handoff
+narration/host messages remain English. Translating all U14 narration, adding
+more languages or choosing a cross-scene counting policy needs separate scope.
+This explicit bounded domain avoids silently labelling partial coverage as a
+percentage of the entire screen. Public Engine interfaces and story policies are
+unchanged. Confidence high in ownership/counting, medium in authored wording.
+
+### ST-046 — Preferences do not issue actions or define world knowledge
+
+`LanguageProfile` stores interface locale independently from primary/target,
+exposure and assistance. Only the English interface is authored/accepted; either
+English/French ordered content pair works. English-primary mixed tiers display
+the user's Enfrench name;100% displays French. No reverse blend is asserted to
+have been reviewed: French-primary uses localized `Français + Anglais`, then
+`Anglais` at100%. The label helper also supports an explicitly supplied reviewed
+blend, with primary-localized fallback when absent. Unsupported pairs/tier/UI or
+revisions fail before replacing a usable presentation; labels are never IDs.
+
+The adapter changes only presentation. It neither assigns a language to the
+world/region/NPC nor infers a character's repertoire, player proficiency or
+learning. The existing world/observer knowledge remains with game owners;
+future authored regional speech/character language mechanics need their own
+game-owned inputs rather than reusing the exposure profile as truth.
+
+`PlayDriver::set_language` prepares a value and adopts it only after complete
+validation; it does not refresh, restart or reissue the retained offer. Resolution
+still returns its ORIGINAL Selection and phase. Costs use the same typed rules,
+revised amounts remain gated on terms_known, and actions run through the original
+owners. Presence changes eligibility without advancing dialogue; held delivery
+authority can subsequently succeed after an actual live presence/resource
+recheck. Stale, foreign and same-field resumed authority still refuses. Changing
+wording, tier or primary language cannot launder an old token into a new one.
+Confidence high in the preserved source boundary; there is no proficiency model.
+
+### ST-047 — Assistance is a current-offer projection
+
+`--assist` explicitly enables pure primary-language help, including at100% target
+exposure. Default is off, a reversible engineering choice. `assist scene` is
+limited to the current bargain node; `assist ID` must match an actual current
+choice. Even though the corpus privately retains future units, a player cannot
+query future terms, commit, other branches, observer facts or a hidden recipient
+belief by unit ID. Assistance never consults full owner/observer state. English
+handoff narration has no authored assistance entry. A visible unavailable choice
+can be explained using exactly its already visible wording; that does not reveal
+its future cost or make it selectable. Assistance consumes an ordinary bounded
+command/output allowance, keeps no history and produces no game effect.
+
+The independent checks compare all offered IDs/order/availability, original
+selection fields, full paired state and literal resource/outcome expectations
+through eight routes, all five tiers and both directions. Tests additionally
+exercise retained input destruction, held authority across profile changes/moves,
+failed activation preservation, stale/foreign/restore refusals, live resource and
+presence changes, future-assistance denial and unchanged observer separation.
+CPU checks cannot establish French quality, human comprehension or enjoyment.
+
+### ST-048 — Inline text and bounded complete UTF-8
+
+Each retained unit has24 ID bytes and512 bytes per language, plus inline sizes
+and its retained selection bit; the source definition has2048 bytes and revision.
+All twenty are fixed inline arrays with no allocating members. This follows
+ALLOC-001's explicit inline-storage allowance, not an unproved CE allocator alias.
+Construction is factory-only; blank/default retained values cannot bypass profile,
+identity or text validation. Public trivial copy/move preserves accepted values.
+Existing cold formatting/model strings and Engine Session allocations retain
+their existing contracts; no allocator/backend service change or allocation/perf
+improvement is claimed. Copy/move can retain independent values after every input
+string and producing driver dies. Lookup views borrow that retained value; final
+rendered/assistance strings own their output.
+
+Validation rejects empty/missing/oversized text, invalid UTF-8 continuations,
+overlong encodings, surrogate scalars, values above U+10FFFF and terminal control
+text. Completed commands use the same validator with tab/CR allowed inside the
+unchanged256-byte reader; partial commands at EOF remain discarded. Unsupported
+Unicode IDs do not become commands or translations. Units/labels are appended
+whole after remaining frame-budget checks, and messages retain U15's shared
+output cap. An exhausted cap does not splice a multibyte unit. Physical partial
+writes/flush failures still have U15's ordinary failure boundary, without effect
+rollback or transactional output.
+
+Limits stay64 commands,256 data bytes plus one oversize detection byte,16KiB
+frames,64KiB combined requested output. Corpus validation is bounded by20 pairs,
+512 bytes per text and finite source recipe shapes; lookups scan at most20
+units. Logical bounds exclude allocator capacity/metadata, existing parent
+composition/Engine state, formatting temporaries, OS buffering and RSS. Fonts,
+shaping, graphical/platform support and educational effectiveness are unverified.
+
+Executed evidence: first story run119/120,19.14s,exit8, with all108 predecessor
+story names/order and85 old child blocks unchanged. The one failure was an
+oversized borrowed view in the exact512-byte test fixture; rebinding the view
+corrects it. A pre-test timestamp-audit/launch sequencing mistake is retained in
+review.log rather than hidden. Final factory-only-header and corrected test
+inputs rebuild and pass30/30 affected,5.85s,exit0 (18 old play +12 new language),
+with all35 final child blocks unchanged. This completes selected acceptance over
+120 unique cases without claiming a second full120 run. Four native builds exit0;
+no final skips/unrun/sanitizer diagnostics. Fifteen new input children have
+expected exits7x0/1x1/6x2/1x3; output198–5487 bytes. Seed1 retains1903 paired text
+bytes in a23696-byte inline value; not RSS or an allocation/performance claim.
+Final test-only review covers all four authored goal/flavour combinations through
+real selected seeds0/2/5/7, with the changed exact-tiers/labels case rebuilt and
+passing1/1,0.14s. Product sources remain unchanged from the30-case run; final
+frozen source/object audit passes. Only the changed case was repeated.
+The current U16 section of next.md and standalone receipt own full commands,
+source hashes, actual failures/reconciliation and limits. No automatic follow-on
+milestone is selected.
 
 ## Verification environment
 

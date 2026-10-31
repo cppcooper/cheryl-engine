@@ -1,3 +1,175 @@
+# U16 retained English/French exposure in the playable episode
+
+Fresh-session recovery on 2026-10-31 in the SAME owned clone and branch, exactly
+clean at `2d1cecddaf85733579d786792096c20b2a8ab1db`. Manifest
+`local-revival-20261031`, worker-4 task digest
+`4c3715d3ee0144679790f72f63f4d2a8d93e4e40153f14a671743492b24a1176`.
+The predecessor rollout is unavailable; thirty committed story source hashes
+match U15's saved final evidence. Read the actual issued-view, resource-cost,
+observer and handoff boundaries. U15's receipt is ready, not assumed from a
+blocked prerequisite. Historical receipts, queue plans, archived runtime and
+the U15/older handoffs below remain intact. This unit alone supersedes idle.
+
+## Working consumer and coverage domain
+
+```text
+story-offline --play 7 --language en fr 15 --assist
+assist scene
+choose ask-terms
+assist scene
+choose negotiate
+choose commit
+choose close
+approach
+choose deliver
+```
+
+Every native invocation uses the shared wrapper shown below, including launching
+this consumer. Compatible unprofiled `--play SEED`, scripted modes and no-argument
+demo remain. New profiles support only `en fr` and `fr en`, only5/15/40/75/100%,
+with assistance explicitly opt-in. There is no0% profile. Invalid CLI profiles
+exit2 before any play setup/input. The interface remains independently English.
+
+Private `RetainedLanguage` owns exactly20 paired units: eight current-family
+bargain speech nodes and twelve bargain/payoff action wordings. The selected
+ramp/shelter and existing flavour have manually authored English/French pairs.
+Canonical selection revision1 chooses a stable prefix of1/3/8/15/20 TARGET units;
+all other units use PRIMARY. Selection and complete text survive input destruction,
+redraw, move and in-memory paired restore. Fixed corpus/unit revisions and the
+actual selected definition identity/revision guard meaning; changed source text,
+unsupported identities/revisions, missing/oversized/invalid UTF-8 refuse.
+
+Every profiled frame states that counts refer to this RETAINED corpus, including
+mutually exclusive branches, not visited speech, screen/word/time coverage or the
+whole game. Handoff narration, cost/inventory annotations and host/interface
+messages remain English. This is the bounded prototype's explicit counting
+domain, not a claim to have localized the entire episode. French quality has no
+professional/human review in this unit.
+
+English-primary labels are Enfrench at5–75%, French at100%. French-primary uses
+localized `Français + Anglais` fallback, then Anglais at100%; no unreviewed blend
+is presented as approved. Other languages/UI locales refuse. The adapter neither
+assigns world/NPC speech nor infers player/character language knowledge or
+proficiency. Game facts and observer knowledge remain with the existing owners.
+
+## Preserved authority, privacy and resource contracts
+
+No re-selection of U13, recipe/reward/cost change or generated action occurs.
+Wording/profile activation leaves the ORIGINAL issued Selection and phase intact.
+Actual owners recheck current supplies/presence; stale, foreign, resumed and
+wrong-phase commands retain their existing refusals. Typed cost annotations and
+terms-known gating remain; effect/observation failure semantics are unchanged.
+
+`assist scene|ID`, only when enabled, shows PRIMARY wording for the current
+bargain speech or an actually offered choice. No future-unit/corpus browsing,
+observer-state projection or hidden revised amount is exposed. Help never chooses
+an action or changes world knowledge. This is assistance, not a proficiency
+measurement or educational-effectiveness claim.
+
+The retained value uses fixed inline arrays:24 bytes per unit ID,512 per
+language/text and2048 for source identity, with inline sizes/selection flags.
+Factory-only construction prevents unvalidated blank retained values. No
+allocating members or allocator aliases; ALLOC-001 explicitly allows inline
+storage. Existing cold output/model allocations and Engine lifetimes remain.
+Canonical scans are bounded to20 units; whole text admission refuses instead of
+truncating UTF-8. Completed input validates UTF-8 within U15's unchanged256-byte
+reader plus one detection byte. Frame/combined-output/command caps remain
+16KiB/64KiB/64. Logical quotas exclude allocator/stdio/OS overhead, parent model
+state and RSS. Broken physical writes can still follow committed actions.
+
+## Exact executed checks and evidence
+
+Evidence is clone-local and ignored: `builds/storytelling-u1-debug/u16/`.
+All native commands run from this clone with this prefix (P):
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+The existing Debug shared Engine build automatically regenerated with current
+CMake/GNU16.2.1. Kept existing OFF selections, source/dependency pins, warnings,
+ASan/UBSan and command-local ST-008 leak accommodation. No install/download,
+sanitizer weakening, build/cache cleanup or global/build-option change.
+
+Actual native commands after P, in execution order:
+
+```sh
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+# Review: bounded tier parsing/profile-only assist; exact UTF-8/restore/error checks.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.'
+# Final factory-only constructor and corrected test draft view/guard inputs.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_(play|language)(_transcript)?\.'
+# Final review: test-only coverage of all four authored goal/flavour combinations.
+cmake --build builds/storytelling-u1-debug --target tests-story-offline --parallel 1
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.story_language\.exact_tiers_and_labels$'
+```
+
+All four builds exited0. First CTest: **119/120,19.14s,exit8**. Its one failure
+was a test-fixture mistake: shortening a513-byte string did not update the
+borrowed draft view's size, so the correct retention refusal contradicted the
+test's expected512-byte acceptance. Rebinding the view fixes the test. A static
+pre-test source/object timestamp audit also failed after an assertion-guard edit;
+the suite was started despite that audit. This previous-build run is preserved,
+not relabelled as final-source acceptance. No product-code runtime failure or
+sanitizer diagnostic was observed.
+
+The final factory-only header and corrected test inputs were rebuilt, frozen
+source hashes checked and all four affected source/header object timestamps
+confirmed BEFORE the affected run. Affected CTest: **30/30,5.85s,exit0**, all18 old play
+plus12 new language cases. This resolves the failed fixture and establishes the
+complete selected120-case acceptance across the reconciled runs; it is not a
+second full120 run. All108 prior story cases passed in the first run; unaffected
+non-play cases were not repeated after the private header/test changes.
+
+Final review found the route seeds all selected flavour1. Extended only the
+existing exact-tiers/labels case to cover all four authored goal/flavour
+combinations through the actual selector/PlayDriver, bounded to64 seeds. The
+changed test rebuild/recheck passes **1/1,0.14s,exit0**, reaching all four at
+seeds0/2/5/7 (eight starts). Product source is unchanged from the30-case run;
+only that changed case is repeated. Final frozen hashes and object audit pass.
+
+All85 old story child blocks are byte-identical to U15. The15 new real stdin
+children return7x0,1x1,6x2,1x3 as expected; all35 final child blocks (20 old play,
+15 new) match their first-run bytes. New child stdout/stderr is valid UTF-8 and
+uses198–5487 combined bytes, within64KiB. Eight routes x five tiers x two ordered
+language pairs execute80 paired same-actions/same-state comparisons with literal
+cost/outcome expectations, preserving choice IDs/order/availability, original
+token authority and observer restrictions. No final skips/unrun/sanitizer errors.
+
+Measured seed1 corpus: **23696 bytes** fixed inline retained value, **1903 paired
+text bytes**,20 units. Fixed storage is intentionally larger than this tiny text;
+these are value/logical-text measurements, not peak RSS or a speed claim. Exact
+512-byte accented text, split-character refusal, bounded input/frame/output and
+input/producer lifetime checks passed on final inputs.
+
+Saved evidence: `recovery-audit.log` (including the corrected initial hash-file
+lookup), `build-{1,2,3,4}.log/.exit`, `ctest-{1,2,3}.log/.exit`, complete
+`ctest-details-{1,2,3}.log`, `results-audit-{1,2,3}.log`, `results-summary.json`,
+`review.log`, `commands.log`, `boundary-rules.log`, `final-source-hashes.json`,
+`source-hashes-at-build2-audit.json`, `source-hashes-at-ctest2.json`,
+`new-child-transcripts-{1,2}.log` and
+`checkpoint-audit.log`. The latter is finalized after the local commit. Complete
+child logs intentionally retain a malformed UTF-8 INPUT fixture; product outputs
+are independently decoded/checked. No unchanged refusal retry or lock-session
+cancellation; normal waits retained their original live sessions.
+
+## Standalone next action
+
+**Ready; selected checks passed after the recorded fixture correction.** Idle for
+command-center review of the coherent local checkpoint, matching ST-045–048
+decision views, standalone `continuation/STORYTELLING-U16.json` and ignored
+evidence. The existing publisher alone handles the feature ref. No external
+board, coordinator/service, worker subagent, question, push or automatic follow-on
+milestone is started. This receipt establishes the selected console prototype,
+not automatic integration or broader language/gameplay acceptance.
+
+Remaining limits: GNU/Linux console CPU proof; LSan, other toolchains/platforms,
+installed SDK, graphical shaping/fonts/input methods, participant comprehension/
+fun, professional translation quality, broad localization/world-language
+mechanics, educational benefit and disk/external durability remain unverified.
+
 # U15 standalone playable relief episode
 
 Starts exactly clean on feat/storytelling at
