@@ -123,3 +123,13 @@ private prototype evidence. No human fun, Engine/physics/AI/graphics, security,
 leak/platform/fault-injection or durable-save acceptance is claimed. Idle handoff
 is coordinator source/log review, with exact Slow provenance an unselected next
 proof. See the standalone receipt and detailed notes for commands/costs/gaps.
+
+MAGIC-M9 is the separately selected 2026-10-31 local revival from exact clean
+5cdbdc5. Its source supersedes M2-018's inter-activation ActiveSlow refusal and
+extends M8-036's dispel kinds; completed receipts and immutable plans stay intact.
+
+| ID | Choice, reason, tradeoff and confidence |
+| --- | --- |
+| M9-039 | Retain each actor's Slow contribution with a monotonic instance, exact actor generation, spoken action/caster or item generation/fact, effect index and actual immutable plan. Add typed Common Slow dispelling through existing incarnation-bound InfluenceRef and ordinary live paid authority. Sixteen inline rows reuse freed slots without reusing IDs. This adds bounded retained provenance without an allocator backend or public Engine API. High confidence in identity/ownership. |
+| M9-040 | Permit independent casts/items to overlap, choosing minimum active permille; ActorView retains its aggregate shape and reports the earliest remaining expiry. Removing/expiring one contribution recomputes only that actor; damage, other statuses, payments and history survive. Duplicate Slow writes within one activation still refuse Overlap. statuses now caps contributions with the same default16. This necessary compatibility choice replaces blanket ActiveSlow refusal; medium confidence in fixture game policy. |
+| M9-041 | Checkpoints retain actual Slow plans, contribution provenance/counter and coherent aggregate values; exact schema/limits validate before fresh-incarnation adoption. Departed casters/removed items remain historical origins, while target removal retires contributions. Restoring renews binding/ticket authority while retaining logical identities, including intentional rewind. Inline rows/handles add32 fixed copy units and32 empty continuation checks; quotas stay fixed. High confidence in current-runtime ownership; no durable or cross-version guarantee. |

@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "milestone_id": "MAGIC-M9",
+  "starting_head": "5cdbdc548a52b83d1f45d94b3677f6a1e3577fca",
+  "branch": "feat/magic",
+  "assignment_manifest": "/mnt/projects/cheryl-features/coordination/assignments/local-revival-20261031/manifest.json",
+  "task_sha256": "25e7537ab375586f853e5d8fd347a23d0330cc087ac2358d810b04d44c9810ef",
+  "predecessor_thread": "01a16bcc-ecd0-7530-bace-9958eddb5e0a",
+  "recovery": "Explicit fresh session in same owned clone; unavailable old thread and archived runtime preserved.",
+  "status": "ready",
+  "checks_passed": true,
+  "implemented_contracts": [
+    "Typed Common dispel slow uses existing closed Dispelling/InfluenceRef and ordinary live permission, key+primitive/schema, resources and ticket checks. Trusted binding supplies identity without cast authority.",
+    "Each active Slow owns monotonic instance, target generation, original immutable plan, effect index, onset/expiry and exact spoken caster/action or item generation/touch-fact provenance. Two casts and separate recipients remain distinguishable.",
+    "Selective removal/expiry changes exactly one contribution, retaining other Slow, completed damage/heal, wards, payments, pending work and history. Duplicate Slow writes within one activation still refuse Overlap.",
+    "Independent casts/items now combine by minimum active permille; aggregate until_tick is the earliest active expiry. statuses caps contributions at the existing default16. This explicitly supersedes blanket ActiveSlow refusal.",
+    "Checkpoint owns active/pending/item plans, provenance and counter, validates coherent aggregates and historical/live generations before adoption, and renews incarnation-bound refs/tickets. Reused slots cannot retarget stale capabilities.",
+    "Real ordinary caller proves hp46, remaining Slow500 until300, ward8 until400 and mana A60/B90 across original owner destruction and restore, then normal speed at300. Existing servant/pending/item contracts pass focused regressions."
+  ],
+  "decision_ids": [
+    "M9-039",
+    "M9-040",
+    "M9-041"
+  ],
+  "checks": {
+    "unique_ctest_entries_with_final_passing_evidence": 28,
+    "retained_ctest_entries": 26,
+    "retained_contract_cases": 316,
+    "new_slow_cases": 27,
+    "contract_cases": 343,
+    "new_ordinary_callers": 1,
+    "full_campaign_runs": 1,
+    "full_campaign_initial_result": "24/28 passed; five outdated assertions across four suites corrected in test code only.",
+    "final_focused_rerun": "6/6 passed: host, engraving, annular, mechanics, lifecycle and interruption contracts.",
+    "native_commands": 8,
+    "native_successful_commands": 5,
+    "environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1",
+      "build": "GNU16.2.1/Linux C++23 Debug ASan+UBSan; warnings -Wall -Wextra -Wpedantic -Werror; shared native wrapper, one job"
+    },
+    "ctest_names": [
+      "magic_contracts",
+      "magic_callers",
+      "magic_inspect_S1",
+      "magic_inspect_S2",
+      "magic_inspect_S3",
+      "magic_inspect_S4",
+      "magic_inspect_S5",
+      "magic_inspect_mixed-schools",
+      "magic_cli",
+      "magic_reference_caller",
+      "magic_engraving_caller",
+      "magic_learning_contracts",
+      "magic_learning_caller",
+      "magic_annular_caller",
+      "magic_perception_contracts",
+      "magic_perception_caller",
+      "magic_mechanics_caller",
+      "magic_material_caller",
+      "magic_lifecycle_contracts",
+      "magic_lifecycle_caller",
+      "magic_interruption_contracts",
+      "magic_interruption_caller",
+      "magic_slow_contracts",
+      "magic_slow_caller",
+      "magic_host_contracts",
+      "magic_engraving_contracts",
+      "magic_annular_contracts",
+      "magic_mechanics_contracts"
+    ],
+    "case_counts": {
+      "magic_contracts": 35,
+      "magic_host_contracts": 37,
+      "magic_engraving_contracts": 34,
+      "magic_learning_contracts": 25,
+      "magic_annular_contracts": 25,
+      "magic_perception_contracts": 40,
+      "magic_mechanics_contracts": 52,
+      "magic_lifecycle_contracts": 52,
+      "magic_interruption_contracts": 16,
+      "magic_slow_contracts": 27
+    }
+  },
+  "bounds_and_measurements": {
+    "slow_contributions": 16,
+    "max_slow_instance": 1000000,
+    "fixed_copy_work": 324,
+    "prior_fixed_copy_work": 292,
+    "empty_three_schema_checkpoint_work": 716,
+    "empty_checkpoint_one_short": 715,
+    "slow_dispel_six_schema_64byte_key_work": 753,
+    "slow_dispel_one_short": 752,
+    "life_projection_work": 332,
+    "life_projection_one_short": 331,
+    "minimal_fourth_servant_attack_work": 358,
+    "servant_attack_one_short": 357,
+    "old_dispel_thirteen_schema_64byte_key_work": 1180,
+    "old_dispel_one_short": 1179,
+    "interrupt_work": 372,
+    "interrupt_one_short": 371,
+    "animation_thirteen_schema_work": 474,
+    "sizeof_slow_influence": 120,
+    "sizeof_slow_snapshot": 1936,
+    "sizeof_reference_host": 11520,
+    "accounting_limit": "Fixed inline rows/handles; work is logical bounded groups, not CPU instructions. Type sizes exclude separately owned plans/control blocks/outputs/checkpoints and allocator metadata; no RSS or allocation-free claim."
+  },
+  "source_witness": "feature-development/magic/logs/M9/tested-source-hashes.json",
+  "source_witness_sha256": "ad66aa761568bfecc0a4e2933950908aefccabb35f3f861e17012e5c11656176",
+  "source_hash_count": 55,
+  "acceptance_evidence": [
+    "feature-development/magic/logs/M9/regression-01.log",
+    "feature-development/magic/logs/M9/regression-02.log",
+    "feature-development/magic/logs/M9/final-checks.json",
+    "feature-development/magic/logs/M9/static-review.json"
+  ],
+  "evidence": [
+    "feature-development/magic/logs/M9/predecessor-review.json",
+    "feature-development/magic/logs/M9/build-01.log",
+    "feature-development/magic/logs/M9/configure-01.log",
+    "feature-development/magic/logs/M9/build-02.log",
+    "feature-development/magic/logs/M9/slow-01.log",
+    "feature-development/magic/logs/M9/build-03.log",
+    "feature-development/magic/logs/M9/regression-01.log",
+    "feature-development/magic/logs/M9/build-04.log",
+    "feature-development/magic/logs/M9/regression-02.log",
+    "feature-development/magic/logs/M9/tested-source-hashes.json",
+    "feature-development/magic/logs/M9/final-checks.json",
+    "feature-development/magic/logs/M9/static-review.json"
+  ],
+  "commands": [
+    {
+      "log": "feature-development/magic/logs/M9/build-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--target",
+        "magic_slow_checks",
+        "magic_slow_demo",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 2,
+      "elapsed_seconds_including_queue": 0.085
+    },
+    {
+      "log": "feature-development/magic/logs/M9/build-02.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--target",
+        "magic_slow_checks",
+        "magic_slow_demo",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 0,
+      "elapsed_seconds_including_queue": 14.242
+    },
+    {
+      "log": "feature-development/magic/logs/M9/build-03.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 0,
+      "elapsed_seconds_including_queue": 334.48
+    },
+    {
+      "log": "feature-development/magic/logs/M9/build-04.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "--build",
+        "projects/magic/build",
+        "--target",
+        "magic_host_checks",
+        "magic_engraving_checks",
+        "magic_annular_checks",
+        "magic_mechanics_checks",
+        "magic_lifecycle_checks",
+        "magic_interruption_checks",
+        "--parallel",
+        "1"
+      ],
+      "exit_status": 0,
+      "elapsed_seconds_including_queue": 99.104
+    },
+    {
+      "log": "feature-development/magic/logs/M9/configure-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "cmake",
+        "-S",
+        "projects/magic",
+        "-B",
+        "projects/magic/build",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DMAGIC_SANITIZERS=ON"
+      ],
+      "exit_status": 0,
+      "elapsed_seconds_including_queue": 0.744
+    },
+    {
+      "log": "feature-development/magic/logs/M9/regression-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "ctest",
+        "--test-dir",
+        "projects/magic/build",
+        "--output-on-failure",
+        "-V",
+        "-j1"
+      ],
+      "exit_status": 8,
+      "elapsed_seconds_including_queue": 305.1
+    },
+    {
+      "log": "feature-development/magic/logs/M9/regression-02.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "ctest",
+        "--test-dir",
+        "projects/magic/build",
+        "-R",
+        "^magic_(host|engraving|annular|mechanics|lifecycle|interruption)_contracts$",
+        "--output-on-failure",
+        "-V",
+        "-j1"
+      ],
+      "exit_status": 0,
+      "elapsed_seconds_including_queue": 8.908
+    },
+    {
+      "log": "feature-development/magic/logs/M9/slow-01.log",
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "ctest",
+        "--test-dir",
+        "projects/magic/build",
+        "-R",
+        "^magic_slow_(contracts|caller)$",
+        "--output-on-failure",
+        "-V",
+        "-j1"
+      ],
+      "exit_status": 8,
+      "elapsed_seconds_including_queue": 318.992
+    }
+  ],
+  "limitations": [
+    "Trusted finite private headless host, immediate standalone spoken dispel only; no new language, all-family dispel, general range/occlusion or public Engine/world adapter.",
+    "Fixed inline contribution data needs no heap allocator. Existing cold plan strings/control blocks/outcomes retain their prior allocation model; no Engine allocator migration or RSS/CPU speed claim.",
+    "Current-runtime in-memory checkpoints intentionally rewind logical state and renew operational authority; no disk/process/crash/cross-version or external exactly-once guarantee.",
+    "GNU16.2.1/Linux Debug ASan+UBSan only, command-local leak accommodation preserved; platform/leak/allocator-failure/fault-injection checks unverified.",
+    "No production Engine/AI/physics/graphics, security, balance, D&D conformance or human fun/learning acceptance."
+  ],
+  "next_action": "Coordinator reviews the local checkpoint containing this receipt, source and ignored M9 evidence. Unit complete; remain idle. Existing publisher alone handles publication; no integration or follow-on unit is selected."
+}

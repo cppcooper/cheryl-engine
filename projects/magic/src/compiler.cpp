@@ -905,10 +905,14 @@ namespace Magic {
                     else if (raw.primitive == Primitive::Animate)
                         effect.payload = Animation{value(raw.duration, Dimension::Time, true, operation.max_duration_ticks)};
                     else {
-                        if (raw.appearance.text != "disguise" && raw.appearance.text != "attack-restriction")
-                            fail(Code::UnknownPhrase, raw.appearance.span, "Only disguise and attack-restriction may be dispelled.");
-                        effect.payload =
-                            Dispelling{raw.appearance.text == "disguise" ? InfluenceKind::Disguise : InfluenceKind::AttackRestriction};
+                        if (raw.appearance.text != "disguise" && raw.appearance.text != "attack-restriction" &&
+                            raw.appearance.text != "slow")
+                            fail(Code::UnknownPhrase, raw.appearance.span, "Only disguise, attack-restriction and slow may be dispelled.");
+                        effect.payload = Dispelling{
+                            raw.appearance.text == "disguise" ? InfluenceKind::Disguise
+                            : raw.appearance.text == "slow"   ? InfluenceKind::Slow
+                                                              : InfluenceKind::AttackRestriction
+                        };
                     }
                 } else if (raw.primitive == Primitive::Transmute || raw.primitive == Primitive::Create) {
                     if (syntax.effects.size() != 1)
@@ -1087,7 +1091,11 @@ namespace Magic {
                     number(output, static_cast<std::uint64_t>(animation->duration_ticks) * 10);
                     append(output, " ms owned by caster");
                 } else if (auto dispel = std::get_if<Dispelling>(&effect.payload)) {
-                    append(output, dispel->kind == InfluenceKind::Disguise ? "dispel disguise" : "dispel attack-restriction");
+                    append(
+                        output, dispel->kind == InfluenceKind::Disguise ? "dispel disguise"
+                                : dispel->kind == InfluenceKind::Slow   ? "dispel slow"
+                                                                        : "dispel attack-restriction"
+                    );
                     append(output, " bound influence instant");
                 } else if (auto material = std::get_if<Transmutation>(&effect.payload)) {
                     append(output, "transmute object to ");

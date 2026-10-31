@@ -1619,3 +1619,186 @@ primitive13, so the new M8 core unknown-enum refusal moves13->14 while retaining
 its case name; a separate exact14-operation catalog case executes. No prior M7
 refusal is removed. Initial two implementation commits are c02be2e and37aea30;
 final tested hashes avoid a self-referential final commit SHA.
+
+# MAGIC-M9 — caller and boundary before implementation
+
+Fresh-session recovery uses the same owned clone, clean exact initial
+5cdbdc548a52b83d1f45d94b3677f6a1e3577fca on feat/magic. The local-revival
+manifest binds worker-3/MAGIC-M9 and unavailable predecessor thread
+01a16bcc-ecd0-7530-bace-9958eddb5e0a; archived runtime is preserved. Source
+inspection confirms M8 implements actual registered servant claims/commands,
+standalone exact Disguise/AttackRestriction dispel and paid pending interruption.
+Its ready receipt is evidence, not a prerequisite accepted by this worker.
+
+Proposed ordinary caller (before new APIs; shortened setup/error handling):
+
+```cpp
+auto first = cast(fire4_and_slow750_for2s, {casterA, target});
+cast(slow500_for3s, {casterB, target});
+auto rows = host.slows().value(); // owned inspection, includes action/caster/plan provenance
+auto exact = host.bind_slow(rows.influences[0].instance, target).value();
+cast(dispel_slow, {casterA, {}, {}, {}, {}, exact});
+// hp50 ->46 stays46; speed500000 stays500000 until tick300, then1000000.
+```
+
+Scope/choice: append Slow to the existing typed Dispelling kind; Common spells
+`dispel slow bound influence instant`. A trusted bound input grants no live
+casting rights. Fixed16 inline contribution rows retain actual immutable plans,
+effect index, actor generation, onset/expiry and monotonic instance. Spoken
+provenance is action/caster; item provenance is exact item generation/touch fact.
+No new heap registry, allocator backend or public Engine adapter is needed.
+
+Necessary narrow compatibility change: prior M2 forbids any second live Slow
+(Error::ActiveSlow). M9 permits independent casts/items and computes minimum
+active permille (strongest wins, no multiplication). ActorView::slow stays the
+aggregate; its until_tick is the earliest active contribution expiry, when the
+projection is recomputed. One contribution preserves every prior speed/expiry
+value; duplicate Slow writes to one actor within one activation still refuse
+Overlap. statuses now bounds active contributions (same default16), rather than
+only affected actors. Old ActiveSlow error name remains for source compatibility.
+Existing owned plan, payment, pending activation, servant, item dedupe and atomic
+whole-step contracts remain. Confidence high in separation, medium in reversible
+fixture stacking choice; no personal API preference inferred.
+
+Acceptance map: new ordinary caller with literal independent hp/mana/speed/ticks;
+compiler typed/exact Common and unsupported forms; two exact overlapping casts,
+stronger/weaker removal and expiry; foreign/default/wrong-kind/repeated/expired/
+removed-generation/reused-row refs; permission/resources/schema live recheck and
+late refusal preserving contributions/payment/ticket; delayed/item provenance;
+checkpoint retains actual plans after original owners die, renews refs/tickets,
+and preserves pending/item/servant contracts through focused regressions.
+All native commands use existing Debug ASan/UBSan build and shared one-job wrapper.
+Evidence goes to ignored magic/logs/M9; no push, external coordinator or next unit.
+
+## M9-039 — exact identity and live selective removal
+
+SlowSnapshot is an owned inspection projection, not restorable or casting
+capability. It contains16 fixed contribution rows and a checked monotonic issued
+counter. Each row retains actor generation, onset/absolute expiry, permille,
+source action/caster or exact item generation/touch fact, effect index and logical
+plan bytes. State separately retains the actual immutable PlanHandle. A burst
+creates one exact row per selected actor, so dispelling one recipient does not
+remove another recipient's contribution even when they share an action/effect.
+
+The third closed Dispelling kind is Slow. It uses existing CommonDispel and
+TargetBridge requirements; no extra operation, rule or school registry is added.
+`bind_slow(instance, actor)` is a trusted owner inspection operation. Its opaque
+InfluenceRef captures kind/instance/actor generation/current incarnation; it
+supplies an exact target to normal live paid casting, without authorizing it.
+Prepare/release still check catalog key AND primitive/schema, current living
+casting permission, resources and contribution liveness, then ticket revision.
+Standalone immediate spoken restriction and existing10mana cost remain.
+
+Actual removal clears only one row/retained handle and recomputes that actor's
+aggregate. Release stages this with action/revision/payment and allocates its
+immutable observation before adoption. Pending and item activations pass explicit
+frozen provenance into the shared apply path, rather than guessing origin from
+the current caster, actor slot or latest global action counter. Item touches do
+not manufacture spoken actions or alter their original payment/dedupe contract.
+
+## M9-040 — narrow interaction compatibility choice
+
+M2's one scalar Slow per actor could not distinguish two casts and refused
+ActiveSlow. M9 deliberately replaces only that inter-activation rule: minimum
+active permille wins, with no factor multiplication or rounding. until_tick in
+the existing ActorView::slow projection is the earliest remaining contribution
+expiry, where the projection is recomputed. A weaker influence's early expiry
+can leave speed unchanged. The original one-contribution values are identical.
+Neutral1000permille is still an explicit removable finite influence.
+
+Duplicate Slow writes within one activation (including overlapping bindings)
+still refuse Overlap before adoption. statuses retains its downward-only default
+ceiling16 but now counts contributions, not affected actors. Capacity is shared
+across spoken/delayed/item sources; no oldest-entry eviction/replacement occurs.
+An exhausted lifetime instance horizon refuses InstanceLimit even after expiry.
+The old ActiveSlow error enum/name remains source-compatible but is no longer
+returned for independent active Slow overlap.
+
+## M9-041 — lifetime, continuation and fixed storage
+
+Expiry scans actual contributions, clears their retained handles and recomputes
+from remaining live rows before same-tick pending activation. Actor removal and
+servant retirement clear only that exact target generation's rows. Caster death/
+departure or item removal does not erase already active effects or their dated
+source. Reused slots receive fresh instance IDs; restored timelines instead keep
+logical IDs and renew all operational incarnation-bound references/tickets.
+
+The distinct opaque Checkpoint retains actual active Slow plans/source metadata
+alongside pending/item/servant state. Validation checks version/caps/counter,
+unique instances and actor/source/effect tuples, exact current target generation,
+historical source generation, consumed item fact, onset/duration/expiry, supported
+retained plan/schema and an independently recomputed aggregate. Capture may
+therefore refuse a retained composed plan whose schema has since changed.
+Dispelling an influence itself checks the dispel plan's live authority/schema;
+it need not replay or authorize the original damage/status payload.
+
+New mutable data uses only inline std::array/optional/value fields and shared
+copies of existing immutable plan owners. No data-heavy heap container, copied
+allocation service, Engine allocator migration or allocation-free/RSS claim is
+introduced. The common Meter base292 becomes324 (16 rows +16 handle slots).
+Empty Slow validation adds16 row checks +16 aggregate checks; empty three-schema
+checkpoint/restore652 becomes716, with no raised work quota. Other operations
+inherit32 base units; expiry/removal/recomputation and row scans charge bounded
+additional work. Logical units count fixed groups, not instructions or heap bytes.
+
+## M9 executed checks, measured bounds and final handoff
+
+Eight native commands use the shared one-job wrapper and retained existing
+GNU16.2.1/Linux C++23 Debug ASan+UBSan configuration. Every complete command,
+stdout/stderr, immediate exit and elapsed time is in ignored magic/logs/M9;
+ASAN_OPTIONS=detect_leaks=0 / UBSAN_OPTIONS=halt_on_error=1 stay command-local.
+No dependency retrieval, Engine build, external service, device or publication
+operation runs. Queue waits retain the original sessions. Wall elapsed times
+include those waits and are not operation latency measurements.
+
+- build-01 exits2: attempting the new target before CMake regeneration reports
+  no rule for magic_slow_checks. configure-01/build-02 then succeed.
+- slow-01 exits8: the caller and20/21 initial cases pass. The work-bound fixture
+  cannot create Slow at the smaller dispel budget. A valid64-byte dispel key
+  isolates its target boundary above setup cost; no runtime assertion is weakened.
+  Six further focused cases exercise full16 overlap, multi-target identity/late
+  failure, late action refusal, neutral/zero-horizon and checkpoint refusals.
+- build-03 succeeds. regression-01 runs all28 entries once, passing24, including
+  all27 final Slow cases and the caller. Five stale assertions in four old suites
+  expect plan release at activation (three), ActiveSlow refusal (one), or setup
+  below the new fixed base (one). Source ownership now requires those plan
+  lifetimes. Tests assert retention through active Slow and final release at
+  expiry; finite-capacity refusal preserves the old atomic ward/damage proof.
+- build-04 succeeds for affected tests. regression-02 passes6/6: host37,
+  engraving34, annular25, mechanics52, lifecycle52 and interruption16. Other
+  compiler35, learning25, perception40 and Slow27 cases already pass in
+  regression-01. Thus all28 unique entries and343 contract cases have final
+  passing evidence (316 retained +27 new), plus the separate ordinary callers,
+  six original file fixtures and nine CLI scenarios. There is one full campaign
+  plus affected rerun, not a claimed single all-green full campaign.
+
+No implementation bytes change after regression-01; static hashes establish
+that only four test files change before the focused rerun. All original literal
+case registrations retain their order, with runtime summaries separately counted.
+55 final source/fixture hashes, merged actual CTest results and static checks live
+in tested-source-hashes.json, final-checks.json and static-review.json. Old
+continuation receipts and immutable batch plans remain untouched.
+
+Measured new Slow dispel (six-schema catalog,64-byte key): exact753 work and
+one-short752 refusal preserve the contribution/payment; setup fits independently.
+The real native types measure120 bytes/contribution,1936 bytes/SlowSnapshot and
+11520 bytes/ReferenceHost in this build; these exclude separately owned plans,
+control blocks, checkpoint/output owners and allocator metadata. Fixed copy
+324, empty three-schema checkpoint716/715, Life projection332/331, minimal
+fourth-servant attack358/357, long-key13-schema old dispel1180/1179 and pending
+interruption372/371 all execute. The tight servant-attack refusal now checks
+surviving command ownership; dismissal also scans Slow rows and has separate
+passing lifecycle coverage. Animation now uses474 (442+32). Historical test
+names containing earlier numeric values remain stable; current assertions use
+these measured values. Caps remain16 contributions,1m lifetime instances,
+16384 work and the existing actor/selector/plan/time/action/ticket limits.
+
+The ordinary caller executes two distinct casts plus a ward, destroys the original
+host and local Slow plans, restores, rejects stale authority and removes exactly
+instance1. Independently expected hp46, speed500000 thousandths mm/s, expiry300,
+ward8 until400 and mana A60/B90 all hold. At300 speed1000000 and hp46 remain;
+old snapshots/rows are immutable. Core finite behavior and the selected positive/
+refusal/lifetime/restore acceptance are complete. The standalone MAGIC-M9 receipt
+is ready/true for coordinator review; stop and remain idle after the local
+checkpoint. No production Engine/AI/physics/graphics, platform/leak/allocator-fault,
+security, disk/process/cross-version durability or human fun acceptance is claimed.

@@ -148,6 +148,11 @@ namespace Magic::Reference {
                     meter.spend();
                     found |= d.instance && d.instance == ref.instance_ && d.subject == ref.object_ && d.until_tick > state.world.tick;
                 }
+            } else if (ref.kind_ == InfluenceKind::Slow) {
+                for (const auto& r : state.slows.influences) {
+                    meter.spend();
+                    found |= r.instance && r.instance == ref.instance_ && r.actor == ref.actor_ && r.until_tick > state.world.tick;
+                }
             } else {
                 for (const auto& r : state.mechanics.restrictions) {
                     meter.spend();
@@ -183,6 +188,16 @@ namespace Magic::Reference {
                     if (state.perception.disguises[i].instance == ref.instance_ && state.perception.disguises[i].subject == ref.object_) {
                         state.perception.disguises[i] = {};
                         state.disguise_plans[i].reset();
+                        return;
+                    }
+                }
+            } else if (ref.kind_ == InfluenceKind::Slow) {
+                for (std::size_t i = 0; i < slow_capacity; ++i) {
+                    meter.spend();
+                    if (state.slows.influences[i].instance == ref.instance_ && state.slows.influences[i].actor == ref.actor_) {
+                        state.slows.influences[i] = {};
+                        state.slow_plans[i].reset();
+                        refresh_slow(state, ref.actor_, meter);
                         return;
                     }
                 }

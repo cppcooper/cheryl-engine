@@ -252,7 +252,9 @@ int main() {
         }
         check(!weak.expired(), "queue owns actual immutable M1 plan");
         auto result = take(f.host->advance_to(100));
-        check(weak.expired() && result->after.actors[1].data.health == 42, "no runtime deep copy or report plan retention");
+        check(!weak.expired() && result->after.actors[1].data.health == 42, "active Slow owns the original plan after queue removal");
+        take(f.host->advance_to(300));
+        check(weak.expired() && result->after.actors[1].slow == Slow{750, 300}, "expiry releases the plan; old report stays owned");
         Catalog catalog = game();
         auto host = take(ReferenceHost::create(catalog));
         catalog.operations.clear();
@@ -479,11 +481,13 @@ int main() {
         check(f.host->snapshot() == before, "no binding-name stacking");
     });
     test("active slow refuses replacement then expires before activation", [] {
-        Fixture f;
+        HostLimits limits;
+        limits.statuses = 1; // M9: independent contributions share a finite capacity.
+        Fixture f(limits);
         f.cast(fixture("S3"), f.burst());
         auto before = f.host->snapshot();
-        rejects(f.host->prepare(fixture("S3"), f.burst()), Error::ActiveSlow);
-        check(f.host->snapshot() == before, "no stacking/refresh");
+        rejects(f.host->prepare(fixture("S3"), f.burst()), Error::StatusLimit);
+        check(f.host->snapshot() == before, "full contribution quota preserves original status");
         take(f.host->advance_to(100));
         auto delayed = plan(disk_source(1, "multiply speed by 500 permille for 1000 ms"));
         f.cast(delayed, f.burst());
@@ -524,11 +528,13 @@ int main() {
         );
     });
     test("active slow at delayed onset refuses complete activation", [] {
-        Fixture f;
+        HostLimits limits;
+        limits.statuses = 1;
+        Fixture f(limits);
         f.cast(fixture("S2"), f.burst());
         f.cast(fixture("S3"), f.burst());
         const auto before = f.host->snapshot();
-        const auto failure = rejects(f.host->advance_to(100), Error::ActiveSlow);
+        const auto failure = rejects(f.host->advance_to(100), Error::StatusLimit);
         check(
             failure.action == 1 && failure.tick == 100 && f.host->snapshot() == before,
             "fire, speed, clock, paid queue and funds survive delayed active-status refusal"

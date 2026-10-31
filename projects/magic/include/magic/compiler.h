@@ -118,7 +118,7 @@ namespace Magic {
         SubjectRole subject = SubjectRole::CapturedObject;
         bool operator==(const Discernment&) const = default;
     };
-    enum class InfluenceKind { Disguise, AttackRestriction };
+    enum class InfluenceKind { Disguise, AttackRestriction, Slow };
     struct Animation {
         std::uint32_t duration_ticks = 0;
         bool operator==(const Animation&) const = default;

@@ -156,7 +156,7 @@ int main() {
     });
     test("wrong roles unknown kinds delayed bundles engraved refuse", [] {
         check(!compile(bound("influence", "influence", "animate bound remains for 2000 ms owned by caster"), game()));
-        check(!compile(dispel("slow"), game()));
+        check(!compile(dispel("ward"), game()));
         check(!compile(replace(animate(), "after 0 ms", "after 1000 ms"), game()));
         auto source = animate();
         source = replace(source, "} ; } }", "} ; on mark bridge Common@1 { animate bound remains for 2000 ms owned by caster } ; } }");
@@ -634,10 +634,10 @@ int main() {
     });
     test("owned life projection exact300 work and one-short299", [] {
         R::HostLimits l;
-        l.work = 300;
+        l.work = 332;
         Fixture exact(l);
         check(take(exact.host->life()).remains[0].id == R::RemainsId{0, 1});
-        l.work = 299;
+        l.work = 331;
         Fixture shorted(l);
         auto before = shorted.host->snapshot();
         refuses(shorted.host->life(), R::Error::WorkLimit);
@@ -663,21 +663,22 @@ int main() {
             auto command = take(host->command_authority(owner, servant));
             auto before = host->snapshot();
             auto result = host->command_attack(command, target);
-            if (work == 326)
+            if (work == 358)
                 check(
                     result && (*result)->damage == R::DamageResolution{3, 0, 3} && host->snapshot().actors[target.slot].data.health == 47
                 );
             else {
                 refuses(result, R::Error::WorkLimit);
                 check(host->snapshot() == before);
-                ok(host->dismiss_servant(command));
+                // M9 retirement also scans Slow rows; verify surviving command ownership within this tighter attack quota.
+                take(host->command_authority(owner, servant));
             }
         };
-        scenario(326);
-        scenario(325);
+        scenario(358);
+        scenario(357);
     });
     test("dispel exact1148 work and one-short1147 preserves instance payment", [] {
-        for (auto work : {1148u, 1147u}) {
+        for (auto work : {1180u, 1179u}) {
             R::HostLimits l;
             l.work = work;
             Fixture f(l);
@@ -687,9 +688,9 @@ int main() {
             ok(f.host->replace_catalog(c));
             auto p = take(compile(dispel(), c));
             R::Request request{f.caster, {}, {}, {}, {}, ref};
-            if (work == 1148) {
+            if (work == 1180) {
                 auto result = f.cast(p, request);
-                check(result->usage.work == 1148 && f.host->snapshot().actors[0].data.mana == 80);
+                check(result->usage.work == 1180 && f.host->snapshot().actors[0].data.mana == 80);
             } else
                 f.unchanged([&] { refuses(f.host->prepare(p, request), R::Error::WorkLimit); });
         }

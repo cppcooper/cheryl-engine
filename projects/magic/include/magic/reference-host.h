@@ -14,6 +14,7 @@ namespace Magic::Reference {
     inline constexpr std::size_t pending_capacity = 8;
     inline constexpr std::size_t item_capacity = 8;
     inline constexpr std::size_t touch_capacity = 16;
+    inline constexpr std::size_t slow_capacity = 16;
     inline constexpr std::size_t object_capacity = 4, disguise_capacity = 8, witness_capacity = 16;
     struct ObjectId {
         std::uint32_t slot = 0;
@@ -126,7 +127,7 @@ namespace Magic::Reference {
     };
     struct Slow {
         std::uint32_t permille = 1000;
-        std::uint64_t until_tick = 0; // active on [activation, until_tick); zero means absent
+        std::uint64_t until_tick = 0; // aggregate next expiry; recomputed from remaining contributions then; zero means absent
         bool operator==(const Slow&) const = default;
     };
     struct ActorView {
@@ -207,9 +208,9 @@ namespace Magic::Reference {
         // Only tighten these ceilings, including zero; metrics bound operations rather than CPU cycles/RSS.
         std::size_t actors = actor_capacity;
         std::size_t pending = pending_capacity;
-        std::size_t statuses = actor_capacity;
-        std::size_t selected_targets = 128; // resolved binding/actor-or-object pairs over the complete operation
-        std::size_t selector_work = 1024;   // units/visited slot including empty: disk1, annulus2
+        std::size_t statuses = slow_capacity; // active Slow contributions, including overlapping casts/items
+        std::size_t selected_targets = 128;   // resolved binding/actor-or-object pairs over the complete operation
+        std::size_t selector_work = 1024;     // units/visited slot including empty: disk1, annulus2
         std::size_t work = 16384;
         std::size_t plan_bytes = 32768; // per retained M1 plan, logical metric; handles avoid deep copies
         std::uint64_t max_tick = 1'000'000'000;
@@ -227,12 +228,36 @@ namespace Magic::Reference {
         std::uint64_t max_mechanic_instance = 1'000'000;
         std::size_t remains = 4, servants = 4;
         std::uint64_t max_servant_instance = 1'000'000;
+        std::uint64_t max_slow_instance = 1'000'000;
         bool operator==(const HostLimits&) const = default;
     };
     struct ItemId {
         std::uint32_t slot = 0;
         std::uint64_t generation = 0;
         bool operator==(const ItemId&) const = default;
+    };
+    struct SlowSource {
+        ActorId caster; // historical generation for spoken work; absent for item work
+        std::uint64_t action = 0;
+        std::optional<ItemId> item = {};
+        std::uint64_t fact = 0;
+        bool operator==(const SlowSource&) const = default;
+    };
+    struct SlowInfluence {
+        std::uint64_t instance = 0;
+        ActorId actor;
+        SlowSource source;
+        std::size_t effect_index = 0;
+        std::uint32_t permille = 1000;
+        std::uint64_t onset_tick = 0, until_tick = 0;
+        std::size_t plan_bytes = 0;
+        bool operator==(const SlowInfluence&) const = default;
+    };
+    struct SlowSnapshot {
+        std::uint32_t version = 1;
+        std::array<SlowInfluence, slow_capacity> influences;
+        std::uint64_t instances_issued = 0;
+        bool operator==(const SlowSnapshot&) const = default;
     };
     struct ItemView {
         ItemId id;
@@ -451,6 +476,8 @@ namespace Magic::Reference {
             std::array<PlanHandle, 4> servant_plans;
             std::array<PlanHandle, 4> ward_plans, restriction_plans, transmutation_plans, creation_plans;
             std::array<PlanHandle, disguise_capacity> disguise_plans;
+            SlowSnapshot slows;
+            std::array<PlanHandle, slow_capacity> slow_plans;
         };
         struct Prepared {
             PlanHandle plan;
@@ -472,6 +499,9 @@ namespace Magic::Reference {
         void lifecycle(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const;
         void validate_lifecycle(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
         void check_life(const State& state, Meter& meter) const;
+        void check_slows(const State& state, Meter& meter) const;
+        void refresh_slow(State& state, ActorId actor, Meter& meter) const;
+        void add_slow(const PlanHandle& plan, std::size_t effect, ActorId actor, SlowSource source, State& state, Meter& meter) const;
         void retire_actor(State& state, ActorId actor, Meter& meter) const;
         void validate(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
         void payload_schema(const PlanHandle& plan, Meter& meter) const;
@@ -481,6 +511,7 @@ namespace Magic::Reference {
             std::optional<ActorId> recipient,
             std::optional<Point> aim,
             std::optional<ObjectId> subject,
+            SlowSource source,
             State& state,
             Meter& meter
         ) const;
@@ -532,6 +563,8 @@ namespace Magic::Reference {
         [[nodiscard]] std::expected<PendingRef, Failure> bind_pending(std::uint64_t action) const;
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_disguise(std::uint64_t instance, ObjectId subject) const;
         [[nodiscard]] std::expected<InfluenceRef, Failure> bind_restriction(std::uint64_t instance, ActorId actor) const;
+        [[nodiscard]] std::expected<InfluenceRef, Failure> bind_slow(std::uint64_t instance, ActorId actor) const;
+        [[nodiscard]] std::expected<SlowSnapshot, Failure> slows() const;
         [[nodiscard]] Snapshot snapshot() const noexcept { return state_.world; }
         [[nodiscard]] ItemSnapshot items() const noexcept { return state_.items; }
         // Trusted owner installation prepays one charge; removal/disable/spending never refunds it.

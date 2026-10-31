@@ -391,7 +391,12 @@ int main() {
     test("active slow and status limits cannot be evaded by annular selection", [] {
         Scene f;
         auto old = f.cast(plan(read("S3.verse")));
-        f.unchanged([&] { rejects(f.h->prepare(plan(source(true)), {f.caster, {}, R::Point{0, 0}}), R::Error::ActiveSlow); });
+        f.cast(plan(source(true)));
+        check(take(f.h->slows()).instances_issued == 6, "four disk and two independent annular contributions");
+        check(
+            f.h->snapshot().actors[f.actors[2].slot].data.health == 42 && f.h->snapshot().actors[f.actors[0].slot].data.health == 50,
+            "annular damage retains protected centre"
+        );
         check(old->after.actors[f.actors[2].slot].slow == R::Slow{750, 200}, "prior output usable");
         R::HostLimits l;
         l.statuses = 1;
@@ -719,12 +724,14 @@ int main() {
         take(h->touch(take(h->resume_touch(17))));
         cp = R::Checkpoint{};
         take(h->advance_to(100));
-        check(weak.expired(), "retained plan released when activation completes");
+        check(!weak.expired(), "exact Slow provenance retains the plan after activation");
         check(
             h->snapshot().actors[target.slot].data.health == 54 && h->snapshot().actors[target.slot].slow == R::Slow{750, 300} &&
                 h->items().items[item.slot].charges == 0 && h->items().ledger[0].consumed,
             "old event heal12 and annular fire8/slow share restored world"
         );
+        take(h->advance_to(300));
+        check(weak.expired() && h->snapshot().actors[target.slot].slow == R::Slow{}, "last expiry releases the retained plan");
     });
     test("checkpoint unsupported current query or incompatible schema refuses before adoption", [] {
         Tiny source_host;

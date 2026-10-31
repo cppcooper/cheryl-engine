@@ -321,7 +321,9 @@ int main() {
         });
     });
     test("whole payload shares slow/health logic; conflicting bindings cannot partially heal", [] {
-        Fixture f;
+        HostLimits limits;
+        limits.statuses = 1;
+        Fixture f(limits);
         const std::string prefix =
             "engraved item-touch charges 1 release via item-event after 0 ms { bind a = willing event toucher at activation ; ";
         auto combined = compile_plan(
@@ -334,7 +336,7 @@ int main() {
         check(f.h->snapshot().actors[1].data.health == 62 && f.h->snapshot().actors[1].slow == Slow{750, 200}, "shared writes");
         auto second = take(f.h->install(combined, f.p));
         auto e2 = take(f.h->admit_touch(2, second, f.t));
-        f.unchanged([&] { rejects(f.h->touch(e2), Error::ActiveSlow); });
+        f.unchanged([&] { rejects(f.h->touch(e2), Error::StatusLimit); });
         take(f.h->advance_to(200));
         take(f.h->touch(e2));
         auto conflict = compile_plan(
@@ -534,11 +536,12 @@ int main() {
         expected.actors[1].data.health = 42;
         expected.actors[1].slow = {750, 300};
         check(activated->after == expected && activated->event_count == 1, "literal exact onset");
-        check(retained.expired(), "no plan regeneration or leaked queue handle");
+        check(!retained.expired(), "active Slow owns the retained immutable plan");
         auto active = take(h->checkpoint());
         h.reset();
         h = take(ReferenceHost::create(game()));
         ok(h->restore(active));
+        active = Checkpoint{};
         take(h->advance_to(299));
         expected.tick = 299;
         expected.revision = 7;
@@ -548,11 +551,12 @@ int main() {
         expected.revision = 8;
         expected.actors[1].slow = {};
         check(h->snapshot() == expected, "literal expiry");
+        check(retained.expired(), "expiry releases the last plan handle after checkpoint destruction");
         check(take(h->advance_to(300))->event_count == 0 && h->snapshot() == expected, "no replay");
     });
     test("checkpoint state work bound refuses without changing caller outputs", [] {
         HostLimits l;
-        l.work = 300; // Valid actor setup under new fixed copy244; checkpoint still exceeds the allowance.
+        l.work = 350; // Actor setup fits M9 fixed copy324; checkpoint metadata/validation exceeds this allowance.
         Fixture f(l);
         const auto before = f.h->snapshot();
         rejects(f.h->checkpoint(), Error::WorkLimit);
@@ -617,11 +621,11 @@ int main() {
     });
     test("checkpoint capture and restore work exact348 and one-short347", [] {
         HostLimits l;
-        l.work = 652; // Historical name retained; M8 inline records/copies +20 units over M7.
+        l.work = 716; // Historical name retained; M9 inline copies +32 and empty Slow continuation +32 over M8.
         Fixture exact(l);
         auto cp = take(exact.h->checkpoint());
         ok(exact.h->restore(cp));
-        l.work = 651;
+        l.work = 715;
         Fixture short_host(l);
         short_host.unchanged([&] { rejects(short_host.h->checkpoint(), Error::WorkLimit); });
     });

@@ -1,22 +1,52 @@
 # Magic current handoff
 
-MAGIC-M8 is ready/checked from reviewed9826abc. Both cores (registered remains to
-owned temporary servant; exact Disguise/Attack-restriction dispel) and optional
-exact pending interruption execute through real compiled plans/live authority.
+MAGIC-M9 is ready for coordinator review from exact clean initial
+5cdbdc548a52b83d1f45d94b3677f6a1e3577fca on feat/magic. Fresh-session recovery
+uses the same owned clone and the local-revival-20261031 manifest/task digest;
+the unavailable predecessor thread and archived runtime remain preserved.
 
-One accumulated campaign passes26/26 CTest entries and316 contract cases
-(248 retained +52 lifecycle +16 interruption); two new ordinary callers are
-separate. Complete commands/failures/discovery and37 tested hashes live under
-magic/logs/M8. The ready worker receipt is continuation/MAGIC-M8.json.
+Slow now owns exact contribution identity, original immutable plan, effect index,
+actor generation and spoken action/caster or item generation/touch-fact provenance.
+Existing typed Common adds `dispel slow bound influence instant`. Trusted exact
+binding grants no cast authority: ordinary live permission/schema/resource/ticket
+checks precede atomic payment and removal. One removal retains other contributions,
+damage, wards, paid pending work and history. Checkpoints own active/pending/item
+plans and renew all operational authority on restore.
 
-Next action: remain idle for coordinator source/log review of the three M8
-checkpoints and receipt. Exact Slow instance/provenance before Slow dispelling
-is a concrete unselected next proof; no automatic follow-on is authorized.
+Necessary compatibility choice: independent Slow casts/items may now overlap;
+minimum active permille wins. The existing ActorView::slow projects that factor
+and the earliest remaining expiry. Duplicate Slow writes within one activation
+still refuse Overlap. statuses keeps its default16 but caps contributions rather
+than affected actors. Sixteen inline rows reuse slots with fresh monotonic IDs;
+no Engine allocator migration or new heap registry is claimed. See M9-039–041
+in decisions.md and the latest M9 section of agent-notes.md.
 
-Limits remain: trusted private headless owner, immediate standalone new forms,
-no broad AI/physics/Engine/graphics/security or human fun/learning acceptance.
-Checkpoints are owned current-runtime memory/intentional rewind, without disk/
-process/crash/cross-version/external exactly-once guarantees. Logical accounting
-is not RSS/CPU; new mutable arrays are inline, not Engine allocator migration.
-GNU16/Linux ASan+UBSan only; command-local leak accommodation and allocator-failure/
-platform/graphical/durability gaps remain. Prior receipts/failure history survive.
+All28 unique private CTest entries have passing final evidence: regression-01
+passes24/28, including27 new Slow cases and the ordinary caller; regression-02
+passes the six affected contract suites after updating older plan-retention,
+capacity and work-fixture expectations. All316 prior contract cases remain,
+with27 new cases (343 total); no second full campaign runs. Initial failures and
+complete immediate exits are retained. 55 final source/fixture hashes and exact
+commands/measurements are in ignored magic/logs/M9. The standalone worker receipt
+is continuation/MAGIC-M9.json; old receipts/immutable plans stay unchanged.
+
+Caller values: two casts own instances1/2; restoring rejects the old influence
+ref, then fresh dispel1 retains hp46, Slow500 until300 and ward8 until400. Mana
+A60/B90 stays paid; at300 speed returns1000mm/s. Old observations survive original
+owner destruction. Focused coverage includes expiry, reused actor/record slots,
+foreign/default/wrong-kind/stale refs, live authority, late refusal atomicity,
+item/delayed origins and checkpoint renewal/rewind. Existing servant and pending
+interruption checks pass.
+
+Next action: coordinator reviews the local checkpoint, receipt and ignored M9
+logs/source hashes. This unit is complete; remain idle. No automatic follow-on,
+worker publication or integration is selected.
+
+Limits: trusted finite headless host, immediate standalone dispel, no general
+all-family/range/occlusion policy. Whole-world checkpoints are current-runtime
+memory with intentional rewind, without disk/process/crash/cross-version or
+external exactly-once guarantees. New storage is inline plus retained existing
+plan owners; logical work/type sizes are not heap/RSS/CPU measurements. GNU16.2.1/
+Linux Debug ASan+UBSan only, command-local detect_leaks=0 tracing accommodation.
+Production Engine/AI/physics/graphics, platform/leak/fault-injection and human
+fun/learning acceptance remain unverified and outside this unit.

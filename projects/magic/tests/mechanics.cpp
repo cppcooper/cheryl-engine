@@ -1125,13 +1125,15 @@ int main() {
         rejects(host->prepare(p, {caster, {}, R::Point{}, object}), R::Error::SchemaMismatch);
     });
     test("old fire slow bundle refusal preserves new ward then later consumes only damage", [] {
-        Scene f;
+        R::HostLimits limits;
+        limits.statuses = 2; // Existing target Slow plus two burst contributions cannot fit until expiry.
+        Scene f(limits);
         f.cast("ward absorb 5 dp for 3000 ms");
         f.cast("multiply speed by 750 permille for 2000 ms");
         auto text = replace(area("fire damage 4 dp instant"), "after 1000 ms", "after 0 ms");
         text.insert(text.rfind("  }"), "on near bridge Common@1 { multiply speed by 600 permille for 2000 ms } ;\n");
         auto p = plan(text);
-        f.unchanged([&] { rejects(f.h->prepare(p, {f.caster, {}, R::Point{}}), R::Error::ActiveSlow); });
+        f.unchanged([&] { rejects(f.h->prepare(p, {f.caster, {}, R::Point{}}), R::Error::StatusLimit); });
         check(take(f.h->inspect_mechanics()).wards[0].remaining_dp == 5 && f.h->snapshot().actors[f.caster.slot].data.mana == 980);
         take(f.h->advance_to(200));
         take(f.h->release(take(f.h->prepare(p, {f.caster, {}, R::Point{}}))));
