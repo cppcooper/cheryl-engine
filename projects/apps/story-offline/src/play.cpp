@@ -245,8 +245,19 @@ namespace OfflineStory {
         if (!displayed)
             return std::unexpected(observe(displayed.error()));
         static_assert(std::is_nothrow_move_constructible_v<AftermathEncounter> && std::is_nothrow_move_assignable_v<D::View>);
+        std::optional<RetainedLanguage> language;
+        if (language_) {
+            auto draft = aftermath_corpus(owner->content());
+            if (!draft)
+                return std::unexpected(Error{Code::Context, "play.aftermath.language", {}});
+            auto retained = RetainedLanguage::retain(*draft, language_->profile(), owner->content());
+            if (!retained)
+                return std::unexpected(Error{Code::Context, "play.aftermath.language", {}});
+            language.emplace(std::move(*retained));
+        }
         std::expected<void, Error> success;
         aftermath_.emplace(std::move(*owner));
+        aftermath_language_ = std::move(language);
         offer_ = std::move(*displayed);
         phase_ = PlayPhase::Aftermath;
         return success;
@@ -273,26 +284,48 @@ namespace OfflineStory {
         );
         if (!retained)
             return std::unexpected(retained.error());
+        std::optional<RetainedLanguage> after;
+        if (aftermath_) {
+            auto draft_after = aftermath_corpus(aftermath_->content());
+            if (!draft_after)
+                return std::unexpected(draft_after.error());
+            auto localized = RetainedLanguage::retain(*draft_after, profile, aftermath_->content());
+            if (!localized)
+                return std::unexpected(localized.error());
+            after.emplace(std::move(*localized));
+        }
         static_assert(std::is_nothrow_move_assignable_v<RetainedLanguage>);
         language_ = std::move(*retained);
+        aftermath_language_ = std::move(after);
         return {};
     }
     std::expected<std::string, LanguageError> PlayDriver::assist(std::string_view id) const {
-        if (aftermath_)
-            return std::unexpected(LanguageError::NotOffered); // Old corpus IDs cannot authorize assistance for new meanings.
         if (!language_ || !language_->profile().assistance)
             return std::unexpected(LanguageError::Disabled);
         // Never expose a retained future unit or hidden owner state through assistance.
-        const bool scene = id == "scene" && phase_ == PlayPhase::Bargain;
+        const bool scene = id == "scene" && (phase_ == PlayPhase::Bargain || aftermath_);
         bool offered = false;
         for (const auto& row : offer_.choices)
             offered = offered || row.id.value == id;
         if (!scene && !offered)
             return std::unexpected(LanguageError::NotOffered);
         const auto key = scene ? std::string_view(offer_.node.value) : id;
-        const auto text = language_->text(key, 1, true);
+        const auto& corpus = aftermath_ ? aftermath_language_ : language_;
+        if (!corpus)
+            return std::unexpected(LanguageError::Identity);
+        const auto owned_key = aftermath_ ? "after." + std::string(key) : std::string(key);
+        const auto text = corpus->text(owned_key, 1, true);
         if (!text)
             return std::unexpected(text.error());
+        const auto english = corpus->english(owned_key);
+        const auto original = scene ? std::string_view(offer_.text) : [&]() -> std::string_view {
+            for (const auto& row : offer_.choices)
+                if (row.id.value == id)
+                    return row.text;
+            return {};
+        }();
+        if (!english || *english != original)
+            return std::unexpected(LanguageError::Identity);
         return "Primary-language help: " + std::string(*text) + "\n";
     }
     std::string PlayDriver::render(std::size_t cap) const {
@@ -303,6 +336,15 @@ namespace OfflineStory {
         Frame f{cap};
         if (aftermath_) {
             const auto& s = aftermath_->state();
+            const auto wording = [&](std::string_view id, std::string_view original) -> std::string_view {
+                if (!aftermath_language_)
+                    return original;
+                const auto key = "after." + std::string(id);
+                const auto source = aftermath_language_->english(key), text = aftermath_language_->text(key);
+                if (!source || !text || *source != original)
+                    throw std::logic_error("Unsupported aftermath language meaning/revision");
+                return *text;
+            };
             if (language_) {
                 f.add("\nRetained bargain corpus profile: ");
                 f.add(language_->label());
@@ -312,8 +354,17 @@ namespace OfflineStory {
             }
             f.add("\nAftermath - ");
             f.add(speaker());
-            f.add("\nAftermath text: English; outside the retained 20-unit corpus. Language assistance is unavailable here.\n");
-            f.add(offer_.text);
+            if (aftermath_language_) {
+                f.add("\nAftermath corpus profile: ");
+                f.add(aftermath_language_->label());
+                f.add("; target units ");
+                f.number(static_cast<int>(aftermath_language_->target_count()));
+                f.add("/11 (nearest whole unit; separate from relief's 20 units).\n");
+                f.add("Authored prototype speech/choices: English/French. Interface, costs and diagnostics: English. Assistance: ");
+                f.add(aftermath_language_->profile().assistance ? "on; assist scene|ID.\n" : "off.\n");
+            } else
+                f.add("\nAftermath text: English; outside the retained 20-unit corpus. Language assistance is unavailable here.\n");
+            f.add(wording(offer_.node.value, offer_.text));
             f.add("\nInventory: ");
             f.quantity(s.world.facts.coins, "coin", "coins");
             f.add(", ");
@@ -334,7 +385,7 @@ namespace OfflineStory {
                 f.add("  ");
                 f.add(row.id.value);
                 f.add(" - ");
-                f.add(row.text);
+                f.add(wording(row.id.value, row.text));
                 f.add(row.available ? " [available]" : " [unavailable]");
                 if (row.id.value == "book-passage") {
                     f.add("; cost: ");
@@ -497,10 +548,7 @@ namespace OfflineStory {
                 if (driver.language() && (command == "assist" || command.starts_with("assist ") || command.starts_with("assist\t"))) {
                     const auto help = driver.assist(command.size() > 6 ? trim(command.substr(6)) : std::string_view{});
                     if (!io.emit(
-                            help ? std::string_view(*help)
-                            : driver.phase() == PlayPhase::Aftermath
-                                ? "Assistance refused: aftermath has no authored language coverage.\n"
-                                : "Assistance refused: enable --assist and use scene or a current choice ID.\n"
+                            help ? std::string_view(*help) : "Assistance refused: enable --assist and use scene or a current choice ID.\n"
                         ))
                         return io.failure;
                     continue;

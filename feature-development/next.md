@@ -1,3 +1,159 @@
+# U18 retained bilingual aftermath — ready
+
+Exact clean start `504151e689281d4ae649e76cffab63cb2cb9a324`, owned
+`feat/storytelling`, same saved thread `01a193d7-052b-73e3-9673-213cbf8332a9`.
+Assignment `local-story-continuation-20261031-04`, task digest
+`bec9bfc0daeafea3eb482bc39526a6a5d184df162252ab5124cb5a8c0ac256fd`.
+Independently inspected actual U17 owner, caller, language adapter and source /
+receipt hashes, saved build/test exits and complete transcript evidence. The
+coordinator's inspection was not treated as a native rerun. U15/U16/U17 receipts
+and the complete previous handoff remain unchanged below.
+
+## Working caller and separate coverage
+
+The small caller was shown in progress before extending the retaining API:
+
+```text
+story-offline --play-aftermath 1 --language en fr 15 --assist
+choose promise
+choose close
+approach
+choose deliver
+assist scene
+choose report
+assist book-passage
+choose book-passage
+```
+
+Use `--language fr en 15 --assist` for the reverse primary direction. Native
+launches, including this caller, use prefix P below. Relief's original corpus,
+identity, text, labels and canonical selection remain unchanged:20 units and
+1/3/8/15/20 target units at5/15/40/75/100%. No0 tier exists.
+
+A separate `aftermath-en-fr` corpus owns11 complete English/French units for the
+EXACT retained aftermath definition:6 speech nodes and5 distinct choice meanings.
+Corpus revision1, selection revision1 and unit revisions1 are retained with the
+source definition identity/revision and the selected authored variant. Variants
+0–5 are kept/broken/declined/helped/paid/pending. Only the selected variant is
+retained; both directions use the same whole-unit prefix selection.
+
+| Tier | Aftermath target units | Rule |
+| --- | --- | --- |
+| 5% | 1/11 | nearest whole unit |
+| 15% | 2/11 | nearest whole unit |
+| 40% | 4/11 | nearest whole unit |
+| 75% | 8/11 | nearest whole unit |
+| 100% | 11/11 | all units |
+
+Formula `(11 * tier + 50) / 100`, integer division; hypothetical halves round
+up. These fractions, not exact percentages of screen text/words/time, describe
+one retained corpus including mutually exclusive, unavailable and unvisited
+nodes. Canonical order:after.steward,ferry,reported,reconciled,booked,left,report,
+visit-ferry,book-passage,reconcile,leave (each has its own `after.` prefix).
+Profile labels remain Enfrench/French and Français + Anglais/Anglais. No old
+relief ID is reused for a new meaning. Interface, speaker headings, commands,
+resource/cost/status rows and diagnostics remain English outside the corpus.
+This is manually authored prototype content, without translation review.
+
+## Ownership, refusal and authority
+
+Reuse the existing RetainedLanguage fixed inline storage and selection service;
+the narrow new overload accepts actual AftermathContent. It validates the source's
+six English nodes/eleven offered rows and variant, then checks the draft's exact
+corpus/definition/unit identities and revisions, canonical bilingual meanings,
+strict UTF-8 and bounds. The original definition-string overload remains relief
+only. Foreign source, a forged variant with otherwise valid alternative wording,
+changed English/French meaning, stale revisions, extra/missing units and unsupported
+profiles refuse. Results own all identity/text/selection bytes after source and
+input destruction. No allocator/backend, provider or translation service is added.
+
+Phase entry stages the new owner/view/language before adoption. A profile change
+stages both corpora before replacing either. Rendering compares original English
+meaning and displays the selected whole text. `assist scene|ID` reveals only the
+CURRENT scene or offered choice in the primary language, including appropriate
+unavailable rows; it never enumerates future retained units. Uninformed Mara's
+speech/help is identical across kept/broken/declined histories until an actual
+issued report. Assistance preserves her Unknown/None/Uncertain/trust0 record.
+
+Issued selections, live fares, restitution eligibility, observer state and world
+outcomes stay owned by U17's unchanged Engine Sessions. Display/assistance/profile
+changes issue no choices and grant no facts/resources. Existing stale/foreign/
+resumed and once-only spending checks remain. Defaults, scripted modes, ordinary
+--play and unprofiled aftermath output remain byte compatible.
+
+Per retained corpus:20 slots maximum,512 bytes per language/unit,24 per unit ID,
+32 per corpus ID,2048 per definition ID. Lower-only logical limits:24KiB text,
+24KiB storage and96Ki work. Actual fixed inline object23784 bytes; two retained
+slots total47568 bytes, with bounded staging copies during profile replacement.
+Logical work is `3 * charged text bytes + 20`, not CPU instructions. Source
+validation additionally has a fixed6-node/11-row shape (at most3 rows/node).
+Factory validation / bounded temporary construction can precede final logical
+budget rejection. No claim of an exact process/stack/allocator high-water bound.
+
+Kept/broken/declined/helped/paid/pending charged paired text and identities:
+2107/2308/2163/2116/2106/2294 bytes; work6341/6944/6509/6368/6338/6902.
+These are logical charges, not RSS or performance measurements. Text is never
+truncated or repaired. U15/U16/U17 limits remain for the ENTIRE episode:64 commands,
+256 data bytes plus detection byte per line,16KiB frames,64KiB combined requested
+output. EOF, partial input, command/frame/output limits and I/O failures invent
+no actions; a failed write after booked passage leaves spending committed.
+
+## Executed checks and evidence
+
+CWD is this clone; EVERY native command uses P:
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+```sh
+# build-1 exit0; pre-test review then bound variant to actual source and retained provenance.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+# build-2 exit0 on refined/frozen source; source/object gates precede tests.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+# ctest-1 exit0,148/148,27.19s; no rerun needed after passing unchanged inputs.
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.'
+```
+
+All138 predecessor case names and relative order remain. Ten new cases comprise
+7 retained-language/driver checks and3 real-child groups. Literal equivalence:
+10 paths ×2 primary directions ×5 tiers ×assistance on/off =200 localized runs,
+each compared against an independent plain owner after every issued action.
+Literal kept4coins/1plank/fare1; broken0/3/fare5; declined2/3/fare3; restitution
+0/3/rest2/fare3. Unreported kept/broken/declined all fare3, with Mara unaware;
+pending leave preserves2-plank obligation; immediate help/payment keep their
+existing2-coin reported fares. No false reconciliation or learning inference.
+
+134 total child transcripts:114/115 prior blocks BYTE IDENTICAL. Exactly one
+intentional prior output update:--play-aftermath1 en/fr100 --assist now shows
+bilingual authored aftermath and2 successful primary-language reveals, replacing
+English-only notices/refusals. Inputs/exit unchanged; before/after saved explicitly.
+19 new stdin children:14x0/2x1/1x2/2x3; combined output208–12551 bytes. All134 child
+stdout/stderr decode strictly as UTF-8; raw logs preserve deliberate malformed
+input. No failures/skips/unrun/sanitizer diagnostics or new compiler warnings.
+
+Ignored evidence `builds/storytelling-u1-debug/u18/`:predecessor-audit.json,
+source-hashes-1/2.json,final-source-hashes.json,build-1/2.log/.exit,
+source-build-audit.log,ctest-1.log/.exit,ctest-details-1.log,results-summary.json,
+results-audit.log,new-child-transcripts.log,intentional-prior-output-change.log,
+commands.log,boundary-rules.log,checkpoint-audit.log. Build uses unchanged
+Debug/shared Engine cache, dependencies, warnings and ASan/UBSan; command-local
+ST-008 leak-detection accommodation remains, with no passing LSan claim.
+
+## Stop and limits
+
+Selected U18 scope is ready. See matching ST-053–055 decisions and NEW
+`continuation/STORYTELLING-U18.json`. Idle for command-center review; no next unit,
+push, publication retry/hold change, integration, license change or external
+message/service. Current Magic/Storytelling publication holds remain in force.
+
+Only this finite offline scene has these manually authored English/French pairs.
+No professional translation, participant comprehension, educational effectiveness,
+proficiency, human-fun, graphical/font/input-method or broad localization acceptance.
+GNU/Linux Debug source-tree CPU checks only; other platforms/toolchains/Release/
+installed SDK and leak checking remain unverified. No durable history/global
+reputation, authenticated save, output-effect transaction or provider framework.
+
 # U17 playable aftermath: witnessed reliability and return passage
 
 Exact clean start: `34022808d30ce2e865d8c92155d4a32958de7184`, owned

@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-052` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-055` IDs;
 [next](next.md) records the next coordinator review action.
 
 U15 adds a standalone private terminal episode from the exact accepted U14
@@ -2370,11 +2370,12 @@ AftermathContent is retained by value with existing Engine Definition/Session
 services. Cold source strings/Draft compilation keep existing allocation contracts.
 No allocator alias, new allocation backend or efficiency claim is introduced.
 
-U16's five tiers/labels/selections/assistance still describe ONE retained20-unit
-corpus. Every aftermath frame explicitly says English and outside that corpus;
-assistance refuses all new scene lookups, including a new leave ID matching an
-old key. No silent translation or inferred proficiency. No provider/network,
-font/GUI service, broad localization, public framework or additional unit is added.
+At the U17 checkpoint, U16's five tiers/labels/selections/assistance describe
+ONE retained20-unit corpus, and new aftermath frames explicitly use English
+outside it. U18's selected extension now adds an independent retained bilingual
+corpus and current-only assistance under ST-053–055 below. Old IDs/counts and all
+terminal limits remain. No silent translation or inferred proficiency, provider/
+network, font/GUI service, broad localization or public framework is introduced.
 
 Execution: the initial queued build was interrupted by the user before any
 logged build output or observed exit. On explicit resume, its tool session and
@@ -2387,6 +2388,132 @@ No skips/unrun/sanitizer errors or new compiler warnings. Source/object gates
 preceded execution. Current next.md/receipt own exact commands and evidence.
 LSan, other platforms/SDK/graphics, translation quality, comprehension/fun and
 durable/external history remain unverified. Stop for local command-center review.
+
+## U18 — Retained bilingual aftermath
+
+### ST-053 — Independent whole-unit exposure for a short scene
+
+The caller shown before API expansion was the existing opt-in
+`story-offline --play-aftermath 1 --language en fr 15 --assist`, followed by
+current `assist scene`, issued `choose report`, `assist book-passage` and issued
+booking. Reverse primary is the same caller with fr/en. No new CLI mode or
+setting is needed. Ordinary/default/scripted/--play callers remain unchanged.
+
+The rejected alternative was to count new text as part of U16's20 units or reuse
+its leave ID. That would change old selection semantics and attach an old meaning
+to a new action. Instead, `aftermath-en-fr` owns6 node utterances +5 choice labels.
+Each exact source definition selects one of6 authored variants from its retained
+typed fact; source binding is part of meaning identity. Canonical unit keys:
+after.steward,after.ferry,after.reported,after.reconciled,after.booked,after.left,
+after.report,after.visit-ferry,after.book-passage,after.reconcile,after.leave.
+
+Corpus/unit/selection revisions1. The retained selection prefix is deterministic
+and nested across tiers:1/2/4/8/11 of11 for5/15/40/75/100, nearest whole unit
+`(11*tier+50)/100`. No0 tier. This intentionally rounds to9.09/18.18/36.36/72.73/
+100% of complete corpus units; requested preset and actual fraction are both
+visible. Counts include mutually exclusive/unvisited and unavailable nodes,
+not just a path/screen, characters or reading time. Relief remains1/3/8/15/20 of20
+with its original identity, text and selections. English-primary labels remain
+Enfrench → French; French-primary uses Français + Anglais → Anglais. Exposure
+never sets world speech, character language knowledge or proficiency.
+
+New authored English/French pairs cover Nera's checked delivery, declared breach,
+refusal without promise, observed material help, accepted payment and pending
+promise; Mara's uninformed/report/repair terms; booking/departure; five choice
+meanings. Only actual retained source variants are activated. UI headings, typed
+resource/cost/availability/status rows, commands and diagnostics stay English,
+explicitly outside this corpus. These are manually authored prototype translations,
+without professional or participant review. Confidence high in CPU behavior,
+limited in semantic/comprehension quality; no educational/fun claim.
+
+### ST-054 — A typed retaining extension with bounded owned values
+
+Private app code reuses RetainedLanguage's20 fixed slots, strict UTF-8 copy and
+prefix-selection implementation. The existing definition-string overload still
+accepts relief only. The additional overload accepts actual AftermathContent,
+validates the6 source speech nodes,11 original offered rows/order (max3/node),
+English meanings and source variant, then checks draft identity/revisions and
+canonical English AND French pairs. A coherent alternative-variant draft bound
+to another outcome refuses even if all its strings are individually authored.
+It does not parse route names, replay seeds, reconstruct prior facts or translate
+arbitrary strings. The U17 owner/source/state implementation is unchanged.
+
+The result owns corpus ID/revision, source definition ID/revision, authored
+variant0–5, selection revision, whole bilingual text and selected flags. String
+views into temporary producers/drafts are consumed before publication; all source,
+input strings and producer can die. No shared pointer per unit, parallel allocator,
+framework or backend is added. Factory's bounded cold temporary strings retain
+existing app conventions; inline arrays need no heap allocator (ALLOC-001).
+
+Per text512 bytes, unit ID24, corpus ID32, definition ID2048;20 slots maximum.
+Lower-only maxima:24KiB charged text,24KiB retained-object storage,96Ki work.
+Storage charge is sizeof(RetainedLanguage), measured23784 on this build; two
+retained slots47568, plus bounded temporary copies during staging/returns. Work
+charge `3*text_bytes+20` is logical validation/copy/meaning-comparison accounting,
+not CPU instructions; source shape validation is separately bounded6/11. Budget
+refusals can follow fixed bounded validation/candidate construction. Allocator
+rounding/compiler copies/string formatting/stdio/OS buffers/RSS and physical
+peak stack usage are outside those charges. No efficiency claim is made.
+
+Tested variant text charges2107/2308/2163/2116/2106/2294 (kept/broken/declined/
+helped/paid/pending); work6341/6944/6509/6368/6338/6902. Source revision, unit/corpus
+revision, duplicate/foreign/extra identity, variant forgery, changed English or
+French meaning, malformed/control/oversized UTF-8, unsupported profiles and zero/
+above-max/below-exact budgets refuse. Both corpus/result identities survive source
+and input destruction. Identity is an in-memory content contract, not provenance
+signature, persistent pack format or hostile memory boundary.
+
+Alternative considered: a generalized dynamic corpus or new translation service.
+Neither is needed for one scene. Capacity reuse wastes9 slots per aftermath
+instance but preserves the existing service and bounds. Confidence high in native
+ownership/refusal proof. A later larger corpus needs its own scope/revisions and
+acceptance; no such follow-on is selected.
+
+### ST-055 — Current assistance, atomic adoption and unchanged authority
+
+PlayDriver stages a freshly retained aftermath corpus with its new owner/view
+before phase adoption. `set_language` stages both relief and current aftermath
+before nonthrowing replacement, so refusal preserves prior usable state/profile/
+offer. Stored PlayChoice selections and phases are never regenerated by wording.
+Rendering checks original English meaning before showing the selected whole unit;
+primary help performs the same check and only resolves a current node or offered
+choice under after.*. An unavailable displayed row still has a visible meaning;
+help does not grant permission to choose it. Future retained keys and old matching
+IDs are refused rather than exposed. No arbitrary corpus enumeration is a terminal
+command. Terminal scenes may have their own primary help in the retained driver,
+while completed terminal input still stops without consuming further commands.
+
+Mara at the unreported desk receives identical selected speech and primary help
+for kept/broken/declined histories. Private source facts and Nera's suspicion about
+pending obligations do not become Mara's knowledge through a profile/help choice.
+Only U17's actual issued report supplies that observation. Availability, captured
+fare, restitution eligibility, resource balances and authoritative outcomes remain
+with the unchanged Engine Session/AftermathEncounter. Stale/foreign/resumed tokens
+and once-only adoption/spending are preserved, including live insufficient funds,
+failed profile adoption and I/O failure after committed booking.
+
+Whole-episode caps remain64 commands/256 data bytes plus detection byte/16KiB
+frames/64KiB combined requested output. Whole messages are admitted before write;
+UTF-8 is not spliced/truncated. Physical stream failure can occur after a committed
+effect; no rollback/output transaction or automatic action/retry is invented.
+
+Executed native evidence: compatible Debug/shared Engine ASan/UBSan build1 exits0,
+pre-test source-binding refinement, build2 exits0; one148/148 full story selection
+exits0 in27.19s. Seven new owner/driver cases and3 transcript groups.200 localized
+paths (10 literal paths ×2 directions ×5 tiers ×assistance on/off), each compared
+to independently executed plain owners after every action, with explicit literal
+resources/observations/costs/outcomes. All138 predecessor names/order retained.
+Of115 prior complete child blocks,114 are byte-identical. The one intended old
+opt-in aftermath en/fr100 --assist output now renders authored text and2 primary
+reveals; exact old/new evidence saved. Nineteen new stdin children14x0/2x1/1x2/2x3;
+all134 child stdout/stderr strictly UTF-8; new output208–12551 bytes. No skips/unrun,
+new warnings or sanitizer errors. No source changed after frozen passing run.
+
+Current next.md/receipt own exact commands/evidence. Historical U15/U16/U17
+receipts and previous handoffs are preserved. Existing LSan tracing accommodation
+remains; other platforms/Release/SDK, graphics/fonts/input methods, professional
+translation, comprehension, learning and fun remain unverified. No network/model,
+license/publication change, integration or automatic next unit. Stop for review.
 
 ## Verification environment
 

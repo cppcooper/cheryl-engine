@@ -533,7 +533,38 @@ cannot grant eligibility, resources, knowledge or token authority.
 Use `--play-aftermath SEED` with compatible optional language flags. Compose one
 new phase only after an actual terminal payoff; every new action remains issued
 player choice. Preserve 64 commands,256-byte lines,16KiB frames and64KiB combined
-output across the whole episode. New text is explicitly English, outside U16's
-twenty-unit corpus; assistance refuses reused IDs with new meanings. This trades
-broad localization for an honest finite caller. Confidence is high in native
-boundaries; translation/platform/participant acceptance remains separate.
+output across the whole episode. U17 initially uses English outside U16's
+twenty-unit corpus; U18 adds separately retained bilingual coverage under
+ST-053–055, preserving old IDs and limits. This trades broad localization for
+an honest finite caller. Confidence is high in native boundaries; translation,
+platform and participant acceptance remain separate.
+
+## ST-053 — Count the aftermath independently
+
+Retain eleven whole English/French units for the actual aftermath definition,
+separate from relief's unchanged twenty. The five presets select1/2/4/8/11 by
+nearest-unit rounding and a stable ordinal prefix. Frames show the separate
+fraction and English interface boundary. This reuses existing retaining/selection
+services at the cost of coarse short-scene rounding. Confidence is high in
+executed counts/compatibility; professional translation and educational benefit
+remain unverified.
+
+## ST-054 — Bind authored variants to actual retained content
+
+The narrow aftermath retain overload takes actual AftermathContent, validates its
+English nodes/choices and typed variant, and owns corpus/source/unit revisions,
+text and selection. Foreign, changed-meaning, malformed/oversized or over-budget
+content refuses before adoption. Fixed inline storage reuses the twenty-slot
+service without a new allocator/backend. This trades arbitrary pack loading for
+six authored variants. Confidence is high in tested lifetime/refusal boundaries;
+logical work/storage charges do not measure physical peak memory or CPU work.
+
+## ST-055 — Reveal only current meanings without issuing authority
+
+Primary-language help uses the current aftermath scene or offered choices under
+new after.* identities. It never reveals another retained scene or changes Mara's
+knowledge. Stage both profiles and phase content before adoption; preserve the
+original issued selection, typed fare/restitution and owner effects. This trades
+broad dictionary access for observer-safe assistance. Confidence is high in
+all-tier/both-direction literal outcomes, held-token/refusal and stdin checks;
+comprehension, graphics and human-fun acceptance remain separate.

@@ -8,6 +8,64 @@ namespace OfflineStory {
                                                                  "promised", "refused", "closing",   "ask-terms",   "help-now",
                                                                  "pay",      "promise", "negotiate", "commit",      "refuse",
                                                                  "close",    "deliver", "break",     "acknowledge", "leave"};
+        constexpr std::array<std::string_view, 11> aftermath_ids = {"after.steward",    "after.ferry",       "after.reported",
+                                                                    "after.reconciled", "after.booked",      "after.left",
+                                                                    "after.report",     "after.visit-ferry", "after.book-passage",
+                                                                    "after.reconcile",  "after.leave"};
+        std::array<LanguageUnitDraft, 11> aftermath_units(unsigned variant) {
+            constexpr std::string_view reported_en[] = {
+                "Nera tells Mara she checked the delivery. Mara: A kept promise earns a one-coin return fare.",
+                "Nera tells Mara she heard you declare the promise broken. Mara: The return fare is five coins. You can first pay Nera two coins in restitution to begin making amends.",
+                "Nera tells Mara you declined without making a promise. Mara: That is no broken word. The return fare is three coins.",
+                "Nera tells Mara she saw your immediate material help. Mara: Your help earns a two-coin return fare.",
+                "Nera tells Mara she accepted your relief payment. Mara: Your help earns a two-coin return fare.",
+                "Nera tells Mara only that a promise is still pending, with no checked delivery or declared breach. Mara: I will use the ordinary three-coin fare."
+            };
+            constexpr std::string_view reported_fr[] = {
+                "Nera dit à Mara qu'elle a vérifié la livraison. Mara : Une promesse tenue donne droit à un retour pour une pièce.",
+                "Nera dit à Mara qu'elle vous a entendu déclarer la promesse rompue. Mara : Le retour coûte cinq pièces. Vous pouvez d'abord verser deux pièces à Nera en réparation pour commencer à faire amende honorable.",
+                "Nera dit à Mara que vous avez refusé sans rien promettre. Mara : Ce n'est pas une parole trahie. Le retour coûte trois pièces.",
+                "Nera dit à Mara qu'elle a vu votre aide matérielle immédiate. Mara : Votre aide donne droit à un retour pour deux pièces.",
+                "Nera dit à Mara qu'elle a accepté votre paiement pour l'aide. Mara : Votre aide donne droit à un retour pour deux pièces.",
+                "Nera dit seulement à Mara qu'une promesse reste en attente, sans livraison vérifiée ni rupture déclarée. Mara : J'applique le tarif ordinaire de trois pièces."
+            };
+            // Whole utterances are authored together; never splice bytes or substitute mechanical quantities.
+            constexpr std::string_view steward_full_en[] = {
+                "Nera: I checked your delivery. Your promise was kept. Ask me to speak to Mara, visit her ferry desk, or leave.",
+                "Nera: You declared the promise broken without delivering. I remember that. Ask me to speak to Mara, visit her ferry desk, or leave.",
+                "Nera: You declined the bargain. There was no promise to break. Ask me to speak to Mara, visit her ferry desk, or leave.",
+                "Nera: I saw your boards go into the work immediately. Ask me to speak to Mara, visit her ferry desk, or leave.",
+                "Nera: I accepted your payment for the relief work. Ask me to speak to Mara, visit her ferry desk, or leave.",
+                "Nera: Your recorded promise remains pending. I cannot report a checked delivery or a declared breach. Ask me to speak to Mara, visit her ferry desk, or leave."
+            };
+            constexpr std::string_view steward_full_fr[] = {
+                "Nera : J'ai vérifié votre livraison. Vous avez tenu votre promesse. Demandez-moi de parler à Mara, allez à son guichet ou partez.",
+                "Nera : Vous avez déclaré votre promesse rompue sans rien livrer. Je m'en souviens. Demandez-moi de parler à Mara, allez à son guichet ou partez.",
+                "Nera : Vous avez refusé l'accord. Vous n'aviez fait aucune promesse à rompre. Demandez-moi de parler à Mara, allez à son guichet ou partez.",
+                "Nera : J'ai vu vos planches servir immédiatement aux travaux. Demandez-moi de parler à Mara, allez à son guichet ou partez.",
+                "Nera : J'ai accepté votre paiement pour les travaux d'aide. Demandez-moi de parler à Mara, allez à son guichet ou partez.",
+                "Nera : Votre promesse reste en attente. Je ne peux attester ni une livraison vérifiée ni une rupture déclarée. Demandez-moi de parler à Mara, allez à son guichet ou partez."
+            };
+            return {
+                {{aftermath_ids[0], steward_full_en[variant], steward_full_fr[variant]},
+                 {aftermath_ids[1],
+                  "Mara: I have no report about the relief work. A return seat costs three coins. Nera is nearby if you want her account.",
+                  "Mara : Je n'ai aucun rapport sur les travaux d'aide. Une place pour le retour coûte trois pièces. Nera est tout près si vous souhaitez son témoignage."},
+                 {aftermath_ids[2], reported_en[variant], reported_fr[variant]},
+                 {aftermath_ids[3],
+                  "Nera accepts two coins in restitution. The past breach remains recorded. Mara: You are making amends; the return fare is now three coins.",
+                  "Nera accepte deux pièces en réparation. La rupture passée reste inscrite. Mara : Vous faites amende honorable ; le retour coûte désormais trois pièces."},
+                 {aftermath_ids[4], "Mara takes the displayed fare. Your return passage is booked.",
+                  "Mara reçoit le prix affiché. Votre passage de retour est réservé."},
+                 {aftermath_ids[5], "You leave the quay without booking a return passage; earlier obligations are unchanged.",
+                  "Vous quittez le quai sans réserver de passage de retour ; vos engagements antérieurs restent inchangés."},
+                 {aftermath_ids[6], "Ask Nera to give Mara her witnessed account", "Demander à Nera de transmettre son témoignage à Mara"},
+                 {aftermath_ids[7], "Visit Mara without a relief report", "Aller voir Mara sans rapport sur l'aide"},
+                 {aftermath_ids[8], "Book the return passage at the displayed fare", "Réserver le passage de retour au prix affiché"},
+                 {aftermath_ids[9], "Pay Nera two coins in restitution", "Verser deux pièces à Nera en réparation"},
+                 {aftermath_ids[10], "Leave without booking a return passage", "Partir sans réserver de passage de retour"}}
+            };
+        }
         std::optional<std::size_t> count(const LanguageProfile& p) {
             if (p.interface_locale != Language::English || p.primary == p.target ||
                 (p.primary != Language::English && p.primary != Language::French) ||
@@ -191,35 +249,123 @@ namespace OfflineStory {
         }
         return d;
     }
-    std::expected<RetainedLanguage, LanguageError>
-    RetainedLanguage::retain(const LanguageCorpusDraft& d, const LanguageProfile& p, std::string_view definition, std::uint64_t revision) {
+    std::expected<LanguageCorpusDraft, LanguageError> aftermath_corpus(const AftermathContent& c) {
+        const auto fact = static_cast<unsigned>(c.fact());
+        if (fact < 1 || fact > 6 || !c.definition() || c.definition()->revision() != 1 || c.definition()->nodes().size() != 6 ||
+            c.definition()->id().value.size() > 2048)
+            return std::unexpected(LanguageError::Identity);
+        LanguageCorpusDraft draft;
+        draft.id = "aftermath-en-fr";
+        draft.definition = c.definition()->id().value;
+        draft.definition_revision = c.definition()->revision();
+        draft.unit_count = 11;
+        draft.variant = fact - 1;
+        const auto units = aftermath_units(draft.variant);
+        std::copy(units.begin(), units.end(), draft.units.begin());
+        constexpr std::string_view nodes[] = {"steward", "ferry", "reported", "reconciled", "booked", "left"};
+        constexpr std::string_view choices[] = {"report", "visit-ferry", "book-passage", "reconcile", "leave"};
+        constexpr std::string_view offers[] = {
+            "report,visit-ferry,leave,", "report,book-passage,leave,", "book-passage,reconcile,leave,", "book-passage,leave,", "", ""
+        };
+        for (std::size_t i = 0; i < 6; ++i) {
+            const auto* node = c.definition()->find_node({std::string(nodes[i])});
+            if (!node || node->text != units[i].english || node->choices.size() > 3)
+                return std::unexpected(LanguageError::Identity);
+            std::string actual;
+            for (const auto& choice : node->choices) {
+                bool found = false;
+                for (std::size_t j = 0; j < 5; ++j)
+                    if (choice.id.value == choices[j])
+                        found = choice.text == units[j + 6].english;
+                if (!found)
+                    return std::unexpected(LanguageError::Identity);
+                actual += choice.id.value + ',';
+            }
+            if (actual != offers[i])
+                return std::unexpected(LanguageError::Identity);
+        }
+        return draft;
+    }
+    std::expected<RetainedLanguage, LanguageError> RetainedLanguage::retain(
+        const LanguageCorpusDraft& d,
+        const LanguageProfile& p,
+        std::string_view definition,
+        std::uint64_t revision,
+        const LanguageLimits& limits
+    ) {
+        if (d.id != "relief-en-fr")
+            return std::unexpected(LanguageError::Identity);
+        return retain_checked(d, p, definition, revision, limits);
+    }
+    std::expected<RetainedLanguage, LanguageError> RetainedLanguage::retain(
+        const LanguageCorpusDraft& d,
+        const LanguageProfile& p,
+        const AftermathContent& c,
+        const LanguageLimits& limits
+    ) {
+        const auto source = aftermath_corpus(c);
+        if (!source || d.id != "aftermath-en-fr" || d.variant != source->variant)
+            return std::unexpected(LanguageError::Identity);
+        return retain_checked(d, p, c.definition()->id().value, c.definition()->revision(), limits);
+    }
+    std::expected<RetainedLanguage, LanguageError> RetainedLanguage::retain_checked(
+        const LanguageCorpusDraft& d,
+        const LanguageProfile& p,
+        std::string_view definition,
+        std::uint64_t revision,
+        const LanguageLimits& limits
+    ) {
         const auto n = count(p);
         if (!n)
             return std::unexpected(LanguageError::Profile);
-        if (d.id != "relief-en-fr" || d.revision != 1 || d.selection_revision != 1 || d.definition != definition ||
-            d.definition_revision != revision || revision != 1)
+        for (auto field : {&LanguageLimits::units, &LanguageLimits::text_bytes, &LanguageLimits::storage_bytes, &LanguageLimits::work})
+            if (limits.*field > maximum_language_limits.*field)
+                return std::unexpected(LanguageError::Limit);
+        if (d.id.size() > 32 || d.definition.size() > 2048 || definition.size() > 2048)
+            return std::unexpected(LanguageError::Text);
+        const bool after = d.id == "aftermath-en-fr";
+        if ((!after && d.id != "relief-en-fr") || d.unit_count != (after ? 11 : 20) || d.variant > (after ? 5u : 0u) || d.revision != 1 ||
+            d.selection_revision != 1 || d.definition != definition || d.definition_revision != revision || revision != 1)
             return std::unexpected(LanguageError::Identity);
+        if (d.unit_count > limits.units || sizeof(RetainedLanguage) > limits.storage_bytes)
+            return std::unexpected(LanguageError::Limit);
         RetainedLanguage r;
-        if (!r.definition_.assign(d.definition))
+        if (!r.definition_.assign(d.definition) || !r.corpus_.assign(d.id))
             return std::unexpected(LanguageError::Text);
         r.definition_revision_ = revision;
+        r.corpus_revision_ = d.revision;
+        r.selection_revision_ = d.selection_revision;
+        r.variant_ = d.variant;
         r.profile_ = p;
-        r.target_count_ = *n;
-        for (std::size_t i = 0; i < 20; ++i) {
+        r.unit_count_ = d.unit_count;
+        r.target_count_ = after ? (d.unit_count * p.exposure + 50) / 100 : *n;
+        r.usage_ = {d.definition.size() + d.id.size(), sizeof(RetainedLanguage), 0};
+        const auto canonical = aftermath_units(d.variant);
+        for (std::size_t i = 0; i < d.unit_count; ++i) {
             const auto& unit = d.units[i];
-            if (unit.id != identities[i] || unit.revision != 1)
+            if (unit.id != (after ? aftermath_ids[i] : identities[i]) || unit.revision != 1)
                 return std::unexpected(LanguageError::Identity);
             auto& out = r.units_[i];
             if (!out.id.assign(unit.id) || !out.english.assign(unit.english) || !out.french.assign(unit.french))
                 return std::unexpected(LanguageError::Text);
-            out.target = i < *n; // Selection revision1: canonical ordinal prefix, never draw again at render time.
+            if (after && (unit.english != canonical[i].english || unit.french != canonical[i].french))
+                return std::unexpected(LanguageError::Identity);
+            r.usage_.text_bytes += unit.id.size() + unit.english.size() + unit.french.size();
+            out.target = i < r.target_count_; // Selection revision1: canonical ordinal prefix, never redraw a selection.
         }
+        for (std::size_t i = d.unit_count; i < d.units.size(); ++i)
+            if (!d.units[i].id.empty() || !d.units[i].english.empty() || !d.units[i].french.empty())
+                return std::unexpected(LanguageError::Identity);
+        // Logical validation/copy/meaning-comparison charge; fixed capacities bound even refused inputs.
+        r.usage_.work = 3 * r.usage_.text_bytes + 20;
+        if (r.usage_.text_bytes > limits.text_bytes || r.usage_.work > limits.work)
+            return std::unexpected(LanguageError::Limit);
         return r;
     }
     std::expected<std::string_view, LanguageError> RetainedLanguage::text(std::string_view id, std::uint64_t revision, bool primary) const {
         if (id.size() > 24 || revision != 1)
             return std::unexpected(LanguageError::Identity);
-        for (const auto& u : units_)
+        for (const auto& u : std::span(units_).first(unit_count_))
             if (u.id.view() == id) {
                 const auto language = primary || !u.target ? profile_.primary : profile_.target;
                 return language == Language::English ? u.english.view() : u.french.view();
@@ -227,13 +373,13 @@ namespace OfflineStory {
         return std::unexpected(LanguageError::Identity);
     }
     std::expected<std::string_view, LanguageError> RetainedLanguage::english(std::string_view id) const {
-        for (const auto& u : units_)
+        for (const auto& u : std::span(units_).first(unit_count_))
             if (u.id.view() == id)
                 return u.english.view();
         return std::unexpected(LanguageError::Identity);
     }
     std::expected<bool, LanguageError> RetainedLanguage::selected(std::string_view id) const {
-        for (const auto& u : units_)
+        for (const auto& u : std::span(units_).first(unit_count_))
             if (u.id.view() == id)
                 return u.target;
         return std::unexpected(LanguageError::Identity);

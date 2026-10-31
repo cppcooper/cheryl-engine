@@ -28,6 +28,7 @@ namespace OfflineStory {
         std::optional<RetainedLanguage> language_;
         bool with_aftermath_ = false;
         std::optional<AftermathEncounter> aftermath_;
+        std::optional<RetainedLanguage> aftermath_language_;
         PlayDriver(SelectedBargainHandle, BargainEncounter, D::View, std::array<std::uint64_t, 2>);
         friend struct PlayProbe;
     public:
@@ -46,6 +47,7 @@ namespace OfflineStory {
         std::expected<void, Error> presence(bool);
         std::expected<void, LanguageError> set_language(const LanguageProfile&);
         const std::optional<RetainedLanguage>& language() const noexcept { return language_; }
+        const std::optional<RetainedLanguage>& aftermath_language() const noexcept { return aftermath_language_; }
         std::expected<std::string, LanguageError> assist(std::string_view) const;
         std::string render(std::size_t frame_bytes = 16384) const; // Bounded, pure presentation of the retained offer/state.
     };

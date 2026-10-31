@@ -1,0 +1,129 @@
+{
+  "milestone_id": "STORYTELLING-U18",
+  "status": "ready",
+  "checks_passed": true,
+  "prerequisite_sha": "504151e689281d4ae649e76cffab63cb2cb9a324",
+  "thread_id": "01a193d7-052b-73e3-9673-213cbf8332a9",
+  "assignment": "local-story-continuation-20261031-04",
+  "task_sha256": "bec9bfc0daeafea3eb482bc39526a6a5d184df162252ab5124cb5a8c0ac256fd",
+  "scope": "One bounded local Storytelling unit in the existing owned clone/feat/storytelling, same saved thread. Independently inspected U17 actual source, all prerequisite executed-source hashes, bound receipt, saved native exits and complete child evidence before relying on it. No provider, external coordinator, license/publication action or next unit.",
+  "evidence": [
+    "builds/storytelling-u1-debug/u18/boundary-rules.log",
+    "builds/storytelling-u1-debug/u18/build-1.exit",
+    "builds/storytelling-u1-debug/u18/build-1.log",
+    "builds/storytelling-u1-debug/u18/build-2.exit",
+    "builds/storytelling-u1-debug/u18/build-2.log",
+    "builds/storytelling-u1-debug/u18/commands.log",
+    "builds/storytelling-u1-debug/u18/ctest-1.exit",
+    "builds/storytelling-u1-debug/u18/ctest-1.log",
+    "builds/storytelling-u1-debug/u18/ctest-details-1.log",
+    "builds/storytelling-u1-debug/u18/final-source-hashes.json",
+    "builds/storytelling-u1-debug/u18/intentional-prior-output-change.log",
+    "builds/storytelling-u1-debug/u18/new-child-transcripts.log",
+    "builds/storytelling-u1-debug/u18/predecessor-audit.json",
+    "builds/storytelling-u1-debug/u18/results-audit.log",
+    "builds/storytelling-u1-debug/u18/results-summary.json",
+    "builds/storytelling-u1-debug/u18/source-build-audit.log",
+    "builds/storytelling-u1-debug/u18/source-hashes-1.json",
+    "builds/storytelling-u1-debug/u18/source-hashes-2.json",
+    "builds/storytelling-u1-debug/u18/checkpoint-audit.log"
+  ],
+  "implemented_contracts": [
+    "Existing --play-aftermath SEED --language en fr TIER --assist and reverse fr/en now render a separately owned11-unit aftermath corpus: six complete speech nodes and five choice meanings, with authored kept/broken/declined/helped/paid/pending variants from actual retained AftermathContent. Relief remains the original20 units, identical identity/text/selection/counts. Ordinary default/scripted/--play and unprofiled aftermath transcripts stay compatible.",
+    "Exactly five tiers5/15/40/75/100, no0. New aftermath counts1/2/4/8/11 by nearest-whole-unit rounding (11*tier+50)/100, stable ordinal prefix. Frames show separate actual fraction and requested label; relief remains1/3/8/15/20 of20. Both directions preserve blend/fallback/100% names. Corpus counts include unvisited/unavailable/mutually exclusive nodes; they are not screen/word/time or whole-game percentages.",
+    "Narrow RetainedLanguage overload binds actual source definition, source variant and canonical English/French meaning; original definition-string overload stays relief-only. Owns corpus ID/revision, definition ID/revision, variant, selection revision and whole text/flags after source/input death. Refuses foreign/stale/forged alternative variant/changed meaning/malformed UTF-8/oversized/extra or unsupported content and lower-only budget failures. Fixed inline storage reuses the service without a new allocator/backend.",
+    "Profile replacement stages both corpora; phase transition stages owner/view/corpus before adoption. Primary-language assistance resolves only current node or offered choice under distinct after.* identities and compares original meaning. Uninformed Mara gets identical speech/help and remains Unknown/None/Uncertain/trust0 across kept/broken/declined histories until a real report. Exposure does not infer learning, proficiency, world speech or character knowledge.",
+    "Original issued selection/phase authority, availability, live captured fare, restitution eligibility, coins/planks, exact payoff/aftermath source/world, observer facts/belief/trust and authoritative outcomes remain identical across both primary directions/all tiers/assistance. Unchanged Engine owners reject stale/foreign/resumed tokens, repeat spending, live insufficient funds and invalid phases. Wording grants no authority.",
+    "Whole-episode64 commands/256 data bytes plus detection byte/16KiB frame/64KiB combined requested output remain. Whole UTF-8 admission/copy, EOF/partial/quit/malformed/command/frame/output checks invent no actions. Output failure after booked passage retains committed spending. Authored speech/choices only; interface/headings/cost/status/diagnostics remain English and explicitly outside the corpus.",
+    "Two wrapped compatible Debug/shared Engine ASan/UBSan builds exit0. First build followed by pre-test typed-source binding refinement; second frozen build matches executed source/object gates. One full selected suite148/148 passes,27.19s: all138 predecessor names/order, seven new retained/driver cases and three stdin groups.200 localized literal paths compared after each action to independent plain owners.114/115 old complete child blocks unchanged; one intentional opt-in aftermath en/fr100 --assist output updated explicitly in before/after evidence.19 new real stdin children14x0/2x1/1x2/2x3; all134 child stdout/stderr strict UTF-8, new output208–12551 bytes. No failures/skips/unrun/sanitizer diagnostics or new build warnings. No source changes after passing run."
+  ],
+  "exposure_counts": {
+    "tiers": [
+      5,
+      15,
+      40,
+      75,
+      100
+    ],
+    "relief": {
+      "corpus": "relief-en-fr",
+      "revision": 1,
+      "units": 20,
+      "target_counts": [
+        1,
+        3,
+        8,
+        15,
+        20
+      ]
+    },
+    "aftermath": {
+      "corpus": "aftermath-en-fr",
+      "revision": 1,
+      "selection_revision": 1,
+      "units": 11,
+      "target_counts": [
+        1,
+        2,
+        4,
+        8,
+        11
+      ],
+      "rounding": "Nearest whole unit; integer (11*tier+50)/100; hypothetical halves round up. Both requested preset and actual fraction displayed."
+    }
+  },
+  "executed_counts": {
+    "passed": 148,
+    "total": 148,
+    "seconds": 27.19,
+    "prior_cases_retained": 138,
+    "new_cases": 10,
+    "prior_child_blocks": 115,
+    "prior_blocks_unchanged": 114,
+    "intentional_prior_changed_index_zero_based": 108,
+    "intentional_prior_changed_arguments": "Offline child arguments: [--play-aftermath] [1] [--language] [en] [fr] [100] [--assist]",
+    "new_stdin_children": 19,
+    "new_child_exits": {
+      "0": 14,
+      "1": 2,
+      "3": 2,
+      "2": 1
+    },
+    "new_child_output_bytes_min": 208,
+    "new_child_output_bytes_max": 12551,
+    "new_case_names": [
+      "tests-story-offline.story_after_language.eleven_units_and_all_tiers",
+      "tests-story-offline.story_after_language.retained_identity_and_source_lifetime",
+      "tests-story-offline.story_after_language.refuse_changed_meaning_and_budgets",
+      "tests-story-offline.story_after_language.same_actions_literal_world_all_profiles",
+      "tests-story-offline.story_after_language.help_cannot_reveal_unobserved_facts",
+      "tests-story-offline.story_after_language.wording_preserves_issued_live_and_resumed_authority",
+      "tests-story-offline.story_after_language.stdin_limits_and_failed_output_keep_state",
+      "tests-story-offline.story_after_language_transcript.authored_paths_both_directions",
+      "tests-story-offline.story_after_language_transcript.unaware_mara_and_current_help",
+      "tests-story-offline.story_after_language_transcript.eof_limits_and_unsupported_tier"
+    ],
+    "measurements": [
+      "Aftermath language: history=kept units=11 text=2107 storage=23784 work=6341",
+      "Aftermath language: history=broken units=11 text=2308 storage=23784 work=6944",
+      "Aftermath language: history=declined units=11 text=2163 storage=23784 work=6509",
+      "Aftermath language: history=helped units=11 text=2116 storage=23784 work=6368",
+      "Aftermath language: history=paid units=11 text=2106 storage=23784 work=6338",
+      "Aftermath language: history=pending units=11 text=2294 storage=23784 work=6902"
+    ],
+    "native_exits": {
+      "build-1": 0,
+      "build-2": 0,
+      "ctest-1": 0
+    }
+  },
+  "limitations": [
+    "Manually authored English/French prototype pairs for one finite offline Nera/Mara scene. No professional translation, participant comprehension, educational effectiveness, proficiency or human-fun acceptance; no general localization/rumor/reputation/provider service.",
+    "GNU/Linux Debug source-tree shared Engine only. Existing command-local ST-008 ASAN_OPTIONS=detect_leaks=0 tracing accommodation remains; no passing LSan, other platforms/toolchains/Release/installed SDK/GUI/fonts/input-method claims.",
+    "Per retained corpus:20 slots maximum,512 bytes per language/unit,24 per unit ID,32 corpus ID,2048 source ID; lower-only logical24KiB text/24KiB object storage/96Ki work. Measured object23784 bytes; two retained slots47568 plus bounded temporary copies. Logical work3*charged_text+20 is not CPU instructions. Source validation is separately fixed6 nodes/11 rows, max3 rows/node; fixed bounded candidate validation can precede budget refusal. Excludes allocator capacity/rounding/control blocks, compiler copies, formatting, OS/stdio buffering, physical peak stack/RSS. No new allocator or efficiency claim.",
+    "Old20-unit exposure does not cover new text. New11-unit corpus includes unavailable/unvisited/mutually exclusive units and rounds short-scene fractions; no exact screen/word/time/whole-story percentage. UI, speaker headings, typed costs/resources/status and diagnostics remain English.",
+    "Unchanged U17 paired snapshots are structural in-memory coherence, not authenticated/durable history. Coherent rewind is another timeline; no disk/crash/global exactly-once guarantee or output-effect transaction/rollback.",
+    "Predecessor historical failed/partial/interrupted evidence and U15/U16/U17 receipts remain unchanged. Publication holds remain; no push/retry, integration, license/repository move/visibility change or automatic continuation."
+  ],
+  "next_action": "Idle after this coherent local checkpoint for command-center review of U18 source, ST-053–055 views, receipt and ignored evidence. Preserve current publication holds; do not push or retry publication. No automatic next unit, external report or new service."
+}

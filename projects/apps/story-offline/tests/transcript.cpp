@@ -803,9 +803,9 @@ TEST(story_after_transcript, language_scope_and_late_eof) {
     EXPECT_EQ(localized.code, 0);
     EXPECT_TRUE(localized.error.empty());
     EXPECT_NE(localized.output.find("Retained bargain corpus profile: French · 100%; target units 20/20."), std::string::npos);
-    EXPECT_NE(localized.output.find("Aftermath text: English; outside the retained 20-unit corpus."), std::string::npos);
-    EXPECT_EQ(count(localized.output, "Assistance refused: aftermath has no authored language coverage."), 2);
-    EXPECT_EQ(localized.output.find("Primary-language help:"), std::string::npos);
+    EXPECT_NE(localized.output.find("Aftermath corpus profile: French · 100%; target units 11/11"), std::string::npos);
+    EXPECT_EQ(count(localized.output, "Primary-language help:"), 2);
+    EXPECT_NE(localized.output.find("Primary-language help: Leave without booking a return passage"), std::string::npos);
     const auto eof = child({"--play-aftermath", "1"}, prior);
     EXPECT_EQ(eof.code, 1);
     EXPECT_NE(eof.output.find("Aftermath - Nera the quay steward"), std::string::npos);
@@ -834,4 +834,131 @@ TEST(story_after_transcript, refusals_and_usage) {
     EXPECT_EQ(malformed.code, 3);
     EXPECT_NE(malformed.error.find("malformed input"), std::string::npos);
     EXPECT_EQ(malformed.output.find("Nera tells Mara"), std::string::npos);
+}
+
+TEST(story_after_language_transcript, authored_paths_both_directions) {
+    struct Row {
+        const char* prior;
+        const char* ending;
+        const char* inventory;
+        const char* charge;
+        const char* tier;
+    };
+    const Row rows[] = {
+        {"choose promise\nchoose close\napproach\nchoose deliver\n", "choose book-passage\n", "Inventory: 4 coins, 1 plank.",
+         "Fare paid: 1 coin. Restitution paid: 0 coins.", "15"},
+        {"choose promise\nchoose close\napproach\nchoose break\n", "choose book-passage\n", "Inventory: 0 coins, 3 planks.",
+         "Fare paid: 5 coins. Restitution paid: 0 coins.", "100"},
+        {"choose refuse\nchoose close\napproach\nchoose acknowledge\n", "choose book-passage\n", "Inventory: 2 coins, 3 planks.",
+         "Fare paid: 3 coins. Restitution paid: 0 coins.", "100"},
+        {"choose promise\nchoose close\napproach\nchoose break\n", "assist reconcile\nchoose reconcile\nassist scene\n",
+         "Inventory: 0 coins, 3 planks.", "Fare paid: 3 coins. Restitution paid: 2 coins.", "100"}
+    };
+    for (bool reverse : {false, true})
+        for (std::size_t i = 0; i < std::size(rows); ++i) {
+            const auto& row = rows[i];
+            const std::string input = std::string(row.prior) +
+                                      "assist scene\nassist report\nchoose report\nassist scene\nassist book-passage\n" + row.ending +
+                                      (i == 3 ? "choose book-passage\n" : "");
+            const auto r =
+                child({"--play-aftermath", "1", "--language", reverse ? "fr" : "en", reverse ? "en" : "fr", row.tier, "--assist"}, input);
+            ASSERT_EQ(r.code, 0);
+            EXPECT_TRUE(r.error.empty());
+            EXPECT_NE(r.output.find(row.inventory), std::string::npos);
+            EXPECT_NE(r.output.find(row.charge), std::string::npos);
+            EXPECT_NE(r.output.find("Return passage: booked."), std::string::npos);
+            EXPECT_NE(
+                r.output.find(
+                    reverse ? "Primary-language help: Réserver le passage de retour au prix affiché"
+                            : "Primary-language help: Book the return passage at the displayed fare"
+                ),
+                std::string::npos
+            );
+            EXPECT_EQ(r.output.find("Assistance refused"), std::string::npos);
+            EXPECT_EQ(r.output.find("Aftermath text: English; outside"), std::string::npos);
+            EXPECT_NE(r.output.find("Interface, costs and diagnostics: English."), std::string::npos);
+            if (i == 0) {
+                EXPECT_NE(
+                    r.output.find(
+                        reverse ? "Aftermath corpus profile: Français + Anglais · 15%; target units 2/11"
+                                : "Aftermath corpus profile: Enfrench · 15%; target units 2/11"
+                    ),
+                    std::string::npos
+                );
+                EXPECT_NE(r.output.find("target units 3/20"), std::string::npos);
+                EXPECT_NE(
+                    r.output.find(reverse ? "Nera: I checked your delivery." : "Nera : J'ai vérifié votre livraison."), std::string::npos
+                );
+            } else {
+                EXPECT_NE(r.output.find("target units 11/11"), std::string::npos);
+                EXPECT_NE(r.output.find(reverse ? "Mara takes the displayed fare." : "Mara reçoit le prix affiché."), std::string::npos);
+            }
+            EXPECT_TRUE(r.output.ends_with("Encounter finished.\n"));
+        }
+}
+
+TEST(story_after_language_transcript, unaware_mara_and_current_help) {
+    for (bool reverse : {false, true})
+        for (auto prior :
+             {"choose promise\nchoose close\napproach\nchoose deliver\n", "choose promise\nchoose close\napproach\nchoose break\n",
+              "choose refuse\nchoose close\napproach\nchoose acknowledge\n"}) {
+            const auto r = child(
+                {"--play-aftermath", "1", "--language", reverse ? "fr" : "en", reverse ? "en" : "fr", "100", "--assist"},
+                std::string(prior) +
+                    "choose visit-ferry\nassist scene\nassist after.reported\nassist reconcile\nassist leave\nchoose book-passage\n"
+            );
+            ASSERT_EQ(r.code, 0);
+            EXPECT_TRUE(r.error.empty());
+            EXPECT_NE(
+                r.output.find(
+                    reverse ? "Mara: I have no report about the relief work." : "Mara : Je n'ai aucun rapport sur les travaux d'aide."
+                ),
+                std::string::npos
+            );
+            EXPECT_NE(
+                r.output.find(
+                    reverse ? "Primary-language help: Mara : Je n'ai aucun rapport" : "Primary-language help: Mara: I have no report"
+                ),
+                std::string::npos
+            );
+            EXPECT_NE(
+                r.output.find(
+                    reverse ? "Primary-language help: Partir sans réserver de passage de retour"
+                            : "Primary-language help: Leave without booking a return passage"
+                ),
+                std::string::npos
+            );
+            EXPECT_EQ(count(r.output, "Assistance refused:"), 2);
+            EXPECT_EQ(r.output.find("Nera tells Mara"), std::string::npos);
+            EXPECT_EQ(r.output.find("Nera dit à Mara"), std::string::npos);
+            EXPECT_NE(r.output.find("Inventory: 2 coins,"), std::string::npos);
+            EXPECT_NE(r.output.find("Fare paid: 3 coins."), std::string::npos);
+        }
+}
+
+TEST(story_after_language_transcript, eof_limits_and_unsupported_tier) {
+    const std::string prior = "choose promise\nchoose close\napproach\nchoose deliver\n";
+    const std::vector<std::string> args{"--play-aftermath", "1", "--language", "en", "fr", "15", "--assist"};
+    for (auto ending : {"assist scene\nchoose report\nchoose book-passage", "assist scene\nquit\n"}) {
+        const auto r = child(args, prior + ending);
+        EXPECT_EQ(r.code, 1);
+        EXPECT_TRUE(r.error.empty());
+        EXPECT_NE(r.output.find("Primary-language help: Nera: I checked your delivery."), std::string::npos);
+        EXPECT_EQ(r.output.find("Return passage: booked."), std::string::npos);
+    }
+    const auto invalid = child(args, prior + "assist \xc3\nchoose report\n");
+    EXPECT_EQ(invalid.code, 3);
+    EXPECT_NE(invalid.error.find("malformed input"), std::string::npos);
+    EXPECT_EQ(invalid.output.find("Nera tells Mara"), std::string::npos);
+    std::string repeat = prior;
+    for (int i = 0; i < 61; ++i)
+        repeat += "assist scene\n";
+    repeat += "choose report\n";
+    const auto cap = child(args, repeat);
+    EXPECT_EQ(cap.code, 3);
+    EXPECT_NE(cap.error.find("command limit"), std::string::npos);
+    EXPECT_EQ(cap.output.find("Nera tells Mara"), std::string::npos);
+    const auto tier = child({"--play-aftermath", "1", "--language", "fr", "en", "0", "--assist"}, prior);
+    EXPECT_EQ(tier.code, 2);
+    EXPECT_TRUE(tier.output.empty());
 }

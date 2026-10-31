@@ -977,9 +977,9 @@ TEST(story_play_after, corpus_scope_and_assistance) {
         EXPECT_EQ(r.exit, S::PlayExit::Complete);
         EXPECT_EQ(d.language()->target_count(), selected_count);
         EXPECT_EQ(S::PlayProbe::aftermath(d).state().world.facts.coins, 4);
-        EXPECT_NE(r.out.find("Assistance refused: aftermath has no authored language coverage."), std::string::npos);
-        EXPECT_NE(r.out.find("Mara: I have no report about the relief work."), std::string::npos);
-        EXPECT_EQ(r.out.find("Primary-language help:"), std::string::npos);
+        EXPECT_NE(r.out.find("Aftermath corpus profile:"), std::string::npos);
+        EXPECT_NE(r.out.find("Primary-language help: Leave without booking a return passage"), std::string::npos);
+        EXPECT_NE(r.out.find("Primary-language help:"), std::string::npos);
         EXPECT_FALSE(d.assist("leave"));
         utf8_lines(r.out);
         private_free(r.out);
@@ -1029,4 +1029,403 @@ TEST(story_play_after, output_failure_keeps_committed_passage) {
     EXPECT_TRUE(S::PlayProbe::aftermath(d).state().return_passage);
     EXPECT_EQ(S::PlayProbe::aftermath(d).state().world.facts.coins, 4);
     EXPECT_EQ(S::PlayProbe::aftermath(d).effects(), 2);
+}
+
+namespace {
+    auto after_driver(std::string_view history = "kept") {
+        auto d = S::PlayDriver::start(1, true).value();
+        const auto action = history == "declined" ? "refuse" : history == "helped" ? "help-now" : history == "paid" ? "pay" : "promise";
+        choose(d, action);
+        choose(d, "close");
+        d.advance().value();
+        if (history != "pending")
+            d.presence(true).value();
+        choose(d, history == "pending" ? "leave" : history == "kept" ? "deliver" : history == "broken" ? "break" : "acknowledge");
+        d.advance_aftermath().value();
+        return d;
+    }
+    auto after_corpus(S::PlayDriver& d) {
+        return S::aftermath_corpus(S::PlayProbe::aftermath(d).content()).value();
+    }
+    auto retain(const S::LanguageCorpusDraft& c, S::PlayDriver& d, const S::LanguageProfile& p = profile()) {
+        return S::RetainedLanguage::retain(c, p, S::PlayProbe::aftermath(d).content());
+    }
+    void equal_after(S::PlayDriver& a, S::PlayDriver& b) {
+        same_offer(a, b);
+        EXPECT_EQ(S::PlayProbe::aftermath(a).capture().value(), S::PlayProbe::aftermath(b).capture().value());
+        EXPECT_EQ(S::PlayProbe::aftermath(a).effects(), S::PlayProbe::aftermath(b).effects());
+        EXPECT_EQ(S::PlayProbe::aftermath(a).fare(), S::PlayProbe::aftermath(b).fare());
+        EXPECT_EQ(S::PlayProbe::payoff(a).capture().value(), S::PlayProbe::payoff(b).capture().value());
+    }
+}
+
+TEST(story_after_language, eleven_units_and_all_tiers) {
+    constexpr unsigned tiers[] = {5, 15, 40, 75, 100};
+    constexpr std::size_t counts[] = {1, 2, 4, 8, 11};
+    for (auto history : {"kept", "broken", "declined", "helped", "paid", "pending"}) {
+        auto d = after_driver(history);
+        const auto c = after_corpus(d);
+        ASSERT_EQ(c.unit_count, 11);
+        EXPECT_EQ(c.id, "aftermath-en-fr");
+        for (bool reverse : {false, true})
+            for (std::size_t t = 0; t < 5; ++t) {
+                const auto p = profile(tiers[t], true, reverse);
+                const auto r = retain(c, d, p).value();
+                EXPECT_EQ(r.corpus(), "aftermath-en-fr");
+                EXPECT_EQ(r.corpus_revision(), 1);
+                EXPECT_EQ(r.selection_revision(), 1);
+                EXPECT_EQ(r.variant(), c.variant);
+                EXPECT_EQ(r.definition(), c.definition);
+                EXPECT_EQ(r.definition_revision(), c.definition_revision);
+                EXPECT_EQ(r.unit_count(), 11);
+                EXPECT_EQ(r.target_count(), counts[t]);
+                std::size_t count = 0;
+                for (std::size_t i = 0; i < 11; ++i) {
+                    const auto& u = c.units[i];
+                    EXPECT_TRUE(u.id.starts_with("after."));
+                    EXPECT_EQ(r.selected(u.id).value(), i < counts[t]);
+                    count += r.selected(u.id).value();
+                    const auto language = i < counts[t] ? p.target : p.primary;
+                    EXPECT_EQ(r.text(u.id).value(), language == S::Language::French ? u.french : u.english);
+                    EXPECT_EQ(r.text(u.id, 1, true).value(), reverse ? u.french : u.english);
+                    EXPECT_TRUE(S::valid_utf8(r.text(u.id).value()));
+                }
+                EXPECT_EQ(count, counts[t]);
+                const std::string name = tiers[t] == 100 ? (reverse ? "Anglais" : "French") : (reverse ? "Français + Anglais" : "Enfrench");
+                EXPECT_EQ(r.label(), name + " · " + std::to_string(tiers[t]) + "%");
+                EXPECT_LE(r.usage().text_bytes, S::maximum_language_limits.text_bytes);
+                EXPECT_EQ(r.usage().storage_bytes, sizeof(S::RetainedLanguage));
+                EXPECT_LE(r.usage().work, S::maximum_language_limits.work);
+            }
+        const auto r = retain(c, d).value();
+        std::cout << "Aftermath language: history=" << history << " units=11 text=" << r.usage().text_bytes
+                  << " storage=" << r.usage().storage_bytes << " work=" << r.usage().work << '\n';
+    }
+}
+
+TEST(story_after_language, retained_identity_and_source_lifetime) {
+    const auto retained = [] {
+        auto d = after_driver("broken");
+        auto c = after_corpus(d);
+        std::string corpus_id(c.id), definition(c.definition);
+        c.id = corpus_id;
+        c.definition = definition;
+        std::array<std::string, 11> ids, english, french;
+        for (std::size_t i = 0; i < 11; ++i) {
+            ids[i] = c.units[i].id;
+            english[i] = c.units[i].english;
+            french[i] = c.units[i].french;
+            c.units[i] = {ids[i], english[i], french[i]};
+        }
+        const auto r = retain(c, d, profile(100)).value();
+        for (auto* rows : {&ids, &english, &french})
+            for (auto& s : *rows)
+                s.assign(600, 'x');
+        definition.assign(3000, 'x');
+        corpus_id.assign(40, 'x');
+        return r;
+    }();
+    auto moved = std::move(retained);
+    EXPECT_EQ(moved.corpus(), "aftermath-en-fr");
+    EXPECT_EQ(moved.corpus_revision(), 1);
+    EXPECT_EQ(moved.selection_revision(), 1);
+    EXPECT_TRUE(moved.definition().starts_with("aftermath-v1-"));
+    EXPECT_EQ(moved.text("after.reconcile").value(), "Verser deux pièces à Nera en réparation");
+    EXPECT_NE(moved.text("after.reported").value().find("cinq pièces"), std::string_view::npos);
+    EXPECT_FALSE(moved.text("leave"));
+    EXPECT_FALSE(moved.text("after.leave", 2));
+    EXPECT_FALSE(moved.text(""));
+    EXPECT_FALSE(moved.selected("after.hidden"));
+}
+
+TEST(story_after_language, refuse_changed_meaning_and_budgets) {
+    auto d = after_driver("broken");
+    const auto good = after_corpus(d);
+    ASSERT_TRUE(retain(good, d));
+    const std::string oversized(513, 'x'), large_id(2049, 'x');
+    for (int defect = 0; defect < 17; ++defect) {
+        auto c = good;
+        switch (defect) {
+            case 0:
+                c.id = "relief-en-fr";
+                break;
+            case 1:
+                c.revision = 2;
+                break;
+            case 2:
+                c.selection_revision = 2;
+                break;
+            case 3:
+                c.definition_revision = 2;
+                break;
+            case 4:
+                c.unit_count = 12;
+                break;
+            case 5:
+                c.variant = 6;
+                break;
+            case 6:
+                c.units[0].id = "request";
+                break;
+            case 7:
+                c.units[0].revision = 2;
+                break;
+            case 8:
+                c.units[0].english = "Nera says you kept your promise.";
+                break;
+            case 9:
+                c.units[0].french = "Nera : Votre promesse est tenue.";
+                break;
+            case 10:
+                c.units[0].french = "\xc3";
+                break;
+            case 11:
+                c.units[0].french = oversized;
+                break;
+            case 12:
+                c.definition = large_id;
+                break;
+            case 13:
+                c.units[11] = c.units[0];
+                break;
+            case 14:
+                c.units[1].id = c.units[0].id;
+                break;
+            case 15:
+                c.units[0].english = "unsafe\x1b[0m";
+                break;
+            case 16:
+                c.variant = 0;
+                break;
+        }
+        EXPECT_FALSE(S::RetainedLanguage::retain(c, profile(), S::PlayProbe::aftermath(d).content())) << defect;
+    }
+    EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), "foreign-definition", 1));
+    EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), good.definition, 2));
+    EXPECT_FALSE(retain(good, d, profile(0)));
+    auto foreign = after_driver("kept");
+    EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), S::PlayProbe::aftermath(foreign).content()));
+    auto forged = after_corpus(foreign);
+    forged.definition = good.definition;
+    EXPECT_FALSE(S::RetainedLanguage::retain(forged, profile(), S::PlayProbe::aftermath(d).content()));
+    const auto usage = retain(good, d).value().usage();
+    for (auto field :
+         {&S::LanguageLimits::units, &S::LanguageLimits::text_bytes, &S::LanguageLimits::storage_bytes, &S::LanguageLimits::work}) {
+        auto limits = S::maximum_language_limits;
+        limits.*field += 1;
+        EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), S::PlayProbe::aftermath(d).content(), limits));
+        limits.*field = 0;
+        EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), S::PlayProbe::aftermath(d).content(), limits));
+    }
+    S::LanguageLimits exact{11, usage.text_bytes, usage.storage_bytes, usage.work};
+    EXPECT_TRUE(S::RetainedLanguage::retain(good, profile(), S::PlayProbe::aftermath(d).content(), exact));
+    for (auto field :
+         {&S::LanguageLimits::units, &S::LanguageLimits::text_bytes, &S::LanguageLimits::storage_bytes, &S::LanguageLimits::work}) {
+        auto less = exact;
+        --(less.*field);
+        EXPECT_FALSE(S::RetainedLanguage::retain(good, profile(), S::PlayProbe::aftermath(d).content(), less));
+    }
+    ASSERT_TRUE(d.set_language(profile(100, true)));
+    const auto before = d.render();
+    const auto state = S::PlayProbe::aftermath(d).capture().value();
+    const auto issued = d.resolve("report").value();
+    EXPECT_FALSE(d.set_language(profile(0)));
+    EXPECT_EQ(d.render(), before);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), state);
+    EXPECT_EQ(d.language()->corpus(), "relief-en-fr");
+    EXPECT_EQ(d.language()->unit_count(), 20);
+    EXPECT_EQ(d.aftermath_language()->corpus(), "aftermath-en-fr");
+    ASSERT_TRUE(d.apply(issued));
+}
+
+TEST(story_after_language, same_actions_literal_world_all_profiles) {
+    struct Row {
+        const char* history;
+        bool informed, amends, leave;
+        int coins, planks, fare, restitution, trust;
+        S::Reliability fact;
+    };
+    const Row rows[] = {
+        {"kept", true, false, false, 4, 1, 1, 0, 2, S::Reliability::Kept},
+        {"broken", true, false, false, 0, 3, 5, 0, -2, S::Reliability::Broken},
+        {"declined", true, false, false, 2, 3, 3, 0, 0, S::Reliability::Declined},
+        {"broken", true, true, false, 0, 3, 3, 2, 0, S::Reliability::Broken},
+        {"kept", false, false, false, 2, 1, 3, 0, 0, S::Reliability::Kept},
+        {"broken", false, false, false, 2, 3, 3, 0, 0, S::Reliability::Broken},
+        {"declined", false, false, false, 2, 3, 3, 0, 0, S::Reliability::Declined},
+        {"pending", true, false, true, 5, 3, 0, 0, 0, S::Reliability::Pending},
+        {"helped", true, false, false, 3, 2, 2, 0, 1, S::Reliability::Helped},
+        {"paid", true, false, false, 1, 3, 2, 0, 1, S::Reliability::Paid}
+    };
+    for (const auto& row : rows)
+        for (bool reverse : {false, true})
+            for (auto tier : {5u, 15u, 40u, 75u, 100u})
+                for (bool assistance : {false, true}) {
+                    auto plain = after_driver(row.history), localized = after_driver(row.history);
+                    ASSERT_TRUE(localized.set_language(profile(tier, assistance, reverse)));
+                    const auto step = [&](std::string_view action) {
+                        equal_after(plain, localized);
+                        const auto old = S::PlayProbe::aftermath(localized).capture().value();
+                        const auto held = localized.resolve(action).value();
+                        utf8_lines(localized.render());
+                        if (assistance) {
+                            EXPECT_TRUE(localized.assist("scene"));
+                            for (const auto& choice : localized.offer().choices)
+                                EXPECT_TRUE(localized.assist(choice.id.value));
+                        } else
+                            EXPECT_FALSE(localized.assist("scene"));
+                        EXPECT_EQ(S::PlayProbe::aftermath(localized).capture().value(), old);
+                        choose(plain, action);
+                        ASSERT_TRUE(localized.apply(held));
+                        equal_after(plain, localized);
+                    };
+                    step("visit-ferry");
+                    if (row.informed)
+                        step("report");
+                    if (row.amends)
+                        step("reconcile");
+                    step(row.leave ? "leave" : "book-passage");
+                    const auto& s = S::PlayProbe::aftermath(localized).state();
+                    EXPECT_EQ(s.world.facts.coins, row.coins);
+                    EXPECT_EQ(s.world.facts.planks, row.planks);
+                    EXPECT_EQ(s.fare_paid, row.fare);
+                    EXPECT_EQ(s.restitution_paid, row.restitution);
+                    EXPECT_EQ(s.return_passage, !row.leave);
+                    EXPECT_EQ(s.observers[1].trust, row.trust);
+                    EXPECT_EQ(s.observers[1].known, row.informed ? row.fact : S::Reliability::Unknown);
+                    EXPECT_EQ(s.observers[1].evidence, row.informed ? S::ReliabilityEvidence::Report : S::ReliabilityEvidence::None);
+                    EXPECT_EQ(
+                        s.observers[1].belief, row.amends      ? S::ReliabilityBelief::Repairing
+                                               : row.trust > 0 ? S::ReliabilityBelief::Reliable
+                                               : row.trust < 0 ? S::ReliabilityBelief::Unreliable
+                                                               : S::ReliabilityBelief::Uncertain
+                    );
+                    EXPECT_EQ(s.observers[0].known, row.fact);
+                    EXPECT_EQ(s.world.knowledge[1], S::Knowledge::VerifiedFare);
+                    EXPECT_EQ(s.world.knowledge[2], S::Knowledge::None);
+                    if (row.amends)
+                        EXPECT_EQ(S::PlayProbe::aftermath(localized).content().source().state.obligation, S::Obligation::Broken);
+                    if (row.leave)
+                        EXPECT_EQ(S::PlayProbe::aftermath(localized).content().source().state.due, 2);
+                }
+}
+
+TEST(story_after_language, help_cannot_reveal_unobserved_facts) {
+    for (bool reverse : {false, true})
+        for (auto tier : {5u, 15u, 40u, 75u, 100u}) {
+            std::string speech, help;
+            for (auto history : {"kept", "broken", "declined"}) {
+                auto d = after_driver(history);
+                ASSERT_TRUE(d.set_language(profile(tier, true, reverse)));
+                choose(d, "visit-ferry");
+                const auto state = S::PlayProbe::aftermath(d).capture().value();
+                const auto scene = d.aftermath_language()->text("after.ferry").value();
+                if (speech.empty()) {
+                    speech = scene;
+                    help = d.assist("scene").value();
+                }
+                EXPECT_EQ(scene, speech);
+                EXPECT_EQ(d.assist("scene").value(), help);
+                EXPECT_FALSE(d.assist("after.reported"));
+                EXPECT_FALSE(d.assist("reported"));
+                EXPECT_FALSE(d.assist("reconcile"));
+                EXPECT_FALSE(d.assist("request"));
+                EXPECT_FALSE(d.assist("Nera"));
+                EXPECT_TRUE(d.assist("report"));
+                EXPECT_EQ(
+                    d.assist("leave").value(), reverse ? "Primary-language help: Partir sans réserver de passage de retour\n"
+                                                       : "Primary-language help: Leave without booking a return passage\n"
+                );
+                EXPECT_NE(d.assist("leave").value(), "Primary-language help: Leave without settling\n");
+                EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), state);
+                EXPECT_EQ(S::PlayProbe::aftermath(d).state().observers[1].known, S::Reliability::Unknown);
+            }
+        }
+}
+
+TEST(story_after_language, wording_preserves_issued_live_and_resumed_authority) {
+    auto d = after_driver("broken"), foreign = after_driver("broken");
+    const auto report = d.resolve("report").value(), other = foreign.resolve("report").value();
+    for (auto tier : {5u, 15u, 40u, 75u, 100u}) {
+        ASSERT_TRUE(d.set_language(profile(tier, true, true)));
+        ASSERT_TRUE(d.refresh());
+        EXPECT_TRUE(d.assist("scene"));
+    }
+    const auto pair = S::PlayProbe::aftermath(d).capture().value();
+    EXPECT_FALSE(d.apply(other));
+    EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), pair);
+    auto moved = std::move(d);
+    ASSERT_TRUE(moved.apply(report));
+    EXPECT_FALSE(moved.apply(report));
+    const auto reconcile = moved.resolve("reconcile").value();
+    ASSERT_TRUE(moved.set_language(profile(15, true)));
+    ASSERT_TRUE(S::PlayProbe::aftermath(moved).resources(1));
+    const auto poor = S::PlayProbe::aftermath(moved).capture().value();
+    auto unavailable = moved.apply(reconcile);
+    ASSERT_FALSE(unavailable);
+    EXPECT_EQ(unavailable.error().owner, D::SessionError::Unavailable);
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).capture().value(), poor);
+    ASSERT_TRUE(S::PlayProbe::aftermath(moved).resources(5));
+    choose(moved, "reconcile");
+    const auto book = moved.resolve("book-passage").value();
+    const auto resumed = S::PlayProbe::aftermath(moved).capture().value();
+    S::PlayProbe::aftermath(moved).restore(resumed).value();
+    ASSERT_TRUE(moved.refresh());
+    ASSERT_TRUE(moved.set_language(profile(100, true, true)));
+    const auto old = moved.apply(book);
+    ASSERT_FALSE(old);
+    EXPECT_EQ(old.error().owner, D::SessionError::WrongIncarnation);
+    choose(moved, "book-passage");
+    EXPECT_FALSE(moved.apply(book));
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).state().world.facts.coins, 0);
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).state().fare_paid, 3);
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).state().restitution_paid, 2);
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).effects(), 3);
+}
+
+TEST(story_after_language, stdin_limits_and_failed_output_keep_state) {
+    for (bool reverse : {false, true}) {
+        for (auto ending : {"", "choose book-passage", "assist scene\nquit\n", "assist \xc3\n"}) {
+            auto d = after_driver();
+            ASSERT_TRUE(d.set_language(profile(100, true, reverse)));
+            const auto before = S::PlayProbe::aftermath(d).capture().value();
+            const auto result = run(d, ending);
+            EXPECT_EQ(
+                result.exit, std::string_view(ending).find('\xc3') == std::string_view::npos ? S::PlayExit::Early : S::PlayExit::Limit
+            );
+            EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), before);
+            utf8_lines(result.out);
+        }
+        auto d = after_driver();
+        ASSERT_TRUE(d.set_language(profile(100, true, reverse)));
+        const auto before = S::PlayProbe::aftermath(d).capture().value();
+        S::PlayLimits limits;
+        limits.frame_bytes = d.render().size() - 1;
+        EXPECT_EQ(run(d, "choose report\n", limits).exit, S::PlayExit::Limit);
+        EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), before);
+        limits = {};
+        limits.commands = 1;
+        EXPECT_EQ(run(d, "assist scene\nchoose report\n", limits).exit, S::PlayExit::Limit);
+        EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), before);
+        limits = {};
+        limits.output_bytes = 100;
+        EXPECT_EQ(run(d, "choose report\n", limits).exit, S::PlayExit::Limit);
+        EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), before);
+    }
+    struct Failure : std::stringbuf {
+        std::streamsize xsputn(const char* data, std::streamsize size) override {
+            if (std::string_view(data, static_cast<std::size_t>(size)).find("Return passage: booked") != std::string_view::npos)
+                return 0;
+            return std::stringbuf::xsputn(data, size);
+        }
+    } buffer;
+    auto d = after_driver("broken");
+    ASSERT_TRUE(d.set_language(profile(100, true, true)));
+    std::istringstream input("choose report\nassist scene\nchoose reconcile\nassist scene\nchoose book-passage\n");
+    std::ostream output(&buffer);
+    std::ostringstream err;
+    EXPECT_EQ(S::run_play(d, input, output, err), S::PlayExit::Io);
+    EXPECT_TRUE(S::PlayProbe::aftermath(d).state().return_passage);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).state().world.facts.coins, 0);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).effects(), 3);
 }
