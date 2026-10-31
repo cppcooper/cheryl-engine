@@ -498,3 +498,42 @@ reader. Whole frame/message admission prevents budget-induced byte slicing.
 This trades silent text fallback for explicit refusal. Confidence is high in
 bounded validation; terminal glyphs, physical stream atomicity and graphical
 rendering are outside this proof.
+
+## ST-049 — Compose aftermath from the exact retained terminal pair
+
+Add one private six-node aftermath from the actual PayoffHandle and validated
+terminal PayoffCheckpoint. Retain both and compile an ordinary Engine definition;
+never rebuild past facts from a seed, route name or prose. This trades a general
+story/reputation framework for one finite continuation. Confidence is high in
+native ownership and pair validation; snapshots remain coherent in-memory values,
+not authenticated durable history or external delivery receipts.
+
+## ST-050 — Separate witnessed facts, reports, beliefs and trust
+
+Nera retains her direct account and prior attitude. Mara starts with no relief
+report, uncertain belief and neutral local reliability trust. An explicit issued
+report transfers the recorded fact and changes Mara's terms; Nera's suspicion
+about a pending promise never becomes a reported breach. Original world observer
+arrays, including unaware Lena, stay isolated. This trades global reputation for
+two local perspectives. Confidence is high in executed isolation checks, medium
+in the chosen trust policy.
+
+## ST-051 — Charge typed fares and gate restitution on actual breach
+
+Mara charges three coins uninformed, one for reported fulfillment, five for
+reported breach, two for immediate help/payment and three for declined/pending
+promises. Reported breach permits two-coin restitution, then a three-coin fare.
+History stays broken while beliefs/trust can improve. This trades generic
+negotiation for a concrete return-passage outcome. Confidence is high in live
+eligibility, literal spending and scalar adoption, medium in balance; prose
+cannot grant eligibility, resources, knowledge or token authority.
+
+## ST-052 — Opt in and keep terminal/language limits explicit
+
+Use `--play-aftermath SEED` with compatible optional language flags. Compose one
+new phase only after an actual terminal payoff; every new action remains issued
+player choice. Preserve 64 commands,256-byte lines,16KiB frames and64KiB combined
+output across the whole episode. New text is explicitly English, outside U16's
+twenty-unit corpus; assistance refuses reused IDs with new meanings. This trades
+broad localization for an honest finite caller. Confidence is high in native
+boundaries; translation/platform/participant acceptance remains separate.

@@ -12,6 +12,8 @@ namespace OfflineStory {
     struct PlayProbe {
         static BargainEncounter& bargain(PlayDriver& d) { return d.bargain_; }
         static PayoffEncounter& payoff(PlayDriver& d) { return *d.payoff_; }
+        static AftermathEncounter& aftermath(PlayDriver& d) { return *d.aftermath_; }
+        static const PayoffHandle& payoff_content(PlayDriver& d) { return d.payoff_content_; }
         static bool has_payoff(const PlayDriver& d) { return d.payoff_.has_value(); }
         static const auto& preparation(const PlayDriver& d) { return d.preparation_effects_; }
     };
@@ -875,4 +877,156 @@ TEST(story_language, utf8_input_and_whole_output_limits) {
         utf8_lines(bounded.out);
         EXPECT_LE(bounded.out.size() + bounded.err.size(), l.output_bytes);
     }
+}
+
+TEST(story_play_after, literal_stdin_outcomes) {
+    struct Row {
+        const char* input;
+        int coins, planks, fare, restitution;
+        S::Reliability known;
+        bool passage;
+    };
+    const Row rows[] = {
+        {"choose promise\nchoose close\napproach\nchoose deliver\nchoose report\nchoose book-passage\n", 4, 1, 1, 0, S::Reliability::Kept,
+         true},
+        {"choose promise\nchoose close\napproach\nchoose break\nchoose report\nchoose book-passage\n", 0, 3, 5, 0, S::Reliability::Broken,
+         true},
+        {"choose refuse\nchoose close\napproach\nchoose acknowledge\nchoose report\nchoose book-passage\n", 2, 3, 3, 0,
+         S::Reliability::Declined, true},
+        {"choose promise\nchoose close\napproach\nchoose break\nchoose report\nchoose reconcile\nchoose book-passage\n", 0, 3, 3, 2,
+         S::Reliability::Broken, true},
+        {"choose promise\nchoose close\nchoose leave\nchoose report\nchoose leave\n", 5, 3, 0, 0, S::Reliability::Pending, false}
+    };
+    for (const auto& row : rows) {
+        auto d = S::PlayDriver::start(1, true).value();
+        const auto result = run(d, row.input);
+        EXPECT_EQ(result.exit, S::PlayExit::Complete);
+        EXPECT_TRUE(result.err.empty());
+        EXPECT_EQ(d.phase(), S::PlayPhase::Complete);
+        auto& after = S::PlayProbe::aftermath(d);
+        const auto& s = after.state();
+        EXPECT_EQ(s.world.facts.coins, row.coins);
+        EXPECT_EQ(s.world.facts.planks, row.planks);
+        EXPECT_EQ(s.fare_paid, row.fare);
+        EXPECT_EQ(s.restitution_paid, row.restitution);
+        EXPECT_EQ(s.return_passage, row.passage);
+        EXPECT_EQ(s.observers[1].known, row.known);
+        EXPECT_EQ(after.content().source(), S::PlayProbe::payoff(d).capture().value());
+        EXPECT_EQ(after.content().previous(), S::PlayProbe::payoff_content(d));
+        EXPECT_EQ(S::PlayProbe::payoff(d).effects(), 1);
+        EXPECT_EQ(s.world.knowledge[2], S::Knowledge::None);
+        EXPECT_EQ(s.world.knowledge[1], S::Knowledge::VerifiedFare);
+        EXPECT_NE(result.out.find("Aftermath text: English; outside the retained 20-unit corpus"), std::string::npos);
+        EXPECT_TRUE(result.out.ends_with("Encounter finished.\n"));
+        private_free(result.out);
+    }
+}
+
+TEST(story_play_after, opt_in_and_issued_phase_boundary) {
+    auto d = S::PlayDriver::start(1, true).value();
+    EXPECT_FALSE(d.advance_aftermath());
+    promise(d);
+    d.presence(true).value();
+    const auto old = d.resolve("deliver").value();
+    ASSERT_TRUE(d.apply(old));
+    EXPECT_EQ(d.phase(), S::PlayPhase::AftermathPending);
+    const auto terminal = S::PlayProbe::payoff(d).capture().value();
+    ASSERT_TRUE(d.advance_aftermath());
+    EXPECT_FALSE(d.advance_aftermath());
+    EXPECT_EQ(d.phase(), S::PlayPhase::Aftermath);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).effects(), 0);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).content().source(), terminal);
+    auto refused = d.apply(old);
+    ASSERT_FALSE(refused);
+    EXPECT_EQ(refused.error().kind, S::PlayRefusal::Phase);
+    const auto choice = d.resolve("report").value();
+    auto pair = S::PlayProbe::aftermath(d).capture().value();
+    auto bad = pair;
+    bad.state.observers[1].known = S::Reliability::Kept;
+    EXPECT_FALSE(S::PlayProbe::aftermath(d).restore(bad));
+    EXPECT_EQ(S::PlayProbe::aftermath(d).capture().value(), pair);
+    auto moved = std::move(d);
+    ASSERT_TRUE(moved.apply(choice));
+    EXPECT_FALSE(moved.apply(choice));
+    const auto book = moved.resolve("book-passage").value();
+    pair = S::PlayProbe::aftermath(moved).capture().value();
+    S::PlayProbe::aftermath(moved).restore(pair).value();
+    ASSERT_TRUE(moved.refresh());
+    auto resumed = moved.apply(book);
+    ASSERT_FALSE(resumed);
+    EXPECT_EQ(resumed.error().owner, D::SessionError::WrongIncarnation);
+    choose(moved, "book-passage");
+    EXPECT_EQ(S::PlayProbe::aftermath(moved).state().world.facts.coins, 4);
+    auto plain = driver();
+    promise(plain);
+    plain.presence(true).value();
+    choose(plain, "deliver");
+    EXPECT_EQ(plain.phase(), S::PlayPhase::Complete);
+    EXPECT_FALSE(plain.advance_aftermath());
+}
+
+TEST(story_play_after, corpus_scope_and_assistance) {
+    for (auto tier : {5u, 15u, 40u, 75u, 100u}) {
+        auto d = S::PlayDriver::start(1, true).value();
+        ASSERT_TRUE(d.set_language(profile(tier, true)));
+        const auto selected_count = d.language()->target_count();
+        const auto r = run(
+            d,
+            "choose promise\nchoose close\napproach\nchoose deliver\nassist scene\nchoose visit-ferry\nassist leave\nchoose report\nchoose book-passage\n"
+        );
+        EXPECT_EQ(r.exit, S::PlayExit::Complete);
+        EXPECT_EQ(d.language()->target_count(), selected_count);
+        EXPECT_EQ(S::PlayProbe::aftermath(d).state().world.facts.coins, 4);
+        EXPECT_NE(r.out.find("Assistance refused: aftermath has no authored language coverage."), std::string::npos);
+        EXPECT_NE(r.out.find("Mara: I have no report about the relief work."), std::string::npos);
+        EXPECT_EQ(r.out.find("Primary-language help:"), std::string::npos);
+        EXPECT_FALSE(d.assist("leave"));
+        utf8_lines(r.out);
+        private_free(r.out);
+    }
+}
+
+TEST(story_play_after, eof_and_limits_do_not_choose) {
+    const std::string prologue = "choose promise\nchoose close\napproach\nchoose deliver\n";
+    for (auto ending : {"", "choose report\n", "choose visit-ferry\nquit\n", "choose book-passage"}) {
+        auto d = S::PlayDriver::start(1, true).value();
+        const auto r = run(d, prologue + ending);
+        EXPECT_EQ(r.exit, S::PlayExit::Early);
+        const auto& s = S::PlayProbe::aftermath(d).state();
+        EXPECT_EQ(s.world.facts.coins, 5);
+        EXPECT_EQ(s.world.facts.planks, 1);
+        EXPECT_FALSE(s.return_passage);
+        EXPECT_EQ(s.fare_paid, 0);
+        EXPECT_EQ(S::PlayProbe::payoff(d).effects(), 1);
+    }
+    auto d = S::PlayDriver::start(1, true).value();
+    const auto r = run(d, prologue + "choose \xc3\nchoose report\n");
+    EXPECT_EQ(r.exit, S::PlayExit::Limit);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).effects(), 0);
+    auto limited = S::PlayDriver::start(1, true).value();
+    S::PlayLimits limits;
+    limits.commands = 4;
+    const auto stopped = run(limited, prologue + "choose report\n", limits);
+    EXPECT_EQ(stopped.exit, S::PlayExit::Limit);
+    EXPECT_EQ(S::PlayProbe::aftermath(limited).effects(), 0);
+    EXPECT_EQ(S::PlayProbe::aftermath(limited).state().world.facts.coins, 5);
+}
+
+TEST(story_play_after, output_failure_keeps_committed_passage) {
+    struct Failure : std::stringbuf {
+        std::streamsize xsputn(const char* data, std::streamsize size) override {
+            if (std::string_view(data, static_cast<std::size_t>(size)).find("Return passage: booked") != std::string_view::npos)
+                return 0;
+            return std::stringbuf::xsputn(data, size);
+        }
+    } buffer;
+    auto d = S::PlayDriver::start(1, true).value();
+    std::istringstream input("choose promise\nchoose close\napproach\nchoose deliver\nchoose report\nchoose book-passage\n");
+    std::ostream output(&buffer);
+    std::ostringstream error;
+    EXPECT_EQ(S::run_play(d, input, output, error), S::PlayExit::Io);
+    EXPECT_EQ(d.phase(), S::PlayPhase::Complete);
+    EXPECT_TRUE(S::PlayProbe::aftermath(d).state().return_passage);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).state().world.facts.coins, 4);
+    EXPECT_EQ(S::PlayProbe::aftermath(d).effects(), 2);
 }

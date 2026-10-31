@@ -742,3 +742,96 @@ TEST(story_language_transcript, refusal_and_utf8_input) {
     EXPECT_NE(invalid.error.find("oversized or malformed"), std::string::npos);
     EXPECT_EQ(invalid.output.find("2 planks pending"), std::string::npos);
 }
+
+TEST(story_after_transcript, kept_broken_declined_and_amends) {
+    struct Row {
+        const char* prior;
+        const char* ending;
+        const char* inventory;
+        const char* fare;
+    };
+    const Row rows[] = {
+        {"choose promise\nchoose close\napproach\nchoose deliver\n", "choose report\nchoose book-passage\n", "Inventory: 4 coins, 1 plank.",
+         "Fare paid: 1 coin. Restitution paid: 0 coins."},
+        {"choose promise\nchoose close\napproach\nchoose break\n", "choose report\nchoose book-passage\n", "Inventory: 0 coins, 3 planks.",
+         "Fare paid: 5 coins. Restitution paid: 0 coins."},
+        {"choose refuse\nchoose close\napproach\nchoose acknowledge\n", "choose report\nchoose book-passage\n",
+         "Inventory: 2 coins, 3 planks.", "Fare paid: 3 coins. Restitution paid: 0 coins."},
+        {"choose promise\nchoose close\napproach\nchoose break\n", "choose report\nchoose reconcile\nchoose book-passage\n",
+         "Inventory: 0 coins, 3 planks.", "Fare paid: 3 coins. Restitution paid: 2 coins."}
+    };
+    for (const auto& row : rows) {
+        const auto r = child({"--play-aftermath", "1"}, std::string(row.prior) + row.ending);
+        ASSERT_EQ(r.code, 0);
+        EXPECT_TRUE(r.error.empty());
+        EXPECT_NE(r.output.find("Aftermath - Nera the quay steward"), std::string::npos);
+        EXPECT_NE(r.output.find("Aftermath - Mara the ferrymaster"), std::string::npos);
+        EXPECT_NE(r.output.find(row.inventory), std::string::npos);
+        EXPECT_NE(r.output.find(row.fare), std::string::npos);
+        EXPECT_NE(r.output.find("Return passage: booked."), std::string::npos);
+        EXPECT_TRUE(r.output.ends_with("Encounter finished.\n"));
+        for (auto word : {"Observer ", "knowledge=", "believes", "attitude", "trust=", "Effects:"})
+            EXPECT_EQ(r.output.find(word), std::string::npos);
+    }
+}
+
+TEST(story_after_transcript, unknown_mara_and_departure) {
+    for (auto prior :
+         {"choose promise\nchoose close\napproach\nchoose deliver\n", "choose promise\nchoose close\napproach\nchoose break\n",
+          "choose refuse\nchoose close\napproach\nchoose acknowledge\n"}) {
+        const auto r = child({"--play-aftermath", "1"}, std::string(prior) + "choose visit-ferry\nchoose book-passage\n");
+        ASSERT_EQ(r.code, 0);
+        EXPECT_NE(r.output.find("Mara: I have no report about the relief work. A return seat costs three coins."), std::string::npos);
+        EXPECT_EQ(r.output.find("Nera tells Mara"), std::string::npos);
+        EXPECT_NE(r.output.find("Inventory: 2 coins,"), std::string::npos);
+        EXPECT_NE(r.output.find("Fare paid: 3 coins."), std::string::npos);
+    }
+    const auto pending = child({"--play-aftermath", "1"}, "choose promise\nchoose close\nchoose leave\nchoose report\nchoose leave\n");
+    EXPECT_EQ(pending.code, 0);
+    EXPECT_NE(pending.output.find("Earlier promise remains pending: 2 planks."), std::string::npos);
+    EXPECT_NE(pending.output.find("only that a promise is still pending"), std::string::npos);
+    EXPECT_NE(pending.output.find("Inventory: 5 coins, 3 planks."), std::string::npos);
+    EXPECT_EQ(pending.output.find("Return passage: booked."), std::string::npos);
+}
+
+TEST(story_after_transcript, language_scope_and_late_eof) {
+    const std::string prior = "choose promise\nchoose close\napproach\nchoose deliver\n";
+    const auto localized = child(
+        {"--play-aftermath", "1", "--language", "en", "fr", "100", "--assist"},
+        prior + "assist scene\nchoose visit-ferry\nassist leave\nchoose report\nchoose book-passage\n"
+    );
+    EXPECT_EQ(localized.code, 0);
+    EXPECT_TRUE(localized.error.empty());
+    EXPECT_NE(localized.output.find("Retained bargain corpus profile: French · 100%; target units 20/20."), std::string::npos);
+    EXPECT_NE(localized.output.find("Aftermath text: English; outside the retained 20-unit corpus."), std::string::npos);
+    EXPECT_EQ(count(localized.output, "Assistance refused: aftermath has no authored language coverage."), 2);
+    EXPECT_EQ(localized.output.find("Primary-language help:"), std::string::npos);
+    const auto eof = child({"--play-aftermath", "1"}, prior);
+    EXPECT_EQ(eof.code, 1);
+    EXPECT_NE(eof.output.find("Aftermath - Nera the quay steward"), std::string::npos);
+    EXPECT_EQ(eof.output.find("Return passage: booked."), std::string::npos);
+    const auto partial = child({"--play-aftermath", "1"}, prior + "choose report\nchoose book-passage");
+    EXPECT_EQ(partial.code, 1);
+    EXPECT_NE(partial.output.find("Inventory: 5 coins, 1 plank."), std::string::npos);
+    EXPECT_EQ(partial.output.find("Return passage: booked."), std::string::npos);
+}
+
+TEST(story_after_transcript, refusals_and_usage) {
+    for (const auto& args :
+         {std::vector<std::string>{"--play-aftermath", "-1"}, {"--play-aftermath", "1", "--language", "en", "fr", "0"}}) {
+        const auto r = child(args, "choose promise\n");
+        EXPECT_EQ(r.code, 2);
+        EXPECT_TRUE(r.output.empty());
+        EXPECT_NE(r.error.find("Usage: story-offline --play-aftermath"), std::string::npos);
+    }
+    const std::string prior = "choose promise\nchoose close\napproach\nchoose break\n";
+    const auto claim = child({"--play-aftermath", "1"}, prior + "choose claim-kept\nchoose reconcile\nquit\n");
+    EXPECT_EQ(claim.code, 1);
+    EXPECT_EQ(count(claim.output, "Unknown choice."), 2);
+    EXPECT_EQ(claim.output.find("Nera tells Mara"), std::string::npos);
+    EXPECT_EQ(claim.output.find("Return passage: booked."), std::string::npos);
+    const auto malformed = child({"--play-aftermath", "1"}, prior + "choose \xc3\nchoose report\n");
+    EXPECT_EQ(malformed.code, 3);
+    EXPECT_NE(malformed.error.find("malformed input"), std::string::npos);
+    EXPECT_EQ(malformed.output.find("Nera tells Mara"), std::string::npos);
+}

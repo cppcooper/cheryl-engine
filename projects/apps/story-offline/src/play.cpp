@@ -133,7 +133,7 @@ namespace OfflineStory {
     }
     PlayDriver::PlayDriver(SelectedBargainHandle c, BargainEncounter b, D::View v, std::array<std::uint64_t, 2> effects)
     : selected_(std::move(c)), bargain_(std::move(b)), offer_(std::move(v)), preparation_effects_(effects) {}
-    std::expected<PlayDriver, Error> PlayDriver::start(std::uint64_t seed) {
+    std::expected<PlayDriver, Error> PlayDriver::start(std::uint64_t seed, bool with_aftermath) {
         const auto ferry_content = project(accept(manual_sets()[0], ferry_catalogue(), {}).value(), 0).value();
         auto ferry = Encounter::start(ferry_content, {"play-ferry"}).value();
         ferry.choose(issued(ferry.view().value(), "pay")).value();
@@ -151,9 +151,15 @@ namespace OfflineStory {
         auto offered = bargain->view();
         if (!offered)
             return std::unexpected(observe(offered.error()));
-        return PlayDriver(std::move(*chosen), std::move(*bargain), std::move(*offered), {ferry.effects(), watch.effects()});
+        PlayDriver driver(std::move(*chosen), std::move(*bargain), std::move(*offered), {ferry.effects(), watch.effects()});
+        driver.with_aftermath_ = with_aftermath;
+        return driver;
     }
     std::string_view PlayDriver::speaker() const noexcept {
+        if (aftermath_)
+            return aftermath_->state().beat == AftermathBeat::Steward ? "Nera the quay steward"
+                   : aftermath_->state().beat == AftermathBeat::Left  ? "Departure"
+                                                                      : "Mara the ferrymaster";
         if (!selected_)
             return "Relief steward";
         for (const auto& actor : selected_->content()->catalogue().actors)
@@ -162,7 +168,7 @@ namespace OfflineStory {
         return "Relief steward"; // Only a programming defect could miss the validated actor.
     }
     std::expected<PlayChoice, PlayError> PlayDriver::resolve(std::string_view id) const {
-        if (phase_ == PlayPhase::Complete)
+        if (phase_ == PlayPhase::Complete || phase_ == PlayPhase::AftermathPending)
             return std::unexpected(PlayError{PlayRefusal::Phase, {}});
         for (const auto& row : offer_.choices)
             if (row.id.value == id)
@@ -170,9 +176,11 @@ namespace OfflineStory {
         return std::unexpected(PlayError{PlayRefusal::Unknown, {}});
     }
     std::expected<void, PlayError> PlayDriver::apply(const PlayChoice& choice) {
-        if (phase_ == PlayPhase::Complete || choice.phase != phase_)
+        if (phase_ == PlayPhase::Complete || phase_ == PlayPhase::AftermathPending || choice.phase != phase_)
             return std::unexpected(PlayError{PlayRefusal::Phase, {}});
-        auto result = phase_ == PlayPhase::Bargain ? bargain_.choose(choice.selection) : payoff_->choose(choice.selection);
+        auto result = aftermath_                     ? aftermath_->choose(choice.selection)
+                      : phase_ == PlayPhase::Bargain ? bargain_.choose(choice.selection)
+                                                     : payoff_->choose(choice.selection);
         if (!result)
             return std::unexpected(PlayError{PlayRefusal::Owner, result.error()});
         auto displayed = refresh();
@@ -181,12 +189,16 @@ namespace OfflineStory {
         return {};
     }
     std::expected<void, D::SessionError> PlayDriver::refresh() {
-        auto next = phase_ == PlayPhase::Bargain ? bargain_.view() : payoff_->view();
+        auto next = aftermath_ ? aftermath_->view() : phase_ == PlayPhase::Bargain ? bargain_.view() : payoff_->view();
         if (!next)
             return std::unexpected(next.error());
         offer_ = std::move(*next);
-        if (phase_ == PlayPhase::Payoff && offer_.kind == D::NodeKind::Terminal)
-            phase_ = PlayPhase::Complete;
+        if (offer_.kind == D::NodeKind::Terminal) {
+            if (aftermath_)
+                phase_ = PlayPhase::Complete;
+            else if (phase_ == PlayPhase::Payoff)
+                phase_ = with_aftermath_ ? PlayPhase::AftermathPending : PlayPhase::Complete;
+        }
         return {};
     }
     std::expected<void, Error> PlayDriver::advance() {
@@ -217,6 +229,28 @@ namespace OfflineStory {
         phase_ = PlayPhase::Payoff;
         return success;
     }
+    std::expected<void, Error> PlayDriver::advance_aftermath() {
+        if (phase_ != PlayPhase::AftermathPending || aftermath_ || !payoff_ || !payoff_content_)
+            return std::unexpected(Error{Code::Context, "play.aftermath.phase", {}});
+        const auto completed = payoff_->capture();
+        if (!completed)
+            return std::unexpected(observe(completed.error()));
+        auto content = compose_aftermath(payoff_content_, *completed);
+        if (!content)
+            return std::unexpected(std::move(content.error()));
+        auto owner = AftermathEncounter::start(std::move(*content), {"play-aftermath"});
+        if (!owner)
+            return std::unexpected(std::move(owner.error()));
+        auto displayed = owner->view();
+        if (!displayed)
+            return std::unexpected(observe(displayed.error()));
+        static_assert(std::is_nothrow_move_constructible_v<AftermathEncounter> && std::is_nothrow_move_assignable_v<D::View>);
+        std::expected<void, Error> success;
+        aftermath_.emplace(std::move(*owner));
+        offer_ = std::move(*displayed);
+        phase_ = PlayPhase::Aftermath;
+        return success;
+    }
     std::expected<void, Error> PlayDriver::presence(bool value) {
         if (phase_ != PlayPhase::Payoff)
             return std::unexpected(Error{Code::Context, "play.presence", {}});
@@ -244,6 +278,8 @@ namespace OfflineStory {
         return {};
     }
     std::expected<std::string, LanguageError> PlayDriver::assist(std::string_view id) const {
+        if (aftermath_)
+            return std::unexpected(LanguageError::NotOffered); // Old corpus IDs cannot authorize assistance for new meanings.
         if (!language_ || !language_->profile().assistance)
             return std::unexpected(LanguageError::Disabled);
         // Never expose a retained future unit or hidden owner state through assistance.
@@ -265,6 +301,51 @@ namespace OfflineStory {
         if (!selected_)
             throw std::logic_error("Moved-from play driver");
         Frame f{cap};
+        if (aftermath_) {
+            const auto& s = aftermath_->state();
+            if (language_) {
+                f.add("\nRetained bargain corpus profile: ");
+                f.add(language_->label());
+                f.add("; target units ");
+                f.number(static_cast<int>(language_->target_count()));
+                f.add("/20.\n");
+            }
+            f.add("\nAftermath - ");
+            f.add(speaker());
+            f.add("\nAftermath text: English; outside the retained 20-unit corpus. Language assistance is unavailable here.\n");
+            f.add(offer_.text);
+            f.add("\nInventory: ");
+            f.quantity(s.world.facts.coins, "coin", "coins");
+            f.add(", ");
+            f.quantity(s.world.facts.planks, "plank", "planks");
+            f.add(".\nReturn passage: ");
+            f.add(s.return_passage ? "booked" : "not booked");
+            f.add(". Fare paid: ");
+            f.quantity(s.fare_paid, "coin", "coins");
+            f.add(". Restitution paid: ");
+            f.quantity(s.restitution_paid, "coin", "coins");
+            f.add(".\n");
+            if (aftermath_->content().source().state.obligation == Obligation::Pending) {
+                f.add("Earlier promise remains pending: ");
+                f.quantity(aftermath_->content().source().state.due, "plank", "planks");
+                f.add(".\n");
+            }
+            for (const auto& row : offer_.choices) {
+                f.add("  ");
+                f.add(row.id.value);
+                f.add(" - ");
+                f.add(row.text);
+                f.add(row.available ? " [available]" : " [unavailable]");
+                if (row.id.value == "book-passage") {
+                    f.add("; cost: ");
+                    f.quantity(aftermath_->fare(), "coin", "coins");
+                }
+                if (row.id.value == "reconcile")
+                    f.add("; cost: 2 coins; the earlier breach remains recorded");
+                f.add("\n");
+            }
+            return std::move(f.text);
+        }
         if (language_) {
             f.add("\nLanguage: ");
             f.add(language_->label());
@@ -309,7 +390,7 @@ namespace OfflineStory {
             f.add(". Favor: ");
             f.add(s.favor ? "one relief favor" : "none");
             f.add(".\n");
-            if (phase_ != PlayPhase::Complete)
+            if (phase_ != PlayPhase::Complete && phase_ != PlayPhase::AftermathPending)
                 f.add(s.at_handoff ? "You are at the handoff.\n" : "You are away from the handoff. Use approach to meet the steward.\n");
         } else {
             const auto& s = bargain_.state();
@@ -416,7 +497,10 @@ namespace OfflineStory {
                 if (driver.language() && (command == "assist" || command.starts_with("assist ") || command.starts_with("assist\t"))) {
                     const auto help = driver.assist(command.size() > 6 ? trim(command.substr(6)) : std::string_view{});
                     if (!io.emit(
-                            help ? std::string_view(*help) : "Assistance refused: enable --assist and use scene or a current choice ID.\n"
+                            help ? std::string_view(*help)
+                            : driver.phase() == PlayPhase::Aftermath
+                                ? "Assistance refused: aftermath has no authored language coverage.\n"
+                                : "Assistance refused: enable --assist and use scene or a current choice ID.\n"
                         ))
                         return io.failure;
                     continue;
@@ -430,7 +514,10 @@ namespace OfflineStory {
                 }
                 if (command == "approach" || command == "step-away") {
                     if (!driver.presence(command == "approach")) {
-                        if (!io.emit("Presence refused: close the bargain first.\n"))
+                        if (!io.emit(
+                                driver.phase() == PlayPhase::Aftermath ? "Presence refused: this scene has no handoff event.\n"
+                                                                       : "Presence refused: close the bargain first.\n"
+                            ))
                             return io.failure;
                         continue;
                     }
@@ -472,6 +559,12 @@ namespace OfflineStory {
                     if (!display())
                         return io.failure;
                 }
+                if (driver.phase() == PlayPhase::AftermathPending) {
+                    if (!driver.advance_aftermath())
+                        return io.stop(PlayExit::Failure, "Play stopped: aftermath preparation failed.\n");
+                    if (!display())
+                        return io.failure;
+                }
             }
         } catch (const FrameLimit&) {
             return io.stop(PlayExit::Limit, "Play stopped: display limit.\n");
@@ -479,9 +572,16 @@ namespace OfflineStory {
             return io.stop(PlayExit::Failure, "Play stopped: preparation or observation failed; prior actions may have committed.\n");
         }
     }
-    int play(std::uint64_t seed, std::istream& in, std::ostream& out, std::ostream& err, std::optional<LanguageProfile> profile) {
+    int play(
+        std::uint64_t seed,
+        std::istream& in,
+        std::ostream& out,
+        std::ostream& err,
+        std::optional<LanguageProfile> profile,
+        bool with_aftermath
+    ) {
         try {
-            auto driver = PlayDriver::start(seed);
+            auto driver = PlayDriver::start(seed, with_aftermath);
             if (!driver)
                 return static_cast<int>(PlayExit::Failure);
             if (profile && !driver->set_language(*profile))

@@ -1,3 +1,146 @@
+# U17 playable aftermath: witnessed reliability and return passage
+
+Exact clean start: `34022808d30ce2e865d8c92155d4a32958de7184`, owned
+feat/storytelling, same saved thread `01a193d7-052b-73e3-9673-213cbf8332a9`.
+Assignment local-continuation-20261031-02, worker4 digest
+`81e1b1b69ac3718274c08c14166b842b46a73afc02ac7a1baa111801e566dedb`.
+Inspected actual U15/U16 sources and saved evidence; manifest/receipt/task/source
+hashes match. U16's119/120 fixture failure plus30/30+1/1 reconciliation remains
+unchanged. The new138-case run below independently rechecks all120 predecessor
+story cases; it does not relabel U16's history.
+
+## Working opt-in caller
+
+```text
+story-offline --play-aftermath 1
+choose promise
+choose close
+approach
+choose deliver
+choose visit-ferry
+choose report
+choose book-passage
+```
+
+Native invocations use prefix P below, including launching this consumer. The
+optional `--language en fr 5|15|40|75|100 [--assist]` (or fr en) remains compatible.
+Normal --play, no-argument and scripted modes retain their prior transcripts.
+
+The new private phase uses the EXACT retained PayoffHandle and actual validated
+terminal PayoffCheckpoint/world result. No seed, route-name inference, prose
+reconstruction or automatic action supplies aftermath facts. It retains the
+complete pair and parent/compiled-definition ownership after producers/input die.
+Six fixed nodes, eleven edges and no cycles form one finite sequel; phase entry
+has zero effects. Current issued choices visit/report/book/reconcile/leave.
+
+Nera knows her checked delivery, heard breach/refusal/promise or observed help/
+payment. Mara initially has no relief report, uncertain belief and neutral local
+reliability trust. Without a report, her greeting/choices/fare are identical for
+kept, broken and declined histories. An explicit witnessed report changes her
+local knowledge, belief/trust and terms. A pending promise is not a declared
+breach, even if Nera suspects unreliability. Original observer arrays stay intact:
+Ivo retains verified-fare knowledge and Lena remains unaware. No global reputation
+or automatic rumor propagation is introduced.
+
+Typed return fares: unknown3, kept1, broken5, help/payment2, declined/pending3
+coins. Only reported breach permits two-coin restitution, improving local beliefs
+to Repairing and trust to0, then offering a three-coin fare. Both still know the
+past breach; no delivery/favor/promise completion is fabricated. Booking spends
+live coins and sets a separate return-passage fact; leave books nothing and keeps
+any earlier debt. Seed1 literal results after report/book: kept4 coins/1 plank,
+broken0/3, declined2/3; restitution then booking0/3 with restitution2/fare3.
+
+## Preserved authority, language and resource boundaries
+
+Real Engine Sessions issue every choice. PlayChoice retains ORIGINAL selection
+and phase; old payoff commands cannot become aftermath commands. Owners recheck
+live coins, facts and availability. Changed report/price nodes reject old tokens;
+foreign/stale/same-field-resumed commands refuse. Effects stage fixed scalar
+state before nonthrowing adoption, with no I/O/composition inside callbacks.
+Failed paired restore preserves state/authority; terminal restore does not replay
+spending. Older coherent rewinds remain different in-memory timelines, without
+authenticated global exactly-once or disk/external durability claims.
+
+U16 retains its five tiers, labels, owned20 units and assistance semantics. Every
+new frame explicitly says AFTERMATH IS ENGLISH and OUTSIDE that corpus. Assistance
+cannot reuse an old leave translation for this scene's new meaning. No new
+language/translation/font/GUI/provider service or proficiency inference is added.
+
+Existing terminal caps apply across the entire extended episode:64 commands,
+256 data bytes plus one detection byte per line,16KiB frames,64KiB combined
+requested output. EOF/quit/partial/invalid input invents no action. A write failure
+may follow committed spending; no retry/rollback/output-effect transaction exists.
+
+Lower-only composition caps:6 nodes,11 edges,2048-byte text/identity,16KiB logical
+text,64KiB owned storage,2MiB retained parents,512Ki work, including128Ki reserved
+for bounded parent validation. Counts are logical acceptance/work charges, not
+exact physical peak memory or CPU-instruction bounds. Bounded temporary Drafts
+may precede final aggregate text charging; allocation rounding/control blocks,
+compiler copies, formatting, buffering and RSS are excluded. State/observer
+arrays are inline and content is retained by value with existing Engine services;
+no allocator adoption or performance claim is made.
+
+## Actual execution and evidence
+
+The user interrupted the original awaited build. Its empty `build-1.log` and
+source snapshot remain; no output or immediate exit was observed. On explicit
+resume, tool session76737 was unknown and the old worker4 resource scope absent;
+the new scope was20261031T231246Z-dfebb822b683. No live build was cancelled or
+duplicated, no admission refusal bypassed, and no invented successful exit was
+recorded. Preserve this interruption separately from executed native results.
+
+CWD is this clone; EVERY native command uses P:
+
+```sh
+env ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /mnt/projects/cheryl-features/scripts/build --
+```
+
+```sh
+# Original command interrupted; empty build-1.log, no observed native output/exit.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+# Resumed build-2.log/.exit:0; source/object/hash gates BEFORE execution.
+cmake --build builds/storytelling-u1-debug --target story-offline tests-story-offline --parallel 1
+# ctest-1.log/.exit:0; complete details copied immediately.
+ctest --test-dir builds/storytelling-u1-debug --output-on-failure --no-tests=error --parallel 1 -R '^tests-story-offline\.'
+```
+
+**138/138 pass,26.53s**, all120 old case names/order and100 byte-identical old
+complete child blocks retained. New9 owner +5 driver +4 transcript cases cover
+literal kept/broken/no-promise/help/payment/pending outcomes, informed/uninformed
+Mara, restitution/refusals, exact source lifetime, original token/phase/restore
+authority, live resource loss, late EOF/partial/malformed input, command limits
+and write failure after committed passage. Fifteen new real stdin children have
+expected exits9x0/3x1/2x2/1x3; their stdout/stderr is valid UTF-8 and70–6133 bytes.
+Complete raw logs intentionally retain malformed INPUT bytes, not invalid product
+output. No skips/unrun/sanitizer diagnostics or new compiler warnings.
+
+Kept-case logical measurements: text1834 bytes, owned11222, retained44477,
+work134821, scalar state96 bytes. These are charged values/sizeof, not RSS,
+allocator high-water or a performance benchmark. Build reuses the existing
+Debug/shared Engine cache and pins; all warning/sanitizer options and command-local
+ST-008 detect_leaks=0 accommodation remain. Leak checking is unavailable.
+
+Ignored evidence: `builds/storytelling-u1-debug/u17/` contains predecessor and
+interruption audits, original/final source hashes, build-1.log, build-2.log/.exit,
+ctest-1.log/.exit, full ctest-details-1.log, results-summary.json/results-audit.log,
+new-child-transcripts.log, source-build-audit.log, commands.log, boundary-rules.log
+and checkpoint-audit.log (finalized after commit). No source edits followed the
+passing frozen-source run; subsequent changes are internal records only.
+
+## Standalone handoff — ready, stop
+
+Selected U17 acceptance is complete. Idle for command-center review of this
+coherent local checkpoint, matching ST-049–052 views, standalone
+`continuation/STORYTELLING-U17.json` and saved evidence. Existing publisher alone
+handles the feature ref. No push, external report, coordinator/service, subagent,
+question, next milestone or automatic continuation is started.
+
+Limits: one manual offline Nera/quay sequel, no global reputation/rumor/quest
+framework or persistence service. GNU/Linux console CPU evidence only; LSan,
+other platforms/Release/SDK, graphics/fonts/input methods, professional translation,
+participant comprehension/fun, educational effectiveness and external/durable
+history remain unverified.
+
 # U16 retained English/French exposure in the playable episode
 
 Fresh-session recovery on 2026-10-31 in the SAME owned clone and branch, exactly

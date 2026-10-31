@@ -12,7 +12,7 @@ U2 implements checked sessions and owned value resume, with 18 session cases,
 [next.md](next.md). U3 implements the private console and paired JSON boundary:
 26 new cases plus all 34 accepted regressions passed (60/60), including ten actual
 child-console transcripts. Detailed execution evidence is recorded in next.md. The companion
-[decisions](decisions.md) use the same `ST-001` through `ST-048` IDs;
+[decisions](decisions.md) use the same `ST-001` through `ST-052` IDs;
 [next](next.md) records the next coordinator review action.
 
 U15 adds a standalone private terminal episode from the exact accepted U14
@@ -2266,6 +2266,127 @@ frozen source/object audit passes. Only the changed case was repeated.
 The current U16 section of next.md and standalone receipt own full commands,
 source hashes, actual failures/reconciliation and limits. No automatic follow-on
 milestone is selected.
+
+## U17 playable local aftermath
+
+Starts exactly clean at `34022808d30ce2e865d8c92155d4a32958de7184`, owned
+feat/storytelling, same thread `01a193d7-052b-73e3-9673-213cbf8332a9`.
+Local-continuation-20261031-02 task and predecessor receipt digests match;
+committed source agrees with U16's saved final hashes. Inspected actual U15/U16
+PlayDriver, retained bargain/payoff facts, pair validation, resource costs,
+observer restrictions and limits before extension. U16's119/120 fixture failure
+and30/30+1/1 reconciliation remain intact; the ready receipt alone was not proof.
+
+### ST-049 — Exact terminal input and retained ordinary Engine execution
+
+Proposed caller was shown before dependent implementation:
+
+```text
+story-offline --play-aftermath 1
+choose promise
+choose close
+approach
+choose deliver
+choose visit-ferry
+choose report
+choose book-passage
+```
+
+The opt-in driver captures its actual terminal PayoffCheckpoint and passes it
+with the EXACT retained PayoffHandle to compose_aftermath, outside callbacks.
+Parent restore validates coherence/cursor/identity/revision; nonterminal, foreign,
+corrupt and over-budget inputs refuse. This one prototype accepts Nera/quay.
+AftermathContent owns the full checkpoint, parent handle and compiled Definition;
+the encounter owns that value and its real Engine Session. Producing owners and
+input strings may die. Definition identity binds parent identity/revision and
+terminal node/step; it is not a cross-version persistence or authentication scheme.
+
+Six nodes (steward, ferry, reported, reconciled, booked, left), eleven fixed
+edges, five conditions/effects and no graph cycles bound continuation. Phase
+entry validates/prepares/adopts a view with ZERO game effects. Visit, report,
+restitution, booking and leaving all require real issued selections. No seed,
+route-label inference, parsed text or fabricated automatic choice supplies facts.
+
+### ST-050 — Two explicit local perspectives without global reputation
+
+Authoritative reliability comes from the retained obligation/result: Kept,
+Broken, Declined, Helped, Paid or Pending. Nera must have corresponding direct
+checked-delivery/heard-declaration/refusal/promise or observed-help/payment
+knowledge. Her source attitude and belief remain separate. Mara's local relief
+record starts Unknown/None/Uncertain/0, even though world.knowledge already
+records her knowledge of the OLD fare. Local reliability trust is a distinct
+domain, not a replacement for world attitude or a new global reputation score.
+
+Uninformed Mara has identical greeting, choices/availability and three-coin fare
+after kept, broken and declined histories. Explicit report represents Nera
+speaking in Mara's presence; only then does Mara acquire Report evidence and
+change belief/trust. A pending promise stays Pending even when Nera privately
+suspects unreliability; the report does not invent a declared breach or copy that
+suspicion as Mara's belief. Entire old observer arrays remain unchanged, including
+Ivo's verified-fare knowledge and unaware Lena. No automatic rumor spread occurs.
+
+### ST-051 — Concrete spending, belief repair and original authority
+
+Typed fares: unknown3, kept1, broken5, help/payment2, declined/pending3 coins.
+Literal seed1 outcomes: kept/report/book leaves4 coins/1 plank; broken/report/book
+leaves0/3; declined/report/book leaves2/3. Withholding a report preserves the
+three-coin fare and Unknown Mara, leaving2 coins for all three histories.
+Immediate help/report/book leaves3/2, relief payment/report/book leaves1/3.
+
+Only a reported actual breach permits two-coin restitution. It sets both local
+trust values to0 and beliefs to Repairing, then permits a three-coin fare:
+0 coins/3 planks after booking, restitution2/fare3. Both observers still know
+Broken and the original payoff pair stays unchanged. No delivery/favor/debt
+fulfillment is invented. Pending departure/report/leave retains5/3 and the exact
+earlier two-plank promise. Booking sets a separate return_passage fact and spends
+actual live coins; old first-crossing flags remain intact.
+
+Effects recheck eligibility, stage complete fixed scalar state, verify coherence
+and adopt without throwing. Host coin edits are serialized and open-only. No
+composition/I/O runs inside callbacks. Views own text/selections; stale/foreign/
+resumed commands reject through Engine, and old phase-tagged payoff choices
+cannot become aftermath commands. A held three-coin booking token rejects after
+a report changes its offer. Failed restore preserves pair and usable authority;
+successful same-field restore renews incarnation, and terminal restore does not
+replay spending. Counters remain unsaved instrumentation. An older coherent
+rewind is a different in-memory timeline, not global exactly-once delivery.
+
+### ST-052 — Compatible finite caller and honest language/resource scope
+
+Only --play-aftermath enables this phase; all old default/scripted/--play output
+is preserved. Across the ENTIRE extended episode:64 commands,256 data bytes plus
+one oversize detection byte per line,16KiB frames,64KiB combined requested output.
+EOF/quit/partial or invalid input does not invent a report/payment/refusal. Output
+failure may follow committed passage; no retry, transaction or rollback is claimed.
+
+Lower-only composition caps:6 nodes,11 edges,2048 bytes per text/identity,
+16KiB text,64KiB logical owned storage,2MiB retained-parent allowance and512Ki
+work units, reserving128Ki for bounded parent-pair validation. Quotas are logical
+acceptance/work charges, not exact peak allocation or CPU-instruction bounds.
+The bounded temporary Draft can exist before final aggregate text charging;
+compiler/control blocks, capacity rounding, transient formatting and OS buffering
+are outside logical counts. New application observer/state arrays are inline;
+AftermathContent is retained by value with existing Engine Definition/Session
+services. Cold source strings/Draft compilation keep existing allocation contracts.
+No allocator alias, new allocation backend or efficiency claim is introduced.
+
+U16's five tiers/labels/selections/assistance still describe ONE retained20-unit
+corpus. Every aftermath frame explicitly says English and outside that corpus;
+assistance refuses all new scene lookups, including a new leave ID matching an
+old key. No silent translation or inferred proficiency. No provider/network,
+font/GUI service, broad localization, public framework or additional unit is added.
+
+Execution: the initial queued build was interrupted by the user before any
+logged build output or observed exit. On explicit resume, its tool session and
+old worker scope were gone; empty log/source snapshots were preserved. The fresh
+wrapped build exits0 and one full story suite passes138/138,26.53s:120 old names,
+100 byte-identical prior child blocks,18 new cases and15 new stdin children
+(9x0/3x1/2x2/1x3). New child output70–6133 bytes, valid UTF-8. Logical kept-case
+measurement: text1834/storage11222/work134821/retained44477; scalar state96 bytes.
+No skips/unrun/sanitizer errors or new compiler warnings. Source/object gates
+preceded execution. Current next.md/receipt own exact commands and evidence.
+LSan, other platforms/SDK/graphics, translation quality, comprehension/fun and
+durable/external history remain unverified. Stop for local command-center review.
 
 ## Verification environment
 

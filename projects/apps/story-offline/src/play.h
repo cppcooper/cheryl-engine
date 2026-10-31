@@ -2,10 +2,11 @@
 
 #include "payoff.h"
 #include "language.h"
+#include "aftermath.h"
 #include <istream>
 
 namespace OfflineStory {
-    enum class PlayPhase { Bargain, Payoff, Complete };
+    enum class PlayPhase { Bargain, Payoff, Complete, AftermathPending, Aftermath };
     struct PlayChoice {
         PlayPhase phase;
         D::Selection selection;
@@ -25,12 +26,14 @@ namespace OfflineStory {
         PlayPhase phase_ = PlayPhase::Bargain;
         std::array<std::uint64_t, 2> preparation_effects_;
         std::optional<RetainedLanguage> language_;
+        bool with_aftermath_ = false;
+        std::optional<AftermathEncounter> aftermath_;
         PlayDriver(SelectedBargainHandle, BargainEncounter, D::View, std::array<std::uint64_t, 2>);
         friend struct PlayProbe;
     public:
         PlayDriver(PlayDriver&&) noexcept = default;
         PlayDriver& operator=(PlayDriver&&) noexcept = default;
-        static std::expected<PlayDriver, Error> start(std::uint64_t);
+        static std::expected<PlayDriver, Error> start(std::uint64_t, bool with_aftermath = false);
         const D::View& offer() const noexcept { return offer_; }
         PlayPhase phase() const noexcept { return phase_; }
         const SelectedBargainHandle& selected() const noexcept { return selected_; }
@@ -39,6 +42,7 @@ namespace OfflineStory {
         std::expected<void, PlayError> apply(const PlayChoice&);
         std::expected<void, D::SessionError> refresh();
         std::expected<void, Error> advance(); // Only a real completed bargain can prepare its one payoff.
+        std::expected<void, Error> advance_aftermath();
         std::expected<void, Error> presence(bool);
         std::expected<void, LanguageError> set_language(const LanguageProfile&);
         const std::optional<RetainedLanguage>& language() const noexcept { return language_; }
@@ -52,5 +56,5 @@ namespace OfflineStory {
     enum class PlayExit { Complete = 0, Early = 1, Usage = 2, Limit = 3, Io = 4, Failure = 5 };
     std::string_view play_help() noexcept;
     PlayExit run_play(PlayDriver&, std::istream&, std::ostream&, std::ostream&, const PlayLimits& = {});
-    int play(std::uint64_t, std::istream&, std::ostream&, std::ostream&, std::optional<LanguageProfile> = {});
+    int play(std::uint64_t, std::istream&, std::ostream&, std::ostream&, std::optional<LanguageProfile> = {}, bool with_aftermath = false);
 }
