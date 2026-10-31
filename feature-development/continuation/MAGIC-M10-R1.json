@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "milestone_id": "MAGIC-M10-R1",
+  "starting_head": "60078c5fcdfaf96b9c1af5f3cc08c4271e42434b",
+  "branch": "feat/magic",
+  "thread_id": "01a193d7-0490-7501-8f62-289b0a73c2a2",
+  "manifest": "/mnt/projects/cheryl-features/coordination/assignments/local-recovery-20261031-03/manifest.json",
+  "task_sha256": "64b83d388860f863d079db1cf99d0d5f98e4fd522a93b0ec627540c5e82e6959",
+  "predecessor_receipt": "feature-development/continuation/MAGIC-M10.json",
+  "predecessor_receipt_sha256": "97e40bc9ff1c561fc2d3982b1735e173c6fd2b6fdd8d718eab64d24ac2258acf",
+  "predecessor_historical_status": "partial / checks_passed false; preserved byte-identically",
+  "status": "ready",
+  "checks_passed": true,
+  "selected_scope": "Verification and local checkpoint of the existing M10 decoy sound implementation; no new feature or implementation change.",
+  "source_unchanged": true,
+  "completed_predecessor_build": {
+    "log": "feature-development/magic/logs/M10/build-03.log",
+    "sha256": "eb5d3ed5f6469175c259a8f52a989d6294d95a0b756c876f2dbe52884d9236b5",
+    "immediate_exit": 0,
+    "elapsed_seconds_including_queue": 2893.93,
+    "old_session_6545": "Tool poll returned Unknown process id; matching completed build log confirms drained. No duplicate build launched."
+  },
+  "checks": {
+    "ctest_entries": 30,
+    "skipped_entries": 0,
+    "sound_contract_cases": 33,
+    "retained_contract_cases": 343,
+    "contract_cases": 376,
+    "contract_case_counts": {
+      "magic_contracts": 35,
+      "magic_host_contracts": 37,
+      "magic_engraving_contracts": 34,
+      "magic_learning_contracts": 25,
+      "magic_annular_contracts": 25,
+      "magic_perception_contracts": 40,
+      "magic_mechanics_contracts": 52,
+      "magic_lifecycle_contracts": 52,
+      "magic_interruption_contracts": 16,
+      "magic_slow_contracts": 27,
+      "magic_sound_contracts": 33
+    },
+    "caller_ctest_entries": [
+      "magic_callers",
+      "magic_reference_caller",
+      "magic_engraving_caller",
+      "magic_learning_caller",
+      "magic_annular_caller",
+      "magic_perception_caller",
+      "magic_mechanics_caller",
+      "magic_material_caller",
+      "magic_lifecycle_caller",
+      "magic_interruption_caller",
+      "magic_slow_caller",
+      "magic_sound_caller"
+    ],
+    "file_fixture_ctest_entries": [
+      "magic_inspect_S1",
+      "magic_inspect_S2",
+      "magic_inspect_S3",
+      "magic_inspect_S4",
+      "magic_inspect_S5",
+      "magic_inspect_mixed-schools"
+    ],
+    "cli_scenarios": 9,
+    "ctest_names": [
+      "magic_contracts",
+      "magic_callers",
+      "magic_inspect_S1",
+      "magic_inspect_S2",
+      "magic_inspect_S3",
+      "magic_inspect_S4",
+      "magic_inspect_S5",
+      "magic_inspect_mixed-schools",
+      "magic_cli",
+      "magic_host_contracts",
+      "magic_reference_caller",
+      "magic_engraving_contracts",
+      "magic_engraving_caller",
+      "magic_learning_contracts",
+      "magic_learning_caller",
+      "magic_annular_contracts",
+      "magic_annular_caller",
+      "magic_perception_contracts",
+      "magic_perception_caller",
+      "magic_mechanics_contracts",
+      "magic_mechanics_caller",
+      "magic_material_caller",
+      "magic_lifecycle_contracts",
+      "magic_lifecycle_caller",
+      "magic_interruption_contracts",
+      "magic_interruption_caller",
+      "magic_slow_contracts",
+      "magic_slow_caller",
+      "magic_sound_contracts",
+      "magic_sound_caller"
+    ],
+    "native_command_count": 1,
+    "full_r1_campaigns": 1,
+    "immediate_exit": 0,
+    "ctest_seconds": 0.87,
+    "wrapped_elapsed_including_queue_seconds": 0.925,
+    "configuration": "Existing GNU16.2.1/Linux C++23 Debug ASan+UBSan; frame pointers; -Wall -Wextra -Wpedantic -Werror unchanged.",
+    "environment": {
+      "ASAN_OPTIONS": "detect_leaks=0",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    }
+  },
+  "completed_acceptance": [
+    "Corrected independent instance/time/action horizons and all three added sound checks execute successfully.",
+    "Typed listener-specific samples verify point/kind/listener/time, two-listener isolation, frozen activation capture, exact expiry and unchanged physical truth/knowledge.",
+    "Actual spoken/accepted-touch caller verifies charge/fact/scalar/sound atomicity, source lifetime and fresh listener/event authority after checkpoint restore.",
+    "Capacity, live authority/schema, foreign/default/stale/reused slots and late whole-step refusal paths pass; all prior Slow/servant/dispel/pending/item contracts pass."
+  ],
+  "caller_values": {
+    "spoken": "A hears Footsteps at G0(100,30) at tick0; B none; expiry100; mana90.",
+    "accepted_touch": "At tick100, capture listener(2300,40)+offset(-2000,0)=(300,40); hp53, mana70, charge0 and fact consumed.",
+    "restored": "Old listener/event capabilities refuse; fresh sampling retains fixed point after movement, expires300; wall/truth/knowledge unchanged."
+  },
+  "resource_boundaries_executed": {
+    "sound_application_work": [
+      459,
+      458
+    ],
+    "sampling_work": [
+      365,
+      364
+    ],
+    "empty_three_schema_checkpoint_work": [
+      759,
+      758
+    ],
+    "life_projection_work": [
+      348,
+      347
+    ],
+    "minimal_servant_attack_work": [
+      374,
+      373
+    ],
+    "long_key_thirteen_schema_dispel_work": [
+      1196,
+      1195
+    ],
+    "pending_interrupt_work": [
+      388,
+      387
+    ],
+    "slow_dispel_work": [
+      769,
+      768
+    ],
+    "animation_work": 490,
+    "sound_row_bytes": 136,
+    "sound_snapshot_bytes": 1104,
+    "hearing_bytes": 128,
+    "reference_host_bytes": 12776,
+    "limits": "Eight sounds, four distinct active listeners,1m sound instance horizon; existing global work/actor/plan/selector ceilings retained. Logical work/type sizes exclude separate owners, metadata and heap/RSS/CPU measurements."
+  },
+  "commands": [
+    {
+      "command": [
+        "/mnt/projects/cheryl-features/scripts/build",
+        "--",
+        "ctest",
+        "--test-dir",
+        "projects/magic/build",
+        "--output-on-failure",
+        "-V",
+        "-j1"
+      ],
+      "log": "feature-development/magic/logs/M10-R1/accumulated-01.log",
+      "immediate_exit": 0
+    }
+  ],
+  "source_witness": "feature-development/magic/logs/M10-R1/tested-source-hashes.json",
+  "source_witness_sha256": "efb88496cc95bb775df07fc93e01a12a51d19cdfdce65027b7bf8a875f0bc43f",
+  "source_hashes_verified": 58,
+  "evidence": [
+    "feature-development/magic/logs/M10-R1/predecessor-review.json",
+    "feature-development/magic/logs/M10-R1/accumulated-01.log",
+    "feature-development/magic/logs/M10-R1/final-checks.json",
+    "feature-development/magic/logs/M10-R1/tested-source-hashes.json",
+    "feature-development/magic/logs/M10/build-03.log"
+  ],
+  "limitations": [
+    "GNU/Linux headless conformance only; no real audio/backend/assets, propagation/volume/occlusion/rhythm or human perception/fun acceptance.",
+    "No production Engine/AI/physics/graphics/security acceptance or new language pack/Sound dispelling.",
+    "Fixed inline records and existing cold owners do not establish Engine allocator migration, allocation-free execution, RSS/CPU gains, allocator-failure or leak coverage; command-local leak accommodation retained.",
+    "Current-runtime owned checkpoint/intentional rewind and fresh authority do not establish disk/process/crash/cross-version or external exactly-once durability."
+  ],
+  "publication": "Magic publication hold remains active; no push, retry, hold change or integration.",
+  "next_action": "Coordinator reviews this verified local closeout checkpoint and R1 evidence. Selected unit complete; stop and remain idle. No automatic new feature/unit or integration is selected."
+}

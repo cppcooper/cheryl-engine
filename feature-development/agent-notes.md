@@ -1983,3 +1983,78 @@ accommodations. Review actual failures before completing selected acceptance.
 Sound core/ordinary caller and accepted touch behavior work in executed evidence;
 no final regression, graphics/audio/backend/human or durable-production acceptance
 is implied. Stop this unit after local checkpoint; no automatic next task.
+
+# MAGIC-M10-R1 — verified acceptance closeout
+
+Exact clean start60078c5fcdfaf96b9c1af5f3cc08c4271e42434b / feat/magic and existing
+thread01a193d7-0490-7501-8f62-289b0a73c2a2 match local-recovery-20261031-03.
+Recovery task SHA25664b83d388860f863d079db1cf99d0d5f98e4fd522a93b0ec627540c5e82e6959
+is verified. This unit only closes M10's selected verification, with no new
+feature/interface, source/test fix, integration or publication work.
+
+Before native execution, inspected and verified the manifest-bound predecessor
+receipt97e40bc9ff1c561fc2d3982b1735e173c6fd2b6fdd8d718eab64d24ac2258acf and
+completed build-03 logeb5d3ed5f6469175c259a8f52a989d6294d95a0b756c876f2dbe52884d9236b5.
+The real log reaches every target and IMMEDIATE_EXIT0, elapsed2893.930s including
+queue time. All58 checkpoint source/fixture hashes match current clean source.
+Polling retained session6545 returns Unknown process id; together with the
+completed native log this establishes that no owned build remains live. Do not
+interpret the old partial receipt's queued statement as current state. No duplicate
+native build/configuration/dependency operation is launched.
+
+The inspected local evidence runner directly invokes the required wrapper with
+ASAN_OPTIONS=detect_leaks=0 and UBSAN_OPTIONS=halt_on_error=1. The single NEW
+native command, from this clone, is:
+
+```text
+/mnt/projects/cheryl-features/scripts/build -- ctest --test-dir projects/magic/build --output-on-failure -V -j1
+```
+
+accumulated-01.log records complete output and immediate exit0. All30 unique CTest
+entries pass without skips. Actual contract summaries are compiler35, host37,
+engraving34, learning25, annular25, perception40, mechanics52, lifecycle52,
+interruption16, Slow27 and Sound33:376 total =343 prior +33 sound. The twelve
+caller entries, six file-fixture entries and nine CLI scenarios also execute;
+callers/fixtures/CLI are separate from the376 contract count. There is one full
+R1 campaign and no repeated passing selection. CTest's0.87s and wrapper0.925s
+are execution totals including admission where stated, not audio latency or a
+performance benchmark. Complete logs and machine-checked counts/source witnesses
+are ignored under magic/logs/M10-R1.
+
+The corrected independent instance/time/action horizon case and all three added
+checks now pass: positive per-listener burst points/provenance, cross-binding
+sound/health overlap refusal, and sampling365/364 work boundary. The spoken and
+accepted-touch caller actually samples A-only footsteps at(100,30) at tick0,
+expires them100, and pays mana90. Rune touch at100 captures listener(2300,40)
+plus G0 offset(-2000,0) to(300,40), heals50->53, leaves caster mana70/charge0,
+and consumes the admitted fact. After original-host destruction and restore,
+old listener/event authority refuses; fresh samples keep that point through
+listener movement and return none at300. B hears none. Wall/passability, physical
+truth and knowledge stay unchanged. Source/plan lifetime, late refusal rollback,
+listener/slot reuse, capacity and checkpoint renewal pass through real plans.
+Existing Slow/servant/exact dispel/item/pending consumers and contracts also pass.
+
+Executed resource evidence: application459/one-short458 work; sampling365/364;
+empty three-schema checkpoint759/758; life projection348/347; minimal servant
+attack374/373; long-key thirteen-schema dispel1196/1195; pending interruption
+388/387; Slow dispel769/768; animation490. Historical test titles containing older
+numbers remain stable; current source assertions establish the listed boundaries.
+Actual GNU/Linux types are sound row136bytes, SoundSnapshot1104, Hearing128 and
+ReferenceHost12776. These values do not include separately owned plans/control
+blocks/outputs/checkpoints or allocator metadata and do not establish RSS, actual
+allocator routing, allocation-free operation or CPU/audio performance.
+
+No necessary compiler/runtime/test defect is found; source/fixtures and compatible
+build cache/configuration remain unchanged. Current generated flags/link metadata
+confirm C++23 Debug ASan+UBSan, frame pointers and -Wall/-Wextra/-Wpedantic/-Werror.
+No leak, other-platform, allocator fault-injection, real audio/backend/assets,
+propagation/volume/occlusion/rhythm, human perception/fun or production Engine/AI/
+physics/graphics/security acceptance follows. Current-runtime owned checkpoints
+renew authority with intentional rewind, without disk/process/crash/cross-version
+or external exactly-once guarantees. No new Sound dispelling is selected.
+
+The historical MAGIC-M10.json partial/false receipt, failed sound-01 log and older
+records remain unchanged. New continuation/MAGIC-M10-R1.json is ready/true only
+for this completed selected headless closeout. Coordinator review of the local
+checkpoint/evidence is next. Publication holds remain active; no push/retry/hold
+change, integration or automatically chosen next unit occurs. Stop and remain idle.

@@ -143,3 +143,11 @@ or the existing servant/dispel/pending authority contracts.
 | M10-042 | Append typed DecoySound/Footsteps and CommonSound, with exact G0 offset, activation capture and explicit duration/listener wording. Reuse contact, burst and accepted toucher bindings; Sound composes with scalar Heal/Fire/Slow. The resolved point freezes and creates no physical entity. One finite operation/kind/concept and a downward schema mask avoid assets or callbacks. High confidence in type/authority separation; medium in reversible offset vocabulary. |
 | M10-043 | Own eight sound rows/plan handles and at most four distinct active listeners, with monotonic instances and exact activation provenance. Independent casts coexist; duplicate sound writes within one activation refuse. Incarnation/generation-bound ListenerRef grants sampling only. Owned Hearing exposes that listener's perceived kind/point/time, ordered by instance, without hidden provenance, physical truth or automatic knowledge. Removal retires only that generation's sounds; dead listeners cannot sample. High confidence in isolation/lifetime; medium in fixture policy. |
 | M10-044 | Reuse staged spoken/pending/item activation, including atomic sound/scalar writes and one-charge/fact consumption. Neutral ActivationSource retains the compatible SlowSource alias. Checkpoint owns actual plans/captured points and renews listener/event/ticket authority; source departure remains historical, with absolute expiry. Fixed arrays need no new allocator backend. Work/storage stay bounded under existing ceilings. High confidence in current-runtime continuity; no audio backend, production adapter, security, human-perception or durable-save acceptance. |
+
+MAGIC-M10-R1 verifies M10-042–044 without changing those choices or implementation.
+The exact completed M10 build/source binding is checked, then one requested
+wrapped run passes30/30 entries and376 contract cases (33 sound +343 retained),
+including the real spoken/accepted-touch caller. The previous partial/false M10
+receipt stays immutable; the new M10-R1 receipt is ready/true for the selected
+headless closeout. Audio/human, allocator/platform and durable-checkpoint limits
+remain. Publication holds stay active; no follow-on work is selected.
