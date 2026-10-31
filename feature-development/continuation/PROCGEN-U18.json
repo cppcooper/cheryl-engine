@@ -1,0 +1,128 @@
+{
+  "milestone_id": "PROCGEN-U18",
+  "starting_head": "2a1096ada736de1cab3e545a31cf89d23ac63761",
+  "branch": "feat/procedural-generation",
+  "saved_thread": "01a193d7-0422-7cb3-831e-e9481196ba9e",
+  "manifest": "coordination/assignments/local-continuation-20261031-02/manifest.json (workspace)",
+  "status": "ready",
+  "checks_passed": true,
+  "acceptance_scope": "Bounded private CPU background producer/publication and simulation-side pin/sample/once-only adopt/retire caller over the U17 admitted profile. No latency/cadence/interpolation/full-Engine acceptance.",
+  "predecessors": {
+    "PROCGEN-U17": {
+      "status": "partial",
+      "checks_passed": false
+    },
+    "PROCGEN-U16": {
+      "status": "blocked",
+      "checks_passed": false
+    }
+  },
+  "implemented_contracts": [
+    "One producer thread, three immutable endpoint slots, four borrowing pins, one pending admitted one-tick update and one bounded restore payload. Actual Engine weather buffers and typed retained workspace services remain.",
+    "Process stream/epoch/slot generation/request/sequence/tick ownership; complete publication under mutex, fixed metadata adoption marker and caller cursor, explicit retirement and producer-only heavy reclamation after final pin release.",
+    "Try-lock foreground busy/full/refusal, exact tick/sample/publication age, old snapshots, contiguous once-only summaries without rainfall replay; held slots never overwrite or grow.",
+    "Explicit epoch restore/reconfiguration invalidates adoption tokens, cancels unstarted work/discards in-flight candidates, defers full-slot base publication, and resets allowance/workspace only for a new timeline.",
+    "Error preserves prior head; allocation exception poisons allowance. Close marks shutdown/refuses held pins, then joins producer drain after release. Borrowing owner lifetime and short mutex final-release wakeup policy documented."
+  ],
+  "checks": [
+    {
+      "name": "Release focused CTest",
+      "passed": 53,
+      "total": 53,
+      "exit": 0,
+      "background_assertions": 147,
+      "existing_assertions": 3912
+    },
+    {
+      "name": "Engine Debug UBSan focused CTest including real caller",
+      "passed": 54,
+      "total": 54,
+      "exit": 0,
+      "background_assertions": 147,
+      "existing_assertions": 3912
+    },
+    {
+      "name": "Preserved default Debug UBSan CTest",
+      "passed": 161,
+      "total": 161,
+      "exit": 0,
+      "assertions": 48017
+    },
+    {
+      "name": "Finite actual Release caller profile",
+      "exit": 0,
+      "watchdog_seconds": 15,
+      "updates_per_grid": 4,
+      "grids": [
+        [
+          32,
+          32
+        ],
+        [
+          64,
+          48
+        ]
+      ],
+      "raw_rows": 28,
+      "foreground_engine_churn": 0,
+      "foreground_grid_copy_bytes": 0
+    }
+  ],
+  "focused_protocol_coverage": [
+    "Deterministic compute/reclamation gates; late old reads; full held slots; generation reuse; foreign/stale/duplicate/order/profile refusal; exact serial equivalence and independent conservation on32x32/64x48.",
+    "Restore during compute and with all slots held; old epoch pin sampling; allocation exception/budget poison; shutdown with pins and in-flight work; producer drain and thread ownership."
+  ],
+  "measurements": {
+    "host": "Ryzen7 7840HS, GNU16.2.1 Release -O3, Linux7.2.11-arch1-1; full context in evidence",
+    "foreground_samples_per_operation_per_grid": 4,
+    "solver_samples_per_grid": 4,
+    "endpoint_reclamation_samples_per_grid": 5,
+    "warmup_samples": 0,
+    "p95": null,
+    "p99": null,
+    "summary": "profile-summary.json contains finite min/median/max; endpoint reset and final shutdown/join measured separately."
+  },
+  "evidence": [
+    "builds/procedural-generation/logs/u18/binding.json",
+    "builds/procedural-generation/logs/u18/commands.txt",
+    "builds/procedural-generation/logs/u18/commands.json",
+    "builds/procedural-generation/logs/u18/boundary.txt",
+    "builds/procedural-generation/logs/u18/build-first.log",
+    "builds/procedural-generation/logs/u18/ctest-first.log",
+    "builds/procedural-generation/logs/u18/build-caller.log",
+    "builds/procedural-generation/logs/u18/ctest-caller.log",
+    "builds/procedural-generation/logs/u18/build-diagnostic.log",
+    "builds/procedural-generation/logs/u18/ctest-diagnostic.log",
+    "builds/procedural-generation/logs/u18/build-release-final.log",
+    "builds/procedural-generation/logs/u18/build-boundary-final.log",
+    "builds/procedural-generation/logs/u18/ctest-release-final.log",
+    "builds/procedural-generation/logs/u18/build-ubsan.log",
+    "builds/procedural-generation/logs/u18/ctest-ubsan.log",
+    "builds/procedural-generation/logs/u18/build-legacy.log",
+    "builds/procedural-generation/logs/u18/ctest-legacy.log",
+    "builds/procedural-generation/logs/u18/profile.py",
+    "builds/procedural-generation/logs/u18/profile.log",
+    "builds/procedural-generation/logs/u18/profile-raw.jsonl",
+    "builds/procedural-generation/logs/u18/profile-stderr.log",
+    "builds/procedural-generation/logs/u18/profile-summary.json",
+    "builds/procedural-generation/logs/u18/host-context.json",
+    "builds/procedural-generation/logs/u18/verification.json",
+    "builds/procedural-generation/logs/u18/preservation.json",
+    "builds/procedural-generation/logs/u18/source-manifest.json",
+    "builds/procedural-generation/logs/u18/release-compile_commands.json",
+    "builds/procedural-generation/logs/u18/ubsan-compile_commands.json",
+    "builds/procedural-generation/logs/u18/release-compiler.cmake"
+  ],
+  "prior_failures_preserved": [
+    "Interrupted attempt compiled, but protocol CTest failed at unchecked expected access while ordinary caller passed. Diagnostic compile typo and unsupported one-metre terrain slope were recorded. Explicit flat negative fixture now reaches intended solver refusal; final checks pass.",
+    "A2160.8-second tool wait exhausted the interrupted invocation. The repeated same-unit request recovered exact source/logs and completed verification without canceling/resubmitting lock waiters or creating another base."
+  ],
+  "limitations": [
+    "Borrowing pins require runtime lifetime and release before destruction. Misuse terminates; close/join is a control operation. Final release uses a short metadata mutex, so no lock-free or wall-clock bound is claimed.",
+    "Four finite foreground/solver samples per grid and five endpoint resets establish no tails,2ms/cadence, sustained parallel throughput or game acceptance. Foreground retries are bounded<=10001 attempts; control waits are outside foreground timings. No sleep-based success or unbounded stress.",
+    "Engine counters exclude uninstrumented standard baseline/soil/report allocations, OS overhead and total memory traffic. Fixed slot/pin/restore bounds do not cap global pooled RSS; final-return metadata failure remains independently fatal as U17 records.",
+    "Timing recorder stores at most16 records and truncates later diagnostics. The finite four-update caller uses9 per runtime. Endpoint reclamation timers exclude final workspace/service teardown; shutdown separately includes workspace drain/join.",
+    "No TSan/ASan/leak, full Engine/installed SDK/platform/graphics/human-fun/physics or durability acceptance. No interpolation or general scheduler; no automatic catch-up or periodic service."
+  ],
+  "next_action": "Stop U18 for command-center source/protocol/raw-evidence review. Before any newly assigned cadence/interpolation or Engine integration unit, review the borrowing/release/shutdown and explicit epoch policies against that caller. U17 remains partial/false; U16 blocked/false. No automatic next unit, push or external report."
+}

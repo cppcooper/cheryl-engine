@@ -4,6 +4,13 @@
 #include <memory>
 
 namespace CE::Memory::Detail {
+    // Attribution to the calling thread, including while another thread computes.
+    struct ThreadAllocationCounts {
+        std::size_t backing_calls = 0, backing_frees = 0, metadata_calls = 0, metadata_frees = 0;
+        std::size_t control_calls = 0, control_frees = 0, checkouts = 0;
+        bool operator==(const ThreadAllocationCounts&) const = default;
+    };
+    inline thread_local ThreadAllocationCounts thread_allocations;
     // Allocation requests, not allocator arena overhead or resident memory.
     // Independent atomics are descriptive counters, not a transactional snapshot.
     struct AllocationSnapshot {
@@ -44,11 +51,15 @@ namespace CE::Memory::Detail {
         T* allocate(std::size_t count) {
             auto* result = std::allocator<T>{}.allocate(count);
             counter().acquired(count * sizeof(T));
+            if constexpr (Control) ++thread_allocations.control_calls;
+            else ++thread_allocations.metadata_calls;
             return result;
         }
         void deallocate(T* p, std::size_t count) noexcept {
             std::allocator<T>{}.deallocate(p, count);
             counter().released(count * sizeof(T));
+            if constexpr (Control) ++thread_allocations.control_frees;
+            else ++thread_allocations.metadata_frees;
         }
         template <class U> bool operator==(const ObservedAllocator<U, Control>&) const noexcept { return true; }
     };

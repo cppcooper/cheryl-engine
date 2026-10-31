@@ -2506,3 +2506,151 @@ coverage remain explicit limits. No further unit, recurring coordinator/service,
 publication or integration is launched. Confidence high in measured routing,
 lifetimes/counters and observed preservation, limited for latency portability and
 unexecuted asynchronous/platform/graphics/fun/physics acceptance.
+
+## PROCGEN-059 — U18 bounded publication, identity and ownership
+
+Engineering choice for this private caller, not a public job system. The initial
+clean HEAD was2a1096ada736de1cab3e545a31cf89d23ac63761 on the assigned branch;
+the manifest thread/task and predecessor receipt hashes match. Interrupted work
+was continued in the same clone at the user's repeated U18 request, without
+resetting the base. U17's executed source/evidence was inspected; U17 partial/false
+and U16 blocked/false remain unchanged. No sibling source or external service is used.
+
+`background-weather.h/.cpp` owns one std::thread, three inline optional immutable
+Frames, four maximum move-only borrowing Pins, one reserved building slot and one
+pending update. There is also one bounded caller-owned restore payload, so restore
+can temporarily retain three endpoints plus one replacement, a workspace and solver
+candidate temporaries. This is a logical owner bound, not RSS: the shared Engine
+byte service can retain backing/metadata. Initial state and restoration are cold
+control operations. They move only on acceptance. Weather's Engine buffers and
+immutable shared baseline retain their U17 services. The producer creates an actual
+typed Pool/Reservation workspace, retains it across updates, and alone destroys
+heavy Frames, discarded candidates and workspace. Standard baseline descriptors,
+soil/report arrays and diagnostics outside Engine instrumentation remain U17 limits.
+
+Identity and ordering:
+
+- A process-unique monotonic stream ID binds a runtime instance. Epoch starts1 and
+  increments immediately on accepted restore. Slot generation increments on each
+  reservation, including canceled work. Neither wraps/reuses an old identity.
+- Request IDs increase across epochs; base publications use request0. Sequence is0
+  at each epoch's base and increases1 per successful one-tick publication. Tokens
+  include the entire stream/epoch/generation/request/sequence/from/to/slot tuple.
+  Each epoch is bound to its actual retained initial regional/baseline/model state;
+  restore/reconfiguration always creates another epoch, even for equivalent data.
+- Request requires the exact current head and one outer tick. Publication uses
+  `[head.to_tick, head.to_tick+1]`, admits the existing <=64x48/3072cell, <=120s,
+  <=2scale, <=8substep,1.5M-work profile, and shares4updates/6M per epoch. Refusal
+  spends no slot; solver refusals consume actual allowance as U17 specifies.
+  No automatic budget refresh, queue growth or request coalescing occurs.
+- Solver and candidate construction run outside the protocol mutex. Under that
+  mutex, the producer publishes only a complete candidate with matching current
+  epoch and an open runtime. Pin acquisition synchronizes publication, increments
+  fixed counters and returns a const Frame pointer. Pinned content never mutates.
+  Latest completed data stays readable while the next update is late or refuses.
+- The simulation first adopts the base, then each contiguous interval exactly
+  once. Runtime `adopted_` and caller Simulation.cursor must agree. Adoption commits
+  only fixed-size cursor/interval/infiltration/overflow summaries under the lock;
+  the regional owner already contains rain/soil consequences. Sampling applies
+  none. Duplicate, foreign, stale and out-of-order adoption leaves both markers
+  untouched. This is one runtime timeline, not durable external event delivery.
+
+Pin/release/backpressure:
+
+`pin_latest`, `pin`, `request`, `adopt`, `retire` and accepted `restore` metadata
+use try-lock/busy refusal. Samples read a held immutable Pin without the mutex,
+returning scalar temperature/wind/vapour/soil, exact `now-to_tick`, monotonic wall
+publication age and old-epoch flag. `now<to_tick` and out-of-range cells refuse;
+there is no interpolation/extrapolation. Sampling old pins remains valid after
+retirement, restore and close. Each individual Pin and Simulation need external
+caller synchronization; separate live pins can be sampled/released independently.
+
+Explicit retire refuses head/current or unapplied future intervals. It marks a
+slot only. New pins cannot attach to retired slots; existing pins keep them alive.
+All three held/retiring/building slots means full refusal, with no extra allocation
+or replacement. Final Pin release takes a short metadata mutex and notifies all
+waiters, pairing the predicate change with producer CV waiting to avoid a lost
+wake. It never destroys an owned Frame. This mutex section can wait for fixed
+metadata work; no lock-free or bounded wall-clock release guarantee is claimed.
+Reclamation changes phase to reclaiming under lock, destroys the Frame outside
+lock on the producer, then marks free; generation changes before reuse.
+
+Restore/stop/error:
+
+One accepted restore immediately invalidates old epoch adoption/new old-token pins,
+cancels an unstarted job and retires old published slots. In-flight work finishes
+within its admitted budget and is discarded. A new base waits for a free slot;
+all old held snapshots remain readable/tagged. Until then latest-pin acquisition
+returns busy. Release at least one retired old pin to unblock a full restore.
+Producer rebuilds scratch and resets allowance for the explicit new epoch; adopting
+its base resets interval summaries without replay. Refused busy/profile restores
+leave caller ownership intact. No automatic reconfiguration or catch-up exists.
+
+Compute failures preserve the prior head; bounded failure details are visible in
+Status. Compute exceptions poison the remaining batch to0/0, retain a fixed192-byte
+message and require explicit restore or shutdown. Lifecycle initialization errors
+fail closed and drain on the producer. Existing noexcept Engine final-return
+metadata failure is independently fatal. No recovery claim covers it.
+
+`close` is a control operation: mark closing/cancel unstarted work, then return pins
+if any are held. New requests/pins/adoptions refuse closed; existing samples stay
+valid. Release pins, then close again to join. In-flight bounded work is discarded,
+all Frames and scratch drain on the producer, then join returns. Runtime must
+outlive its borrowing Pins. Destroying it with outstanding pins is a contract
+violation that terminates. No detach or foreground final grid cleanup is used.
+
+The actual ordinary caller is `background-consumer.cpp`: request one update,
+sample the old held endpoint while pending, control-wait outside hot timings,
+pin/sample/adopt the completed interval, retire/release the old pin, repeat four
+times, release and join. It runs32x32/60s then64x48/120s sequentially, one producer
+at a time. Foreground retries are finite<=10001 attempts and included in timings;
+a real game may defer busy to a later tick. `status`/wait/close are diagnostic or
+control operations, not hot foreground acceptance. Timing storage is fixed16
+records and truncates later diagnostics; the finite caller needs9 per runtime.
+
+## PROCGEN-060 — U18 executed evidence and acceptance boundary
+
+Initial interrupted evidence remains in builds/procedural-generation/logs/u18:
+build-first exit0; ctest-first and ctest-caller exit8. The ordinary caller passed
+but protocol tests failed at an unchecked expected access. A2160.8s tool wait
+consumed the prior invocation; no queued native command was canceled or duplicated.
+The repeated user request continued the same unit after inspecting actual exits.
+A diagnostic compile failed due to a nonexistent regional reason-text helper;
+the fixed diagnostics identified unsupported transformed slope in the one-metre
+negative fixture. Explicit flat terrain now reaches the intended substep refusal;
+the real measured grids retain U17's pitch7/-80..120 terrain.
+
+Release final selection passes53 CTest entries:147 deterministic protocol
+assertions plus actual Engine/climate/moisture/weather/regional regressions. Gates
+pause before compute/reclamation, exercising old reads during lateness/heavy
+cleanup, held-full refusal and generation reuse, contiguous once-only adoption,
+foreign/stale/duplicate/order/profile refusal, restore during computation and with
+all slots held, old snapshots, allocation exception/budget poison and complete
+in-flight shutdown.32x32/64x48 results exactly match the real serial solver and
+independent regional conservation checks. No sleep-based success/stress loop.
+
+Final Engine Debug/UBSan54/54 and preserved default Debug/UBSan161/161 pass.
+The latter retains48017 existing assertions and unchanged option defaults; no
+legacy warning or sanitizer policy is weakened. U18 is ready/true for this selected
+bounded CPU protocol, while U17 remains partial/false and U16 blocked/false.
+Finite Release
+profile has eight foreground rows, eight solver rows, ten endpoint reclamations
+and two joined shutdowns, with host/compiler/source context. Foreground Engine
+checkout/backing/metadata/control calls/frees and instrumented grid copies are0;
+these counters exclude uninstrumented standard allocations and OS scheduling.
+No foreground2ms, cadence, tail latency, general scheduler, interpolation, TSan,
+installed/full Engine, platform/graphics/human-fun or physical realism acceptance
+is inferred. No worker push or automatically selected follow-on unit occurs.
+
+The finite profile on Ryzen7 7840HS/GNU16.2.1 Release-O3/Linux7.2.11 records four
+samples per foreground operation/solver/grid and five endpoint reclamations/grid,
+without warmup.32x32 pin/read/adopt/retire medians are.0001255/.000131/.000105/
+.0012225ms;64x48 are.000170/.000126/.000155/.001287ms. Solver medians/maxima are
+.6415685/1.404865ms and3.9031585/4.338377ms. Endpoint reclamation medians/maxima
+are.002124/.018985ms and.003777/.091531ms. These reclamation timers exclude final
+workspace/service teardown; separate shutdown includes draining/join. p95/p99 are
+null. Source manifest, compile commands, full host context and raw28 JSONL rows
+are ignored evidence, not a tail-latency certificate. Exact commands and immediate
+exits are in commands.txt/json; verification.json and preservation.json retain
+actual counts and unchanged predecessor receipt hashes. Stop for command-center
+review before any newly selected unit; no automatic continuation or worker push.

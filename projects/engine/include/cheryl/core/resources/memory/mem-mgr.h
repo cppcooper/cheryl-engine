@@ -73,9 +73,11 @@ namespace CE::Memory {
             auto deleter = [alignment, length](void* p) {
                 ::operator delete[](p, alignment);
                 Detail::backing_allocations.released(length);
+                ++Detail::thread_allocations.backing_frees;
             };
             auto* raw = ::operator new[](length, alignment);
             Detail::backing_allocations.acquired(length);
+            ++Detail::thread_allocations.backing_calls;
             const auto ptr = std::shared_ptr<void>(raw, deleter, Detail::ControlAllocator<void>{});
             return {ptr, ptr, ::CE::Memory::Pointers::calculate_alignment(ptr.get()), length};
         }

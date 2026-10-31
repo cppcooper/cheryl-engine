@@ -415,3 +415,23 @@ profiles refuse before Engine checkout. Release54/54 before/after, Engine UBSan
 52/52 and default UBSan161/161 pass. Receipt remains partial/false: parallel endpoint
 publication, cadence, interpolation and foreground acceptance need a new bounded
 proof. Confidence high in work admission; no latency/total-reader-memory guarantee.
+
+## PROCGEN-059 — Bounded producer and immutable endpoint protocol
+
+**Engineering choice; executed CPU subset.** One producer, three slots/four pins,
+one admitted update and one restore payload; tokens bind stream/epoch/generation/
+request/sequence/ticks. Ordered adoption commits fixed summaries exactly once;
+retirement defers heavy cleanup to the producer. Full slots refuse, restore waits
+for released storage, old pins stay readable. Release uses a short metadata lock
+for correct wakeup. Release/UBSan deterministic checks pass. Confidence high in
+selected cases; no general scheduler, interpolation or wall-clock guarantee.
+
+## PROCGEN-060 — Explicit borrowing/shutdown and bounded U18 acceptance
+
+**Engineering choice; executed.** Runtime outlives pins; close refuses held pins,
+then joins after release and producer drain. In-flight shutdown/restore discards
+obsolete work. Release53/53, UBSan54/54 and preserved default161/161 pass; real
+32x32/64x48 caller records four foreground/solver samples and five reclamations per
+grid with host context and zero measured foreground Engine churn/grid copies.
+U18 ready/true is scoped to this proof. U17 partial/false and U16 blocked/false
+remain. No tails/cadence/2ms/TSan/platform or physical-realism acceptance.

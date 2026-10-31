@@ -144,6 +144,7 @@ namespace CE::Memory {
             return allocate(request_length, align_val);
         });
         Detail::byte_checkout_calls.fetch_add(1, std::memory_order_relaxed);
+        ++Detail::thread_allocations.checkouts;
         Detail::byte_checkout_requested_bytes.fetch_add(length, std::memory_order_relaxed);
         return result;
     }
