@@ -1,5 +1,6 @@
 #include <magic/reference-host.h>
 #include "reference-meter.h"
+#include "reference-adapter-internal.h"
 
 #include <algorithm>
 #include <limits>
@@ -771,14 +772,31 @@ namespace Magic::Reference {
             auto& data = state.world.actors[i];
             const auto& write = writes[i];
             if (write.health == 1)
-                data.data.health = static_cast<std::uint32_t>(
-                    std::min<std::uint64_t>(data.data.max_health, static_cast<std::uint64_t>(data.data.health) + write.quantity)
-                );
+                data.data.health = Contact::healed(data.data.health, data.data.max_health, write.quantity);
             else if (write.health == -1)
                 static_cast<void>(damage(data.id, write.quantity, state, meter));
             if (write.slow)
                 data.slow = {write.permille, write.until};
         }
+    }
+
+    void ReferenceHost::contact_heal(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const {
+        ContactView adapter(catalog_, state.world);
+        const auto checked = Contact::evaluate(plan, ContactView::request(request.caster, *request.contact), adapter);
+        if (!checked)
+            meter.fail(contact_error(checked.error()));
+        // Preserve the reference selector/work tariff (one selected slot and
+        // three full actor passes) even though the shared selected path is narrower.
+        meter.visit();
+        meter.select();
+        meter.spend(3 * actor_capacity);
+        std::size_t statuses = 0;
+        for (const auto& actor : state.world.actors)
+            statuses += actor.present && actor.slow.until_tick != 0;
+        if (statuses > limits_.statuses)
+            meter.fail(Error::StatusLimit);
+        state.world.actors[request.caster.slot].data.mana = checked->change.resource;
+        state.world.actors[request.contact->slot].data.health = checked->change.health;
     }
 
     std::expected<Preview, Failure> ReferenceHost::preview(const PlanHandle& plan, const Request& request) const {
@@ -791,6 +809,8 @@ namespace Magic::Reference {
                 if (plan->meaning().delivery == Delivery::Remains || plan->meaning().delivery == Delivery::Influence ||
                     plan->meaning().delivery == Delivery::Pending)
                     lifecycle(plan, request, scratch, meter);
+                else if (Contact::supports(plan))
+                    contact_heal(plan, request, scratch, meter);
                 else
                     apply(plan, request.contact, request.aim, request.subject, scratch, meter);
             } // Delayed preview cannot promise future members/status capacity.
@@ -877,9 +897,12 @@ namespace Magic::Reference {
                 input.plan->meaning().delivery == Delivery::Pending
             )
                 lifecycle(input.plan, input.request, next, meter);
+            else if (Contact::supports(input.plan))
+                contact_heal(input.plan, input.request, next, meter);
             else
                 apply(input.plan, input.request.contact, input.request.aim, input.request.subject, next, meter);
-            next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
+            if (!Contact::supports(input.plan))
+                next.world.actors[input.request.caster.slot].data.mana -= static_cast<std::uint32_t>(input.plan->meaning().effects.size() * 10);
             next.world.actions_issued = id;
             const bool interrupt = input.plan->meaning().delivery == Delivery::Pending;
             if (interrupt)

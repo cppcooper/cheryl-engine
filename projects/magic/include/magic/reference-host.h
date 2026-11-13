@@ -474,6 +474,7 @@ namespace Magic::Reference {
         void check_life(const State& state, Meter& meter) const;
         void retire_actor(State& state, ActorId actor, Meter& meter) const;
         void validate(const PlanHandle& plan, const Request& request, const State& state, Meter& meter, bool paying) const;
+        void contact_heal(const PlanHandle& plan, const Request& request, State& state, Meter& meter) const;
         void payload_schema(const PlanHandle& plan, Meter& meter) const;
         void inscription(const PlanHandle& plan, Meter& meter) const;
         void apply(

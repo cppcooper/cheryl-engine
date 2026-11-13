@@ -124,6 +124,24 @@ int main() {
         check(observation->after == expected && f.host->snapshot() == expected, "independent complete healed state");
         check(observation->events[0].action == 1 && observation->events[0].kind == EventKind::Applied, "accepted action identity");
     });
+    test("selected Heal clamp and self debit", [] {
+        Fixture f;
+        auto target = target_data;
+        target.health = 95;
+        ok(f.host->update_actor(f.target, target));
+        const auto value = fixture("S1");
+        const auto result = f.cast(value, f.contact());
+        check(result->after.actors[f.target.slot].data.health == 100 &&
+              result->after.actors[f.caster.slot].data.mana == 90, "reference cap100 price10");
+        auto caster = caster_data;
+        caster.health = 90;
+        caster.mana = 10;
+        caster.eligible = true;
+        ok(f.host->update_actor(f.caster, caster));
+        const auto self = f.cast(value, {f.caster, f.caster, std::nullopt});
+        check(self->after.actors[f.caster.slot].data.health == 100 &&
+              self->after.actors[f.caster.slot].data.mana == 0, "same-owner debit and Heal coexist");
+    });
     for (const std::string name : {"S2", "S4"})
         test(name + " full literal release/onset/expiry", [name] {
             Fixture f;
