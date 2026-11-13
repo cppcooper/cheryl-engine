@@ -7,7 +7,7 @@ endif()
 
 option(PROCGEN_UBSAN "Run focused integer/topology checks with undefined-behavior diagnostics" OFF)
 
-add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp drainage.cpp spill.cpp channels.cpp climate.cpp moisture.cpp moisture-kernel.cpp weather.cpp weather-kernel.cpp weather-forcing.cpp regional.cpp)
+add_library(procgen-private STATIC maze.cpp random.cpp traversal.cpp metrics.cpp configuration.cpp cave.cpp clearance.cpp tunnels.cpp dungeon.cpp elevation.cpp settlement-sites.cpp drainage.cpp spill.cpp channels.cpp climate.cpp moisture.cpp moisture-kernel.cpp weather.cpp weather-kernel.cpp weather-forcing.cpp regional.cpp)
 add_library(procgen-checks STATIC checks.cpp cave-checks.cpp clearance-checks.cpp tunnel-checks.cpp dungeon-checks.cpp elevation-checks.cpp drainage-checks.cpp spill-checks.cpp channel-checks.cpp climate-checks.cpp moisture-checks.cpp regional-checks.cpp)
 target_link_libraries(procgen-checks PRIVATE procgen-private)
 add_executable(procgen-tests tests.cpp traversal-tests.cpp configuration-tests.cpp)
@@ -39,6 +39,11 @@ add_executable(procgen-elevation-tests elevation-tests.cpp)
 target_link_libraries(procgen-elevation-tests PRIVATE procgen-private procgen-checks)
 add_executable(procgen-elevation-consumer elevation-consumer.cpp)
 target_link_libraries(procgen-elevation-consumer PRIVATE procgen-private procgen-checks)
+
+add_executable(procgen-settlement-tests settlement-sites-tests.cpp)
+target_link_libraries(procgen-settlement-tests PRIVATE procgen-private)
+add_executable(procgen-settlement-consumer settlement-sites-consumer.cpp)
+target_link_libraries(procgen-settlement-consumer PRIVATE procgen-private procgen-checks)
 
 add_executable(procgen-drainage-tests drainage-tests.cpp)
 target_link_libraries(procgen-drainage-tests PRIVATE procgen-private procgen-checks)
@@ -76,7 +81,7 @@ target_link_libraries(procgen-regional-consumer PRIVATE procgen-private procgen-
 
 foreach(target IN ITEMS procgen-private procgen-checks procgen-tests procgen-consumer procgen-cave-tests procgen-cave-consumer
                         procgen-clearance-tests procgen-clearance-consumer procgen-tunnel-tests procgen-tunnel-consumer procgen-dungeon-tests procgen-dungeon-consumer
-                        procgen-elevation-tests procgen-elevation-consumer procgen-drainage-tests procgen-drainage-consumer
+                        procgen-elevation-tests procgen-elevation-consumer procgen-settlement-tests procgen-settlement-consumer procgen-drainage-tests procgen-drainage-consumer
                         procgen-spill-tests procgen-spill-consumer procgen-channel-tests procgen-channel-consumer
                         procgen-climate-tests procgen-climate-consumer
                         procgen-moisture-tests procgen-moisture-consumer procgen-weather-tests procgen-weather-consumer procgen-regional-tests procgen-regional-consumer)
@@ -150,6 +155,13 @@ foreach(case IN ITEMS elevation_literal elevation_fields elevation_sea elevation
 endforeach()
 add_test(NAME procgen.elevation_consumer COMMAND procgen-elevation-consumer)
 set_tests_properties(procgen.elevation_consumer PROPERTIES TIMEOUT 30)
+
+foreach(case IN ITEMS settlement_literal settlement_spacing settlement_tiny settlement_extremes settlement_invalid settlement_limits settlement_ownership)
+    add_test(NAME procgen.${case} COMMAND procgen-settlement-tests ${case})
+    set_tests_properties(procgen.${case} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME procgen.settlement_consumer COMMAND procgen-settlement-consumer)
+set_tests_properties(procgen.settlement_consumer PROPERTIES TIMEOUT 30)
 
 foreach(case IN ITEMS drainage_literal drainage_terminals drainage_ties drainage_extremes drainage_exhaustive drainage_generated
                       drainage_invalid drainage_limits drainage_ownership)
