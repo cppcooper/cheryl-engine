@@ -137,6 +137,7 @@ int main() {
         caster.health = 90;
         caster.mana = 10;
         caster.eligible = true;
+        caster.willing = true;
         ok(f.host->update_actor(f.caster, caster));
         const auto self = f.cast(value, {f.caster, f.caster, std::nullopt});
         check(self->after.actors[f.caster.slot].data.health == 100 &&
