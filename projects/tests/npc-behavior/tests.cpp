@@ -156,6 +156,55 @@ namespace {
         require(right.decision.trace.seconds == 10 && left.decision.trace.seconds == 10, "trace must retain long elapsed time");
     }
 
+    void rounded_application() {
+        constexpr float large = 0x1p61f;
+        Scenario scenario({large, 220}, large, 80, large);
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(scenario.step({std::nullopt, 1})); });
+        require(
+            same_position(scenario.actor().position(), {large, 220}) && scenario.records().empty(),
+            "rounded endpoint application must reject before moving or publishing X0 outside [80,2^61]"
+        );
+        Scenario twin({large, 220}, large, 80, large);
+        const auto continued = scenario.step({std::nullopt, 0.5});
+        const auto expected = twin.step({std::nullopt, 0.5});
+        require(
+            same_record(continued, expected) && continued.decision.command.horizontal == -1 && continued.after.x == 0x1p60f &&
+                scenario.records().size() == 1,
+            "a safe large-domain continuation must agree with the untouched host"
+        );
+
+        Scenario prefix({large, 220}, large, 80, large);
+        const auto prior = prefix.step({glm::vec2{large, 220}, 1});
+        const std::array interrupted{StepInput{std::nullopt, 1}, StepInput{std::nullopt, 0.5}};
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(prefix.run(interrupted)); });
+        require(
+            prefix.records().size() == 1 && same_record(prefix.records()[0], prior) &&
+                same_position(prefix.actor().position(), {large, 220}),
+            "unsafe application must preserve the existing owned trace and not run the remaining batch"
+        );
+        require(same_record(prefix.step({std::nullopt, 0.5}), expected), "batch refusal must leave a valid continuation available");
+
+        // A later endpoint read would reverse again, masking a rejected read's latent reversal.
+        SentryController tested(80, large);
+        SentryController control(80, large);
+        auto endpoint = make_actor({large, 220}, large);
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(tested.read(endpoint, std::nullopt, 1)); });
+        auto interior = make_actor({0x1p60f, 220}, large);
+        auto control_interior = make_actor({0x1p60f, 220}, large);
+        const auto next = tested.read(interior, std::nullopt, 0.25);
+        const auto control_next = control.read(control_interior, std::nullopt, 0.25);
+        require(
+            next.command.horizontal == 1 && same_trace(next.trace, control_next.trace) && endpoint.position().x == large,
+            "rejected rounded application must not reverse live patrol direction"
+        );
+        interior.update(next.command, 0.25);
+        control_interior.update(control_next.command, 0.25);
+        require(
+            interior.position().x == 0x1.8p60f && same_position(interior.position(), control_interior.position()),
+            "the preserved rightward command must have the same actual Character consequence"
+        );
+    }
+
     void watch_direction() {
         Scenario scenario;
         expect_step(scenario.step({std::nullopt, 10}), Action::Patrol, Reason::NoTarget, 0.525, 80, 500);
@@ -371,10 +420,11 @@ namespace {
     constexpr std::array cases{Case{"notice_stop", notice_stop}, Case{"notice_boundary", notice_boundary},
                                Case{"range_miss", range_miss},   Case{"lane_miss", lane_miss},
                                Case{"no_target", no_target},     Case{"resume_patrol", resume_patrol},
-                               Case{"long_step", long_step},     Case{"watch_direction", watch_direction},
+                               Case{"long_step", long_step},     Case{"rounded_application", rounded_application},
+                               Case{"watch_direction", watch_direction},
                                Case{"zero_time", zero_time},     Case{"invalid_input", invalid_input},
                                Case{"owned_trace", owned_trace}, Case{"trace_capacity", trace_capacity}};
-    static_assert(cases.size() == 12);
+    static_assert(cases.size() == 13);
 }
 
 int main(int argc, char** argv) {

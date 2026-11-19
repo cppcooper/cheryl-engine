@@ -2,8 +2,10 @@
 
 #include <testing/material-builder.h>
 
+#include <cmath>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace NpcBehavior {
@@ -23,10 +25,24 @@ namespace NpcBehavior {
         if (count_ == capacity)
             throw std::length_error("Sentry trace capacity exceeded");
         const auto before = actor_.position();
-        const auto decision = controller_.read(actor_, input.target, input.seconds);
-        actor_.update(decision.command, input.seconds);
-        const StepRecord record{before, actor_.position(), decision};
-        records_[count_++] = record;
+        auto trial_controller = controller_;
+        auto trial_actor = actor_;
+        const auto decision = trial_controller.read(trial_actor, input.target, input.seconds);
+        trial_actor.update(decision.command, input.seconds);
+        const auto after = trial_actor.position();
+        if (!std::isfinite(after.x) || after.x < decision.trace.left || after.x > decision.trace.right)
+            throw std::invalid_argument("Scenario movement leaves its patrol interval");
+        const StepRecord record{before, after, decision};
+
+        // No throwing application remains after adoption starts; publish the count last.
+        static_assert(std::is_nothrow_copy_assignable_v<Tutorial::Character>);
+        static_assert(std::is_nothrow_copy_assignable_v<SentryController>);
+        static_assert(std::is_nothrow_copy_assignable_v<StepRecord>);
+        static_assert(std::is_nothrow_copy_constructible_v<StepRecord> && std::is_nothrow_move_constructible_v<StepRecord>);
+        actor_ = trial_actor;
+        controller_ = trial_controller;
+        records_[count_] = record;
+        ++count_;
         return record;
     }
 

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <type_traits>
 
 namespace NpcBehavior {
     SentryController::SentryController(float left, float right, float notice_distance, float lane_half_width)
@@ -54,9 +55,19 @@ namespace NpcBehavior {
             }
         }
 
-        decision.command = patrol_.read(actor, seconds);
+        auto trial_patrol = patrol_;
+        decision.command = trial_patrol.read(actor, seconds);
+        // Use Character's actual clamped expression and float conversion, not a distance estimate.
+        auto trial_actor = actor;
+        trial_actor.update(decision.command, seconds);
+        const auto next = trial_actor.position();
+        if (!std::isfinite(next.x) || next.x < left_ || next.x > right_)
+            throw std::invalid_argument("Sentry movement leaves its patrol interval");
         trace.patrol_called = true;
         trace.horizontal_command = decision.command.horizontal;
+        static_assert(std::is_nothrow_copy_assignable_v<Tutorial::PatrolController>);
+        static_assert(std::is_nothrow_copy_constructible_v<Decision> && std::is_nothrow_move_constructible_v<Decision>);
+        patrol_ = trial_patrol;
         return decision;
     }
 }

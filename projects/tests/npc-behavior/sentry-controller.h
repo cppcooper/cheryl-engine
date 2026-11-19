@@ -46,7 +46,8 @@ namespace NpcBehavior {
         SentryController(float left = 80, float right = 500, float notice_distance = 120, float lane_half_width = 16);
 
         // Called synchronously by one simulation owner. Borrows only for this call; the caller alone applies movement.
-        // Invalid inputs throw invalid_argument before patrol mutation, including invalid targets at zero time.
+        // Invalid inputs or unsafe Character applications throw invalid_argument before patrol mutation.
+        // Validation includes targets at zero time and the actual resulting float patrol position.
         [[nodiscard]] Decision read(const Tutorial::Character& actor, std::optional<glm::vec2> target, double seconds);
     };
 }

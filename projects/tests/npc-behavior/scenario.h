@@ -42,6 +42,7 @@ namespace NpcBehavior {
             float lane_half_width = 16
         );
 
+        // Unsafe movement rejects before adopting actor/controller state or publishing a record.
         [[nodiscard]] StepRecord step(StepInput input);
         // Appends and returns all records. Oversize rejects before execution; other failures retain successful prior steps.
         [[nodiscard]] std::span<const StepRecord> run(std::span<const StepInput> inputs);
