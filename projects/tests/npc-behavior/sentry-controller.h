@@ -45,7 +45,8 @@ namespace NpcBehavior {
     public:
         SentryController(float left = 80, float right = 500, float notice_distance = 120, float lane_half_width = 16);
 
-        // Borrows only for this call. Validation precedes patrol mutation; the caller alone applies movement.
+        // Called synchronously by one simulation owner. Borrows only for this call; the caller alone applies movement.
+        // Invalid inputs throw invalid_argument before patrol mutation, including invalid targets at zero time.
         [[nodiscard]] Decision read(const Tutorial::Character& actor, std::optional<glm::vec2> target, double seconds);
     };
 }

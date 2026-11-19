@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <span>
 
 namespace NpcBehavior {
@@ -20,7 +21,7 @@ namespace NpcBehavior {
 
     [[nodiscard]] Tutorial::Character make_actor(glm::vec2 position = {80, 220}, float speed = 80);
 
-    // The host owns one actual Character, one controller and at most 32 inline records.
+    // The simulation owner calls synchronously. One actual Character/controller and at most 32 inline records are owned here.
     class Scenario final {
     public:
         static constexpr std::size_t capacity = 32;
@@ -42,7 +43,7 @@ namespace NpcBehavior {
         );
 
         [[nodiscard]] StepRecord step(StepInput input);
-        // Appends; oversize requests reject before any execution. Other failures retain successful prior steps.
+        // Appends and returns all records. Oversize rejects before execution; other failures retain successful prior steps.
         [[nodiscard]] std::span<const StepRecord> run(std::span<const StepInput> inputs);
         // Borrowed view: copy a StepRecord to retain it beyond this host's lifetime.
         [[nodiscard]] std::span<const StepRecord> records() const;
