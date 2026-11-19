@@ -71,7 +71,9 @@ projects/
     ├── src/
     │   ├── main.cpp
     │   ├── first-game.h
-    │   └── first-game.cpp
+    │   ├── first-game.cpp
+    │   ├── level-transition.h
+    │   └── level-transition.cpp
     └── assets/
 ```
 
@@ -90,7 +92,9 @@ your chosen parent directory. This block preserves your shell's starting directo
 ```
 
 Copy the maintained [first game's](../../../projects/apps/first-game) `src/` and
-`assets/` directories into `my-game/` to use its code unchanged. Create
+`assets/` directories into `my-game/` to use its code unchanged. Keep
+`level-transition.h` and `level-transition.cpp` with the other game sources:
+the room controller is application-private, not supplied by the Cheryl libraries. Create
 `my-game/CMakeLists.txt` as follows. The `CHERYL_BUILD_*` options select the first
 game's Native GLFW/OpenGL libraries and omit unrelated applications and integrations.
 `block(SCOPE_FOR VARIABLES)` limits those settings to the enclosed Cheryl setup;
@@ -127,7 +131,7 @@ block(SCOPE_FOR VARIABLES)
     add_subdirectory("${CHERYL_ENGINE_SOURCE}" cheryl EXCLUDE_FROM_ALL)
 endblock()
 
-add_executable(my_game src/main.cpp src/first-game.cpp)
+add_executable(my_game src/main.cpp src/first-game.cpp src/level-transition.cpp)
 target_link_libraries(my_game PRIVATE Cheryl::Cheryl)
 target_compile_definitions(my_game PRIVATE
     CHERYL_FIRST_GAME_ASSETS="${CMAKE_CURRENT_SOURCE_DIR}/assets")
