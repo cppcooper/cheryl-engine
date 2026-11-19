@@ -79,7 +79,7 @@ if(DEFINED CHERYL_BUILD_ROOT)
     set(first_game_output "${CHERYL_BUILD_ROOT}")
 endif()
 
-add_executable(${TARGET_APP_FIRST_GAME} src/main.cpp src/first-game.cpp)
+add_executable(${TARGET_APP_FIRST_GAME} src/main.cpp src/first-game.cpp src/level-transition.cpp)
 set_target_properties(${TARGET_APP_FIRST_GAME} PROPERTIES
     OUTPUT_NAME "${OUTPUT_APP_FIRST_GAME}"
     RUNTIME_OUTPUT_DIRECTORY "${first_game_output}")
