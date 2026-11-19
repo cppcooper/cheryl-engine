@@ -205,6 +205,86 @@ namespace {
         );
     }
 
+    void application_overflow() {
+        constexpr float maximum = std::numeric_limits<float>::max();
+        constexpr double seconds = 1e200;
+        require(std::isfinite(static_cast<double>(maximum) * seconds), "overflow fixture must pass the prospective-step guard");
+        auto unwrapped = make_actor({maximum, 220}, maximum);
+        Tutorial::PatrolController patrol(-maximum, maximum);
+        const auto command = patrol.read(unwrapped, seconds);
+        require(std::isfinite(command.horizontal) && command.horizontal < 0, "actual patrol must supply a finite leftward command");
+        expect_throw<std::invalid_argument>([&] { unwrapped.update(command, seconds); });
+        require(unwrapped.position().x == maximum, "Character range refusal itself must not move the fixture");
+
+        Scenario scenario({maximum, 220}, maximum, -maximum, maximum);
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(scenario.step({std::nullopt, seconds})); });
+        require(
+            same_position(scenario.actor().position(), {maximum, 220}) && scenario.records().empty(),
+            "finite-step application overflow must preserve the actor and empty publication"
+        );
+        Scenario twin({maximum, 220}, maximum, -maximum, maximum);
+        const auto continued = scenario.step({std::nullopt, 0.5});
+        const auto expected = twin.step({std::nullopt, 0.5});
+        require(
+            same_record(continued, expected) && continued.decision.command.horizontal == -1 &&
+                continued.after.x == maximum * 0.5f && scenario.records().size() == 1,
+            "range refusal must leave the same safe large-interval continuation as an untouched host"
+        );
+
+        Scenario prefix({maximum, 220}, maximum, -maximum, maximum);
+        const auto prior = prefix.step({glm::vec2{maximum, 220}, seconds});
+        require(
+            prior.decision.trace.action == Action::Watch && prior.decision.command.horizontal == 0 &&
+                !prior.decision.trace.patrol_called && prior.after.x == maximum,
+            "large finite time must remain valid for Watch instead of being globally forbidden"
+        );
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(prefix.step({std::nullopt, seconds})); });
+        require(
+            prefix.records().size() == 1 && same_record(prefix.records()[0], prior) && prefix.actor().position().x == maximum,
+            "application overflow must preserve every existing trace field and record count"
+        );
+        require(same_record(prefix.step({std::nullopt, 0.5}), expected), "Watch then refusal must not affect safe continuation");
+
+        Scenario batch({maximum, 220}, maximum, -maximum, maximum);
+        const std::array interrupted{
+            StepInput{glm::vec2{maximum, 220}, seconds}, StepInput{std::nullopt, seconds}, StepInput{std::nullopt, 0.5}
+        };
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(batch.run(interrupted)); });
+        require(
+            batch.records().size() == 1 && same_record(batch.records()[0], prior) && batch.actor().position().x == maximum,
+            "application overflow in a batch must preserve its successful prefix only"
+        );
+        require(same_record(batch.step({std::nullopt, 0.5}), expected), "overflow batch failure must leave a valid continuation");
+
+        SentryController tested(-maximum, maximum);
+        SentryController control(-maximum, maximum);
+        auto endpoint = make_actor({maximum, 220}, maximum);
+        expect_throw<std::invalid_argument>([&] { static_cast<void>(tested.read(endpoint, std::nullopt, seconds)); });
+        const auto watch = tested.read(endpoint, endpoint.position(), seconds);
+        const auto hold = tested.read(endpoint, std::nullopt, 0);
+        require(
+            watch.trace.action == Action::Watch && hold.trace.action == Action::Hold && !watch.trace.patrol_called &&
+                !hold.trace.patrol_called && watch.command.horizontal == 0 && hold.command.horizontal == 0,
+            "Watch and Hold must still bypass patrol after numeric refusal"
+        );
+        endpoint.update(watch.command, seconds);
+        endpoint.update(hold.command, 0);
+        auto interior = make_actor({0, 220}, maximum);
+        auto control_interior = make_actor({0, 220}, maximum);
+        const auto next = tested.read(interior, std::nullopt, 0.25);
+        const auto control_next = control.read(control_interior, std::nullopt, 0.25);
+        require(
+            next.command.horizontal == 1 && same_trace(next.trace, control_next.trace) && endpoint.position().x == maximum,
+            "application overflow and endpoint Watch/Hold must not reverse live patrol direction"
+        );
+        interior.update(next.command, 0.25);
+        control_interior.update(control_next.command, 0.25);
+        require(
+            interior.position().x == maximum * 0.25f && same_position(interior.position(), control_interior.position()),
+            "preserved direction must produce the same subsequent valid Character position"
+        );
+    }
+
     void watch_direction() {
         Scenario scenario;
         expect_step(scenario.step({std::nullopt, 10}), Action::Patrol, Reason::NoTarget, 0.525, 80, 500);
@@ -417,14 +497,23 @@ namespace {
         void (*run)();
     };
 
-    constexpr std::array cases{Case{"notice_stop", notice_stop}, Case{"notice_boundary", notice_boundary},
-                               Case{"range_miss", range_miss},   Case{"lane_miss", lane_miss},
-                               Case{"no_target", no_target},     Case{"resume_patrol", resume_patrol},
-                               Case{"long_step", long_step},     Case{"rounded_application", rounded_application},
-                               Case{"watch_direction", watch_direction},
-                               Case{"zero_time", zero_time},     Case{"invalid_input", invalid_input},
-                               Case{"owned_trace", owned_trace}, Case{"trace_capacity", trace_capacity}};
-    static_assert(cases.size() == 13);
+    constexpr std::array cases{
+        Case{"notice_stop", notice_stop},
+        Case{"notice_boundary", notice_boundary},
+        Case{"range_miss", range_miss},
+        Case{"lane_miss", lane_miss},
+        Case{"no_target", no_target},
+        Case{"resume_patrol", resume_patrol},
+        Case{"long_step", long_step},
+        Case{"rounded_application", rounded_application},
+        Case{"application_overflow", application_overflow},
+        Case{"watch_direction", watch_direction},
+        Case{"zero_time", zero_time},
+        Case{"invalid_input", invalid_input},
+        Case{"owned_trace", owned_trace},
+        Case{"trace_capacity", trace_capacity}
+    };
+    static_assert(cases.size() == 14);
 }
 
 int main(int argc, char** argv) {

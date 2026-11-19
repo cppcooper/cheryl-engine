@@ -45,7 +45,8 @@ endforeach()
 
 enable_testing()
 foreach(case IN ITEMS notice_stop notice_boundary range_miss lane_miss no_target resume_patrol
-                      long_step rounded_application watch_direction zero_time invalid_input owned_trace trace_capacity)
+                      long_step rounded_application application_overflow watch_direction zero_time
+                      invalid_input owned_trace trace_capacity)
     add_test(NAME npc_behavior.${case} COMMAND npc-behavior-tests ${case})
     set_tests_properties(npc_behavior.${case} PROPERTIES TIMEOUT 30)
 endforeach()

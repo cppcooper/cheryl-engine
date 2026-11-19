@@ -57,6 +57,7 @@ namespace NpcBehavior {
 
         auto trial_patrol = patrol_;
         decision.command = trial_patrol.read(actor, seconds);
+        // This private preflight is not a second live movement owner.
         // Use Character's actual clamped expression and float conversion, not a distance estimate.
         auto trial_actor = actor;
         trial_actor.update(decision.command, seconds);
