@@ -13,7 +13,9 @@ int main(int argc, char** argv) {
         // [startup]
         std::string asset_root = CHERYL_FIRST_GAME_ASSETS;
         auto startup = CE::Application::make_startup(
-            "Cheryl first game", {.width = 640, .height = 360, .title = "First game: arrows move, Space changes cell, Escape quits"}
+            "Cheryl first game",
+            {.width = 640, .height = 360,
+             .title = "First game: arrows move, Space cell, Tab room, Backspace cancel, U unload, Enter load, Escape quit"}
         );
         startup.add_application_options([&asset_root](CLI::App& options) {
             options.add_option("--assets", asset_root, "Game asset directory")->default_str(asset_root);

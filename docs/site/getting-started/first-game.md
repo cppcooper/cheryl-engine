@@ -1,7 +1,9 @@
 # Your first game
 
 Build a small game that opens a window, moves a sprite with the arrow keys,
-changes its image with Space, and displays `Score: 0`. Escape closes the window.
+changes its image with Space, and displays `Score: 0` and the current room.
+Tab requests the other room, Backspace cancels a pending change, U unloads,
+and Enter loads Courtyard when empty. Escape closes the window.
 The score stays at zero while you establish the application and resource flow.
 
 Start with setup and `main()`, then learn which parts of the engine your game
@@ -57,8 +59,9 @@ for other platform choices. Windows executables have an `.exe` suffix.
 The example's PNG and manifests live in its own `assets` directory; the default
 material shaders are embedded in the OpenGL library and the
 embedded fallback font comes from the pinned assets submodule. No optional
-artwork downloads are needed. Expect a 640 × 360 window with a cyan sprite and
-the score label. Check movement, Space changing the sprite to amber, resizing,
+artwork downloads are needed. Expect a 640 × 360 window with a cyan sprite,
+the score label and `Courtyard`. Check movement, Space changing the sprite to amber,
+Tab changing to `Study`, Backspace during a pending request, U/Enter, resizing,
 and Escape on the desktop; compiling or displaying command-line help alone does
 not establish those graphics and input observations.
 
@@ -182,7 +185,8 @@ implementation is `FirstGame::Game`, the class instantiated as `game` in `main()
 Its `engine_` member is a `CE::Runtime::Context&` referring to `*result.context`.
 Thus calls such as `engine_.input()` use the context created in `main()`.
 `camera_` stores the view, `actor_` stores the sprite actor, `score_` stores the
-uploaded text label, and `images_` retains a material with nearest image sampling. The
+uploaded score label, and `images_` retains a material with nearest image sampling.
+`levels_` owns the private room-selection controller and complete room label/resources. The
 sprite and text sections below introduce those resource types.
 
 The **platform thread** is the thread calling `runtime.run()`. It polls native
@@ -197,8 +201,8 @@ updates, frame preparation and simulation cleanup run on that owner.
 | `init_simulation()` | Simulation owner, with services and initial view ready | Construct simulation objects and attach services before Ready, timing and the first update. The default hook is enough for this example. |
 | `update(tick)` | Simulation owner | Change game state using copied input, dimensions, and simulation time. Request a stop when appropriate. |
 | `prepare_render_frame(frame) const` | Same simulation owner | Turn current state into a complete frame of draw values and retained resources. Keep gameplay progression in `update()`; frame preparation can be skipped when no frame slot is available. |
-| `deinit_simulation()` | Simulation owner, after simulation dispatch closes and before it exits | Release state requiring this owner; keep dependencies of active producers or accepted work alive. The default hook is enough for this example. |
-| `quiesce()` | Platform thread, after simulation stops and joins | Detach external listeners and stop producers that could submit more work. The default hook is enough for this example. |
+| `deinit_simulation()` | Simulation owner, after simulation dispatch closes and before it exits | Close room requests and invalidate pending adoption without waiting; retain accepted-work dependencies. |
+| `quiesce()` | Platform thread, after simulation stops and joins | Repeat room invalidation idempotently, including partial initialization; do not wait on platform work. |
 | `deinit_platform()` | Platform/graphics thread, after submitted background work finishes and frames are released for reuse | Remove bindings and release game-owned resources while input and graphics still exist. |
 
 This example prepares its initial state during `init_platform()`; work that needs
@@ -284,7 +288,8 @@ These are shared foundations for the sprite and text examples below.
 
 An **action** is a game-defined input name represented by a
 `CE::Input::Actions::Id`; here, `left_`, `right_`, `next_cell_`, and `quit_` are
-those IDs. A **binding** maps a device input to an action. In the following code,
+the original IDs; room actions add change/cancel/unload/load. A **binding** maps
+a device input to an action. In the following code,
 `bindings` is the binding interface returned by `engine_.input().bindings()`.
 Its `bind_button()` calls map Cheryl keyboard controls to the game's actions and return
 binding IDs, stored in the `bindings_` member for cleanup:
@@ -297,7 +302,7 @@ binding IDs, stored in the `bindings_` member for cleanup:
 :dedent: 8
 ```
 
-Updates read the action IDs (`left_`, `right_`, `next_cell_`, `quit_`) rather than
+Updates read the action IDs rather than
 native key codes. See the [input guide](../runtime/input-state-model.md) for other
 actions, events, and focus handling.
 
@@ -414,7 +419,9 @@ as game-owned values:
 The local `loader` is a `CE::Assets::Loading::Loader` that reads this asset root.
 `resources` refers to the resource provider from `engine_.resources()`.
 `Sprites::Manager::get()` accesses the shared sprite cache. Load the root,
-check the required sprite, select nearest sampling and construct `actor_`:
+check the required sprite, select nearest sampling and initialize `levels_`.
+The initial complete Courtyard is built synchronously on this platform owner;
+`adopt_current()` places its actor at the normalized spawn:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -618,7 +625,7 @@ The full cleanup hook removes the bindings and releases both examples' handles:
 
 ```{literalinclude} ../../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:caption: Game::deinit_platform() — platform/graphics thread, after simulation and accepted work finish
+:caption: Game cleanup — simulation invalidation, post-join quiescence, then final platform release
 :start-after: // [cleanup]
 :end-before: // [/cleanup]
 :dedent: 4
@@ -629,9 +636,11 @@ never created. The runtime stops and joins simulation, calls `quiesce()`, settle
 accepted work while servicing required platform dispatch, recycles frames, and
 calls `deinit_platform()` before input and graphics shutdown.
 
-This game uses the default `quiesce()` because it has no external producers.
-When adding listeners or background services, detach/stop those producers there
-while their dependencies still exist. Do not wait in `quiesce()` for work that
+This game closes its private controller in `deinit_simulation()` and repeats
+that invalidation in `quiesce()` for partial initialization. Controller futures,
+current resources and actor handles remain alive until `deinit_platform()`.
+When adding listeners or background services, detach/stop those producers in
+`quiesce()` while their dependencies still exist. Do not wait there for work that
 needs platform dispatch; settling accepted work follows that hook. The
 [frame-boundary guide](../runtime/runtime-frame-boundary.md) defines the complete
 shutdown and failure ordering.
@@ -639,7 +648,8 @@ shutdown and failure ordering.
 ## Continue from the working game
 
 The introductory game is complete when arrows move the actor, Space changes its
-cell, `Score: 0` remains visible through resizing, and Escape closes cleanly.
+cell, `Score: 0` remains visible through resizing, complete room changes work,
+unload/reload is valid, and Escape closes cleanly.
 Try the same controls with `--concurrent` to exercise the separate simulation owner.
 Continue with [Actor controllers and commands](create-a/actor-controller.md),
 then [Create a PlayerController](create-a/controller.md) and a Character
@@ -651,6 +661,34 @@ The section below extends resource loading during play. Use
 [audio playback](../runtime/audio.md) for sounds when your game needs them.
 
 ## Load or replace resources during play
+
+The maintained First Game uses this path for two application-private rooms.
+`Courtyard` starts at normalized (0.5, 0.5), cell 0; `Study` starts at
+(0.75, 0.5), cell 1. Both reuse the same sprite/material. The extra room label
+is drawn below the unchanged score; the controller is not a new engine-wide
+level framework, persistent level identity, or streaming service.
+
+| Control | Result |
+| --- | --- |
+| Tab | Request the other room if one is selected and no attempt is still settling. |
+| Backspace | Invalidate the pending request, even if upload finished but simulation has not adopted it. |
+| U | Cancel pending adoption, drop the current room/actor, and publish an empty pass. |
+| Enter | Request Courtyard when empty and settled. Press again if a cancelled attempt was still settling. |
+
+The current actor remains playable during preparation, cancellation and failure.
+`Levels::Controller::advance()` polls without waiting in `Game::update()`;
+only it can select a completed room, followed by nonthrowing actor replacement
+in that same update. Runtime `Ready` is a one-session startup milestone, not
+destination readiness. There is one unsettled attempt, no hidden desired queue,
+and no automatic retry. `transition_observation()` retains request ID, phase,
+pending status and the original exception/stage for local simulation-owner inspection.
+
+Cancellation is not forced interruption or native rollback. A cancelled job
+still settles before another request can be accepted. Cancellation checked before
+upload entry avoids provider calls; once upload is running it can finish and its
+discarded resources retire normally. A failed destination never replaces the
+current generation. Earlier frames keep their copied transforms and resource
+handles even after adoption or unload.
 
 The same resource path can span threads when preparation is expensive.
 `engine_.make_worker_group()` returns a `CE::Workers::Group`, which tracks jobs

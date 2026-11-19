@@ -93,3 +93,7 @@ target_link_libraries(${TARGET_APP_FIRST_GAME} PRIVATE
 if(first_game_source_consumer AND NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${TARGET_APP_FIRST_GAME} PRIVATE -fsanitize=address,undefined)
 endif()
+
+if(CHERYL_BUILD_TESTS AND TARGET cheryl_test_main)
+    add_subdirectory(tests)
+endif()

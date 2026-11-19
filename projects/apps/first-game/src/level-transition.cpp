@@ -198,6 +198,8 @@ namespace FirstGame::Levels {
     void Controller::unload() noexcept {
         static_cast<void>(cancel(state_->observed.id));
         state_->current.reset();
+        if (!state_->observed.pending && !state_->observed.closed && state_->observed.phase == Phase::Ready)
+            state_->observed.phase = Phase::Idle;
     }
 
     void Controller::close() noexcept {
