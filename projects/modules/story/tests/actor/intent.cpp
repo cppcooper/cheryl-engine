@@ -232,6 +232,7 @@ TEST(Storyactor, P13_real_projection_budget_failure_retains_adopted_success) {
     EXPECT_EQ(failure.error().error, Story::Error::Capacity);
     EXPECT_TRUE(failure.error().after_adoption);
     EXPECT_EQ(world.host->owner().episode_count(), 3);
+    EXPECT_EQ(world.endpoint.view().error(), Story::ActorError::Unavailable);
     const auto preparations = world.host->owner().counters().preparations;
     EXPECT_EQ(world.endpoint.submit({1}, body)->outcome, Story::ActorOutcome::Pending);
     EXPECT_FALSE(world.host->progress(world.endpoint));

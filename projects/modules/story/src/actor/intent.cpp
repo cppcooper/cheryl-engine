@@ -107,6 +107,7 @@ namespace CE::Story::Detail {
             receipt.outcome = ActorOutcome::NotCompleted;
         } else {
             const auto error = project(family, state);
+            state.available = error == Error::None;
             if (error != Error::None) { return error; }
             if (entry.choice.intent.kind == IntentKind::OfferPromise) {
                 for (std::size_t index = 0; index < state.promise_count; ++index) {
