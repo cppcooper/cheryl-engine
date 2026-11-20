@@ -55,3 +55,5 @@ namespace {
 : ::CE::Exceptions::runtime_exception("failed_operation", location_, line_, info_) {}
 
 CE::Exceptions::exception_base::~exception_base() = default;
+CE::Exceptions::invalid_args::~invalid_args() = default;
+CE::Exceptions::bad_request::~bad_request() = default;
