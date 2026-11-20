@@ -1,8 +1,10 @@
 #include <consumer/fixture.h>
 #include <story/scene/scene.h>
+#include <tests/host/access.h>
 
 #include <cstdlib>
 #include <new>
+#include <utility>
 
 namespace {
     bool reject_allocations = false;
@@ -42,7 +44,8 @@ int main() {
             reserve_failed = true;
         }
         if (!reserve_failed || scene.state() != LivingWorld::SceneState::Offered ||
-            host.actor(access, host.entity(1))->reserve != 10 || host.actor(access, host.entity(2))->health != 12)
+            host.actor(access, host.entity(1))->reserve != 10 || host.actor(access, host.entity(2))->health != 12 ||
+            LivingWorld::HostTestAccess::image(host).record_count != 0)
             return 1;
         if (!scene.request(offer))
             return 2;
@@ -65,6 +68,35 @@ int main() {
         if (!scene.refresh() || scene.state() != LivingWorld::SceneState::Helped ||
             host.actor(access, host.entity(1))->reserve != 7 || host.actor(access, host.entity(2))->health != 20)
             return 8;
+        LivingWorld::Host cancellation_host(catalog, LivingWorld::fixture_plan(catalog));
+        const auto cancellation_access = cancellation_host.grant(cancellation_host.entity(1));
+        const auto older = cancellation_host.action(cancellation_access, cancellation_host.entity(2)).value();
+        const auto newer = cancellation_host.action(cancellation_access, cancellation_host.entity(2)).value();
+        {
+            auto reservation = LivingWorld::HostTestAccess::reserve(cancellation_host, cancellation_access, newer);
+            if (!reservation)
+                return 10;
+            const RejectAllocations reject;
+            auto moved = std::move(*reservation);
+            static_cast<void>(moved);
+        }
+        {
+            const RejectAllocations reject;
+            const auto cancelled = cancellation_host.queue(cancellation_access, newer, cancellation_host.fence());
+            if (cancelled || cancelled.error() != LivingWorld::Error::InvalidBody ||
+                LivingWorld::HostTestAccess::image(cancellation_host).record_count != 1)
+                return 11;
+        }
+        auto prepared = LivingWorld::HostTestAccess::reserve(cancellation_host, cancellation_access, older);
+        if (!prepared)
+            return 12;
+        {
+            const RejectAllocations reject;
+            prepared->finalize();
+            const auto result = cancellation_host.settle(cancellation_access, older);
+            if (!result || result->state != LivingWorld::Disposition::Applied || result->gain != 8)
+                return 13;
+        }
         return 0;
     } catch (...) {
         return 9;

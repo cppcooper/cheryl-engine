@@ -1,19 +1,11 @@
 #include <consumer/fixture.h>
 #include <host/host.h>
 #include <story/scene/scene.h>
+#include <tests/host/access.h>
 
 #include <gtest/gtest.h>
 
 #include <utility>
-
-namespace CE::LivingWorld {
-    struct HostTestAccess {
-        static auto reserve(Host& host, const Host::Access& access, const Action& action) {
-            return host.reserve(access, action, host.fence());
-        }
-        static const Detail::Image& image(const Host& host) noexcept { return *host.image_; }
-    };
-}
 
 namespace {
     namespace LivingWorld = CE::LivingWorld;
@@ -262,6 +254,8 @@ TEST_F(HostFixture, cancellation_is_per_attempt) {
         auto reservation = LivingWorld::HostTestAccess::reserve(host, player, newer);
         ASSERT_TRUE(reservation);
         auto moved = std::move(*reservation);
+        static_cast<void>(moved);
+        static_cast<void>(moved);
         EXPECT_EQ(host.queue(player, older, host.fence()).error(), LivingWorld::Error::Busy);
         EXPECT_EQ(host.edit_actor(caster_before).error(), LivingWorld::Error::Busy);
         EXPECT_EQ(host.deliver().adopted, 0);
@@ -270,6 +264,7 @@ TEST_F(HostFixture, cancellation_is_per_attempt) {
     EXPECT_EQ(LivingWorld::HostTestAccess::image(host).record_count, 1);
     EXPECT_EQ(host.lookup(player, newer).error(), LivingWorld::Error::InvalidBody);
     EXPECT_EQ(host.queue(player, newer, host.fence()).error(), LivingWorld::Error::InvalidBody);
+    EXPECT_EQ(LivingWorld::HostTestAccess::reserve(host, player, newer).error(), LivingWorld::Error::InvalidBody);
     auto changed = newer;
     ++changed.body.quote.price;
     EXPECT_EQ(host.queue(player, changed, host.fence()).error(), LivingWorld::Error::Conflict);
