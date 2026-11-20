@@ -1,8 +1,8 @@
-#include "storage.h"
+#include "../actions/prepared.h"
 
 namespace CE::Story::Detail {
     Error validate_limits(const Limits& caps) noexcept {
-        std::size_t bytes = sizeof(Storage) + sizeof(Family);
+        std::size_t bytes = sizeof(Storage) + sizeof(Family) + sizeof(Prepared);
         const auto charge = [&](std::size_t count, std::size_t size) {
             if (count > (std::numeric_limits<std::size_t>::max() - 1) / 2 ||
                 count > (caps.bytes - std::min(bytes, caps.bytes)) / size) {
@@ -20,7 +20,10 @@ namespace CE::Story::Detail {
             !charge(caps.episodes, sizeof(Episode) + 2 * sizeof(std::size_t)) ||
             !charge(caps.acquisitions, sizeof(Account) + 2 * sizeof(std::size_t)) ||
             !charge(caps.receipts, sizeof(Receipt) + 2 * sizeof(std::size_t)) ||
-            !charge(6, sizeof(std::size_t)) || !charge(caps.links, sizeof(ContactLink)) ||
+            !charge(caps.people, sizeof(Identity<Origin>) + sizeof(Identity<GenerationAddress>) + 4 * sizeof(std::size_t)) ||
+            !charge(caps.partnerships, sizeof(Partnership) + 2 * sizeof(std::size_t)) ||
+            !charge(caps.memberships, sizeof(Membership) + 2 * sizeof(std::size_t)) ||
+            !charge(10, sizeof(std::size_t)) || !charge(caps.links, sizeof(ContactLink) + sizeof(RelationLink) + sizeof(Contact)) ||
             !charge(caps.queue, sizeof(DueWork)) ||
             !charge(caps.people, sizeof(std::uint8_t) + sizeof(std::size_t))) {
             return Error::Bytes;
@@ -29,10 +32,11 @@ namespace CE::Story::Detail {
     }
 
     Error seed(Storage& store, const Seed& input) {
-        if (input.timeline.value == 0 || input.people.empty() || input.people.size() > store.limits.people ||
+        if (input.timeline.value == 0 || input.life_policy_version == 0 || input.people.empty() || input.people.size() > store.limits.people ||
             input.objects.size() > store.limits.objects || input.contacts.size() > store.limits.links / 2) {
             return Error::InvalidSeed;
         }
+        store.policy_version = input.life_policy_version;
         for (const auto& person : input.people) {
             if (!store.scoped(person.id)) {
                 return Error::ForeignReference;
@@ -45,13 +49,16 @@ namespace CE::Story::Detail {
                 person.origin.timeline.value == 0 || person.origin.identity == 0 || person.address.family == 0 ||
                 person.address.creation == 0 ||
                 (person.lineage != Lineage::Founder && person.lineage != Lineage::Incoming &&
-                    person.lineage != Lineage::Descendant)) {
+                    person.lineage != Lineage::Descendant) || person.source != EpisodeId{} ||
+                person.birth_support != PartnershipId{} || person.membership != MembershipId{}) {
                 return Error::InvalidSeed;
             }
             PersonRecord record;
             static_cast<Person&>(record) = person;
             record.depth.reset();
+            record.introduced = input.now;
             store.people.append(record);
+            store.person_high = std::max(store.person_high, person.id.value);
         }
         std::vector<std::uint8_t> marks(input.people.size());
         std::vector<std::size_t> pending;
@@ -72,6 +79,17 @@ namespace CE::Story::Detail {
             return Error::Duplicate;
         }
         pending.clear();
+        for (auto& person : store.people.rows) {
+            store.origins.append({person.origin});
+            store.creations.append({person.address});
+            if (person.member && !person.died) {
+                if (!store.memberships.room()) {
+                    return Error::Capacity;
+                }
+                person.membership = {store.timeline, store.memberships.rows.size() + 1};
+                store.memberships.append({person.membership, person.id, input.now, {}, {}, {}, {}});
+            }
+        }
         bool founder = false;
         for (std::size_t index = 0; index < store.people.rows.size(); ++index) {
             auto& person = store.people.rows[index];
@@ -158,6 +176,12 @@ namespace CE::Story::Detail {
                 if (ancestor->born >= person.born || (ancestor->died && *ancestor->died <= person.born)) {
                     return Error::Life;
                 }
+                if (!store.link_room(1)) {
+                    return Error::Capacity;
+                }
+                auto* mutable_parent = store.people.find(parent);
+                store.relations.push_back({person.id, absent, mutable_parent->children});
+                mutable_parent->children = store.relations.size() - 1;
             }
         }
         for (const auto& object : input.objects) {
@@ -178,7 +202,23 @@ namespace CE::Story::Detail {
             static_cast<ObjectState&>(record) = object;
             store.objects.append(record);
         }
-        for (const auto& contact : input.contacts) {
+        std::vector<Contact> contacts(input.contacts.begin(), input.contacts.end());
+        for (auto& contact : contacts) {
+            if (contact.second < contact.first) {
+                std::swap(contact.first, contact.second);
+            }
+        }
+        std::sort(contacts.begin(), contacts.end(), [&](const auto& left, const auto& right) {
+            count(store.counters.import_contact_comparisons);
+            return left < right;
+        });
+        for (std::size_t index = 1; index < contacts.size(); ++index) {
+            count(store.counters.import_contact_comparisons);
+            if (contacts[index - 1] == contacts[index]) {
+                return Error::Duplicate;
+            }
+        }
+        for (const auto& contact : contacts) {
             if (!store.scoped(contact.first) || !store.scoped(contact.second)) {
                 return Error::ForeignReference;
             }
@@ -190,10 +230,8 @@ namespace CE::Story::Detail {
             if (first == second) {
                 return Error::InvalidSeed;
             }
-            for (auto link = first->contacts; link != absent; link = store.links[link].next) {
-                if (store.links[link].other == second->id) {
-                    return Error::Duplicate;
-                }
+            if (!store.link_room(2)) {
+                return Error::Capacity;
             }
             store.links.push_back({second->id, first->contacts, 0});
             first->contacts = store.links.size() - 1;

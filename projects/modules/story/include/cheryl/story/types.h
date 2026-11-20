@@ -25,6 +25,8 @@ namespace CE::Story {
     using ObjectId = Ref<struct ObjectTag>;
     using CommitmentId = Ref<struct CommitmentTag>;
     using EpisodeId = Ref<struct EpisodeTag>;
+    using PartnershipId = Ref<struct PartnershipTag>;
+    using MembershipId = Ref<struct MembershipTag>;
 
     struct Origin {
         TimelineId timeline{};
@@ -73,7 +75,8 @@ namespace CE::Story {
     enum class Error {
         None, InvalidSeed, ForeignReference, Missing, Duplicate, Cycle, Life, Depth, Time,
         Authority, Stale, Conflict, Expired, Capacity, Bytes, WorkLimit, Consent, Terms,
-        NotHolder, Terminal, UnknownAccount, NotContact, Ineligible, Unsupported
+        NotHolder, Terminal, UnknownAccount, NotContact, Ineligible, Unsupported,
+        DuplicateOrigin, DuplicateCreation, Policy
     };
     struct Limits {
         std::size_t people{64};
@@ -87,6 +90,8 @@ namespace CE::Story {
         std::size_t queue{128};
         std::size_t work_per_action{64};
         std::size_t output_bytes{64 * 1024};
+        std::size_t partnerships{64};
+        std::size_t memberships{128};
         auto operator<=>(const Limits&) const = default;
     };
     struct Counters {
@@ -97,5 +102,6 @@ namespace CE::Story {
         std::uint64_t retries{};
         std::uint64_t validation_passes{};
         std::uint64_t whole_state_copies{};
+        std::uint64_t import_contact_comparisons{};
     };
 }

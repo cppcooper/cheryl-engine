@@ -1,4 +1,4 @@
-#include "storage.h"
+#include "../actions/prepared.h"
 #include <atomic>
 #include <new>
 #include <stdexcept>
@@ -41,6 +41,30 @@ namespace CE::Story {
         }
         return result;
     }
+    LifeCapability Family::life() const {
+        LifeCapability result;
+        result.owner_ = this;
+        result.fence_ = storage_->fence;
+        return result;
+    }
+    std::expected<PartnershipPermit, Error> Family::permit(const LifeCapability& capability,
+        const PartnershipEligibility& eligibility) const {
+        if (capability.owner_ != this || capability.fence_ != storage_->fence) {
+            return std::unexpected(Error::Authority);
+        }
+        if (eligibility.at < storage_->seeded_at || (storage_->last && eligibility.at < storage_->last->time)) {
+            return std::unexpected(Error::Time);
+        }
+        const auto error = Detail::eligible(*storage_, eligibility);
+        if (error != Error::None) {
+            return std::unexpected(error);
+        }
+        PartnershipPermit result;
+        result.owner_ = this;
+        result.fence_ = storage_->fence;
+        result.eligibility_ = eligibility;
+        return result;
+    }
     Error Family::retire_through(const Capability& capability, std::uint64_t attempt) {
         if (capability.owner_ != this || capability.fence_ != storage_->fence) {
             return Error::Authority;
@@ -50,6 +74,16 @@ namespace CE::Story {
             return Error::Expired;
         }
         person->retired_through = attempt;
+        return Error::None;
+    }
+    Error Family::retire_through(const LifeCapability& capability, std::uint64_t attempt) {
+        if (capability.owner_ != this || capability.fence_ != storage_->fence) {
+            return Error::Authority;
+        }
+        if (attempt < storage_->life_retired) {
+            return Error::Expired;
+        }
+        storage_->life_retired = attempt;
         return Error::None;
     }
     std::optional<Person> Family::person(PersonId id) const {
@@ -67,6 +101,14 @@ namespace CE::Story {
     std::optional<Episode> Family::episode(EpisodeId id) const {
         const auto* record = storage_->episodes.find(id);
         return storage_->scoped(id) && record ? std::optional<Episode>{*record} : std::nullopt;
+    }
+    std::optional<Partnership> Family::partnership(PartnershipId id) const {
+        const auto* record = storage_->partnerships.find(id);
+        return storage_->scoped(id) && record ? std::optional<Partnership>{*record} : std::nullopt;
+    }
+    std::optional<Membership> Family::membership(MembershipId id) const {
+        const auto* record = storage_->memberships.find(id);
+        return storage_->scoped(id) && record ? std::optional<Membership>{*record} : std::nullopt;
     }
     std::expected<std::size_t, Error> Family::knowledge(const Capability& capability, std::span<Knowledge> output) const {
         if (capability.owner_ != this || capability.fence_ != storage_->fence) {

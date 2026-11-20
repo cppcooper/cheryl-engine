@@ -10,7 +10,8 @@ namespace CE::Story::Detail {
     struct Prepared {
         Storage& store;
         PersonId actor;
-        const Request& request;
+        std::variant<Request, LifeRequest> body;
+        EventOrder order;
         Result result;
         Episode episode;
         std::array<Replacement<CommitmentRecord>, 16> promises{};
@@ -18,18 +19,74 @@ namespace CE::Story::Detail {
         std::optional<CommitmentRecord> added_promise;
         std::optional<Replacement<ObjectRecord>> object;
         std::optional<Replacement<ContactLink>> contact;
-        std::array<Account, 2> accounts{};
+        std::array<Account, 34> accounts{};
         std::size_t account_count{};
-        std::array<Replacement<PersonRecord>, 2> people{};
+        std::array<Replacement<PersonRecord>, 36> people{};
         std::size_t people_count{};
         std::array<Replacement<DueWork>, 16> due{};
         std::size_t due_count{};
         std::optional<DueWork> added_due;
+        std::optional<PersonRecord> added_person;
+        std::optional<Partnership> added_partnership;
+        std::array<Replacement<Partnership>, 16> partnerships{};
+        std::size_t partnership_count{};
+        std::optional<Membership> added_membership;
+        std::optional<Replacement<Membership>> membership;
+        std::array<ContactLink, 4> added_contacts{};
+        std::size_t contact_count{};
+        std::array<RelationLink, 4> added_relations{};
+        std::size_t relation_count{};
         std::size_t work{};
 
-        Prepared(Storage& owner, PersonId who, const Request& body)
-            : store(owner), actor(who), request(body), result{Error::None, body.attempt},
-              episode{{owner.timeline, owner.episodes.rows.size() + 1}, body.order, {}, {}, {who, {}}} {}
+        Prepared(Storage& owner, PersonId who, const auto& request)
+            : store(owner), actor(who), body(request), order(request.order), result{Error::None, request.attempt},
+              episode{{owner.timeline, owner.episodes.rows.size() + 1}, request.order, {}, {}, {who, {}}} {}
+        PersonRecord* edit(PersonId id) noexcept {
+            if (added_person && added_person->id == id) {
+                return &*added_person;
+            }
+            auto* original = store.people.find(id);
+            if (!original) {
+                return nullptr;
+            }
+            for (std::size_t index = 0; index < people_count; ++index) {
+                if (people[index].target == original) {
+                    return &people[index].value;
+                }
+            }
+            if (people_count == people.size()) {
+                return nullptr;
+            }
+            people[people_count] = {original, *original};
+            return &people[people_count++].value;
+        }
+        Error link(PersonId id, PersonId other, std::size_t record, std::size_t PersonRecord::*head) noexcept {
+            if (relation_count == added_relations.size() || !store.link_room(contact_count + relation_count + 1)) {
+                return Error::Capacity;
+            }
+            auto* person = edit(id);
+            if (!person) {
+                return Error::WorkLimit;
+            }
+            added_relations[relation_count] = {other, record, person->*head};
+            person->*head = store.relations.size() + relation_count++;
+            return Error::None;
+        }
+        Error connect(PersonId first, PersonId second) noexcept {
+            if (contact_count + 2 > added_contacts.size() || !store.link_room(contact_count + relation_count + 2)) {
+                return Error::Capacity;
+            }
+            auto* left = edit(first);
+            auto* right = edit(second);
+            if (!left || !right) {
+                return Error::WorkLimit;
+            }
+            added_contacts[contact_count] = {second, left->contacts, 0};
+            left->contacts = store.links.size() + contact_count++;
+            added_contacts[contact_count] = {first, right->contacts, 0};
+            right->contacts = store.links.size() + contact_count++;
+            return Error::None;
+        }
         bool step() noexcept {
             if (work == store.limits.work_per_action) {
                 return false;
@@ -81,28 +138,47 @@ namespace CE::Story::Detail {
             if (account_count == accounts.size() || !store.accounts.room(account_count + 1)) {
                 return Error::Capacity;
             }
-            auto* original = store.people.find(recipient);
-            if (!original || !store.alive(recipient, request.order.time)) {
+            auto* edited = edit(recipient);
+            if (!edited) {
+                return Error::WorkLimit;
+            }
+            if (!edited->member || edited->born > order.time || (edited->died && *edited->died <= order.time)) {
                 return Error::Life;
             }
-            auto found = std::find_if(people.begin(), people.begin() + people_count,
-                [&](const auto& edit) { return edit.target == original; });
-            if (found == people.begin() + people_count) {
-                if (people_count == people.size()) {
-                    return Error::Capacity;
-                }
-                people[people_count++] = {original, *original};
-            }
-            auto& person = found->value;
+            auto& person = *edited;
             if (person.account_count == std::numeric_limits<std::uint64_t>::max()) {
                 return Error::Capacity;
             }
             const auto local = ++person.account_count;
-            accounts[account_count] = {{recipient, local}, {local, fact, attribution, evidence, request.order.time}, source, person.accounts};
+            accounts[account_count] = {{recipient, local}, {local, fact, attribution, evidence, order.time}, source, person.accounts};
             person.accounts = store.accounts.rows.size() + account_count++;
             return Error::None;
         }
         void publish() noexcept {
+            if (added_person) {
+                store.people.append(*added_person);
+                store.origins.append({added_person->origin});
+                store.creations.append({added_person->address});
+                store.person_high = added_person->id.value;
+            }
+            if (added_partnership) {
+                store.partnerships.append(*added_partnership);
+            }
+            for (std::size_t index = 0; index < partnership_count; ++index) {
+                *partnerships[index].target = partnerships[index].value;
+            }
+            if (membership) {
+                *membership->target = membership->value;
+            }
+            if (added_membership) {
+                store.memberships.append(*added_membership);
+            }
+            for (std::size_t index = 0; index < contact_count; ++index) {
+                store.links.push_back(added_contacts[index]);
+            }
+            for (std::size_t index = 0; index < relation_count; ++index) {
+                store.relations.push_back(added_relations[index]);
+            }
             for (std::size_t index = 0; index < promise_count; ++index) {
                 *promises[index].target = promises[index].value;
             }
@@ -128,10 +204,12 @@ namespace CE::Story::Detail {
             for (std::size_t index = 0; index < account_count; ++index) {
                 store.accounts.append(accounts[index]);
             }
-            store.receipts.append({{actor, request.attempt}, request, result});
-            store.last = request.order;
+            store.receipts.append({{actor, result.attempt}, body, result});
+            store.last = order;
             count(store.counters.records_touched, promise_count + people_count + account_count + due_count +
-                (object ? 1 : 0) + (contact ? 1 : 0) + (added_promise ? 1 : 0) + (added_due ? 1 : 0) + 2);
+                (object ? 1 : 0) + (contact ? 1 : 0) + (added_promise ? 1 : 0) + (added_due ? 1 : 0) +
+                (added_person ? 3 : 0) + (added_partnership ? 1 : 0) + partnership_count +
+                (membership ? 1 : 0) + (added_membership ? 1 : 0) + contact_count + relation_count + 2);
         }
     };
     Error prepare(Prepared&, const OfferPromise&) noexcept;
@@ -144,4 +222,12 @@ namespace CE::Story::Detail {
     Error prepare(Prepared&, const Perceive&) noexcept;
     Error prepare(Prepared&, const Tell&) noexcept;
     Error prepare(Prepared&, const Respond&) noexcept;
+    Error prepare(Prepared&, const ProposePartnership&) noexcept;
+    Error prepare(Prepared&, const DecidePartnership&) noexcept;
+    Error prepare(Prepared&, const EndPartnership&) noexcept;
+    Error prepare(Prepared&, const SetMembership&) noexcept;
+    Error prepare(Prepared&, const Introduce&) noexcept;
+    Error prepare(Prepared&, const Birth&) noexcept;
+    Error prepare(Prepared&, const Death&) noexcept;
+    Error eligible(const Storage&, const PartnershipEligibility&) noexcept;
 }

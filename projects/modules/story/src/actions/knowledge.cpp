@@ -30,7 +30,7 @@ namespace CE::Story::Detail {
         if (!store.scoped(action.recipient)) {
             return Error::ForeignReference;
         }
-        if (action.recipient == change.actor || !store.alive(action.recipient, change.request.order.time)) {
+        if (action.recipient == change.actor || !store.alive(action.recipient, change.order.time)) {
             return Error::Life;
         }
         const auto* account = store.accounts.find({change.actor, action.account});
@@ -72,7 +72,7 @@ namespace CE::Story::Detail {
             action.attitude_delta < -5 || action.attitude_delta > 5 || action.attitude_delta == 0) {
             return Error::Terms;
         }
-        if (!store.alive(action.contact, change.request.order.time)) {
+        if (!store.alive(action.contact, change.order.time)) {
             return Error::Life;
         }
         const auto* actor = store.people.find(change.actor);

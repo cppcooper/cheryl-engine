@@ -19,6 +19,9 @@ namespace CE::Story::Detail {
         return value ^ (value >> 31);
     }
     template<class Tag> std::uint64_t hash(Ref<Tag> id) noexcept { return mix(id.value); }
+    inline std::uint64_t hash(Origin key) noexcept { return mix(key.timeline.value) ^ mix(key.identity); }
+    inline std::uint64_t hash(GenerationAddress key) noexcept { return mix(key.family) ^ mix(key.creation); }
+    template<class Key> struct Identity { Key id{}; };
     struct AttemptKey {
         PersonId actor{};
         std::uint64_t attempt{};
@@ -77,6 +80,9 @@ namespace CE::Story::Detail {
         std::size_t accounts{absent};
         std::uint64_t account_count{};
         std::uint64_t retired_through{};
+        std::size_t children{absent};
+        std::size_t partnerships{absent};
+        std::size_t obligations{absent};
     };
     struct ObjectRecord : ObjectState {
         std::size_t promises{absent};
@@ -92,7 +98,7 @@ namespace CE::Story::Detail {
     };
     struct Receipt {
         AttemptKey id{};
-        Request body{};
+        std::variant<Request, LifeRequest> body{};
         Result result{};
     };
     struct ContactLink {
@@ -105,6 +111,11 @@ namespace CE::Story::Detail {
         StoryTime due{};
         bool active{};
     };
+    struct RelationLink {
+        PersonId other{};
+        std::size_t record{absent};
+        std::size_t next{absent};
+    };
     struct Storage {
         TimelineId timeline;
         StoryTime seeded_at;
@@ -116,21 +127,38 @@ namespace CE::Story::Detail {
         Table<Episode> episodes;
         Table<Account> accounts;
         Table<Receipt> receipts;
+        Table<Identity<Origin>> origins;
+        Table<Identity<GenerationAddress>> creations;
+        Table<Partnership> partnerships;
+        Table<Membership> memberships;
         std::vector<ContactLink> links;
+        std::vector<RelationLink> relations;
         std::vector<DueWork> due;
         std::optional<EventOrder> last;
         Counters counters;
+        std::uint64_t person_high{};
+        std::uint64_t life_retired{};
+        std::uint64_t policy_version{1};
 
         Storage(TimelineId scope, StoryTime now, Limits caps, std::uint64_t epoch)
             : timeline(scope), seeded_at(now), limits(caps), fence(epoch), people(caps.people), objects(caps.objects),
-              promises(caps.commitments), episodes(caps.episodes), accounts(caps.acquisitions), receipts(caps.receipts) {
+              promises(caps.commitments), episodes(caps.episodes), accounts(caps.acquisitions), receipts(caps.receipts),
+              origins(caps.people), creations(caps.people), partnerships(caps.partnerships), memberships(caps.memberships) {
             links.reserve(caps.links);
+            relations.reserve(caps.links);
             due.reserve(caps.queue);
         }
         bool scoped(auto id) const noexcept { return id && id.timeline == timeline; }
         bool alive(PersonId id, StoryTime now) const noexcept {
             const auto* record = people.find(id);
-            return scoped(id) && record && record->member && record->born <= now && (!record->died || now < *record->died);
+            return living(id, now) && record->member;
+        }
+        bool living(PersonId id, StoryTime now) const noexcept {
+            const auto* record = people.find(id);
+            return scoped(id) && record && record->born <= now && (!record->died || now < *record->died);
+        }
+        bool link_room(std::size_t amount) const noexcept {
+            return amount <= limits.links - links.size() - relations.size();
         }
     };
     Error validate_limits(const Limits&) noexcept;

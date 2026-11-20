@@ -17,10 +17,10 @@ namespace CE::Story::Detail {
         if (object->holder != change.actor) {
             return Error::NotHolder;
         }
-        if (action.creditor == change.actor || !store.alive(action.creditor, change.request.order.time)) {
+        if (action.creditor == change.actor || !store.alive(action.creditor, change.order.time)) {
             return Error::Life;
         }
-        if (action.due < change.request.order.time) {
+        if (action.due < change.order.time) {
             return Error::Terms;
         }
         if (!store.promises.room() || store.due.size() == store.limits.queue) {
@@ -39,6 +39,14 @@ namespace CE::Story::Detail {
         change.object = Replacement<ObjectRecord>{object, updated};
         change.added_promise = promise;
         change.added_due = DueWork{promise.id, promise.due, true};
+        auto error = change.link(promise.debtor, promise.creditor, store.promises.rows.size(), &PersonRecord::obligations);
+        if (error != Error::None) {
+            return error;
+        }
+        error = change.link(promise.creditor, promise.debtor, store.promises.rows.size(), &PersonRecord::obligations);
+        if (error != Error::None) {
+            return error;
+        }
         change.result.promise = promise.id;
         change.episode.fact = {EpisodeKind::PromiseOffered, change.actor, action.creditor, action.object, promise.id};
         change.episode.audience[1] = action.creditor;
@@ -56,7 +64,7 @@ namespace CE::Story::Detail {
         if (promise->state != CommitmentState::Offered) {
             return Error::Terminal;
         }
-        if (!change.store.alive(promise->debtor, change.request.order.time) || change.request.order.time > promise->due) {
+        if (!change.store.alive(promise->debtor, change.order.time) || change.order.time > promise->due) {
             return Error::Life;
         }
         auto value = *promise;
@@ -132,7 +140,7 @@ namespace CE::Story::Detail {
         if (change.actor != promise->debtor && change.actor != promise->creditor) {
             return Error::Authority;
         }
-        if (promise->state != CommitmentState::Pending || change.request.order.time <= promise->due) {
+        if (promise->state != CommitmentState::Pending || change.order.time <= promise->due) {
             return Error::Terms;
         }
         auto value = *promise;

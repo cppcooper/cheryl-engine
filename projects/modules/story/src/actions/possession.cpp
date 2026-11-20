@@ -17,7 +17,7 @@ namespace CE::Story::Detail {
         if (object->holder != action.holder) {
             return Error::NotHolder;
         }
-        if (action.holder == change.actor || !store.alive(action.holder, change.request.order.time)) {
+        if (action.holder == change.actor || !store.alive(action.holder, change.order.time)) {
             return Error::Life;
         }
         if (object->version == std::numeric_limits<std::uint64_t>::max()) {
@@ -48,7 +48,7 @@ namespace CE::Story::Detail {
         if (object->holder != change.actor) {
             return Error::NotHolder;
         }
-        if (action.recipient == change.actor || !store.alive(action.recipient, change.request.order.time)) {
+        if (action.recipient == change.actor || !store.alive(action.recipient, change.order.time)) {
             return Error::Life;
         }
         if (object->accepted_holder != change.actor || object->accepted_recipient != action.recipient) {
@@ -80,7 +80,7 @@ namespace CE::Story::Detail {
                 return Error::Capacity;
             }
             auto settled = promise;
-            settled.state = change.request.order.time <= promise.due ? CommitmentState::Fulfilled : CommitmentState::Breached;
+            settled.state = change.order.time <= promise.due ? CommitmentState::Fulfilled : CommitmentState::Breached;
             settled.settlement = change.episode.id;
             auto error = change.replace(&promise, settled);
             if (error != Error::None) {
