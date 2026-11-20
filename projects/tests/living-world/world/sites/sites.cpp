@@ -156,7 +156,8 @@ namespace CE::LivingWorld::Sites {
         if (!admitted(requirements(), budget)) { return std::unexpected(fail(Error::budget)); }
         for (std::size_t index = 0; index < bindings.size(); ++index) {
             const auto& binding = bindings[index];
-            if (binding.site.scope != stamp.scope || binding.site.frame != stamp.frame.revision
+            if (binding.site.scope != stamp.scope || binding.site.baseline != stamp.baseline->identity()
+                || binding.site.frame != stamp.frame.revision
                 || binding.site.cell >= stamp.baseline->domain().cells() || binding.intake == 0) {
                 return std::unexpected(fail(Error::invalid_facts));
             }
@@ -206,13 +207,14 @@ namespace CE::LivingWorld::Sites {
         if (!stamp.equivalent(water.stamp())) { return std::unexpected(fail(Error::invalid_facts)); }
         Batch batch;
         batch.stamp_ = stamp;
+        batch.input_water_ = water;
         batch.options_ = selection.options();
         batch.selector_work_ = selection.work();
         batch.selector_storage_ = selection.storage_bytes();
         for (const auto& site : selection.sites()) {
             auto& assessment = batch.sites_[batch.count_++];
             assessment.terrain = site;
-            assessment.key = {stamp.scope, stamp.frame.revision, site.index};
+            assessment.key = {stamp.scope, stamp.baseline->identity(), stamp.frame.revision, site.index};
             const auto binding = std::ranges::find(water.bindings(), assessment.key, &Binding::site);
             if (binding == water.bindings().end()) { continue; }
             assessment.intake = binding->intake;
@@ -242,11 +244,20 @@ namespace CE::LivingWorld::Sites {
     Result<Batch> select_and_assess(const Stamp& stamp, const WaterFacts& water,
         ProcGen::SettlementOptions options, ProcGen::CaveBudgets producer_budget, Budget budget) {
         if (const auto valid = validate(stamp); !valid) { return std::unexpected(valid.error()); }
+        return select_and_assess(stamp.baseline->domain(), stamp.baseline->heights(), stamp, water, options, producer_budget, budget);
+    }
+    Result<Batch> select_and_assess(const ProcGen::Domain& domain, std::span<const ProcGen::Height> heights,
+        const Stamp& stamp, const WaterFacts& water, ProcGen::SettlementOptions options,
+        ProcGen::CaveBudgets producer_budget, Budget budget) {
+        if (const auto valid = validate(stamp); !valid) { return std::unexpected(valid.error()); }
         if (!admitted(Batch::requirements(stamp.baseline->domain().cells()), budget)) {
             return std::unexpected(fail(Error::budget));
         }
-        const auto selection = ProcGen::select_settlement_sites(stamp.baseline->domain(), stamp.baseline->heights(), options, producer_budget);
+        const auto selection = ProcGen::select_settlement_sites(domain, heights, options, producer_budget);
         if (!selection) { return std::unexpected(Failure{Error::producer_failure, selection.error()}); }
+        if (domain != stamp.baseline->domain() || !std::ranges::equal(heights, stamp.baseline->heights())) {
+            return std::unexpected(fail(Error::invalid_baseline));
+        }
         return AssessmentBuilder::run(stamp, water, *selection, budget);
     }
     Result<Batch> select_and_assess(const ProcGen::Elevation& elevation, const Stamp& stamp,
@@ -262,8 +273,8 @@ namespace CE::LivingWorld::Sites {
     }
 
     Candidate::Candidate(Attempt attempt, const Image& image, WaterFacts replacement)
-    : attempt_(attempt), expected_(image.water.stamp()), expected_edits_(image.edits_revision),
-      fence_(image.fence), replacement_(std::move(replacement)) {}
+    : attempt_(attempt), expected_water_(image.water), expected_edits_(image.edits_revision),
+      fence_(image.fence), owner_(image.owner_), replacement_(std::move(replacement)) {}
 
     Accounting Candidate::requirements(Index cells) {
         return operation_cost(cells, sizeof(Candidate) + sizeof(WaterFacts));
@@ -278,7 +289,7 @@ namespace CE::LivingWorld::Sites {
         if (attempt.scope != current.scope || attempt.issuer == 0 || attempt.sequence == 0) {
             return std::unexpected(fail(Error::denied));
         }
-        if (!valid_fence(image.fence)) { return std::unexpected(fail(Error::fence)); }
+        if (!valid_fence(image.fence) || !image.owner_) { return std::unexpected(fail(Error::fence)); }
         if (image.edits_revision == 0) { return std::unexpected(fail(Error::invalid_preserved)); }
         if (current.water == UINT64_MAX) { return std::unexpected(fail(Error::revision_exhausted)); }
         auto next = current;
@@ -288,15 +299,17 @@ namespace CE::LivingWorld::Sites {
         return Candidate(attempt, image, std::move(*replacement));
     }
     bool Candidate::same_body(const Candidate& other) const {
-        return attempt_ == other.attempt_ && expected_.equivalent(other.expected_)
+        return attempt_ == other.attempt_ && expected_water_.equivalent(other.expected_water_)
             && expected_edits_ == other.expected_edits_ && replacement_.equivalent(other.replacement_);
     }
 
-    Owner::Owner(WaterFacts water, Preserved preserved, Index edits_revision, Fence fence)
-    : water_(std::move(water)), preserved_(std::move(preserved)), edits_revision_(edits_revision), fence_(fence) {}
+    Owner::Owner(WaterFacts water, Preserved preserved, Index edits_revision, Fence fence,
+                 std::shared_ptr<const OwnerIdentity> identity)
+    : water_(std::move(water)), preserved_(std::move(preserved)), edits_revision_(edits_revision), fence_(fence),
+      identity_(std::move(identity)) {}
 
     Accounting Owner::requirements(Index cells) {
-        return operation_cost(cells, sizeof(Owner) + sizeof(Preserved) + sizeof(Candidate) + sizeof(WaterFacts));
+        return operation_cost(cells, sizeof(Owner) + sizeof(OwnerIdentity) + sizeof(Preserved) + sizeof(Candidate) + sizeof(WaterFacts));
     }
     Result<std::unique_ptr<Owner>> Owner::create(WaterFacts water, Preserved preserved,
         Index edits_revision, Fence fence, Budget budget) {
@@ -307,12 +320,13 @@ namespace CE::LivingWorld::Sites {
         if (edits_revision == 0 || !valid_preserved(preserved, cells)) {
             return std::unexpected(fail(Error::invalid_preserved));
         }
-        return std::unique_ptr<Owner>(new Owner(std::move(water), std::move(preserved), edits_revision, fence));
+        auto identity = std::shared_ptr<const OwnerIdentity>(new OwnerIdentity);
+        return std::unique_ptr<Owner>(new Owner(std::move(water), std::move(preserved), edits_revision, fence, std::move(identity)));
     }
-    bool Owner::authorized(const Access& access) const { return access.owner_ == this && access.fence_ == fence_; }
+    bool Owner::authorized(const Access& access) const { return access.owner_ == identity_ && access.fence_ == fence_; }
     Result<Image> Owner::capture(const Access& access) const {
         if (!authorized(access)) { return std::unexpected(fail(Error::denied)); }
-        return Image{water_, edits_revision_, fence_};
+        return Image{water_, edits_revision_, fence_, identity_};
     }
     Result<Preserved> Owner::preserved(const Access& access) const {
         if (!authorized(access)) { return std::unexpected(fail(Error::denied)); }
@@ -326,6 +340,9 @@ namespace CE::LivingWorld::Sites {
             return std::unexpected(fail(Error::budget));
         }
         if (!batch.stamp().equivalent(water_.stamp())) { return std::unexpected(fail(Error::stale)); }
+        if (!batch.input_water_ || !batch.input_water_->equivalent(water_)) {
+            return std::unexpected(fail(Error::invalid_facts));
+        }
         return batch;
     }
     Result<std::optional<Receipt>> Owner::lookup(const Access& access, const Candidate& candidate, Budget budget) const {
@@ -348,8 +365,9 @@ namespace CE::LivingWorld::Sites {
         const auto prior = lookup(access, candidate, budget);
         if (!prior) { return std::unexpected(prior.error()); }
         if (*prior) { return Adoption{**prior, true}; }
-        if (candidate.fence_ != fence_) { return std::unexpected(fail(Error::fence)); }
-        if (!candidate.expected_.equivalent(water_.stamp())) { return std::unexpected(fail(Error::stale)); }
+        if (candidate.fence_ != fence_ || candidate.owner_ != identity_) { return std::unexpected(fail(Error::fence)); }
+        if (!candidate.expected_water_.stamp().equivalent(water_.stamp())) { return std::unexpected(fail(Error::stale)); }
+        if (!candidate.expected_water_.equivalent(water_)) { return std::unexpected(fail(Error::invalid_facts)); }
         if (candidate.expected_edits_ != edits_revision_) { return std::unexpected(fail(Error::edits_conflict)); }
         if (applied_count_ == receipt_capacity) { return std::unexpected(fail(Error::receipt_full)); }
         if (water_.stamp().water == UINT64_MAX) { return std::unexpected(fail(Error::revision_exhausted)); }

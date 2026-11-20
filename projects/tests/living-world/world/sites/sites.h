@@ -3,6 +3,7 @@
 #include "settlement-sites.h"
 
 #include <memory>
+#include <utility>
 
 namespace CE::LivingWorld::Sites {
     using ProcGen::Index;
@@ -57,12 +58,15 @@ namespace CE::LivingWorld::Sites {
         Baseline(Index identity, Index schema, ProcGen::Domain domain,
                  std::optional<ProcGen::ElevationReplay> recipe, std::span<const ProcGen::Height> heights);
     public:
+        Baseline(const Baseline&) = delete;
+        Baseline& operator=(const Baseline&) = delete;
         [[nodiscard]] static Result<std::shared_ptr<const Baseline>> literal(
             Index identity, Index schema, const ProcGen::Domain& domain,
             std::span<const ProcGen::Height> heights, Budget budget = {});
         [[nodiscard]] static Result<std::shared_ptr<const Baseline>> generated(
             Index identity, const ProcGen::Elevation& elevation, Budget budget = {});
         [[nodiscard]] const ProcGen::Domain& domain() const { return domain_; }
+        [[nodiscard]] Index identity() const { return identity_; }
         [[nodiscard]] std::span<const ProcGen::Height> heights() const { return heights_; }
         [[nodiscard]] bool matches(const ProcGen::Elevation& elevation) const;
         [[nodiscard]] bool equivalent(const Baseline& other) const;
@@ -77,7 +81,7 @@ namespace CE::LivingWorld::Sites {
     };
     struct SiteKey {
         Scope scope;
-        Index frame = 0, cell = 0;
+        Index baseline = 0, frame = 0, cell = 0;
         bool operator==(const SiteKey&) const = default;
     };
     enum class WaterUse { usable, not_usable, unknown };
@@ -121,11 +125,13 @@ namespace CE::LivingWorld::Sites {
     enum class ShortlistOutcome { has_suitable, no_eligible_in_shortlist, incomplete_evidence };
     class Batch {
         Stamp stamp_;
+        std::optional<WaterFacts> input_water_;
         std::array<Assessment, capacity> sites_{};
         std::size_t count_ = 0;
         ProcGen::SettlementOptions options_;
         Index selector_work_ = 0, selector_storage_ = 0;
         friend class AssessmentBuilder;
+        friend class Owner;
     public:
         [[nodiscard]] const Stamp& stamp() const { return stamp_; }
         [[nodiscard]] std::span<const Assessment> sites() const { return {sites_.data(), count_}; }
@@ -141,6 +147,9 @@ namespace CE::LivingWorld::Sites {
         [[nodiscard]] static Accounting requirements(Index cells);
     };
     [[nodiscard]] Result<Batch> select_and_assess(const Stamp& stamp, const WaterFacts& water,
+        ProcGen::SettlementOptions options, ProcGen::CaveBudgets producer_budget, Budget budget = {});
+    [[nodiscard]] Result<Batch> select_and_assess(const ProcGen::Domain& domain,
+        std::span<const ProcGen::Height> heights, const Stamp& stamp, const WaterFacts& water,
         ProcGen::SettlementOptions options, ProcGen::CaveBudgets producer_budget, Budget budget = {});
     [[nodiscard]] Result<Batch> select_and_assess(const ProcGen::Elevation& elevation, const Stamp& stamp,
         const WaterFacts& water, ProcGen::SettlementOptions options, ProcGen::CaveBudgets producer_budget, Budget budget = {});
@@ -178,16 +187,28 @@ namespace CE::LivingWorld::Sites {
         Index issuer = 0, sequence = 0;
         bool operator==(const Attempt&) const = default;
     };
-    struct Image {
+    class OwnerIdentity {
+        OwnerIdentity() = default;
+        friend class Owner;
+    };
+    class Image {
+    public:
         WaterFacts water;
         Index edits_revision;
         Fence fence;
+    private:
+        std::shared_ptr<const OwnerIdentity> owner_;
+        Image(WaterFacts facts, Index edits, Fence live_fence, std::shared_ptr<const OwnerIdentity> owner)
+        : water(std::move(facts)), edits_revision(edits), fence(live_fence), owner_(std::move(owner)) {}
+        friend class Owner;
+        friend class Candidate;
     };
     class Candidate {
         Attempt attempt_;
-        Stamp expected_;
+        WaterFacts expected_water_;
         Index expected_edits_;
         Fence fence_;
+        std::shared_ptr<const OwnerIdentity> owner_;
         WaterFacts replacement_;
         Candidate(Attempt attempt, const Image& image, WaterFacts replacement);
         friend class Owner;
@@ -209,9 +230,9 @@ namespace CE::LivingWorld::Sites {
     class Owner {
     public:
         class Access {
-            const Owner* owner_;
+            std::shared_ptr<const OwnerIdentity> owner_;
             Fence fence_;
-            Access(const Owner* owner, Fence fence) : owner_(owner), fence_(fence) {}
+            Access(std::shared_ptr<const OwnerIdentity> owner, Fence fence) : owner_(std::move(owner)), fence_(fence) {}
             friend class Owner;
         };
     private:
@@ -223,16 +244,18 @@ namespace CE::LivingWorld::Sites {
         Preserved preserved_;
         Index edits_revision_;
         Fence fence_;
+        std::shared_ptr<const OwnerIdentity> identity_;
         std::array<std::optional<Applied>, receipt_capacity> applied_{};
         std::size_t applied_count_ = 0;
-        Owner(WaterFacts water, Preserved preserved, Index edits_revision, Fence fence);
+        Owner(WaterFacts water, Preserved preserved, Index edits_revision, Fence fence,
+              std::shared_ptr<const OwnerIdentity> identity);
         [[nodiscard]] bool authorized(const Access& access) const;
     public:
         Owner(const Owner&) = delete;
         Owner& operator=(const Owner&) = delete;
         [[nodiscard]] static Result<std::unique_ptr<Owner>> create(WaterFacts water, Preserved preserved,
             Index edits_revision, Fence fence, Budget budget = {});
-        [[nodiscard]] Access access() const { return Access(this, fence_); }
+        [[nodiscard]] Access access() const { return Access(identity_, fence_); }
         [[nodiscard]] Result<Image> capture(const Access& access) const;
         [[nodiscard]] Result<Preserved> preserved(const Access& access) const;
         [[nodiscard]] Result<Batch> read(const Access& access, const Batch& batch, Budget budget = {}) const;
