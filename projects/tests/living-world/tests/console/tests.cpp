@@ -265,3 +265,172 @@ TEST(ConsoleHost, OperationQuotaRefusesWithoutEvictionOrAnotherAttempt) {
     ASSERT_TRUE(client->session().submit(1, request));
     EXPECT_EQ((*client->session().lookup(1))->stage, Core::Stage::Succeeded);
 }
+
+TEST(ConsoleHost, TwoClientsRetainTheirOwnDeliveredObservation) {
+    auto practice = Console::practice();
+    auto first = practice.console->open(Console::Mode::Gameplay);
+    auto second = practice.console->open(Console::Mode::PracticeObserver);
+    auto wren = practice.host->actor(practice.access, practice.host->entity(3)).value();
+    wren.access = false;
+    ASSERT_TRUE(practice.host->edit_actor(wren));
+    auto marin = Core::bind_text(practice.console->registry(), first->context(), "magic.cast S1 marin").value();
+    ASSERT_TRUE(first->session().submit(1, marin));
+    ASSERT_TRUE(first->session().pump()); ASSERT_TRUE(first->session().pump());
+    const auto first_action = image(practice).records[0].action;
+    EXPECT_EQ((*first->session().lookup(1))->stage, Core::Stage::Pending);
+    EXPECT_EQ(image(practice).work_count, 1u); EXPECT_EQ(image(practice).acquired_count, 0u);
+    wren.access = true;
+    ASSERT_TRUE(practice.host->edit_actor(wren));
+    auto garo = Core::bind_text(practice.console->registry(), second->context(), "magic.cast S1 garo").value();
+    ASSERT_TRUE(second->session().submit(1, garo));
+    ASSERT_TRUE(second->session().pump()); ASSERT_TRUE(second->session().pump());
+    const auto second_action = image(practice).records[1].action;
+    const auto second_result = *second->session().lookup(1).value();
+    EXPECT_EQ(second_result.stage, Core::Stage::Succeeded); EXPECT_EQ(number(second_result, 4), 1u);
+    EXPECT_FALSE(std::get<bool>(field(second_result, 5).data));
+    EXPECT_EQ(image(practice).record_count, 2u); EXPECT_EQ(image(practice).work_count, 2u);
+    ASSERT_EQ(image(practice).acquired_count, 2u);
+    EXPECT_EQ(image(practice).acquired[0].cause, first_action.key);
+    EXPECT_EQ(image(practice).acquired[1].cause, second_action.key);
+    EXPECT_EQ(practice.host->delivery(practice.access, first_action)->acquired, 1u);
+    ASSERT_TRUE(first->session().submit(1, marin));
+    const auto first_view = query(practice, *first, 2, "operation.read op1");
+    EXPECT_EQ(first_view.stage, Core::Stage::Succeeded); EXPECT_EQ(number(first_view, 4), 1u);
+    EXPECT_EQ(first_view.value, (*first->session().lookup(1))->value);
+    EXPECT_EQ(query(practice, *second, 2, "operation.read op1").value, second_result.value);
+    ASSERT_TRUE(first->session().submit(1, marin)); ASSERT_TRUE(second->session().submit(1, garo));
+    ASSERT_TRUE(first->session().pump()); ASSERT_TRUE(second->session().pump());
+    EXPECT_EQ(number(**first->session().lookup(1), 4), 1u);
+    EXPECT_EQ(number(**second->session().lookup(1), 4), 1u);
+    EXPECT_EQ(image(practice).record_count, 2u); EXPECT_EQ(image(practice).acquired_count, 2u);
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(2))->health, 20u);
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(4))->health, 20u);
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(1))->reserve, 4u);
+    first->close(); second->close();
+    EXPECT_EQ((*first->session().lookup(1))->stage, Core::Stage::Succeeded);
+    EXPECT_EQ((*second->session().lookup(1))->stage, Core::Stage::Succeeded);
+}
+
+TEST(ConsoleHost, UnrelatedWithholdingDoesNotBlockCompletionOrEnteredClose) {
+    for (const bool refused : {false, true}) for (const bool close_entered : {false, true}) {
+        auto practice = Console::practice();
+        auto first = practice.console->open(Console::Mode::Gameplay);
+        auto second = practice.console->open(Console::Mode::Gameplay);
+        auto wren = practice.host->actor(practice.access, practice.host->entity(3)).value();
+        wren.access = false;
+        ASSERT_TRUE(practice.host->edit_actor(wren));
+        EXPECT_EQ(query(practice, *first, 1, "magic.cast S1 marin").stage, Core::Stage::Pending);
+        ASSERT_TRUE(first->session().pump());
+        const auto first_action = image(practice).records[0].action;
+        wren.observes = false;
+        ASSERT_TRUE(practice.host->edit_actor(wren));
+        if (refused) {
+            auto garo = practice.host->actor(practice.access, practice.host->entity(4)).value();
+            garo.willing = false;
+            ASSERT_TRUE(practice.host->edit_actor(garo));
+        }
+        auto request = Core::bind_text(practice.console->registry(), second->context(), "magic.cast S1 garo").value();
+        ASSERT_TRUE(second->session().submit(1, request)); ASSERT_TRUE(second->session().pump());
+        const auto second_action = image(practice).records[1].action;
+        if (close_entered) second->close();
+        else {
+            ASSERT_TRUE(second->session().pump());
+            const auto view = query(practice, *second, 2, "operation.read op1");
+            EXPECT_EQ(view.value, (*second->session().lookup(1))->value);
+            second->close();
+        }
+        const auto result = *second->session().lookup(1).value();
+        EXPECT_EQ(result.stage, refused ? Core::Stage::Refused : Core::Stage::Succeeded);
+        EXPECT_EQ(number(result, 2), refused ? 0u : 8u); EXPECT_EQ(number(result, 4), 0u);
+        EXPECT_EQ(std::get<Core::Enum>(field(result, 3).data).index,
+            static_cast<unsigned>(refused ? Living::Reason::Contact : Living::Reason::None));
+        EXPECT_FALSE(std::get<bool>(field(result, 5).data));
+        EXPECT_EQ(practice.host->delivery(practice.access, second_action)->outstanding, 0u);
+        ASSERT_TRUE(second->session().submit(1, request));
+        EXPECT_EQ((*second->session().lookup(1))->value, result.value);
+        EXPECT_EQ(image(practice).record_count, 2u); EXPECT_EQ(image(practice).work_count, 1u);
+        EXPECT_FALSE(image(practice).work[0].consumed); EXPECT_EQ(image(practice).acquired_count, 0u);
+        EXPECT_EQ(practice.host->delivery(practice.access, first_action)->outstanding, 1u);
+        EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(2))->health, 20u);
+        EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(4))->health, refused ? 12u : 20u);
+        EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(1))->reserve, refused ? 7u : 4u);
+        first->close();
+        EXPECT_EQ((*first->session().lookup(1))->stage, Core::Stage::Failed);
+        EXPECT_EQ((*first->session().lookup(1))->failure.code, Core::Code::Owner);
+        EXPECT_EQ(practice.host->delivery(practice.access, first_action)->outstanding, 1u);
+        wren.access = true;
+        ASSERT_TRUE(practice.host->edit_actor(wren));
+        EXPECT_EQ(practice.host->deliver().adopted, 1u);
+        EXPECT_EQ(image(practice).acquired_count, 1u);
+        EXPECT_EQ(image(practice).acquired[0].cause, first_action.key);
+    }
+}
+
+TEST(ConsoleHost, DirectOwnerDeliverySurvivesRetryReadAndClose) {
+    for (const bool close_entered : {false, true}) {
+        auto practice = Console::practice(); auto client = practice.console->open(Console::Mode::Gameplay);
+        auto wren = practice.host->actor(practice.access, practice.host->entity(3)).value();
+        wren.access = false;
+        ASSERT_TRUE(practice.host->edit_actor(wren));
+        auto request = Core::bind_text(practice.console->registry(), client->context(), "magic.cast S1 marin").value();
+        ASSERT_TRUE(client->session().submit(1, request));
+        ASSERT_TRUE(client->session().pump()); ASSERT_TRUE(client->session().pump());
+        const auto action = image(practice).records[0].action;
+        EXPECT_EQ((*client->session().lookup(1))->stage, Core::Stage::Pending);
+        EXPECT_EQ(number(**client->session().lookup(1), 4), 0u);
+        wren.access = true; wren.observes = false;
+        ASSERT_TRUE(practice.host->edit_actor(wren));
+        EXPECT_EQ(practice.host->deliver().adopted, 1u);
+        EXPECT_EQ(practice.host->deliver().adopted, 0u);
+        ASSERT_TRUE(client->session().submit(1, request));
+        if (close_entered) client->close();
+        else {
+            const auto view = query(practice, *client, 2, "operation.read op1");
+            EXPECT_EQ(view.stage, Core::Stage::Succeeded); EXPECT_EQ(number(view, 4), 1u);
+            EXPECT_EQ(view.value, (*client->session().lookup(1))->value);
+            ASSERT_TRUE(client->session().pump());
+            client->close();
+        }
+        const auto result = *client->session().lookup(1).value();
+        EXPECT_EQ(result.stage, Core::Stage::Succeeded); EXPECT_EQ(number(result, 4), 1u);
+        EXPECT_FALSE(std::get<bool>(field(result, 5).data));
+        EXPECT_EQ(image(practice).record_count, 1u); EXPECT_EQ(image(practice).work_count, 1u);
+        EXPECT_TRUE(image(practice).work[0].consumed); EXPECT_EQ(image(practice).acquired_count, 1u);
+        EXPECT_EQ(practice.host->delivery(practice.access, action)->acquired, 1u);
+        EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(2))->health, 20u);
+        EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(1))->reserve, 7u);
+    }
+}
+
+TEST(ConsoleHost, PartialDeliveryAssignsCumulativeCount) {
+    auto practice = Console::practice(); auto client = practice.console->open(Console::Mode::Gameplay);
+    auto wren = practice.host->actor(practice.access, practice.host->entity(3)).value();
+    auto garo = practice.host->actor(practice.access, practice.host->entity(4)).value();
+    wren.access = false; garo.observes = true;
+    ASSERT_TRUE(practice.host->edit_actor(wren)); ASSERT_TRUE(practice.host->edit_actor(garo));
+    auto request = Core::bind_text(practice.console->registry(), client->context(), "magic.cast S1 marin").value();
+    ASSERT_TRUE(client->session().submit(1, request));
+    ASSERT_TRUE(client->session().pump()); ASSERT_TRUE(client->session().pump());
+    const auto action = image(practice).records[0].action;
+    const auto partial = *client->session().lookup(1).value();
+    EXPECT_EQ(partial.stage, Core::Stage::Pending); EXPECT_EQ(number(partial, 4), 1u);
+    EXPECT_TRUE(std::get<bool>(field(partial, 5).data));
+    EXPECT_EQ(query(practice, *client, 2, "operation.read op1").value, partial.value);
+    ASSERT_TRUE(client->session().submit(1, request)); ASSERT_TRUE(client->session().pump());
+    EXPECT_EQ(number(**client->session().lookup(1), 4), 1u);
+    wren.access = true; wren.observes = false;
+    ASSERT_TRUE(practice.host->edit_actor(wren));
+    EXPECT_EQ(practice.host->deliver().adopted, 1u);
+    ASSERT_TRUE(client->session().pump());
+    const auto complete = *client->session().lookup(1).value();
+    EXPECT_EQ(complete.stage, Core::Stage::Succeeded); EXPECT_EQ(number(complete, 4), 2u);
+    EXPECT_FALSE(std::get<bool>(field(complete, 5).data));
+    EXPECT_EQ((*client->session().lookup(2))->value, complete.value);
+    EXPECT_EQ(practice.host->delivery(practice.access, action)->acquired, 2u);
+    EXPECT_EQ(image(practice).record_count, 1u); EXPECT_EQ(image(practice).work_count, 2u);
+    EXPECT_EQ(image(practice).acquired_count, 2u);
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(2))->health, 20u);
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(1))->reserve, 7u);
+    client->close();
+    EXPECT_EQ(number(**client->session().lookup(1), 4), 2u);
+}
