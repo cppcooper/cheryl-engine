@@ -73,6 +73,8 @@ namespace CE::Tools::Console {
         try {
             if (line.size() > max_line) return std::unexpected(Failure{Code::Limit, max_line, line.size() - max_line});
             if (!valid_utf8(line)) return std::unexpected(Failure{Code::Encoding, 0, line.size()});
+            if (const auto newline = line.find_first_of("\r\n"); newline != std::string_view::npos)
+                return std::unexpected(Failure{Code::Syntax, newline, 1});
             Parsed parsed;
             std::size_t cursor = 0;
             while (cursor < line.size()) {

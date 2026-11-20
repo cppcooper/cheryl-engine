@@ -56,9 +56,14 @@ namespace CE::Tools::Console {
                 }
             }
             entry.work->step();
-            if (entry.work->result.stage == Stage::Succeeded || entry.work->result.stage == Stage::Refused) {
+            if (entry.work->result.stage == Stage::Pending || entry.work->result.stage == Stage::Succeeded ||
+                entry.work->result.stage == Stage::Refused) {
                 const auto checked = validate(entry.work->result.value, entry.request.descriptor().result, context_);
-                if (!checked) { entry.work->result.stage = Stage::Failed; entry.work->result.failure = checked.error(); }
+                if (!checked) {
+                    entry.work->close();
+                    entry.work->result.stage = Stage::Failed;
+                    entry.work->result.failure = checked.error();
+                }
             }
         }
         pumping_ = false;

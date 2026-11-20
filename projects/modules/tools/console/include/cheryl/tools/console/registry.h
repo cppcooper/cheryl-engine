@@ -43,15 +43,19 @@ namespace CE::Tools::Console {
     template<> inline constexpr Type value_type<std::string> = Type::Text;
     template<> inline constexpr Type value_type<Enum> = Type::Enumeration;
     template<> inline constexpr Type value_type<Handle> = Type::Handle;
+    // Registry, registrations, contexts, and sessions share one serialized owner.
     class Registry {
         std::shared_ptr<Detail::RegistryState> state_;
+        std::function<bool(const Context&)> accepts_;
         using Handler = std::function<std::shared_ptr<Work>(const Context&, std::span<const Value>)>;
         Checked<Registration> install(Descriptor, std::span<const Type>, Handler);
     public:
-        Registry();
+        // An owner gate rejects contexts issued by unrelated authorities, before discovery.
+        explicit Registry(std::function<bool(const Context&)> accepts = {});
         Registry(const Registry&) = delete;
         Registry& operator=(const Registry&) = delete;
         ~Registry();
+        // Callbacks only prepare Work. Effects belong in step(), after retention.
         template<class... Args, class Callback>
         Checked<Registration> add(Descriptor descriptor, Callback callback) {
             static_assert(((value_type<Args> != Type::Record) && ...), "Unsupported command argument type");

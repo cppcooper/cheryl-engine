@@ -93,7 +93,7 @@ namespace CE::Tools::Console {
         struct Alias { std::string name; Handle handle; };
         std::shared_ptr<const Scope> scope_;
         Rights rights_ = 0;
-        std::vector<Alias> aliases_;
+        std::shared_ptr<std::vector<Alias>> aliases_;
         friend class Authority;
     public:
         Context() = default;

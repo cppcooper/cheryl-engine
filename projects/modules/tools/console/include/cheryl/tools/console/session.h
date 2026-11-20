@@ -20,6 +20,8 @@ namespace CE::Tools::Console {
         Session(const Session&) = delete;
         Session& operator=(const Session&) = delete;
         ~Session();
+        // Result pointers are borrowed; reacquire through lookup() after each pump.
+        // Retained IDs never evict, including after close; use a new session at capacity.
         Checked<const Result*> submit(std::uint64_t id, const BoundRequest&);
         Checked<const Result*> lookup(std::uint64_t id) const noexcept;
         Checked<void> pump() noexcept;

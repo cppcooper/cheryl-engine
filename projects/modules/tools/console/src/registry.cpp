@@ -15,7 +15,7 @@ namespace CE::Tools::Console {
             });
         }
         Checked<void> schema_valid(const Schema& schema, std::size_t depth, std::size_t& nodes) {
-            if (depth > max_depth || ++nodes > max_nodes || schema.choices.size() > max_arguments ||
+            if (depth > max_depth || ++nodes > max_nodes || schema.choices.size() > max_commands ||
                 schema.fields.size() > max_arguments || schema.children.size() > max_arguments ||
                 schema.count > max_arguments || schema.unit.size() > 64 || schema.domain.size() > 64)
                 return fail(Code::Limit);
@@ -112,7 +112,7 @@ namespace CE::Tools::Console {
         for (std::size_t index = 0; index < text.size();) {
             const auto first = static_cast<unsigned char>(text[index++]);
             if (first < 0x80) {
-                if ((first < 0x20 && first != '\t') || first == 0x7f) return false;
+                if ((first < 0x20 && first != '\t' && first != '\n' && first != '\r') || first == 0x7f) return false;
                 continue;
             }
             std::size_t remaining;
@@ -147,13 +147,13 @@ namespace CE::Tools::Console {
     }
     Checked<Handle> Context::resolve(std::string_view name, std::string_view domain) const {
         if (!live()) return std::unexpected(Failure{Code::Expired});
-        for (const auto& alias : aliases_)
+        if (aliases_) for (const auto& alias : *aliases_)
             if (alias.name == name && owns(alias.handle, domain)) return alias.handle;
         return std::unexpected(Failure{Code::Unauthorized});
     }
     std::vector<std::string> Context::aliases(std::string_view domain) const {
         std::vector<std::string> result;
-        if (live()) for (const auto& alias : aliases_)
+        if (live() && aliases_) for (const auto& alias : *aliases_)
             if (owns(alias.handle, domain)) result.push_back(alias.name);
         std::ranges::sort(result);
         return result;
@@ -162,6 +162,7 @@ namespace CE::Tools::Console {
         Context context;
         context.scope_ = scope_;
         context.rights_ = rights;
+        context.aliases_ = std::make_shared<std::vector<Context::Alias>>();
         return context;
     }
     Checked<Handle> Authority::mint(std::string domain) {
@@ -177,9 +178,9 @@ namespace CE::Tools::Console {
     Checked<void> Authority::alias(Context& context, std::string name, Handle handle) const {
         if (!scope_->active || context.scope_ != scope_ || handle.scope_ != scope_) return fail(Code::Unauthorized);
         if (!name_valid(name)) return fail(Code::Schema);
-        if (context.aliases_.size() == max_commands) return fail(Code::Capacity);
-        for (const auto& alias : context.aliases_) if (alias.name == name) return fail(Code::Duplicate);
-        context.aliases_.push_back({std::move(name), std::move(handle)});
+        if (!context.aliases_ || context.aliases_->size() == max_commands) return fail(Code::Capacity);
+        for (const auto& alias : *context.aliases_) if (alias.name == name) return fail(Code::Duplicate);
+        context.aliases_->push_back({std::move(name), std::move(handle)});
         return {};
     }
     const Descriptor& BoundRequest::descriptor() const noexcept { return entry_->descriptor; }
@@ -192,7 +193,8 @@ namespace CE::Tools::Console {
     }
     Registration::~Registration() { reset(); }
     void Registration::reset() noexcept { if (entry_) entry_->active = false; entry_.reset(); }
-    Registry::Registry() : state_(std::make_shared<Detail::RegistryState>()) { state_->entries.reserve(max_commands); }
+    Registry::Registry(std::function<bool(const Context&)> accepts)
+        : state_(std::make_shared<Detail::RegistryState>()), accepts_(std::move(accepts)) { state_->entries.reserve(max_commands); }
     Registry::~Registry() { for (auto& weak : state_->entries) if (auto entry = weak.lock()) entry->active = false; }
     Checked<Registration> Registry::install(Descriptor descriptor, std::span<const Type> signature, Handler handler) {
         try {
@@ -222,6 +224,7 @@ namespace CE::Tools::Console {
     }
     Checked<Descriptor> Registry::describe(std::string_view name, const Context& context) const {
         if (!context.live()) return std::unexpected(Failure{Code::Expired});
+        if (accepts_ && !accepts_(context)) return std::unexpected(Failure{Code::Unauthorized});
         for (const auto& weak : state_->entries) if (auto entry = weak.lock())
             if (entry->active && context.permits(entry->descriptor.rights) && entry->descriptor.name == name)
                 return entry->descriptor;
@@ -229,6 +232,7 @@ namespace CE::Tools::Console {
     }
     std::vector<Descriptor> Registry::commands(const Context& context) const {
         std::vector<Descriptor> result;
+        if (!context.live() || (accepts_ && !accepts_(context))) return result;
         for (const auto& weak : state_->entries) if (auto entry = weak.lock())
             if (entry->active && context.permits(entry->descriptor.rights)) result.push_back(entry->descriptor);
         std::ranges::sort(result, {}, &Descriptor::name);
@@ -237,6 +241,7 @@ namespace CE::Tools::Console {
     Checked<BoundRequest> Registry::bind(std::string_view name, std::vector<Value> arguments, const Context& context) const {
         try {
             if (!context.live()) return std::unexpected(Failure{Code::Expired});
+            if (accepts_ && !accepts_(context)) return std::unexpected(Failure{Code::Unauthorized});
             for (const auto& weak : state_->entries) if (auto entry = weak.lock()) {
                 if (!entry->active || !context.permits(entry->descriptor.rights) || entry->descriptor.name != name) continue;
                 if (arguments.size() != entry->descriptor.arguments.size()) return std::unexpected(Failure{Code::Arguments});
