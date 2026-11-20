@@ -61,5 +61,14 @@ int main() {
         growing->object(box)->holder != life.born.person) {
         return 4;
     }
+    auto loss = family();
+    reject = true;
+    const auto pending = StoryFixture::promise(*loss);
+    const auto death = loss->apply(loss->life(), life_request(1, 3, Story::Death{sera, 1}));
+    reject = false;
+    if (!death || loss->commitment(pending)->state != Story::CommitmentState::Failed ||
+        loss->commitment(pending)->settlement != death.episode || loss->object(box)->holder != sera) {
+        return 5;
+    }
     return 0;
 }
