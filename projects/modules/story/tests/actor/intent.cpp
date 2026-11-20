@@ -238,3 +238,52 @@ TEST(Storyactor, P13_real_projection_budget_failure_retains_adopted_success) {
     EXPECT_EQ(world.host->owner().episode_count(), 3);
     EXPECT_EQ(world.host->owner().counters().preparations, preparations);
 }
+
+TEST(Storyactor, actor_consent_and_exact_transfer_fulfill_only_the_agreed_object) {
+    auto world = response_world();
+    Story::ActorIntent consent;
+    consent.kind = Story::IntentKind::ConsentTransfer;
+    consent.person = world.contact;
+    consent.object = world.object;
+    const auto invitation = world.host->offer(world.endpoint, consent, {}).value();
+    ASSERT_TRUE(world.endpoint.submit({1}, choice(invitation)));
+    EXPECT_EQ(world.host->owner().object(StoryFixture::box)->accepted_recipient, Story::PersonId{});
+    ASSERT_TRUE(world.host->progress(world.endpoint));
+    EXPECT_EQ(world.host->owner().object(StoryFixture::box)->accepted_recipient, StoryFixture::liora);
+    const auto giver = world.host->open(StoryFixture::sera).value();
+    const auto recipient = world.host->identify(giver, StoryFixture::liora, {}).value();
+    const auto object = world.host->identify(giver, StoryFixture::box, {}).value();
+    Story::ActorIntent transfer;
+    transfer.kind = Story::IntentKind::Transfer;
+    transfer.person = recipient;
+    transfer.object = object;
+    const auto offered = world.host->offer(giver, transfer, {}).value();
+    ASSERT_TRUE(giver.submit({1}, choice(offered)));
+    ASSERT_TRUE(world.host->progress(giver));
+    EXPECT_EQ(world.host->owner().object(StoryFixture::box)->holder, StoryFixture::liora);
+    EXPECT_EQ(world.host->owner().commitment({StoryFixture::timeline, 1})->state, Story::CommitmentState::Fulfilled);
+    EXPECT_EQ(giver.lookup({1})->outcome, Story::ActorOutcome::Completed);
+    EXPECT_FALSE(giver.lookup({1})->promise);
+    ASSERT_TRUE(world.host->refresh(world.endpoint));
+    EXPECT_EQ(world.endpoint.view()->accounts[3].fact.kind, Story::ActorFactKind::Transferred);
+}
+
+TEST(Storyactor, P07_full_due_queue_is_not_an_actor_refusal) {
+    Story::Limits limits;
+    limits.queue = 1;
+    auto world = response_world(false, limits);
+    const auto debtor = world.host->open(StoryFixture::sera).value();
+    Story::ActorIntent intent;
+    intent.kind = Story::IntentKind::OfferPromise;
+    intent.person = world.host->identify(debtor, StoryFixture::liora, {}).value();
+    intent.object = world.host->identify(debtor, StoryFixture::box, {}).value();
+    intent.due = {10};
+    const auto offer = world.host->offer(debtor, intent, {}).value();
+    ASSERT_TRUE(debtor.submit({1}, choice(offer)));
+    const auto failure = world.host->progress(debtor);
+    ASSERT_FALSE(failure);
+    EXPECT_EQ(failure.error().error, Story::Error::Capacity);
+    EXPECT_FALSE(failure.error().after_adoption);
+    EXPECT_EQ(debtor.lookup({1})->outcome, Story::ActorOutcome::Pending);
+    EXPECT_EQ(world.host->owner().episode_count(), 2);
+}

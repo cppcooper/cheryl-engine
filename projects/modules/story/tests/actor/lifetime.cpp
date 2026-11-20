@@ -123,3 +123,21 @@ TEST(Storyactor, trusted_future_frontier_and_attempt_exhaustion) {
     EXPECT_EQ(exhausted.error().error, Story::Error::Capacity);
     EXPECT_EQ(world.endpoint.lookup({1})->outcome, Story::ActorOutcome::Pending);
 }
+
+TEST(Storyactor, finite_offer_storage_never_silently_empties_the_view) {
+    auto world = response_world();
+    const auto offer = response_offer(world);
+    for (std::size_t index = 1; index < 32; ++index) {
+        Story::Text label;
+        label.size = 1;
+        label.bytes[0] = static_cast<char>('A' + index);
+        ASSERT_TRUE(world.host->offer(world.endpoint, offer.intent, label));
+    }
+    EXPECT_EQ(world.endpoint.view()->offer_count, 32);
+    const auto before = world.endpoint.view().value();
+    const auto full = world.host->offer(world.endpoint, offer.intent, Story::Text::make("one more").value());
+    ASSERT_FALSE(full);
+    EXPECT_EQ(full.error().error, Story::Error::Capacity);
+    EXPECT_EQ(world.endpoint.view().value(), before);
+    EXPECT_EQ(response_offer(world), offer);
+}

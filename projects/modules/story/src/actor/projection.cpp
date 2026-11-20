@@ -39,6 +39,7 @@ namespace CE::Story::Detail {
         const auto count = family.knowledge(family.actor(state.person), acquired);
         if (!count) { return count.error(); }
         if (*count < state.view.account_count) { return Error::Conflict; }
+        if (*count == state.view.account_count) { return Error::None; }
         auto candidate = state;
         try {
             for (std::size_t index = candidate.view.account_count; index < *count; ++index) {

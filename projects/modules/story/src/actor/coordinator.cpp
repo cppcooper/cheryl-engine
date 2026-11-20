@@ -60,6 +60,7 @@ namespace CE::Story {
             actor->view.self = Detail::ActorAccess::ref<ActorPersonTag>(scope, 1);
             actor->people[0] = {person, true, false};
             actor->view_people_count = 1;
+            actor->view.person_count = 1;
             actor->view.people[0] = {actor->view.self, self->name, true};
             const auto error = Detail::project(owner(), *actor);
             if (error != Error::None) { return fault(error); }
@@ -82,7 +83,6 @@ namespace CE::Story {
         actor->people[index] = {person, true, false};
         actor->view.people[index] = {reference, label, true};
         actor->view.person_count = actor->view_people_count;
-        actor->view.person_count = actor->view_people_count;
         return reference;
     }
     std::expected<KnownObjectRef, ServiceFault> ActorCoordinator::identify(
@@ -99,7 +99,6 @@ namespace CE::Story {
         const auto reference = Detail::ActorAccess::ref<ActorObjectTag>(actor->scope, index + 1);
         actor->objects[index] = {object, true, false};
         actor->view.objects[index] = {reference, label, true};
-        actor->view.object_count = actor->view_objects_count;
         actor->view.object_count = actor->view_objects_count;
         return reference;
     }
