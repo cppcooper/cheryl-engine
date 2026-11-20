@@ -20,6 +20,13 @@ namespace CE::LivingWorld {
     };
     struct PlanBinding {
         std::uint64_t id = 1, revision = 1, catalog = 1, schema = 1;
+        std::array<char, 8192> source{};
+        std::size_t source_size = 0;
+        std::array<char, 64> operation{};
+        std::size_t operation_size = 0;
+        std::uint32_t max_quantity = 0, max_duration = 0, max_coordinate = 0;
+        std::uint16_t capabilities = 0;
+        std::uint8_t appearances = 0;
         bool operator==(const PlanBinding&) const = default;
     };
     struct HealBody {

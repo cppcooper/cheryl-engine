@@ -26,10 +26,31 @@ namespace CE::LivingWorld {
                std::uint32_t cap, std::uint32_t price)
     : catalog_(std::move(catalog)), plan_(std::move(plan)),
       authority_(std::make_shared<const unsigned char>(0)), image_(std::make_unique<Detail::Image>()) {
-        if (!scope.world || !scope.branch || !::Magic::Contact::supports(plan_))
+        if (!scope.world || !scope.branch || !::Magic::Contact::supports(plan_) ||
+            plan_->source().size() > image_->binding.source.size() || catalog_.operations.size() != 1 ||
+            catalog_.operations[0].primitive != ::Magic::Primitive::Heal ||
+            catalog_.operations[0].key != plan_->meaning().effects[0].key ||
+            catalog_.operations[0].key.size() > image_->binding.operation.size())
             throw std::invalid_argument("Host requires a scoped compiler-produced Contact Heal plan");
         image_->scope = scope;
         image_->quote.price = price;
+        auto& binding = image_->binding;
+        binding.source_size = plan_->source().size();
+        std::copy(plan_->source().begin(), plan_->source().end(), binding.source.begin());
+        const auto& operation = catalog_.operations[0];
+        binding.operation_size = operation.key.size();
+        std::copy(operation.key.begin(), operation.key.end(), binding.operation.begin());
+        binding.max_quantity = operation.max_quantity;
+        binding.max_duration = operation.max_duration_ticks;
+        binding.max_coordinate = operation.max_coordinate_mm;
+        binding.appearances = operation.appearances;
+        const std::array capabilities{
+            catalog_.spoken, catalog_.engraved, catalog_.contact, catalog_.ray, catalog_.burst,
+            catalog_.item_event, catalog_.together, catalog_.annular, catalog_.subject
+        };
+        for (std::size_t index = 0; index < capabilities.size(); ++index)
+            if (capabilities[index])
+                binding.capabilities |= static_cast<std::uint16_t>(1u << index);
         image_->actor_count = 4;
         for (std::size_t index = 0; index < image_->actor_count; ++index) {
             auto& actor = image_->actors[index];
@@ -53,7 +74,10 @@ namespace CE::LivingWorld {
         host_ = nullptr;
     }
 
-    void Host::publish() noexcept { image_.swap(staging_); }
+    void Host::publish() noexcept {
+        static_assert(noexcept(image_.swap(staging_)));
+        image_.swap(staging_);
+    }
 
     std::optional<std::size_t> Host::actor_index(EntityRef ref) const noexcept {
         for (std::size_t index = 0; index < image_->actor_count; ++index)
@@ -130,7 +154,7 @@ namespace CE::LivingWorld {
             return std::unexpected(Error::Busy);
         if (!actor_index(recipient))
             return std::unexpected(Error::Missing);
-        if (issued_ == maximum || image_->revision == maximum)
+        if (issued_ == maximum || image_->revision > maximum - 2)
             return std::unexpected(Error::Exhausted);
         auto next = std::make_unique<Detail::Image>(*image_);
         ++next->revision;

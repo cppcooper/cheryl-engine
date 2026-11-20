@@ -1,6 +1,7 @@
 # Selected owners register their reusable case targets before this assembly.
 cheryl_add_test_aggregate(${TARGET_TEST_ALL_TESTS}
     OUTPUT_NAME "${OUTPUT_TEST_ALL_TESTS}" EXPORT_SYMBOLS)
+add_subdirectory(living-world)
 if(TARGET Cheryl::UI::TGUI AND TARGET Cheryl::UI::RmlUi)
     set(CHERYL_TEST_AGGREGATE ${TARGET_TEST_ALL_TESTS})
     add_subdirectory(ui-coexist)
