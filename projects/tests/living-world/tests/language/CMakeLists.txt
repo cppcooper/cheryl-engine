@@ -1,0 +1,3 @@
+add_executable(cheryl_language_tests language_tests.cpp)
+target_link_libraries(cheryl_language_tests PRIVATE cheryl_living_world_language)
+add_test(NAME living_world_language COMMAND cheryl_language_tests)
