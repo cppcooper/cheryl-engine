@@ -1,6 +1,5 @@
 #include <recovery/paired.h>
 
-#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -39,8 +38,9 @@ namespace CE::LivingWorld {
                 action.key.sequence > saved.issued || body.caster.id != action.key.issuer ||
                 !actor_exists(body.caster) || !actor_exists(body.recipient) || !Host::canonical(body) ||
                 binding != image.binding || !body.plan.schema || body.plan.schema > image.binding.schema ||
-                !body.intent || body.intent > image.policy_revision || !body.quote.id ||
-                !body.quote.revision || body.quote.revision > image.quote.revision || body.quote.resource != 1)
+                !body.intent || body.intent > image.policy_revision || body.quote.id != image.quote.id ||
+                !body.quote.revision || body.quote.revision > image.quote.revision || body.quote.resource != 1 ||
+                (body.quote.revision == image.quote.revision && body.quote.price != image.quote.price))
                 return false;
             std::size_t stamp_index = 0;
             if (body.reads.stamps[stamp_index].owner != 0 ||
@@ -70,7 +70,9 @@ namespace CE::LivingWorld {
             } else if (record.receipt.state == Disposition::Queued) {
                 return std::unexpected(Error::Busy);
             } else if (record.receipt.state == Disposition::Applied) {
-                if (record.receipt.reason != Reason::None)
+                if (record.receipt.reason != Reason::None || !saved.plan ||
+                    saved.plan->meaning().effects.empty() ||
+                    record.receipt.gain > saved.plan->meaning().effects[0].quantity)
                     return std::unexpected(Error::InvalidBody);
             } else if (record.receipt.state == Disposition::Refused) {
                 if (record.receipt.gain || record.receipt.reason < Reason::Stale ||
@@ -78,6 +80,27 @@ namespace CE::LivingWorld {
                     return std::unexpected(Error::InvalidBody);
             } else {
                 return std::unexpected(Error::InvalidBody);
+            }
+            if (record.witness_count > record.witnesses.size())
+                return std::unexpected(Error::Capacity);
+            const bool incident = !record.cancelled && record.receipt.state == Disposition::Applied &&
+                                  record.receipt.gain != 0;
+            if (incident ? (!record.observed_at || record.observed_at > image.tick) :
+                           (record.witness_count != 0 || record.observed_at != 0))
+                return std::unexpected(Error::InvalidBody);
+            for (std::size_t witness = 0; witness < record.witness_count; ++witness) {
+                if (!actor_exists(record.witnesses[witness]))
+                    return std::unexpected(Error::InvalidBody);
+                for (std::size_t previous = 0; previous < witness; ++previous)
+                    if (record.witnesses[previous] == record.witnesses[witness])
+                        return std::unexpected(Error::Conflict);
+                std::size_t matching = 0;
+                for (std::size_t work = 0; work < image.work_count; ++work)
+                    if (image.work[work].cause == record.action.key &&
+                        image.work[work].witness == record.witnesses[witness])
+                        ++matching;
+                if (matching != 1)
+                    return std::unexpected(Error::InvalidBody);
             }
         }
         for (std::size_t index = 0; index < image.work_count; ++index) {
@@ -90,7 +113,14 @@ namespace CE::LivingWorld {
                 if (image.records[record].action.key == work.cause)
                     cause = &image.records[record];
             if (!cause || cause->cancelled || cause->receipt.state != Disposition::Applied ||
-                !cause->receipt.gain || cause->action.body.recipient != work.subject)
+                !cause->receipt.gain || cause->action.body.recipient != work.subject ||
+                cause->observed_at != work.observed_at)
+                return std::unexpected(Error::InvalidBody);
+            bool eligible = false;
+            for (std::size_t witness = 0; witness < cause->witness_count; ++witness)
+                if (cause->witnesses[witness] == work.witness)
+                    eligible = true;
+            if (!eligible)
                 return std::unexpected(Error::InvalidBody);
             std::size_t recipients = 0;
             for (std::size_t previous = 0; previous < image.work_count; ++previous) {

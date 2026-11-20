@@ -28,6 +28,7 @@ cheryl_add_test_suite(tests-living-world-joins
     SOURCES tests/host/host.cpp tests/acquisition/observation.cpp
         tests/magic-contact/contact.cpp tests/story-scene/scene.cpp tests/integration/join.cpp
         tests/integration/engine-map.cpp
+        tests/integration/recovery.cpp
     LIBRARIES Cheryl::LivingWorld::Host
     DEFINITIONS LIVING_WORLD_S1="${magic_source}/fixtures/S1.verse")
 
@@ -43,7 +44,7 @@ add_subdirectory(language)
 
 add_test(NAME living_world_consumer COMMAND cheryl-living-world-consumer)
 add_test(NAME living_world_joins COMMAND tests-living-world-joins
-    "--gtest_filter=HostFixture.*:living_join.*:living_contact.*:living_scene.*:living_observation.*:living_integration.*")
+    "--gtest_filter=HostFixture.*:RecoveryFixture.*:living_join.*:living_contact.*:living_scene.*:living_observation.*:living_integration.*")
 set_tests_properties(living_world_allocation living_world_consumer living_world_joins
     PROPERTIES TIMEOUT 30 LABELS "living-world;joins")
 

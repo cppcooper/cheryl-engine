@@ -298,6 +298,10 @@ namespace CE::LivingWorld {
                             ++staging_->actors[*recipient].revision;
                         receipt = {Disposition::Applied, Reason::None, change.health - change.before.health};
                         if (receipt.gain) {
+                            auto& record = staging_->records[index];
+                            record.witnesses = witnesses;
+                            record.witness_count = witness_count;
+                            record.observed_at = image_->tick + 1;
                             for (std::size_t witness = 0; witness < witness_count; ++witness)
                                 staging_->work[staging_->work_count++] = {
                                     action.key, witnesses[witness], action.body.recipient, image_->tick + 1, false

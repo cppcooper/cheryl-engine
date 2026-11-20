@@ -2,6 +2,8 @@
 
 #include <story/scene/scene.h>
 
+#include <utility>
+
 namespace CE::LivingWorld {
     class PairedCut final {
         struct Data {

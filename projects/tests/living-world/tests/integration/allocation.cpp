@@ -1,6 +1,7 @@
 #include <consumer/fixture.h>
 #include <story/scene/scene.h>
 #include <tests/host/access.h>
+#include <recovery/paired.h>
 
 #include <cstdlib>
 #include <new>
@@ -9,6 +10,12 @@
 
 namespace {
     bool reject_allocations = false;
+    std::optional<std::size_t> allocations_until_failure;
+    class FailAllocation {
+    public:
+        explicit FailAllocation(std::size_t after) noexcept { allocations_until_failure = after; }
+        ~FailAllocation() { allocations_until_failure.reset(); }
+    };
     class RejectAllocations {
     public:
         RejectAllocations() noexcept { reject_allocations = true; }
@@ -19,6 +26,11 @@ namespace {
 void* operator new(std::size_t size) {
     if (reject_allocations)
         throw std::bad_alloc();
+    if (allocations_until_failure) {
+        if (*allocations_until_failure == 0)
+            throw std::bad_alloc();
+        --*allocations_until_failure;
+    }
     if (void* memory = std::malloc(size ? size : 1))
         return memory;
     throw std::bad_alloc();
@@ -115,6 +127,55 @@ int main() {
                 cancelled.error() != LivingWorld::Error::InvalidBody)
                 return 14;
         }
+        LivingWorld::Host recovery_host(catalog, LivingWorld::fixture_plan(catalog));
+        const auto recovery_access = recovery_host.grant(recovery_host.entity(1));
+        LivingWorld::Scene recovery_scene(recovery_host, recovery_access, recovery_host.entity(2));
+        const auto recovery_offer = recovery_scene.display().offer.value();
+        if (!recovery_scene.request(recovery_offer) || !recovery_scene.process())
+            return 15;
+        const auto baseline = LivingWorld::HostTestAccess::image(recovery_host).revision;
+        bool captured = false;
+        for (std::size_t allocation = 0; allocation < 128; ++allocation) {
+            const FailAllocation fail(allocation);
+            const auto result = LivingWorld::Recovery::capture(recovery_host, recovery_scene);
+            if (result) {
+                captured = true;
+                break;
+            }
+            if (result.error() != LivingWorld::Error::Preparation ||
+                recovery_scene.state() != LivingWorld::SceneState::Waiting ||
+                LivingWorld::HostTestAccess::image(recovery_host).revision != baseline)
+                return 16;
+        }
+        if (!captured)
+            return 17;
+        const auto cut = LivingWorld::Recovery::capture(recovery_host, recovery_scene);
+        if (!cut)
+            return 18;
+        bool restored = false;
+        std::size_t failures = 0;
+        for (std::size_t allocation = 0; allocation < 128; ++allocation) {
+            const FailAllocation fail(allocation);
+            const auto result = LivingWorld::Recovery::restore(*cut, recovery_host, recovery_access);
+            if (result) {
+                restored = true;
+                break;
+            }
+            ++failures;
+            if (result.error() != LivingWorld::Error::Preparation ||
+                recovery_scene.state() != LivingWorld::SceneState::Waiting ||
+                LivingWorld::HostTestAccess::image(recovery_host).revision != baseline ||
+                recovery_host.actor(recovery_access, recovery_host.entity(1))->reserve != 7 ||
+                recovery_host.actor(recovery_access, recovery_host.entity(2))->health != 20)
+                return 19;
+        }
+        if (!restored || failures < 2)
+            return 20;
+        auto recovered = LivingWorld::Recovery::restore(*cut, recovery_host, recovery_access);
+        if (!recovered || !recovered->scene().refresh() || recovered->host().deliver().adopted != 1 ||
+            recovered->host().deliver().adopted != 0 || !recovery_scene.refresh() ||
+            recovery_host.deliver().adopted != 1)
+            return 21;
         return 0;
     } catch (...) {
         return 9;

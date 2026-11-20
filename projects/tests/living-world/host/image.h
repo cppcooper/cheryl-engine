@@ -62,6 +62,9 @@ namespace CE::LivingWorld {
             OwnerFence fence;
             Receipt receipt;
             bool cancelled = false;
+            std::array<EntityRef, 4> witnesses{};
+            std::size_t witness_count = 0;
+            std::uint64_t observed_at = 0;
         };
         struct ObservationWork {
             AttemptKey cause;
