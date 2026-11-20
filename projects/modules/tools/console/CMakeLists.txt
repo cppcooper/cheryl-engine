@@ -1,0 +1,5 @@
+add_library(${TARGET_LIB_MODULE_CONSOLE} STATIC src/registry.cpp src/parser.cpp src/session.cpp)
+add_library(Cheryl::Console ALIAS ${TARGET_LIB_MODULE_CONSOLE})
+target_compile_features(${TARGET_LIB_MODULE_CONSOLE} PUBLIC cxx_std_23)
+target_include_directories(${TARGET_LIB_MODULE_CONSOLE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_target_properties(${TARGET_LIB_MODULE_CONSOLE} PROPERTIES OUTPUT_NAME "${OUTPUT_LIB_MODULE_CONSOLE}")
