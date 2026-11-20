@@ -9,10 +9,12 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 namespace {
     using namespace CE::LivingWorld::Language;
+    static_assert(!std::is_copy_constructible_v<OfferOwner> && !std::is_move_constructible_v<OfferOwner>);
 
     void require(bool condition, std::string_view message) {
         if (!condition) {
@@ -130,6 +132,10 @@ namespace {
         const auto oversized = analyze(std::string(MaxInputBytes + 1, 'x'), Rule::EnglishNoun);
         require(oversized.status == AnalysisStatus::Oversized && oversized.original_utf8.empty(), "oversized input is rejected, not truncated");
         require(oversized.submitted_bytes == MaxInputBytes + 1 && !oversized.patch, "oversized size recorded");
+        for (const auto phrase : {"Fire ring", " fire ring", "fire ring ", "fire  ring", "fire-ring"}) {
+            require(analyze(phrase, Rule::EnglishCompound).status == AnalysisStatus::UnsupportedInput,
+                    "English rule does not trim, fold case, collapse spaces, or normalize punctuation");
+        }
     }
 
     void lifetime() {
@@ -213,6 +219,11 @@ namespace {
         require(!project(bad, unknown, access, false).repair && project(bad, unknown, access, true).repair,
                 "specific repairs require authorized teaching");
         require(project(analyze("\xff", Rule::FrenchForm), unknown, access, true).tokens.empty(), "invalid UTF-8 has no rendered token");
+        auto privileged = fragment;
+        privileged.tokens[0].claims = {"SECRET_CULPRIT_Iona"};
+        privileged.tokens[0].sense = "PRIVATE_DEVELOPER_PAYLOAD";
+        privileged.construction_claims = {"SECRET_ARCHIVE_PATH"};
+        require(project(privileged, unknown, access, true) == assisted, "developer claims, paths, and raw sense IDs never reach projection");
     }
 
     PermittedScene scene() {
@@ -261,6 +272,10 @@ namespace {
         OfferOwner other(18);
         require(other.reconcile(initial).has_value(), "second owner setup");
         require(other.choose(restored->token, Action::Leave, initial) == ChoiceResult::StaleOffer, "wrong owner token rejected");
+        auto different_profile = initial;
+        different_profile.profile = Profile::Echelon100;
+        require(owner.choose(restored->token, Action::Leave, different_profile) == ChoiceResult::StaleOffer,
+                "host-selected social profile change is not a display-help toggle");
         auto excessive = initial;
         excessive.exact_terms.assign(MaxInputBytes + 1, 'x');
         require(!owner.reconcile(excessive), "bounded offer terms");
