@@ -81,7 +81,6 @@ namespace CE::Story::Detail {
         std::uint64_t account_count{};
         std::uint64_t retired_through{};
         std::uint64_t attempt_high{};
-        std::uint64_t attempt_high{};
         std::size_t children{absent};
         std::size_t partnerships{absent};
         std::size_t obligations{absent};
