@@ -30,6 +30,7 @@ namespace CE::LivingWorld::Console {
         std::vector<Core::Registration> registrations_;
         void register_commands();
     public:
+        // Trusted composition supplies the same immutable plan used to construct Host.
         Adapter(std::shared_ptr<Host>, ::Magic::PlanHandle, Host::Access);
         Adapter(const Adapter&) = delete;
         Adapter& operator=(const Adapter&) = delete;

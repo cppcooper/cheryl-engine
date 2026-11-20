@@ -64,4 +64,23 @@ namespace CE::Tools::Console {
         ASSERT_TRUE(session.submit(1, *request)); EXPECT_EQ(target->effects, 1u);
         EXPECT_FALSE(session.submit(2, *request));
     }
+    TEST(ConsoleLifetime, OwnerReentranceRefusesAndFinalRetentionReleasesAtSessionDestruction) {
+        std::weak_ptr<Target> lifetime;
+        {
+            Authority authority; auto context = authority.issue(0); Registry registry; Session session(context);
+            auto target = std::make_shared<Target>(); lifetime = target;
+            Code nested = Code::None;
+            auto registration = registry.add<>(descriptor(), [&session, &nested, target](const Context&) {
+                const auto attempt = session.pump();
+                if (!attempt) nested = attempt.error().code;
+                return std::make_shared<Progress>(target);
+            });
+            ASSERT_TRUE(registration); auto request = registry.bind("act", {}, context); ASSERT_TRUE(request);
+            ASSERT_TRUE(session.submit(1, *request)); ASSERT_TRUE(session.pump());
+            EXPECT_EQ(nested, Code::Reentrant);
+            registration->reset(); target.reset(); session.close();
+            EXPECT_FALSE(lifetime.expired()); EXPECT_EQ((*session.lookup(1))->stage, Stage::Succeeded);
+        }
+        EXPECT_TRUE(lifetime.expired());
+    }
 }

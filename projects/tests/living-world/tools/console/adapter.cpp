@@ -11,6 +11,9 @@ namespace CE::LivingWorld::Console {
     namespace {
         constexpr Core::Rights cast_right = 1, observer_right = 2, setting_right = 4;
         Core::Schema primitive(Core::Type type) { Core::Schema schema; schema.type = type; return schema; }
+        Core::Schema inspection_schema() {
+            auto schema = primitive(Core::Type::Text); schema.text_limit = Core::max_line; return schema;
+        }
         Core::Schema enumeration(std::vector<std::string> choices) {
             auto schema = primitive(Core::Type::Enumeration); schema.choices = std::move(choices); return schema;
         }
@@ -59,6 +62,22 @@ namespace CE::LivingWorld::Console {
                 catch (...) { result.stage = Core::Stage::Failed; result.failure = {Core::Code::Owner}; }
             }
             void close() noexcept override {
+                if (!Core::terminal(result.stage)) { result.stage = Core::Stage::Cancelled; result.failure = {Core::Code::Cancelled}; }
+            }
+        };
+        class OperationView final : public Core::Work {
+            std::shared_ptr<Core::Work> source_;
+        public:
+            explicit OperationView(std::shared_ptr<Core::Work> source) : source_(std::move(source)) {
+                result = source_->result;
+            }
+            void step() noexcept override {
+                try { result = source_->result; }
+                catch (const std::bad_alloc&) { result.stage = Core::Stage::Failed; result.failure = {Core::Code::Allocation}; }
+                catch (...) { result.stage = Core::Stage::Failed; result.failure = {Core::Code::Owner}; }
+            }
+            void close() noexcept override {
+                step();
                 if (!Core::terminal(result.stage)) { result.stage = Core::Stage::Cancelled; result.failure = {Core::Code::Cancelled}; }
             }
         };
@@ -167,10 +186,7 @@ namespace CE::LivingWorld::Console {
             if (!context.owns(handle, "operation")) return refusal(Core::Code::Unauthorized);
             if (auto owner = client(context)) for (const auto& work : owner->operations_)
                 if (work->handle == handle) {
-                    return std::make_shared<QueryWork>(work->result.value, [work](Core::Result& result) {
-                        result.value = work->result.value;
-                        result.stage = Core::Stage::Succeeded;
-                    });
+                    return std::make_shared<OperationView>(work);
                 }
             return refusal(Core::Code::Unauthorized);
         }
@@ -271,7 +287,7 @@ namespace CE::LivingWorld::Console {
             }).value());
         registrations_.push_back(registry_->add<Core::Enum>(command("magic.inspect", "Reads the retained immutable compiler plan without issuing an attempt.",
             observer_right, Core::Kind::Query, {{"spell", enumeration({"S1"})}},
-            record({"source", "meaning"}, {primitive(Core::Type::Text), primitive(Core::Type::Text)})),
+            record({"source", "meaning"}, {primitive(Core::Type::Text), inspection_schema()})),
             [state](const Core::Context&, Core::Enum) {
                 return std::make_shared<QueryWork>(Core::Value::record({Core::Value::text(std::string(state->plan->source())),
                     Core::Value::text(std::string(state->plan->inspection()))}), [](auto&) {});

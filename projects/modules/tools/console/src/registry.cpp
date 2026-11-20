@@ -17,10 +17,12 @@ namespace CE::Tools::Console {
         Checked<void> schema_valid(const Schema& schema, std::size_t depth, std::size_t& nodes) {
             if (depth > max_depth || ++nodes > max_nodes || schema.choices.size() > max_commands ||
                 schema.fields.size() > max_arguments || schema.children.size() > max_arguments ||
-                schema.count > max_arguments || schema.unit.size() > 64 || schema.domain.size() > 64)
+                schema.count > max_arguments || schema.text_limit > max_output || schema.unit.size() > 64 || schema.domain.size() > 64)
                 return fail(Code::Limit);
             if (schema.integer_min > schema.integer_max || !valid_utf8(schema.unit))
                 return fail(Code::Schema);
+            if ((schema.type != Type::Scalar && !schema.unit.empty()) ||
+                (schema.type != Type::Handle && !schema.domain.empty())) return fail(Code::Schema);
             switch (schema.type) {
             case Type::Record:
                 if (schema.fields.size() != schema.children.size()) return fail(Code::Schema);
@@ -77,9 +79,9 @@ namespace CE::Tools::Console {
                 break;
             case Type::Text:
                 if (!std::holds_alternative<std::string>(value.data)) return fail(Code::Type);
-                if (std::get<std::string>(value.data).size() > max_text) return fail(Code::Limit);
+                if (std::get<std::string>(value.data).size() > schema.text_limit) return fail(Code::Limit);
                 bytes += std::get<std::string>(value.data).size();
-                if (bytes > max_line) return fail(Code::Limit);
+                if (bytes > max_output) return fail(Code::Limit);
                 if (!valid_utf8(std::get<std::string>(value.data))) return fail(Code::Encoding);
                 break;
             case Type::Enumeration:
@@ -198,7 +200,9 @@ namespace CE::Tools::Console {
     Registry::~Registry() { for (auto& weak : state_->entries) if (auto entry = weak.lock()) entry->active = false; }
     Checked<Registration> Registry::install(Descriptor descriptor, std::span<const Type> signature, Handler handler) {
         try {
-            if (!name_valid(descriptor.name) || !name_valid(descriptor.domain) ||
+            if ((descriptor.kind != Kind::Query && descriptor.kind != Kind::Setting && descriptor.kind != Kind::Action) ||
+                (descriptor.timing != Timing::OwnerImmediate && descriptor.timing != Timing::OwnerProgress) ||
+                !name_valid(descriptor.name) || !name_valid(descriptor.domain) ||
                 descriptor.help.size() > max_text || !valid_utf8(descriptor.help) ||
                 descriptor.arguments.size() > max_arguments || signature.size() != descriptor.arguments.size() || !handler)
                 return std::unexpected(Failure{Code::Schema});

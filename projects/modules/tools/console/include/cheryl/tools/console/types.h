@@ -13,6 +13,7 @@
 namespace CE::Tools::Console {
     inline constexpr std::size_t max_commands = 32, max_arguments = 8, max_requests = 32;
     inline constexpr std::size_t max_line = 4096, max_text = 1024, max_tokens = 16;
+    inline constexpr std::size_t max_output = 8192;
     inline constexpr std::size_t max_nodes = 64, max_depth = 4;
     enum class Code {
         None, Unauthorized, Expired, UnknownCommand, Duplicate, Schema, Unsupported,
@@ -73,6 +74,7 @@ namespace CE::Tools::Console {
         std::vector<std::string> choices, fields;
         std::vector<Schema> children;
         std::size_t count = max_arguments;
+        std::size_t text_limit = max_text;
         bool operator==(const Schema&) const = default;
     };
     struct Argument {

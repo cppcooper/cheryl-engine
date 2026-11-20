@@ -27,8 +27,9 @@ int main() {
             practice.host->actor(practice.access, practice.host->entity(1))->reserve != 7) return 6;
         if (!practice.host->set_price(9) || !session.submit(2, *text)) return 7;
         const auto operation = Core::bind_text(registry, client->context(), "operation.read op1");
-        if (!operation || !session.submit(3, *operation) || !session.pump() ||
-            session.lookup(3).value()->value != (*result)->value) return 8;
+        if (!operation || !session.submit(3, *operation) || !session.pump()) return 8;
+        const auto retained_cast = session.lookup(2), operation_view = session.lookup(3);
+        if (!retained_cast || !operation_view || (*operation_view)->value != (*retained_cast)->value) return 8;
         const auto witness = practice.host->read(practice.host->grant(practice.host->entity(3)));
         if (!witness || witness->size != 1 || witness->wound_closures[0].subject != practice.host->entity(2)) return 9;
         practice.console->close();

@@ -125,5 +125,10 @@ namespace CE::Tools::Console {
         invalid = list; invalid.children.clear(); EXPECT_FALSE(validate_schema(invalid));
         invalid = primitive(static_cast<Type>(99));
         auto unsupported = validate_schema(invalid); ASSERT_FALSE(unsupported); EXPECT_EQ(unsupported.error().code, Code::Unsupported);
+        auto long_text = primitive(Type::Text); long_text.text_limit = max_line;
+        EXPECT_TRUE(validate(Value::text(std::string(max_text + 1, 'x')), long_text, context));
+        EXPECT_FALSE(validate(Value::text(std::string(max_line + 1, 'x')), long_text, context));
+        long_text.text_limit = max_output + 1; EXPECT_FALSE(validate_schema(long_text));
+        auto misleading = primitive(Type::Unsigned); misleading.unit = "ms"; EXPECT_FALSE(validate_schema(misleading));
     }
 }

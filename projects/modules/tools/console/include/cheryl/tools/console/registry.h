@@ -50,7 +50,7 @@ namespace CE::Tools::Console {
         using Handler = std::function<std::shared_ptr<Work>(const Context&, std::span<const Value>)>;
         Checked<Registration> install(Descriptor, std::span<const Type>, Handler);
     public:
-        // An owner gate rejects contexts issued by unrelated authorities, before discovery.
+        // A pure, non-reentrant owner gate rejects unrelated issuers before discovery.
         explicit Registry(std::function<bool(const Context&)> accepts = {});
         Registry(const Registry&) = delete;
         Registry& operator=(const Registry&) = delete;
