@@ -61,6 +61,7 @@ namespace CE::LivingWorld {
             Action action;
             OwnerFence fence;
             Receipt receipt;
+            bool cancelled = false;
         };
         struct ObservationWork {
             AttemptKey cause;

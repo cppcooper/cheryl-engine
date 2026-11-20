@@ -24,7 +24,7 @@ namespace CE::LivingWorld {
         std::shared_ptr<const void> authority_;
         std::unique_ptr<Detail::Image> image_;
         std::unique_ptr<Detail::Image> staging_;
-        std::uint64_t issued_ = 0, retired_ = 0;
+        std::uint64_t issued_ = 0;
         std::optional<std::size_t> queued_;
         bool reserved_ = false;
 
@@ -40,6 +40,7 @@ namespace CE::LivingWorld {
             void finalize() noexcept;
         };
         friend class Scene;
+        friend struct HostTestAccess;
         bool authorized(const Access& access) const noexcept;
         std::optional<std::size_t> actor_index(EntityRef ref) const noexcept;
         ReadSet reads(EntityRef caster, EntityRef recipient) const noexcept;
