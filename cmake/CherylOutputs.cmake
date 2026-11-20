@@ -11,6 +11,7 @@ set(OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON cheryl-worker-topology-json)
 set(OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE cheryl-worker-topology-example)
 
 # Modules
+set(OUTPUT_LIB_MODULE_STORY cheryl-story)
 set(OUTPUT_LIB_MODULE_STARTUP cheryl-module-startup)
 set(OUTPUT_LIB_MODULE_WORKERS cheryl-module-workers)
 set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)

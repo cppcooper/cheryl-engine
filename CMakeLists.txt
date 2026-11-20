@@ -96,6 +96,10 @@ if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
     cheryl_select_public_component(Cheryl::DebugTerminal::Linux)
 endif()
 
+if(CHERYL_BUILD_STORY)
+    add_subdirectory(projects/modules/story)
+endif()
+
 if(CHERYL_BUILD_TESTS)
     add_subdirectory(projects/engine/tests)
     add_subdirectory(projects/tests)

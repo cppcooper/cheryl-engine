@@ -1,4 +1,7 @@
 # Selected owners register their reusable case targets before this assembly.
+if(CHERYL_BUILD_STORY)
+    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/modules/story/tests" story)
+endif()
 cheryl_add_test_aggregate(${TARGET_TEST_ALL_TESTS}
     OUTPUT_NAME "${OUTPUT_TEST_ALL_TESTS}" EXPORT_SYMBOLS)
 add_subdirectory(living-world)
