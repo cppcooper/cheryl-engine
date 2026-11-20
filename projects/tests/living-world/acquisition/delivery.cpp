@@ -3,6 +3,65 @@
 #include <limits>
 
 namespace CE::LivingWorld {
+    std::expected<ActionDelivery, Error> Host::delivery(const Access& access, const Action& action) const noexcept {
+        const auto receipt = lookup(access, action);
+        if (!receipt)
+            return std::unexpected(receipt.error());
+        if (image_->work_count > image_->work.size() || image_->acquired_count > image_->acquired.size())
+            return std::unexpected(Error::Preparation);
+        const Detail::Record* retained = nullptr;
+        for (std::size_t index = 0; index < image_->record_count; ++index)
+            if (image_->records[index].action.key == action.key) {
+                retained = &image_->records[index];
+                break;
+            }
+        if (!retained || retained->witness_count > retained->witnesses.size() ||
+            ((receipt->state != Disposition::Applied || !receipt->gain) && retained->witness_count))
+            return std::unexpected(Error::Preparation);
+        ActionDelivery result{*receipt, retained->witness_count};
+        std::size_t work_count = 0, acquired_count = 0;
+        for (std::size_t index = 0; index < image_->work_count; ++index)
+            work_count += image_->work[index].cause == action.key;
+        for (std::size_t index = 0; index < image_->acquired_count; ++index)
+            acquired_count += image_->acquired[index].cause == action.key;
+        if (work_count != result.required)
+            return std::unexpected(Error::Preparation);
+        for (std::size_t witness = 0; witness < retained->witness_count; ++witness) {
+            const auto ref = retained->witnesses[witness];
+            for (std::size_t previous = 0; previous < witness; ++previous)
+                if (retained->witnesses[previous] == ref)
+                    return std::unexpected(Error::Preparation);
+            const Detail::ObservationWork* required = nullptr;
+            for (std::size_t index = 0; index < image_->work_count; ++index) {
+                const auto& work = image_->work[index];
+                if (work.cause != action.key || work.witness != ref)
+                    continue;
+                if (required || work.subject != action.body.recipient || work.observed_at != retained->observed_at)
+                    return std::unexpected(Error::Preparation);
+                required = &work;
+            }
+            if (!required)
+                return std::unexpected(Error::Preparation);
+            std::size_t acquired = 0;
+            for (std::size_t index = 0; index < image_->acquired_count; ++index) {
+                const auto& entry = image_->acquired[index];
+                if (entry.cause != action.key || entry.witness != ref)
+                    continue;
+                if (entry.subject != required->subject || entry.observed_at != required->observed_at ||
+                    !entry.local_id || entry.acquired_at < entry.observed_at)
+                    return std::unexpected(Error::Preparation);
+                ++acquired;
+            }
+            if (acquired != static_cast<std::size_t>(required->consumed))
+                return std::unexpected(Error::Preparation);
+            result.acquired += acquired;
+        }
+        if (acquired_count != result.acquired)
+            return std::unexpected(Error::Preparation);
+        result.outstanding = result.required - result.acquired;
+        return result;
+    }
+
     Delivery Host::deliver() noexcept {
         Delivery result;
         constexpr auto maximum = std::numeric_limits<std::uint64_t>::max();

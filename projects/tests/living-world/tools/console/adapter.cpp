@@ -150,16 +150,16 @@ namespace CE::LivingWorld::Console {
                         if (receipt->state == Disposition::Queued) return;
                         settled_ = *receipt;
                     }
-                    const auto delivery = state_->host->deliver();
-                    field(result, 4).data = std::get<std::uint64_t>(field(result, 4).data) + delivery.adopted;
-                    field(result, 5).data = delivery.backpressure || delivery.withheld;
-                    const auto exact = state_->host->lookup(state_->access, *action_);
+                    static_cast<void>(state_->host->deliver());
+                    const auto exact = state_->host->delivery(state_->access, *action_);
                     if (!exact) { owner_error(exact.error()); return; }
-                    field(result, 1).data = Core::Enum{static_cast<std::uint32_t>(exact->state)};
-                    field(result, 2).data = static_cast<std::uint64_t>(exact->gain);
-                    field(result, 3).data = Core::Enum{static_cast<std::uint32_t>(exact->reason)};
-                    if (delivery.backpressure || delivery.withheld) return;
-                    result.stage = exact->state == Disposition::Applied ? Core::Stage::Succeeded : Core::Stage::Refused;
+                    field(result, 4).data = static_cast<std::uint64_t>(exact->acquired);
+                    field(result, 5).data = exact->outstanding != 0;
+                    field(result, 1).data = Core::Enum{static_cast<std::uint32_t>(exact->receipt.state)};
+                    field(result, 2).data = static_cast<std::uint64_t>(exact->receipt.gain);
+                    field(result, 3).data = Core::Enum{static_cast<std::uint32_t>(exact->receipt.reason)};
+                    if (exact->receipt.state == Disposition::Queued || exact->outstanding) return;
+                    result.stage = exact->receipt.state == Disposition::Applied ? Core::Stage::Succeeded : Core::Stage::Refused;
                 } catch (const std::bad_alloc&) {
                     result.stage = Core::Stage::Failed; result.failure = {Core::Code::Allocation};
                 } catch (...) { result.stage = Core::Stage::Failed; result.failure = {Core::Code::Owner}; }

@@ -25,4 +25,8 @@ namespace CE::LivingWorld {
         std::size_t adopted = 0;
         bool backpressure = false, withheld = false;
     };
+    struct ActionDelivery {
+        Receipt receipt;
+        std::size_t required = 0, acquired = 0, outstanding = 0;
+    };
 }

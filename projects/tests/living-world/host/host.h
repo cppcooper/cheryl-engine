@@ -71,6 +71,7 @@ namespace CE::LivingWorld {
         std::expected<Receipt, Error> queue(const Access&, const Action&, OwnerFence);
         std::expected<Receipt, Error> settle(const Access&, const Action&) noexcept;
         Delivery deliver() noexcept;
+        std::expected<ActionDelivery, Error> delivery(const Access&, const Action&) const noexcept;
         std::expected<Page, Error> read(const Access&, std::optional<Cursor> = {}) const noexcept;
 
         std::expected<void, Error> edit_actor(Actor actor);
