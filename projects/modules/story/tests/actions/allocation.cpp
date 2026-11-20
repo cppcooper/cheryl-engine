@@ -52,5 +52,14 @@ int main() {
         trace.episodes != 5 || trace.acquisitions != 9) {
         return 3;
     }
+    auto growing = family();
+    reject = true;
+    const auto life = dynamic_life(*growing);
+    const auto repeated = growing->apply(growing->life(), life_request(3, 11, Story::Death{life.introduced.person, 1}));
+    reject = false;
+    if (!life.complete || repeated != life.died || life.newborn_accounts != 0 ||
+        growing->object(box)->holder != life.born.person) {
+        return 4;
+    }
     return 0;
 }

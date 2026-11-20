@@ -42,10 +42,21 @@ int main() {
         private_response.error != Story::Error::UnknownAccount) {
         return 4;
     }
+    auto growing = family();
+    const auto life = dynamic_life(*growing);
+    if (!life.complete || life.newborn_accounts != 0 || growing->person(life.born.person)->depth != 2 ||
+        growing->person(life.introduced.person)->depth || growing->object(box)->holder != life.born.person ||
+        growing->person(life.born.person)->died || !growing->person(life.born.person)->member ||
+        growing->partnership(life.accepted.partnership)->state != Story::PartnershipState::Ended) {
+        return 5;
+    }
     std::cout << "rule-fixture: exact-object fulfillment requires independent agreement and recipient consent.\n"
                  "rule-fixture: retry repeats the receipt, not the transfer; a nonholder is refused.\n"
                  "rule-fixture: substitute possession cannot discharge a different exact-object obligation.\n"
                  "rule-fixture: acquisition is attributed, and an unacquired private transfer cannot support a response.\n"
+                 "rule-fixture: dynamic birth requires independent partnership consent and tracked parent support.\n"
+                 "rule-fixture: new members participate in transfer, attributed telling, and response without inherited memories.\n"
+                 "rule-fixture: leave/rejoin retains membership history; actual death closes rather than erases partnership.\n"
                  "Rule assertions satisfied by actual Family calls; this fixture is not random generation.\n";
     return 0;
 }

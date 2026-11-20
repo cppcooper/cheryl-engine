@@ -1,5 +1,6 @@
 #include <contract/fixture.h>
 #include <gtest/gtest.h>
+#include <vector>
 
 using namespace StoryFixture;
 
@@ -124,4 +125,62 @@ TEST(Storymodel, parent_not_alive_at_birth_refuses) {
     const auto result = Story::Family::create(inputs.seed());
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), Story::Error::Life);
+}
+
+TEST(Storymodel, sparse_maximum_identity_issues_once_then_refuses_overflow) {
+    Inputs inputs;
+    inputs.people[2].id.value = std::numeric_limits<std::uint64_t>::max() - 1;
+    inputs.contacts[1].second = inputs.people[2].id;
+    auto created = Story::Family::create(inputs.seed());
+    ASSERT_TRUE(created);
+    auto& owner = **created;
+    const auto introduction = owner.apply(owner.life(), life_request(1, 1, Story::Introduce{newcomer(1001), {-25}}));
+    ASSERT_TRUE(introduction);
+    EXPECT_EQ(introduction.person.value, std::numeric_limits<std::uint64_t>::max());
+    EXPECT_EQ(owner.apply(owner.life(), life_request(2, 2, Story::Introduce{newcomer(1002), {-25}})).error,
+        Story::Error::Capacity);
+    EXPECT_EQ(owner.episode_count(), 1);
+    EXPECT_EQ(owner.person(introduction.person)->address, (Story::GenerationAddress{7, 1001}));
+}
+
+TEST(Storymodel, high_degree_contact_import_uses_bounded_pair_sort_and_rejects_reversed_duplicate) {
+    Inputs inputs;
+    std::vector<Story::Person> people{inputs.people[0]};
+    std::vector<Story::Contact> contacts;
+    for (std::uint64_t index = 0; index < 512; ++index) {
+        auto incoming = inputs.people[2];
+        incoming.id = {timeline, 1000 + index};
+        incoming.origin = {timeline, incoming.id.value};
+        incoming.address = {1, incoming.id.value};
+        incoming.parents = {};
+        incoming.lineage = Story::Lineage::Incoming;
+        people.push_back(incoming);
+        contacts.push_back({sera, incoming.id});
+    }
+    Story::Limits limits;
+    limits.people = people.size();
+    limits.memberships = people.size();
+    limits.links = 2 * contacts.size() + 2;
+    Story::Seed seed{timeline, {0}, people, {}, contacts};
+    const auto created = Story::Family::create(seed, limits);
+    ASSERT_TRUE(created);
+    EXPECT_GT((*created)->counters().import_contact_comparisons, contacts.size());
+    EXPECT_LT((*created)->counters().import_contact_comparisons, 32 * contacts.size());
+    contacts.push_back({contacts[0].second, contacts[0].first});
+    seed.contacts = contacts;
+    const auto duplicate = Story::Family::create(seed, limits);
+    ASSERT_FALSE(duplicate);
+    EXPECT_EQ(duplicate.error(), Story::Error::Duplicate);
+}
+
+TEST(Storymodel, new_index_reservations_are_charged_to_byte_budget) {
+    Inputs inputs;
+    Story::Limits limits;
+    limits.partnerships = std::numeric_limits<std::size_t>::max();
+    const auto oversized = Story::Family::create(inputs.seed(), limits);
+    ASSERT_FALSE(oversized);
+    EXPECT_EQ(oversized.error(), Story::Error::Bytes);
+    limits = {};
+    limits.bytes = 1;
+    EXPECT_FALSE(Story::Family::create(inputs.seed(), limits));
 }

@@ -34,4 +34,22 @@ namespace StoryFixture {
         std::size_t oren_count{};
     };
     Trace baseline(Story::Family&);
+    Story::NewPerson newcomer(std::uint64_t identity);
+    Story::LifeRequest life_request(std::uint64_t attempt, std::int64_t time, Story::LifeAction action);
+    Story::Result agreement(Story::Family&, Story::PersonId first, Story::PersonId second,
+        std::int64_t time, std::uint64_t first_attempt = 1, std::uint64_t second_attempt = 1);
+    struct LifeTrace {
+        Story::Result introduced;
+        Story::Result accepted;
+        Story::Result born;
+        Story::Result transferred;
+        Story::Result told;
+        Story::Result responded;
+        Story::Result left;
+        Story::Result rejoined;
+        Story::Result died;
+        std::size_t newborn_accounts{};
+        bool complete{};
+    };
+    LifeTrace dynamic_life(Story::Family&);
 }
