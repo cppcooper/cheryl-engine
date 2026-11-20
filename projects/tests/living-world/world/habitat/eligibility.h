@@ -18,6 +18,17 @@ namespace CE::LivingWorld::Habitat {
         bool operator==(const Seed&) const = default;
     };
     class Eligibility {
+    public:
+        class Source {
+            std::shared_ptr<Sites::Owner> owner_;
+            Sites::Image read_;
+            Source(std::shared_ptr<Sites::Owner> owner, Sites::Image read)
+            : owner_(std::move(owner)), read_(std::move(read)) {}
+            friend class Eligibility;
+        public:
+            [[nodiscard]] const Sites::Image& read_set() const { return read_; }
+        };
+    private:
         std::shared_ptr<Sites::Owner> owner_;
         Sites::Image read_;
         ProcGen::EligibilityImage image_;
@@ -28,12 +39,16 @@ namespace CE::LivingWorld::Habitat {
             Index schema, Seed seed, std::optional<ProcGen::ElevationReplay> replay);
         [[nodiscard]] static Result<void> validate(const Sites::Stamp& stamp,
             const ProcGen::EligibilityImage& image, Index revision, Seed seed, Sites::Budget budget);
+        [[nodiscard]] static Result<Sites::Image> current(const Source& source, const Sites::Owner::Access& access,
+            const ProcGen::EligibilityImage& image, Sites::Budget budget);
     public:
         [[nodiscard]] static Sites::Accounting requirements(Index cells);
-        [[nodiscard]] static Result<std::shared_ptr<const Eligibility>> literal(std::shared_ptr<Sites::Owner> owner,
+        [[nodiscard]] static Result<Source> capture(std::shared_ptr<Sites::Owner> owner,
+            const Sites::Owner::Access& access, Sites::Budget budget = hard_limits);
+        [[nodiscard]] static Result<std::shared_ptr<const Eligibility>> literal(const Source& source,
             const Sites::Owner::Access& access,
             Index schema, const ProcGen::EligibilityImage& image, Index revision, Seed seed, Sites::Budget budget = hard_limits);
-        [[nodiscard]] static Result<std::shared_ptr<const Eligibility>> generated(std::shared_ptr<Sites::Owner> owner,
+        [[nodiscard]] static Result<std::shared_ptr<const Eligibility>> generated(const Source& source,
             const Sites::Owner::Access& access,
             const ProcGen::Elevation& elevation, const ProcGen::EligibilityImage& image,
             Index revision, Seed seed, Sites::Budget budget = hard_limits);

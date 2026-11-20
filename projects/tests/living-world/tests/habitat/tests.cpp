@@ -36,6 +36,7 @@ namespace {
     void invalid_case() {
         const auto setup = literal();
         const auto access = setup.owner->access();
+        const auto source = take(Eligibility::capture(setup.owner, access));
         auto advice = advisor(setup);
         auto invalid_policy = policy();
         invalid_policy.residential.unit = Unit::activity_slots;
@@ -54,23 +55,24 @@ namespace {
         refused(advice->prepare(invalid_policy, options), Error::capacity);
         auto invalid_seed = seed();
         invalid_seed.version = 2;
-        refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
+        refused(Eligibility::literal(source, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
         invalid_seed = seed();
         invalid_seed.name_space = {};
-        refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
-        refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 0, seed()), Error::evidence);
-        refused(Eligibility::literal(setup.owner, access, 2, setup.evidence->image(), 2, seed()), Error::evidence);
+        refused(Eligibility::literal(source, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
+        refused(Eligibility::literal(source, access, 1, setup.evidence->image(), 0, seed()), Error::evidence);
+        refused(Eligibility::literal(source, access, 2, setup.evidence->image(), 2, seed()), Error::evidence);
         const auto other_domain = take(ProcGen::Domain::checked(std::array<Index, 2>{3, 5}));
         std::array<ProcGen::EligibilityCell, 15> cells;
         cells.fill(ProcGen::EligibilityCell::ineligible);
         const auto wrong_image = take(ProcGen::EligibilityImage::make(other_domain, {1, 1, ProcGen::EligibilityCoverage::complete},
             cells, ProcGen::eligibility_hard_limits));
-        refused(Eligibility::literal(setup.owner, access, 1, wrong_image, 2, seed()), Error::evidence);
-        const auto source = generated();
-        refused(Eligibility::literal(source.owner, source.owner->access(), 1, source.evidence->image(), 2, seed()), Error::evidence);
+        refused(Eligibility::literal(source, access, 1, wrong_image, 2, seed()), Error::evidence);
+        const auto generated_setup = generated();
+        const auto generated_source = take(Eligibility::capture(generated_setup.owner, generated_setup.owner->access()));
+        refused(Eligibility::literal(generated_source, generated_setup.owner->access(), 1, generated_setup.evidence->image(), 2, seed()), Error::evidence);
         const auto wrong_elevation = take(ProcGen::generate_elevation(std::array<Index, 2>{5, 3}, {42, 7, 1},
             {3, 10, 10}, ProcGen::elevation_hard_limits));
-        refused(Eligibility::generated(setup.owner, access, wrong_elevation, setup.evidence->image(), 2, seed()), Error::evidence);
+        refused(Eligibility::generated(source, access, wrong_elevation, setup.evidence->image(), 2, seed()), Error::evidence);
         auto bad_frame = setup.evidence->stamp();
         bad_frame.frame.width = 3;
         const auto original = take(setup.owner->capture(access));
@@ -80,6 +82,7 @@ namespace {
     }
     void budgets_case() {
         const auto setup = literal();
+        const auto source = take(Eligibility::capture(setup.owner, setup.owner->access()));
         auto advice = advisor(setup);
         const auto needed = take(Advisor::requirements(setup.evidence->image().domain(), options));
         const Sites::Budget exact{needed.storage_bytes, needed.work};
@@ -90,15 +93,20 @@ namespace {
         refused(advice->prepare(policy(), options, ProcGen::eligibility_hard_limits, {needed.storage_bytes, needed.work - 1}), Error::budget);
         refused(advice->read(plan, {0, 0}), Error::budget);
         refused(Advisor::create(setup.owner, setup.owner->access(), setup.evidence, {0, 0}), Error::budget);
-        refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2, seed(), {0, 0}), Error::budget);
+        refused(Eligibility::capture(setup.owner, setup.owner->access(), {0, 0}), Error::budget);
+        refused(Eligibility::literal(source, setup.owner->access(), 1, setup.evidence->image(), 2, seed(), {0, 0}), Error::budget);
         const auto evidence_needed = Eligibility::requirements(15);
-        const auto evidence = take(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+        const auto evidence = take(Eligibility::literal(source, setup.owner->access(), 1, setup.evidence->image(), 2,
             seed(), {evidence_needed.storage_bytes, evidence_needed.work}));
         check(evidence->revision() == 2, "exact evidence envelope accepted");
-        refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+        refused(Eligibility::literal(source, setup.owner->access(), 1, setup.evidence->image(), 2,
             seed(), {evidence_needed.storage_bytes - 1, evidence_needed.work}), Error::budget);
-        refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+        refused(Eligibility::literal(source, setup.owner->access(), 1, setup.evidence->image(), 2,
             seed(), {evidence_needed.storage_bytes, evidence_needed.work - 1}), Error::budget);
+        const auto larger = generated();
+        const auto larger_source = take(Eligibility::capture(larger.owner, larger.owner->access()));
+        refused(Eligibility::literal(larger_source, larger.owner->access(), 1, setup.evidence->image(), 2,
+            seed(), {evidence_needed.storage_bytes, evidence_needed.work}), Error::budget);
         const auto snapshot_needed = take(Advisor::requirements(setup.evidence->image().domain(), {0, 0, UINT32_MAX, 1}));
         auto exact_advice = take(Advisor::create(setup.owner, setup.owner->access(), setup.evidence,
             {snapshot_needed.storage_bytes, snapshot_needed.work}));
@@ -116,10 +124,12 @@ namespace {
     void water_case() {
         const auto setup = literal();
         const auto access = setup.owner->access();
+        const auto source = take(Eligibility::capture(setup.owner, access));
         auto advice = advisor(setup);
         const auto plan = take(advice->prepare(policy(), options));
         const auto candidate = water_change(setup);
         check(take(setup.owner->adopt(access, candidate)).receipt.water_revision == 5, "real water adoption");
+        refused(Eligibility::literal(source, access, 1, setup.evidence->image(), 2, seed()), Error::stale);
         refused(advice->read(plan), Error::stale);
         refused(advice->prepare(policy(), options), Error::stale);
         refused(Advisor::create(setup.owner, access, setup.evidence), Error::stale);
@@ -129,10 +139,12 @@ namespace {
     void excavation_case() {
         const auto setup = literal();
         const auto access = setup.owner->access();
+        const auto source = take(Eligibility::capture(setup.owner, access));
         auto advice = advisor(setup);
         const auto plan = take(advice->prepare(policy(), options));
         const Sites::Edit edit{13, 62, true, text("player-action-62")};
         check(take(setup.owner->excavate(access, 19, edit)) == 20, "actual excavation before read");
+        refused(Eligibility::literal(source, access, 1, setup.evidence->image(), 2, seed()), Error::stale);
         auto expected = setup.preserved;
         expected.edits[1] = edit;
         expected.edit_count = 2;
@@ -150,6 +162,7 @@ namespace {
         const auto setup = literal();
         const auto foreign = literal();
         const auto access = setup.owner->access();
+        const auto source = take(Eligibility::capture(setup.owner, access));
         auto advice = advisor(setup);
         auto other = advisor(foreign);
         const auto plan = take(advice->prepare(policy(), options));
@@ -158,7 +171,9 @@ namespace {
         const auto wrong_access = Advisor::create(setup.owner, foreign.owner->access(), setup.evidence);
         refused(wrong_access, Error::owner);
         check(wrong_access.error().owner->reason == Sites::Error::denied, "same numeric fence not owner identity");
+        refused(Eligibility::literal(source, foreign.owner->access(), 1, setup.evidence->image(), 2, seed()), Error::owner);
         check(setup.owner->renew_fence(access, {9, 3}).has_value(), "real fence renewal");
+        refused(Eligibility::literal(source, setup.owner->access(), 1, setup.evidence->image(), 2, seed()), Error::stale);
         refused(advice->read(plan), Error::owner);
         const auto next = literal_evidence(setup, 2);
         auto renewed = take(Advisor::create(setup.owner, setup.owner->access(), next));

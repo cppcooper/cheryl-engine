@@ -27,6 +27,7 @@ int main() {
         auto advice = advisor(setup);
         const auto plan = take(advice->prepare(policy(), {2, 0, 1, 2}));
         const auto rules = seed();
+        const auto source = take(Eligibility::capture(setup.owner, setup.owner->access()));
         bool completed = false;
         std::size_t failures = 0;
         for (std::size_t boundary = 1; boundary <= 16 && !completed; ++boundary) {
@@ -34,7 +35,7 @@ int main() {
             allocations = 0;
             fail_at = boundary;
             try {
-                const auto candidate = Eligibility::literal(setup.owner, setup.owner->access(), 1,
+                const auto candidate = Eligibility::literal(source, setup.owner->access(), 1,
                     setup.evidence->image(), 2, rules);
                 fail_at = 0;
                 check(candidate.has_value(), "valid evidence eventually constructs");

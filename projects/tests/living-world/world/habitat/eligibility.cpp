@@ -5,18 +5,9 @@
 namespace CE::LivingWorld::Habitat {
     namespace {
         Failure fail(Error reason) { return {reason, std::nullopt, std::nullopt}; }
-        Result<Sites::Image> capture(const std::shared_ptr<Sites::Owner>& owner, const Sites::Owner::Access& access,
-            const ProcGen::EligibilityImage& image, Sites::Budget budget) {
-            if (!owner) { return std::unexpected(fail(Error::evidence)); }
-            const auto needed = Eligibility::requirements(image.domain().cells());
-            if (image.domain().cells() > ProcGen::eligibility_hard_limits.cells
-                || needed.storage_bytes > std::min(budget.storage_bytes, hard_limits.storage_bytes)
-                || needed.work > std::min(budget.work, hard_limits.work)) {
-                return std::unexpected(fail(Error::budget));
-            }
-            const auto read = owner->capture(access);
-            if (!read) { return std::unexpected(Failure{Error::owner, std::nullopt, read.error()}); }
-            return *read;
+        bool admitted(Sites::Accounting needed, Sites::Budget budget) {
+            return needed.storage_bytes <= std::min(budget.storage_bytes, hard_limits.storage_bytes)
+                && needed.work <= std::min(budget.work, hard_limits.work);
         }
     }
     Eligibility::Eligibility(std::shared_ptr<Sites::Owner> owner, Sites::Image read, ProcGen::EligibilityImage image, Index revision,
@@ -27,9 +18,31 @@ namespace CE::LivingWorld::Habitat {
     Sites::Accounting Eligibility::requirements(Index cells) {
         if (cells > ProcGen::eligibility_hard_limits.cells) { return {UINT64_MAX, UINT64_MAX}; }
         const auto baseline = Sites::Baseline::requirements(cells);
-        return {sizeof(Eligibility) + 2 * sizeof(Sites::Image) + sizeof(ProcGen::EligibilityImage) + 2 * cells * sizeof(ProcGen::EligibilityCell)
+        return {sizeof(Eligibility) + sizeof(Source) + 2 * sizeof(Sites::Image) + sizeof(ProcGen::EligibilityImage) + 2 * cells * sizeof(ProcGen::EligibilityCell)
                     + baseline.storage_bytes,
-                baseline.work + 4 * cells + sizeof(Eligibility)};
+                baseline.work + 4 * cells + sizeof(Eligibility) + sizeof(Source)};
+    }
+    Result<Eligibility::Source> Eligibility::capture(std::shared_ptr<Sites::Owner> owner,
+        const Sites::Owner::Access& access, Sites::Budget budget) {
+        if (!owner) { return std::unexpected(fail(Error::evidence)); }
+        if (!admitted(requirements(0), budget)) { return std::unexpected(fail(Error::budget)); }
+        const auto read = owner->capture(access);
+        if (!read) { return std::unexpected(Failure{Error::owner, std::nullopt, read.error()}); }
+        if (!admitted(requirements(read->water.stamp().baseline->domain().cells()), budget)) {
+            return std::unexpected(fail(Error::budget));
+        }
+        return Source(std::move(owner), *read);
+    }
+    Result<Sites::Image> Eligibility::current(const Source& source, const Sites::Owner::Access& access,
+        const ProcGen::EligibilityImage& image, Sites::Budget budget) {
+        if (!source.owner_) { return std::unexpected(fail(Error::evidence)); }
+        const auto cells = std::max(image.domain().cells(), source.read_.water.stamp().baseline->domain().cells());
+        if (!admitted(requirements(cells), budget)) { return std::unexpected(fail(Error::budget)); }
+        const auto read = source.owner_->capture(access);
+        if (!read) { return std::unexpected(Failure{Error::owner, std::nullopt, read.error()}); }
+        if (read->fence != source.read_.fence || read->edits_revision != source.read_.edits_revision
+            || !read->water.equivalent(source.read_.water)) { return std::unexpected(fail(Error::stale)); }
+        return *read;
     }
     Result<void> Eligibility::validate(const Sites::Stamp& stamp, const ProcGen::EligibilityImage& image,
         Index revision, Seed seed, Sites::Budget budget) {
@@ -52,10 +65,10 @@ namespace CE::LivingWorld::Habitat {
         }
         return {};
     }
-    Result<std::shared_ptr<const Eligibility>> Eligibility::literal(std::shared_ptr<Sites::Owner> owner,
+    Result<std::shared_ptr<const Eligibility>> Eligibility::literal(const Source& source,
         const Sites::Owner::Access& access,
         Index schema, const ProcGen::EligibilityImage& image, Index revision, Seed seed, Sites::Budget budget) {
-        const auto read = capture(owner, access, image, budget);
+        const auto read = current(source, access, image, budget);
         if (!read) { return std::unexpected(read.error()); }
         const auto& stamp = read->water.stamp();
         const auto valid = validate(stamp, image, revision, seed, budget);
@@ -63,17 +76,17 @@ namespace CE::LivingWorld::Habitat {
         const auto literal = Sites::Baseline::literal(stamp.baseline->identity(), schema,
             stamp.baseline->domain(), stamp.baseline->heights(), hard_limits);
         if (!literal || !stamp.baseline->equivalent(**literal)) { return std::unexpected(fail(Error::evidence)); }
-        return std::shared_ptr<const Eligibility>(new Eligibility(std::move(owner), *read, image, revision, schema, seed, std::nullopt));
+        return std::shared_ptr<const Eligibility>(new Eligibility(source.owner_, *read, image, revision, schema, seed, std::nullopt));
     }
-    Result<std::shared_ptr<const Eligibility>> Eligibility::generated(std::shared_ptr<Sites::Owner> owner,
+    Result<std::shared_ptr<const Eligibility>> Eligibility::generated(const Source& source,
         const Sites::Owner::Access& access,
         const ProcGen::Elevation& elevation, const ProcGen::EligibilityImage& image, Index revision, Seed seed, Sites::Budget budget) {
-        const auto read = capture(owner, access, image, budget);
+        const auto read = current(source, access, image, budget);
         if (!read) { return std::unexpected(read.error()); }
         const auto& stamp = read->water.stamp();
         const auto valid = validate(stamp, image, revision, seed, budget);
         if (!valid) { return std::unexpected(valid.error()); }
         if (!stamp.baseline->matches(elevation)) { return std::unexpected(fail(Error::evidence)); }
-        return std::shared_ptr<const Eligibility>(new Eligibility(std::move(owner), *read, image, revision, 0, seed, elevation.descriptor()));
+        return std::shared_ptr<const Eligibility>(new Eligibility(source.owner_, *read, image, revision, 0, seed, elevation.descriptor()));
     }
 }

@@ -23,14 +23,15 @@ namespace CE::LivingWorld::Habitat::Fixture {
         }
     }
     std::shared_ptr<const Eligibility> literal_evidence(const Setup& setup, Index revision, ProcGen::EligibilityCoverage coverage) {
-        const auto read = take(setup.owner->capture(setup.owner->access()));
+        const auto source = take(Eligibility::capture(setup.owner, setup.owner->access()));
+        const auto& read = source.read_set();
         std::array<ProcGen::EligibilityCell, 15> cells;
         cells.fill(ProcGen::EligibilityCell::ineligible);
         cells[7] = ProcGen::EligibilityCell::eligible;
         if (coverage == ProcGen::EligibilityCoverage::incomplete) { cells[6] = ProcGen::EligibilityCell::unknown; }
         const auto image = take(ProcGen::EligibilityImage::make(read.water.stamp().baseline->domain(), {1, 1, coverage},
             cells, ProcGen::eligibility_hard_limits));
-        return take(Eligibility::literal(setup.owner, setup.owner->access(), 1, image, revision, seed()));
+        return take(Eligibility::literal(source, setup.owner->access(), 1, image, revision, seed()));
     }
     Setup literal() {
         const auto domain = take(ProcGen::Domain::checked(std::array<Index, 2>{5, 3}));
@@ -45,12 +46,13 @@ namespace CE::LivingWorld::Habitat::Fixture {
         const auto elevation = take(ProcGen::generate_elevation(std::array<Index, 2>{5, 4}, {42, 7, 1},
             {3, 10, 10}, ProcGen::elevation_hard_limits));
         auto setup = from_baseline(take(Sites::Baseline::generated(3, elevation)), 5, 4);
+        const auto source = take(Eligibility::capture(setup.owner, setup.owner->access()));
         std::array<ProcGen::EligibilityCell, 20> cells;
         cells.fill(ProcGen::EligibilityCell::unknown);
         cells[7] = ProcGen::EligibilityCell::eligible;
         const auto image = take(ProcGen::EligibilityImage::make(elevation.descriptor().domain,
             {1, 1, ProcGen::EligibilityCoverage::incomplete}, cells, ProcGen::eligibility_hard_limits));
-        setup.evidence = take(Eligibility::generated(setup.owner, setup.owner->access(), elevation, image, 1, seed()));
+        setup.evidence = take(Eligibility::generated(source, setup.owner->access(), elevation, image, 1, seed()));
         return setup;
     }
     std::unique_ptr<Advisor> advisor(const Setup& setup) {
