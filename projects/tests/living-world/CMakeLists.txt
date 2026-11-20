@@ -40,6 +40,8 @@ add_test(NAME living_world_allocation COMMAND tests-living-world-allocation)
 
 add_subdirectory(world/sites)
 add_subdirectory(tests/world-sites)
+add_subdirectory(world/habitat)
+add_subdirectory(tests/habitat)
 add_subdirectory(language)
 
 add_test(NAME living_world_consumer COMMAND cheryl-living-world-consumer)
@@ -50,6 +52,7 @@ set_tests_properties(living_world_allocation living_world_consumer living_world_
 
 add_dependencies(tests-living-world tests-living-world-joins tests-living-world-allocation
     cheryl-living-world-consumer tests-world-sites living-world-sites-consumer
+    tests-habitat-selector tests-habitat tests-habitat-allocation living-world-habitat-consumer
     cheryl_language_practice)
 if(TARGET cheryl_language_tests)
     add_dependencies(tests-living-world cheryl_language_tests)
