@@ -21,7 +21,8 @@ namespace CE::Story::Detail {
             !charge(caps.acquisitions, sizeof(Account) + 2 * sizeof(std::size_t)) ||
             !charge(caps.receipts, sizeof(Receipt) + 2 * sizeof(std::size_t)) ||
             !charge(6, sizeof(std::size_t)) || !charge(caps.links, sizeof(ContactLink)) ||
-            !charge(caps.queue, sizeof(DueWork))) {
+            !charge(caps.queue, sizeof(DueWork)) ||
+            !charge(caps.people, sizeof(std::uint8_t) + sizeof(std::size_t))) {
             return Error::Bytes;
         }
         return Error::None;
@@ -42,7 +43,9 @@ namespace CE::Story::Detail {
             if (person.name.size > person.name.bytes.size() || person.born > input.now ||
                 (person.died && (*person.died < person.born || *person.died > input.now)) || person.version != 1 ||
                 person.origin.timeline.value == 0 || person.origin.identity == 0 || person.address.family == 0 ||
-                person.address.creation == 0) {
+                person.address.creation == 0 ||
+                (person.lineage != Lineage::Founder && person.lineage != Lineage::Incoming &&
+                    person.lineage != Lineage::Descendant)) {
                 return Error::InvalidSeed;
             }
             PersonRecord record;
@@ -53,6 +56,22 @@ namespace CE::Story::Detail {
         std::vector<std::uint8_t> marks(input.people.size());
         std::vector<std::size_t> pending;
         pending.reserve(input.people.size());
+        for (std::size_t index = 0; index < store.people.rows.size(); ++index) {
+            pending.push_back(index);
+        }
+        const auto unique = [&](auto identity) {
+            std::sort(pending.begin(), pending.end(), [&](auto left, auto right) {
+                return identity(store.people.rows[left]) < identity(store.people.rows[right]);
+            });
+            return std::adjacent_find(pending.begin(), pending.end(), [&](auto left, auto right) {
+                return identity(store.people.rows[left]) == identity(store.people.rows[right]);
+            }) == pending.end();
+        };
+        if (!unique([](const auto& person) { return person.origin; }) ||
+            !unique([](const auto& person) { return person.address; })) {
+            return Error::Duplicate;
+        }
+        pending.clear();
         bool founder = false;
         for (std::size_t index = 0; index < store.people.rows.size(); ++index) {
             auto& person = store.people.rows[index];
@@ -77,9 +96,6 @@ namespace CE::Story::Detail {
                 }
                 if (parent == person.id) {
                     return Error::Cycle;
-                }
-                if (ancestor->born >= person.born || (ancestor->died && *ancestor->died <= person.born)) {
-                    return Error::Life;
                 }
             }
             if (person.lineage == Lineage::Founder) {
@@ -133,6 +149,17 @@ namespace CE::Story::Detail {
         if (!founder) {
             return Error::Depth;
         }
+        for (const auto& person : store.people.rows) {
+            for (const auto parent : person.parents) {
+                if (!parent) {
+                    continue;
+                }
+                const auto* ancestor = store.people.find(parent);
+                if (ancestor->born >= person.born || (ancestor->died && *ancestor->died <= person.born)) {
+                    return Error::Life;
+                }
+            }
+        }
         for (const auto& object : input.objects) {
             if (!store.scoped(object.id) || !store.scoped(object.holder)) {
                 return Error::ForeignReference;
@@ -143,7 +170,8 @@ namespace CE::Story::Detail {
             if (store.objects.find(object.id)) {
                 return Error::Duplicate;
             }
-            if (object.accepted_recipient || object.accepted_holder || object.last_transfer || object.version != 1) {
+            if (object.accepted_recipient != PersonId{} || object.accepted_holder != PersonId{} ||
+                object.last_transfer != EpisodeId{} || object.version != 1) {
                 return Error::InvalidSeed;
             }
             ObjectRecord record;

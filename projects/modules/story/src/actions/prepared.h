@@ -44,8 +44,8 @@ namespace CE::Story::Detail {
             }
             auto* record = store.promises.find(id);
             count(store.counters.records_read);
-            if (!record) {
-                error = Error::Missing;
+            if (!record || (record->debtor != actor && record->creditor != actor)) {
+                error = Error::Authority;
             } else if (record->version != version) {
                 error = Error::Stale;
             } else if (record->version == std::numeric_limits<std::uint64_t>::max()) {

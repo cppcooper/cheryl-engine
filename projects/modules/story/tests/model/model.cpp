@@ -67,3 +67,61 @@ TEST(Storymodel, checked_limits_and_time) {
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), Story::Error::Bytes);
 }
+
+TEST(Storymodel, duplicate_origin_and_creation_address) {
+    Inputs inputs;
+    inputs.people[2].origin = inputs.people[1].origin;
+    const auto duplicate_origin = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(duplicate_origin);
+    EXPECT_EQ(duplicate_origin.error(), Story::Error::Duplicate);
+    inputs.people[2].origin = {timeline, oren.value};
+    inputs.people[2].address = inputs.people[1].address;
+    const auto duplicate_address = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(duplicate_address);
+    EXPECT_EQ(duplicate_address.error(), Story::Error::Duplicate);
+}
+
+TEST(Storymodel, malformed_empty_reference_is_not_absence) {
+    Inputs inputs;
+    inputs.objects[0].accepted_recipient = {{0}, 1};
+    const auto result = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), Story::Error::InvalidSeed);
+}
+
+TEST(Storymodel, maximum_tracked_parent_depth_is_not_first_parent_depth) {
+    Inputs inputs;
+    inputs.people[2].born = {-10};
+    inputs.people[2].parents = {sera, liora};
+    const auto result = Story::Family::create(inputs.seed());
+    ASSERT_TRUE(result);
+    EXPECT_EQ((*result)->person(oren)->depth, 2);
+}
+
+TEST(Storymodel, descendant_without_tracked_connection_refuses) {
+    Inputs inputs;
+    inputs.people[1].lineage = Story::Lineage::Incoming;
+    inputs.people[1].parents = {};
+    inputs.people[2].born = {-10};
+    inputs.people[2].parents = {liora, {}};
+    const auto result = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), Story::Error::Depth);
+}
+
+TEST(Storymodel, ancestry_cycle_is_checked_before_inconsistent_parent_ages) {
+    Inputs inputs;
+    inputs.people[1].parents = {oren, {}};
+    inputs.people[2].parents = {liora, {}};
+    const auto result = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), Story::Error::Cycle);
+}
+
+TEST(Storymodel, parent_not_alive_at_birth_refuses) {
+    Inputs inputs;
+    inputs.people[0].died = Story::StoryTime{-40};
+    const auto result = Story::Family::create(inputs.seed());
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), Story::Error::Life);
+}

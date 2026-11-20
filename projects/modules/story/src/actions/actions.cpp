@@ -37,7 +37,9 @@ namespace CE::Story {
             }
         }
         if (prepared.result.error != Error::None) {
+            prepared.result = {prepared.result.error, request.attempt};
             store.receipts.append({{actor->id, request.attempt}, request, prepared.result});
+            Detail::count(store.counters.records_touched);
             return prepared.result;
         }
         prepared.publish();
