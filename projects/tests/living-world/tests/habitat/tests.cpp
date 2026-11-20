@@ -46,9 +46,19 @@ namespace {
         invalid_policy = policy();
         invalid_policy.version = 2;
         refused(advice->prepare(invalid_policy, options), Error::capacity);
+        invalid_policy = policy();
+        invalid_policy.capacity_version = 2;
+        refused(advice->prepare(invalid_policy, options), Error::capacity);
+        invalid_policy = policy();
+        invalid_policy.opportunity = {};
+        refused(advice->prepare(invalid_policy, options), Error::capacity);
         auto invalid_seed = seed();
         invalid_seed.version = 2;
         refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
+        invalid_seed = seed();
+        invalid_seed.name_space = {};
+        refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 2, invalid_seed), Error::evidence);
+        refused(Eligibility::literal(setup.owner, access, 1, setup.evidence->image(), 0, seed()), Error::evidence);
         refused(Eligibility::literal(setup.owner, access, 2, setup.evidence->image(), 2, seed()), Error::evidence);
         const auto other_domain = take(ProcGen::Domain::checked(std::array<Index, 2>{3, 5}));
         std::array<ProcGen::EligibilityCell, 15> cells;
@@ -81,6 +91,21 @@ namespace {
         refused(advice->read(plan, {0, 0}), Error::budget);
         refused(Advisor::create(setup.owner, setup.owner->access(), setup.evidence, {0, 0}), Error::budget);
         refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2, seed(), {0, 0}), Error::budget);
+        const auto evidence_needed = Eligibility::requirements(15);
+        const auto evidence = take(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+            seed(), {evidence_needed.storage_bytes, evidence_needed.work}));
+        check(evidence->revision() == 2, "exact evidence envelope accepted");
+        refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+            seed(), {evidence_needed.storage_bytes - 1, evidence_needed.work}), Error::budget);
+        refused(Eligibility::literal(setup.owner, setup.owner->access(), 1, setup.evidence->image(), 2,
+            seed(), {evidence_needed.storage_bytes, evidence_needed.work - 1}), Error::budget);
+        const auto snapshot_needed = take(Advisor::requirements(setup.evidence->image().domain(), {0, 0, UINT32_MAX, 1}));
+        auto exact_advice = take(Advisor::create(setup.owner, setup.owner->access(), setup.evidence,
+            {snapshot_needed.storage_bytes, snapshot_needed.work}));
+        check(exact_advice->replace_eligibility(evidence, {snapshot_needed.storage_bytes, snapshot_needed.work}).has_value(),
+            "exact create and replacement envelope accepted");
+        refused(advice->replace_eligibility(evidence, {snapshot_needed.storage_bytes - 1, snapshot_needed.work}), Error::budget);
+        static_cast<void>(take(advice->read(plan)));
         const auto producer_refusal = advice->prepare(policy(), options, {0, 0, 0});
         refused(producer_refusal, Error::producer);
         check(producer_refusal.error().producer->reason == ProcGen::SettlementReason::cells, "producer failure retained");

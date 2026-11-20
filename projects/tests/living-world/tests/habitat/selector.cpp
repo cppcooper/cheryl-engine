@@ -62,12 +62,25 @@ namespace {
         const auto foreign = image(other);
         fails(select_eligible_settlement_sites(input.domain, input.heights, foreign, {}, eligibility_hard_limits),
             FailureKind::invalid_input, SettlementReason::eligibility);
+        const auto aligned = image(grid());
+        fails(select_eligible_settlement_sites(input.domain, std::span(input.heights).first(14), aligned, {}, eligibility_hard_limits),
+            FailureKind::invalid_input, SettlementReason::height_count);
+        for (const auto options : std::array<SettlementOptions, 3>{{{17, 0, 0, 1}, {1, 0, 0, 0}, {1, 0, Index{UINT32_MAX} + 1, 1}}}) {
+            fails(select_eligible_settlement_sites(input.domain, input.heights, aligned, options, eligibility_hard_limits),
+                FailureKind::invalid_input, SettlementReason::options);
+        }
+        const auto line = take(Domain::checked(std::array<Index, 1>{15}));
+        fails(EligibilityImage::make(line, {}, aligned.cells(), eligibility_hard_limits),
+            FailureKind::invalid_input, SettlementReason::dimensions);
     }
     void budgets_case() {
         const auto input = grid();
         const auto eligibility = image(input);
         const SettlementOptions options{2, 0, 0, 2};
         const auto needed = take(eligible_settlement_requirements(input.domain, options));
+        const auto expected_bytes = sizeof(EligibilityImage) + 15 * sizeof(EligibilityCell)
+            + sizeof(EligibleSettlementSites) + sizeof(SettlementSite);
+        check(needed.storage_bytes == expected_bytes && needed.work == 56, "independent exact new charge");
         const CaveBudgets exact{15, needed.storage_bytes, 56};
         const auto selected = take(select_eligible_settlement_sites(input.domain, input.heights, eligibility, options, exact));
         check(selected.work() == 56 && selected.storage_bytes() == needed.storage_bytes, "exact new boundary accepted");
@@ -79,6 +92,20 @@ namespace {
             FailureKind::budget_refused, SettlementReason::work);
         fails(select_eligible_settlement_sites(input.domain, input.heights, eligibility, options, {0, 0, 0}),
             FailureKind::budget_refused, SettlementReason::cells);
+        const auto image_bytes = sizeof(EligibilityImage) + 15 * sizeof(EligibilityCell);
+        const auto owned = take(EligibilityImage::make(input.domain, {1, 1, EligibilityCoverage::complete}, input.cells,
+            {15, image_bytes, 30}));
+        check(owned.cells().size() == 15, "exact owned input boundary accepted");
+        fails(EligibilityImage::make(input.domain, {}, input.cells, {14, image_bytes, 30}),
+            FailureKind::budget_refused, SettlementReason::cells);
+        fails(EligibilityImage::make(input.domain, {}, input.cells, {15, image_bytes - 1, 30}),
+            FailureKind::budget_refused, SettlementReason::storage);
+        fails(EligibilityImage::make(input.domain, {}, input.cells, {15, image_bytes, 29}),
+            FailureKind::budget_refused, SettlementReason::work);
+        auto invalid_cells = input.cells;
+        invalid_cells[7] = static_cast<EligibilityCell>(255);
+        fails(EligibilityImage::make(input.domain, {}, invalid_cells, {15, image_bytes, 29}),
+            FailureKind::budget_refused, SettlementReason::work);
         const auto empty = take(select_eligible_settlement_sites(input.domain, input.heights, eligibility, {0, 0, 0, 1}, eligibility_hard_limits));
         check(empty.achieved() == 0 && empty.work() == 15, "zero requested still validates eligibility");
         const auto huge = take(Domain::checked(std::array<Index, 2>{UINT64_MAX, 1}));
@@ -105,6 +132,14 @@ namespace {
         const auto tiny_image = image(tiny);
         const auto none = take(select_eligible_settlement_sites(tiny.domain, tiny.heights, tiny_image, {16, 0, 0, 1}, eligibility_hard_limits));
         check(none.achieved() == 0 && none.shortfall() == 16 && none.work() == 20, "no perimeter competition");
+        const auto owned_result = [] {
+            const auto temporary = grid();
+            const auto temporary_image = image(temporary);
+            return take(select_eligible_settlement_sites(temporary.domain, temporary.heights, temporary_image,
+                {1, 0, 0, 1}, eligibility_hard_limits));
+        }();
+        check(owned_result.sites()[0].index == 6 && owned_result.sites()[0].height == 2,
+            "selector output owns values after inputs die");
     }
 }
 int main(int argc, char** argv) {

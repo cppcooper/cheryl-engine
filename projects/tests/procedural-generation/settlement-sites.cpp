@@ -194,9 +194,9 @@ namespace ProcGen {
             SettlementSite best;
             best.index = UINT64_MAX;
             if (needed->interior_cells != 0) {
-                for (Index y = 1; y < height - 1; ++y) {
-                    for (Index x = 1; x < width - 1; ++x) {
-                        const auto index = x + width * y;
+                for (Index row = 1; row < height - 1; ++row) {
+                    for (Index column = 1; column < width - 1; ++column) {
+                        const auto index = column + width * row;
                         result.work_ += 6 + round;
                         if (eligibility.cells()[static_cast<std::size_t>(index)] != EligibilityCell::eligible) { continue; }
                         const auto center = heights[static_cast<std::size_t>(index)];
@@ -209,10 +209,10 @@ namespace ProcGen {
                         for (Index slot = 0; slot < round; ++slot) {
                             if (slot < result.selection_.achieved_) {
                                 const auto& prior = result.selection_.sites_[static_cast<std::size_t>(slot)];
-                                if (distance(x, prior.x) + distance(y, prior.y) < options.minimum_spacing) { eligible = false; }
+                                if (distance(column, prior.x) + distance(row, prior.y) < options.minimum_spacing) { eligible = false; }
                             }
                         }
-                        if (eligible && (best.index == UINT64_MAX || slope < best.slope)) { best = {index, x, y, slope, center}; }
+                        if (eligible && (best.index == UINT64_MAX || slope < best.slope)) { best = {index, column, row, slope, center}; }
                     }
                 }
             }

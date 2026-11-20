@@ -39,10 +39,14 @@ int main() {
         static_cast<void>(Fixture::take(setup.owner->adopt(setup.owner->access(), candidate)));
         const auto stale = advice->read(plan);
         Fixture::check(!stale && stale.error().reason == Habitat::Error::stale, "water adoption invalidates without notification");
+        for (const auto& place : plan.places()) {
+            presentation.set({1}, {static_cast<std::int64_t>(place.terrain.x), static_cast<std::int64_t>(place.terrain.y)}, {0});
+        }
+        Fixture::check(presentation.get({1}, {2, 1}).value == 0, "stale proposal is no longer presented as current advice");
         Fixture::check(Fixture::take(setup.owner->preserved(setup.owner->access())) == setup.preserved,
             "existing town edit debt knowledge preserved");
         Fixture::check(presentation.get({0}, {1, 1}).value == 100, "town marker never relocated");
-        std::cout << "water-change-read=Stale; preserved-world=true; literal-middle=7; graphical/population acceptance remains later\n";
+        std::cout << "water-change-read=Stale; stale-overlay=cleared; preserved-world=true; literal-middle=7; graphical/population acceptance remains later\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "habitat consumer failure: " << failure.what() << '\n';
