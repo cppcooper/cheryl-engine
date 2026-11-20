@@ -138,3 +138,103 @@ TEST(Storyactor, P13_post_adoption_delivery_failure_never_reapplies) {
     EXPECT_EQ(world.host->owner().counters().preparations, preparations);
     EXPECT_EQ(world.endpoint.view()->account_count, 3);
 }
+
+TEST(Storyactor, independent_agreement_and_release_use_real_actor_paths) {
+    auto family = StoryFixture::family();
+    auto host = Story::ActorCoordinator::create(std::move(family), {1}).value();
+    const auto debtor = host->open(StoryFixture::sera).value();
+    const auto creditor = host->open(StoryFixture::liora).value();
+    const auto person = host->identify(debtor, StoryFixture::liora, Story::Text::make("Contact").value()).value();
+    const auto object = host->identify(debtor, StoryFixture::box, Story::Text::make("Object").value()).value();
+    auto execute = [&](const Story::ActorEndpoint& endpoint, std::uint64_t key, const Story::ActorIntent& intent) {
+        const auto offer = host->offer(endpoint, intent, {}).value();
+        if (!endpoint.submit({key}, choice(offer)) || !host->progress(endpoint)) {
+            throw std::runtime_error("actor operation did not complete");
+        }
+        return endpoint.lookup({key}).value();
+    };
+    Story::ActorIntent intention;
+    intention.kind = Story::IntentKind::OfferPromise;
+    intention.person = person;
+    intention.object = object;
+    intention.due = {10};
+    const auto offered = execute(debtor, 1, intention);
+    ASSERT_TRUE(offered.promise);
+    const Story::CommitmentId raw{StoryFixture::timeline, 1};
+    EXPECT_EQ(host->owner().commitment(raw)->state, Story::CommitmentState::Offered);
+    ASSERT_TRUE(host->refresh(creditor));
+    const auto known = creditor.view()->accounts[0].fact.promise;
+    intention = {};
+    intention.kind = Story::IntentKind::DecidePromise;
+    intention.promise = known;
+    intention.accept = true;
+    execute(creditor, 1, intention);
+    EXPECT_EQ(host->owner().commitment(raw)->state, Story::CommitmentState::Pending);
+    ASSERT_TRUE(host->refresh(debtor));
+    intention = {};
+    intention.kind = Story::IntentKind::RequestRelease;
+    intention.promise = offered.promise;
+    execute(debtor, 2, intention);
+    EXPECT_EQ(host->owner().commitment(raw)->state, Story::CommitmentState::Pending);
+    EXPECT_TRUE(host->owner().commitment(raw)->release_requested);
+    ASSERT_TRUE(host->refresh(creditor));
+    intention = {};
+    intention.kind = Story::IntentKind::DecideRelease;
+    intention.promise = known;
+    intention.accept = false;
+    execute(creditor, 2, intention);
+    EXPECT_EQ(host->owner().commitment(raw)->state, Story::CommitmentState::Pending);
+    EXPECT_FALSE(host->owner().commitment(raw)->release_requested);
+    ASSERT_TRUE(host->refresh(debtor));
+    intention = {};
+    intention.kind = Story::IntentKind::RequestRelease;
+    intention.promise = offered.promise;
+    execute(debtor, 3, intention);
+    ASSERT_TRUE(host->refresh(creditor));
+    intention = {};
+    intention.kind = Story::IntentKind::DecideRelease;
+    intention.promise = known;
+    intention.accept = true;
+    execute(creditor, 3, intention);
+    EXPECT_EQ(host->owner().commitment(raw)->state, Story::CommitmentState::Released);
+    ASSERT_TRUE(host->refresh(debtor));
+    EXPECT_EQ(debtor.view()->accounts[5].fact.kind, Story::ActorFactKind::ReleaseAccepted);
+}
+
+TEST(Storyactor, P07_P12_acquisition_and_work_exhaustion_do_not_publish_a_response) {
+    for (const bool acquisition_limit : {true, false}) {
+        Story::Limits limits;
+        if (acquisition_limit) { limits.acquisitions = 4; }
+        else { limits.work_per_action = 1; }
+        auto world = response_world(false, limits);
+        const auto offer = response_offer(world);
+        ASSERT_TRUE(world.endpoint.submit({1}, choice(offer)));
+        const auto before = world.endpoint.view().value();
+        const auto fault = world.host->progress(world.endpoint);
+        ASSERT_FALSE(fault);
+        EXPECT_EQ(fault.error().error, acquisition_limit ? Story::Error::Capacity : Story::Error::WorkLimit);
+        EXPECT_FALSE(fault.error().after_adoption);
+        EXPECT_EQ(world.host->owner().episode_count(), 2);
+        EXPECT_EQ(world.host->owner().acquisition_count(), 4);
+        EXPECT_EQ(world.endpoint.view().value(), before);
+        EXPECT_EQ(world.endpoint.lookup({1})->outcome, Story::ActorOutcome::Pending);
+    }
+}
+
+TEST(Storyactor, P13_real_projection_budget_failure_retains_adopted_success) {
+    Story::Limits limits;
+    limits.output_bytes = 2 * sizeof(Story::Knowledge);
+    auto world = response_world(false, limits);
+    const auto body = choice(response_offer(world));
+    ASSERT_TRUE(world.endpoint.submit({1}, body));
+    const auto failure = world.host->progress(world.endpoint);
+    ASSERT_FALSE(failure);
+    EXPECT_EQ(failure.error().error, Story::Error::Capacity);
+    EXPECT_TRUE(failure.error().after_adoption);
+    EXPECT_EQ(world.host->owner().episode_count(), 3);
+    const auto preparations = world.host->owner().counters().preparations;
+    EXPECT_EQ(world.endpoint.submit({1}, body)->outcome, Story::ActorOutcome::Pending);
+    EXPECT_FALSE(world.host->progress(world.endpoint));
+    EXPECT_EQ(world.host->owner().episode_count(), 3);
+    EXPECT_EQ(world.host->owner().counters().preparations, preparations);
+}

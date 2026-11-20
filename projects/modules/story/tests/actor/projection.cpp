@@ -146,3 +146,17 @@ TEST(Storyactor, P14_paging_is_local_and_refs_are_stable) {
     EXPECT_EQ(plain.endpoint.view(3, 1).error(), Story::ActorError::Invalid);
     EXPECT_EQ(plain.endpoint.view(0, 0).error(), Story::ActorError::Invalid);
 }
+
+TEST(Storyactor, life_partnership_facts_preserve_visible_aliases) {
+    auto family = StoryFixture::family();
+    ASSERT_TRUE(StoryFixture::agreement(*family, StoryFixture::sera, StoryFixture::liora, 1));
+    auto host = Story::ActorCoordinator::create(std::move(family), {5}).value();
+    const auto endpoint = host->open(StoryFixture::liora).value();
+    const auto view = endpoint.view().value();
+    ASSERT_EQ(view.account_count, 2);
+    EXPECT_TRUE(view.accounts[0].fact.partnership);
+    EXPECT_EQ(view.accounts[0].fact.partnership, view.accounts[1].fact.partnership);
+    EXPECT_EQ(view.accounts[0].fact.other, view.self);
+    EXPECT_EQ(view.accounts[1].fact.other, view.self);
+    EXPECT_FALSE(view.accounts[0].fact.promise);
+}

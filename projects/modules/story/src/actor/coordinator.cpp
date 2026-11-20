@@ -82,6 +82,7 @@ namespace CE::Story {
         actor->people[index] = {person, true, false};
         actor->view.people[index] = {reference, label, true};
         actor->view.person_count = actor->view_people_count;
+        actor->view.person_count = actor->view_people_count;
         return reference;
     }
     std::expected<KnownObjectRef, ServiceFault> ActorCoordinator::identify(
@@ -98,6 +99,7 @@ namespace CE::Story {
         const auto reference = Detail::ActorAccess::ref<ActorObjectTag>(actor->scope, index + 1);
         actor->objects[index] = {object, true, false};
         actor->view.objects[index] = {reference, label, true};
+        actor->view.object_count = actor->view_objects_count;
         actor->view.object_count = actor->view_objects_count;
         return reference;
     }

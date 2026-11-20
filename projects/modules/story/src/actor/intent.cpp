@@ -23,11 +23,24 @@ namespace CE::Story::Detail {
         const auto object = resolve(state.objects, state.view_objects_count, state.scope, intent.object);
         const auto promise = resolve(state.promises, state.promise_count, state.scope, intent.promise);
         const auto account = account_index(state, intent.account);
+        const ActorFact* latest = nullptr;
+        if (promise) {
+            for (std::size_t index = 0; index < state.view.account_count; ++index) {
+                const auto& acquired = state.view.accounts[index];
+                if (acquired.evidence == ActorEvidence::Observed && acquired.fact.promise == intent.promise) {
+                    latest = &acquired.fact;
+                }
+            }
+        }
         switch (intent.kind) {
-        case IntentKind::OfferPromise: return person && object && intent.due >= state.view.now;
+        case IntentKind::OfferPromise: return person && object && intent.person != state.view.self && intent.due >= state.view.now;
         case IntentKind::DecidePromise:
+            return latest && latest->kind == ActorFactKind::PromiseOffered && latest->other == state.view.self;
         case IntentKind::RequestRelease:
-        case IntentKind::DecideRelease: return promise != nullptr;
+            return latest && (latest->kind == ActorFactKind::PromiseAccepted || latest->kind == ActorFactKind::ReleaseDeclined) &&
+                latest->subject == state.view.self;
+        case IntentKind::DecideRelease:
+            return latest && latest->kind == ActorFactKind::ReleaseRequested && latest->other == state.view.self;
         case IntentKind::ConsentTransfer:
         case IntentKind::Transfer: return person && object;
         case IntentKind::Tell: return person && account;

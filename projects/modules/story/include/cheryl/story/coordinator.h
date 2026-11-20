@@ -13,6 +13,8 @@ namespace CE::Story {
         std::unique_ptr<Detail::CoordinatorState> state_;
         explicit ActorCoordinator(std::unique_ptr<Detail::CoordinatorState>);
     public:
+        // Host and endpoint calls are serialized by the owning simulation thread.
+        // Fresh raw callers share Family::allocate_attempt; retries keep their exact request.
         ~ActorCoordinator();
         ActorCoordinator(const ActorCoordinator&) = delete;
         ActorCoordinator& operator=(const ActorCoordinator&) = delete;
