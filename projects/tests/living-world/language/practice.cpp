@@ -3,6 +3,7 @@
 #include <charconv>
 #include <istream>
 #include <ostream>
+#include <system_error>
 #include <utility>
 
 namespace CE::LivingWorld::Language {

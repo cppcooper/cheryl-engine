@@ -115,6 +115,10 @@ namespace CE::LivingWorld::Language {
 
     public:
         explicit OfferOwner(std::uint64_t owner);
+        OfferOwner(const OfferOwner&) = delete;
+        OfferOwner& operator=(const OfferOwner&) = delete;
+        OfferOwner(OfferOwner&&) = delete;
+        OfferOwner& operator=(OfferOwner&&) = delete;
         std::optional<OfferedActions> reconcile(const PermittedScene& current);
         ChoiceResult choose(OfferToken token, Action action, const PermittedScene& current);
     };
