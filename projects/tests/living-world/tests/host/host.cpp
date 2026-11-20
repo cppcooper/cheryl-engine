@@ -255,7 +255,6 @@ TEST_F(HostFixture, cancellation_is_per_attempt) {
         ASSERT_TRUE(reservation);
         auto moved = std::move(*reservation);
         static_cast<void>(moved);
-        static_cast<void>(moved);
         EXPECT_EQ(host.queue(player, older, host.fence()).error(), LivingWorld::Error::Busy);
         EXPECT_EQ(host.edit_actor(caster_before).error(), LivingWorld::Error::Busy);
         EXPECT_EQ(host.deliver().adopted, 0);
@@ -274,6 +273,38 @@ TEST_F(HostFixture, cancellation_is_per_attempt) {
     ASSERT_EQ(host.settle(player, older)->state, LivingWorld::Disposition::Applied);
     EXPECT_EQ(host.queue(player, newer, host.fence()).error(), LivingWorld::Error::InvalidBody);
     EXPECT_EQ(host.queue(player, older, host.fence())->state, LivingWorld::Disposition::Applied);
+}
+
+TEST_F(HostFixture, moved_reservation_finalizes_once) {
+    const auto action = host.action(player, host.entity(2)).value();
+    const auto revision = LivingWorld::HostTestAccess::image(host).revision;
+    {
+        auto reservation = LivingWorld::HostTestAccess::reserve(host, player, action);
+        ASSERT_TRUE(reservation);
+        auto moved = std::move(*reservation);
+        {
+            auto final_owner = std::move(moved);
+            final_owner.finalize();
+        }
+        const auto& image = LivingWorld::HostTestAccess::image(host);
+        ASSERT_EQ(image.record_count, 1);
+        EXPECT_EQ(image.revision, revision + 1);
+        EXPECT_FALSE(image.records[0].cancelled);
+        EXPECT_EQ(image.records[0].action, action);
+        EXPECT_EQ(host.lookup(player, action)->state, LivingWorld::Disposition::Queued);
+    }
+    const auto& image = LivingWorld::HostTestAccess::image(host);
+    ASSERT_EQ(image.record_count, 1);
+    EXPECT_EQ(image.revision, revision + 1);
+    EXPECT_FALSE(image.records[0].cancelled);
+    EXPECT_EQ(host.queue(player, action, host.fence())->state, LivingWorld::Disposition::Queued);
+    const LivingWorld::Receipt applied{LivingWorld::Disposition::Applied, LivingWorld::Reason::None, 8};
+    EXPECT_EQ(host.settle(player, action).value(), applied);
+    EXPECT_EQ(host.settle(player, action).value(), applied);
+    EXPECT_EQ(host.actor(player, host.entity(1))->reserve, 7);
+    EXPECT_EQ(host.actor(player, host.entity(2))->health, 20);
+    EXPECT_EQ(host.deliver().adopted, 1);
+    EXPECT_EQ(host.deliver().adopted, 0);
 }
 
 TEST_F(HostFixture, cancellations_exhaust_capacity) {
