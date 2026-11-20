@@ -166,6 +166,9 @@ namespace CE::Story {
         Family& operator=(const Family&) = delete;
         static std::expected<std::unique_ptr<Family>, Error> create(const Seed&, Limits = {});
         Capability actor(PersonId) const;
+        // Trusted serialized callers allocate fresh attempts here; raw retries retain their original request.
+        std::expected<std::uint64_t, Error> allocate_attempt(const Capability&);
+        std::expected<EventOrder, Error> order_at(StoryTime) const;
         // Raw Family access is trusted host access, not a character facade.
         // Life permits validate host policy assertions; they never imply partner consent.
         LifeCapability life() const;

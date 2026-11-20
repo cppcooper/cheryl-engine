@@ -32,6 +32,7 @@ namespace CE::Story {
         if (!actor || request.attempt == 0 || request.attempt <= actor->retired_through) {
             return {Error::Expired, request.attempt};
         }
+        actor->attempt_high = std::max(actor->attempt_high, request.attempt);
         if (const auto* receipt = store.receipts.find({actor->id, request.attempt})) {
             Detail::count(store.counters.retries);
             const auto* prior = std::get_if<Request>(&receipt->body);

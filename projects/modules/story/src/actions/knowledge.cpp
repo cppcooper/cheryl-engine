@@ -72,9 +72,6 @@ namespace CE::Story::Detail {
             action.attitude_delta < -5 || action.attitude_delta > 5 || action.attitude_delta == 0) {
             return Error::Terms;
         }
-        if (!store.alive(action.contact, change.order.time)) {
-            return Error::Life;
-        }
         const auto* actor = store.people.find(change.actor);
         for (auto index = actor->contacts; index != absent; index = store.links[index].next) {
             if (!change.step()) {

@@ -47,6 +47,40 @@ namespace CE::Story {
         result.fence_ = storage_->fence;
         return result;
     }
+    std::expected<std::uint64_t, Error> Family::allocate_attempt(const Capability& capability) {
+        if (capability.owner_ != this || capability.fence_ != storage_->fence) {
+            return std::unexpected(Error::Authority);
+        }
+        auto* person = storage_->people.find(capability.actor_);
+        if (!person) {
+            return std::unexpected(Error::Authority);
+        }
+        const auto high = std::max(person->attempt_high, person->retired_through);
+        if (high == std::numeric_limits<std::uint64_t>::max()) {
+            return std::unexpected(Error::Capacity);
+        }
+        person->attempt_high = high + 1;
+        return person->attempt_high;
+    }
+    std::expected<EventOrder, Error> Family::order_at(StoryTime now) const {
+        if (now < storage_->seeded_at || (storage_->last && now < storage_->last->time)) {
+            return std::unexpected(Error::Time);
+        }
+        if (!storage_->last || storage_->last->time < now) {
+            return EventOrder{now, 0, 1};
+        }
+        auto order = *storage_->last;
+        if (order.address == std::numeric_limits<std::uint64_t>::max()) {
+            if (order.phase == std::numeric_limits<decltype(order.phase)>::max()) {
+                return std::unexpected(Error::Time);
+            }
+            ++order.phase;
+            order.address = 0;
+        } else {
+            ++order.address;
+        }
+        return order;
+    }
     std::expected<PartnershipPermit, Error> Family::permit(const LifeCapability& capability,
         const PartnershipEligibility& eligibility) const {
         if (capability.owner_ != this || capability.fence_ != storage_->fence) {
