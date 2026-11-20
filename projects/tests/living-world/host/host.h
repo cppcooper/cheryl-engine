@@ -8,12 +8,14 @@
 
 namespace CE::LivingWorld {
     class Scene;
+    class Recovery;
     class Host final {
     public:
         class Access {
             std::shared_ptr<const void> owner_;
             EntityRef principal_;
             friend class Host;
+            friend class Recovery;
         public:
             Access() = default;
         };
@@ -22,11 +24,13 @@ namespace CE::LivingWorld {
         ::Magic::Catalog catalog_;
         ::Magic::PlanHandle plan_;
         std::shared_ptr<const void> authority_;
+        std::shared_ptr<const void> lineage_;
         std::unique_ptr<Detail::Image> image_;
         std::unique_ptr<Detail::Image> staging_;
         std::uint64_t issued_ = 0;
         std::optional<std::size_t> queued_;
         bool reserved_ = false;
+        bool presenting_ = false;
 
         class Reservation {
             Host* host_ = nullptr;
@@ -40,7 +44,9 @@ namespace CE::LivingWorld {
             void finalize() noexcept;
         };
         friend class Scene;
+        friend class Recovery;
         friend struct HostTestAccess;
+        static std::expected<OwnerFence, Error> allocate_fence() noexcept;
         bool authorized(const Access& access) const noexcept;
         std::optional<std::size_t> actor_index(EntityRef ref) const noexcept;
         ReadSet reads(EntityRef caster, EntityRef recipient) const noexcept;

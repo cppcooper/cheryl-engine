@@ -10,7 +10,8 @@ target_link_libraries(cheryl-living-magic-contact PUBLIC Cheryl::LivingWorld::Ma
 target_compile_features(cheryl-living-magic-contact PUBLIC cxx_std_23)
 
 add_library(cheryl-living-world STATIC
-    host/host.cpp acquisition/delivery.cpp magic/contact/view.cpp story/scene/scene.cpp)
+    host/host.cpp acquisition/delivery.cpp magic/contact/view.cpp story/scene/scene.cpp
+    recovery/paired.cpp)
 add_library(Cheryl::LivingWorld::Host ALIAS cheryl-living-world)
 target_include_directories(cheryl-living-world PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(cheryl-living-world PUBLIC cxx_std_23)

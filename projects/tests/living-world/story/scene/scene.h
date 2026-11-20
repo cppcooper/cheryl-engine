@@ -36,6 +36,9 @@ namespace CE::LivingWorld {
         Action action_;
         SceneState state_ = SceneState::Offered;
         bool presenting_ = false;
+        friend class Recovery;
+        struct Restored {};
+        Scene(Host& host, Host::Access access, Restored);
 
     public:
         Scene(Host& host, Host::Access access, EntityRef recipient);

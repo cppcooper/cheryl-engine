@@ -28,6 +28,10 @@ namespace CE::LivingWorld {
         static_assert(std::is_nothrow_destructible_v<Dialogue::Selection>);
     }
 
+    Scene::Scene(Host& host, Host::Access access, Restored)
+    : host_(host), access_(std::move(access)), fence_(host.fence()),
+      incarnation_(std::make_shared<const unsigned char>(0)) {}
+
     Scene::Scene(Host& host, Host::Access access, EntityRef recipient)
     : host_(host), access_(std::move(access)), fence_(host.fence()),
       initial_(initial_definition()), helped_(continuation_definition(true)),
@@ -92,7 +96,7 @@ namespace CE::LivingWorld {
     }
 
     std::expected<void, Error> Scene::refresh(const std::function<void(std::string_view)>& present) {
-        if (presenting_)
+        if (presenting_ || host_.presenting_)
             return std::unexpected(Error::Busy);
         const auto receipt = host_.lookup(access_, action_);
         if (!receipt)
@@ -100,10 +104,12 @@ namespace CE::LivingWorld {
         if (receipt->state == Disposition::Queued)
             return std::unexpected(Error::Busy);
         presenting_ = true;
+        host_.presenting_ = true;
         struct Guard {
             bool& active;
-            ~Guard() { active = false; }
-        } guard{presenting_};
+            bool& owner_active;
+            ~Guard() { active = false; owner_active = false; }
+        } guard{presenting_, host_.presenting_};
         try {
             const bool helped = receipt->state == Disposition::Applied;
             auto session = Dialogue::Session::start(helped ? helped_ : refused_, {"living-answer"}).value();

@@ -2,6 +2,7 @@
 #include <magic/contact/view.h>
 
 #include <algorithm>
+#include <atomic>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -22,6 +23,16 @@ namespace CE::LivingWorld {
         }
     }
 
+    std::expected<OwnerFence, Error> Host::allocate_fence() noexcept {
+        static std::atomic<std::uint64_t> issued{0};
+        auto previous = issued.load(std::memory_order_relaxed);
+        do {
+            if (previous == maximum)
+                return std::unexpected(Error::Exhausted);
+        } while (!issued.compare_exchange_weak(previous, previous + 1, std::memory_order_relaxed));
+        return OwnerFence{previous + 1, 1};
+    }
+
     Host::Host(::Magic::Catalog catalog, ::Magic::PlanHandle plan, WorldScope scope,
                std::uint32_t cap, std::uint32_t price)
     : catalog_(std::move(catalog)), plan_(std::move(plan)),
@@ -33,6 +44,11 @@ namespace CE::LivingWorld {
             catalog_.operations[0].key.size() > image_->binding.operation.size())
             throw std::invalid_argument("Host requires a scoped compiler-produced Contact Heal plan");
         image_->scope = scope;
+        const auto fresh = allocate_fence();
+        if (!fresh)
+            throw std::overflow_error("Host live identity exhausted");
+        image_->fence = *fresh;
+        lineage_ = authority_;
         image_->quote.price = price;
         auto& binding = image_->binding;
         binding.source_size = plan_->source().size();
