@@ -42,6 +42,10 @@ namespace CE::LivingWorld::Habitat {
         [[nodiscard]] static Result<Sites::Image> current(const Source& source, const Sites::Owner::Access& access,
             const ProcGen::EligibilityImage& image, Sites::Budget budget);
     public:
+        Eligibility(const Eligibility&) = delete;
+        Eligibility(Eligibility&&) = delete;
+        Eligibility& operator=(const Eligibility&) = delete;
+        Eligibility& operator=(Eligibility&&) = delete;
         [[nodiscard]] static Sites::Accounting requirements(Index cells);
         [[nodiscard]] static Result<Source> capture(std::shared_ptr<Sites::Owner> owner,
             const Sites::Owner::Access& access, Sites::Budget budget = hard_limits);

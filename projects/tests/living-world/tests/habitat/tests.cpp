@@ -1,11 +1,16 @@
 #include "fixtures.h"
 
 #include <iostream>
+#include <type_traits>
 
 namespace {
     using namespace CE::LivingWorld;
     using namespace Habitat;
     using namespace Habitat::Fixture;
+    static_assert(!std::is_copy_constructible_v<Eligibility>);
+    static_assert(!std::is_move_constructible_v<Eligibility>);
+    static_assert(!std::is_copy_assignable_v<Eligibility>);
+    static_assert(!std::is_move_assignable_v<Eligibility>);
     constexpr ProcGen::SettlementOptions options{2, 0, 1, 2};
     void literal_case() {
         const auto setup = literal();
@@ -183,19 +188,39 @@ namespace {
     }
     void revisions_case() {
         const auto setup = literal();
+        const auto original_evidence = setup.evidence;
         auto advice = advisor(setup);
         const auto plan = take(advice->prepare(policy(), options));
+        check(&plan.evidence() == original_evidence.get() && plan.evidence().revision() == 1,
+            "original plan retains factory evidence");
+        check(plan.selection().coverage_complete()
+            && plan.evidence().image().policy().coverage == ProcGen::EligibilityCoverage::complete,
+            "original plan and evidence start complete");
         const auto changed = literal_evidence(setup, 2, ProcGen::EligibilityCoverage::incomplete);
         check(advice->replace_eligibility(changed).has_value(), "owned evidence revision accepted");
         refused(advice->read(plan), Error::stale);
+        check(&plan.evidence() == original_evidence.get() && plan.evidence().revision() == 1
+            && original_evidence->revision() == 1, "replacement preserves historical evidence identity and revision");
+        check(plan.selection().coverage_complete() && plan.selection().unknown_excluded() == 0
+            && original_evidence->image().policy().coverage == ProcGen::EligibilityCoverage::complete,
+            "replacement preserves historical selection and evidence coverage");
         const auto fresh = take(advice->prepare(policy(), options));
+        check(&fresh.evidence() == changed.get() && fresh.evidence().revision() == 2
+            && fresh.evidence().image().policy().coverage == ProcGen::EligibilityCoverage::incomplete,
+            "fresh plan uses replacement factory evidence");
         check(!fresh.selection().coverage_complete() && fresh.selection().unknown_excluded() == 1, "changed coverage reported");
         refused(advice->replace_eligibility(changed), Error::revision);
         refused(advice->replace_eligibility(setup.evidence), Error::revision);
         const auto foreign = literal();
         const auto foreign_next = literal_evidence(foreign, 3);
         refused(advice->replace_eligibility(foreign_next), Error::foreign);
-        static_cast<void>(take(advice->read(fresh)));
+        const auto retained = take(advice->read(fresh));
+        check(&retained.evidence() == changed.get() && retained.evidence().revision() == 2
+            && retained.evidence().image().policy().coverage == ProcGen::EligibilityCoverage::incomplete,
+            "foreign replacement preserves current accepted evidence");
+        const auto after_refusal = take(advice->prepare(policy(), options));
+        check(&after_refusal.evidence() == changed.get() && !after_refusal.selection().coverage_complete()
+            && after_refusal.selection().unknown_excluded() == 1, "foreign refusal leaves replacement selected");
         check(take(setup.owner->preserved(setup.owner->access())) == setup.preserved, "local revision changes only derived advice");
     }
     void lifetime_case() {
