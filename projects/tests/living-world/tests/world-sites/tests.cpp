@@ -114,6 +114,10 @@ namespace CE::LivingWorld::Sites::Fixture {
             refused(WaterFacts::make(stamp, bindings(stamp), fact_values), Error::invalid_facts);
             refused(Text::from(std::string(65, 'x')), Error::invalid_facts);
             refused(Text::from("\x01"), Error::invalid_facts);
+            const std::array<ReachFact, capacity + 1> too_many{};
+            refused(WaterFacts::make(stamp, {}, too_many), Error::invalid_facts);
+            refused(Baseline::literal(1, 0, stamp.baseline->domain(), stamp.baseline->heights()), Error::invalid_baseline);
+            refused(Baseline::literal(1, 1, stamp.baseline->domain(), stamp.baseline->heights().first(19)), Error::invalid_baseline);
             auto bad = stamp;
             bad.frame.width = 4;
             refused(WaterFacts::make(bad, bindings(bad), facts()), Error::invalid_frame);
@@ -249,6 +253,15 @@ namespace CE::LivingWorld::Sites::Fixture {
             check(take(live->adopt(access, first)).existing, "full table still answers old applied lookup");
             check(take(live->capture(access)).water.equivalent(before.water), "capacity refusal publishes nothing");
             check(take(live->preserved(access)) == setup.preserved, "retention has no unrelated effects");
+            auto exhausted_stamp = setup.water.stamp();
+            exhausted_stamp.water = UINT64_MAX;
+            const auto exhausted_water = take(WaterFacts::make(exhausted_stamp, bindings(exhausted_stamp), facts()));
+            auto exhausted = take(Owner::create(exhausted_water, setup.preserved, UINT64_MAX, {20, 1}));
+            const auto exhausted_access = exhausted->access();
+            const auto exhausted_image = take(exhausted->capture(exhausted_access));
+            refused(Candidate::prepare(exhausted_image, {exhausted_stamp.scope, 1, 1}, bindings(exhausted_stamp), facts(true)), Error::revision_exhausted);
+            refused(exhausted->excavate(exhausted_access, UINT64_MAX, {13, 62, true, text("player-action-62")}), Error::revision_exhausted);
+            check(take(exhausted->preserved(exhausted_access)) == setup.preserved, "exhausted revisions never wrap or mutate");
         }
     }
     void run(std::string_view name) {
