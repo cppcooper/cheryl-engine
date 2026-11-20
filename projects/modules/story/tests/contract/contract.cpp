@@ -71,3 +71,93 @@ TEST(Storycontract, owned_receipt_outlives_inputs_and_owner) {
     EXPECT_EQ(retained.state, Story::CommitmentState::Offered);
     EXPECT_EQ(Story::GenerationResult{}.status, Story::GenerationStatus::Unsupported);
 }
+
+TEST(Storycontract, generation_values_retain_explicit_seed_pins_and_local_frontiers) {
+    EXPECT_FALSE(Story::GenerationSpec{}.seed);
+    Story::Continuation retained;
+    {
+        Story::GenerationSpec specification;
+        specification.seed = 0;
+        specification.seed_namespace = 17;
+        specification.lineage = {17, 1};
+        specification.versions.content = 2;
+        specification.versions.policy = 3;
+        specification.versions.generator = 4;
+        specification.versions.randomness = 5;
+        specification.versions.selection_mapping = 6;
+        specification.generation_count = 3;
+        specification.end_time = {200};
+        specification.choices = {8, 16, 32, 4};
+        retained.specification = specification;
+        retained.timeline = timeline;
+        retained.frontier = {{7}, 1, 3};
+        retained.accepted_sequence = 9;
+        Story::DecisionCursor cursor;
+        cursor.address = {Story::RandomStream::Decision, {17, 21}, 4, 2, Story::GenerationAddress{17, 22}};
+        cursor.next_draw = 3;
+        cursor.candidate_frontier = Story::GenerationAddress{17, 22};
+        retained.decisions.push_back(cursor);
+        Story::ScheduledIntent pending;
+        pending.order = {{10}, 1, 4};
+        pending.actor = liora;
+        pending.action = Story::Tell{oren, 1};
+        pending.address = {17, 30};
+        pending.decision = cursor.address;
+        pending.expected_version = 2;
+        retained.pending.push_back(pending);
+        retained.choice_work = {1, 3, 5, 2};
+        specification.seed = 99;
+        cursor.next_draw = 99;
+        pending.decision.occurrence = 99;
+    }
+    ASSERT_TRUE(retained.specification.seed);
+    EXPECT_EQ(*retained.specification.seed, 0);
+    EXPECT_EQ(retained.specification.seed_namespace, 17);
+    EXPECT_EQ(retained.specification.versions.generator, 4);
+    EXPECT_EQ(retained.specification.versions.randomness, 5);
+    EXPECT_EQ(retained.specification.versions.selection_mapping, 6);
+    EXPECT_EQ(retained.specification.versions.policy, 3);
+    EXPECT_EQ(retained.specification.versions.content, 2);
+    EXPECT_EQ(retained.specification.generation_count, 3);
+    EXPECT_EQ(retained.specification.end_time, (Story::StoryTime{200}));
+    EXPECT_EQ(retained.specification.choices, (Story::ChoiceLimits{8, 16, 32, 4}));
+    ASSERT_EQ(retained.decisions.size(), 1);
+    ASSERT_EQ(retained.pending.size(), 1);
+    EXPECT_EQ(retained.decisions[0].next_draw, 3);
+    EXPECT_EQ(retained.pending[0].decision.occurrence, 2);
+    EXPECT_EQ(retained.pending[0].decision, retained.decisions[0].address);
+    EXPECT_EQ(retained.choice_work, (Story::ChoiceCounters{1, 3, 5, 2}));
+    Story::TimelineCut cut{timeline, retained.accepted_sequence, retained.frontier, retained.specification};
+    cut.source = {42};
+    EXPECT_EQ(cut.specification, retained.specification);
+    EXPECT_EQ(Story::GenerationResult{}.status, Story::GenerationStatus::Unsupported);
+}
+
+TEST(Storycontract, decision_address_values_separate_stable_choice_domains) {
+    const Story::DecisionAddress address{Story::RandomStream::Decision, {17, 21}, 4, 2,
+        Story::GenerationAddress{17, 22}};
+    auto changed = address;
+    changed.stream = Story::RandomStream::Life;
+    EXPECT_NE(changed, address);
+    changed.stream = Story::RandomStream::Wording;
+    EXPECT_NE(changed, address);
+    changed = address;
+    changed.subject.creation = 23;
+    EXPECT_NE(changed, address);
+    changed = address;
+    ++changed.kind;
+    EXPECT_NE(changed, address);
+    changed = address;
+    ++changed.occurrence;
+    EXPECT_NE(changed, address);
+    changed = address;
+    changed.candidate = Story::GenerationAddress{17, 24};
+    EXPECT_NE(changed, address);
+    changed.candidate.reset();
+    EXPECT_NE(changed, address);
+    Story::DecisionCursor first{address, 3, address.candidate};
+    Story::DecisionCursor unrelated{changed, 900, std::nullopt};
+    ++unrelated.next_draw;
+    EXPECT_EQ(first.next_draw, 3);
+    EXPECT_EQ(first.address, address);
+}

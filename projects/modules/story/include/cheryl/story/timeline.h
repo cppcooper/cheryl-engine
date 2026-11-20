@@ -7,7 +7,7 @@ namespace CE::Story {
         TimelineId source{};
         std::uint64_t accepted_sequence{};
         EventOrder frontier{};
-        VersionPins versions;
+        GenerationSpec specification;
     };
     struct RecipientIntervention {
         PersonId debtor{};

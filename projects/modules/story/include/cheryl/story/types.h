@@ -87,6 +87,7 @@ namespace CE::Story {
         std::size_t queue{128};
         std::size_t work_per_action{64};
         std::size_t output_bytes{64 * 1024};
+        auto operator<=>(const Limits&) const = default;
     };
     struct Counters {
         std::uint64_t records_read{};

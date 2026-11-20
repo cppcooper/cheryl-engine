@@ -42,10 +42,10 @@ int main() {
         private_response.error != Story::Error::UnknownAccount) {
         return 4;
     }
-    std::cout << "Sera offers exact keepsake 71 to Liora; Liora independently accepts and consents.\n"
-                 "One transfer fulfills the promise. An identical retry repeats no effect.\n"
-                 "Oren cannot transfer Liora's box; Oren learns only Liora's attributed account.\n"
-                 "Substitution leaves the promise pending; hidden transfers do not change Liora's account or response.\n"
-                 "episodes=5 acquisitions=9 oren_accounts=1 native trace from real Family calls\n";
+    std::cout << "rule-fixture: exact-object fulfillment requires independent agreement and recipient consent.\n"
+                 "rule-fixture: retry repeats the receipt, not the transfer; a nonholder is refused.\n"
+                 "rule-fixture: substitute possession cannot discharge a different exact-object obligation.\n"
+                 "rule-fixture: acquisition is attributed, and an unacquired private transfer cannot support a response.\n"
+                 "Rule assertions satisfied by actual Family calls; this fixture is not random generation.\n";
     return 0;
 }
