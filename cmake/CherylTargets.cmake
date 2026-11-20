@@ -14,6 +14,7 @@ set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON module_workers)
 set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE example_worker_topology)
 
 # Modules
+set(TARGET_LIB_MODULE_CONSOLE module_console)
 set(TARGET_LIB_MODULE_STARTUP module_startup)
 set(TARGET_LIB_MODULE_WORKERS module_workers)
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)

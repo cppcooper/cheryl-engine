@@ -230,6 +230,8 @@ function(cheryl_configure_root_options)
             "Build the headless dialogue encounter and paired save consumer" OFF)
     cheryl_option(CHERYL_BUILD_STORY_OFFLINE
             "Build the private offline creative encounter proof" OFF)
+    cheryl_option(CHERYL_BUILD_CONSOLE
+            "Build the optional in-tree typed developer console core" OFF)
 
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)

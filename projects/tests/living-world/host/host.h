@@ -75,6 +75,7 @@ namespace CE::LivingWorld {
 
         std::expected<void, Error> edit_actor(Actor actor);
         std::expected<void, Error> set_price(std::uint32_t price);
+        std::uint32_t price() const noexcept;
         std::expected<void, Error> set_schema(std::uint64_t schema);
     };
 }

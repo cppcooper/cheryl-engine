@@ -342,6 +342,8 @@ namespace CE::LivingWorld {
         return {};
     }
 
+    std::uint32_t Host::price() const noexcept { return image_->quote.price; }
+
     std::expected<void, Error> Host::set_price(std::uint32_t price) {
         if (reserved_)
             return std::unexpected(Error::Busy);
