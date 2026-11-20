@@ -63,12 +63,15 @@ namespace CE::LivingWorld {
     Host::Reservation::Reservation(Host& host) noexcept : host_(&host) {}
     Host::Reservation::Reservation(Reservation&& other) noexcept : host_(std::exchange(other.host_, nullptr)) {}
     Host::Reservation::~Reservation() noexcept {
-        if (host_)
+        if (host_) {
+            host_->publish();
             host_->reserved_ = false;
+        }
     }
     void Host::Reservation::finalize() noexcept {
         auto& host = *host_;
         host.queued_ = host.image_->record_count;
+        host.staging_->records[*host.queued_].cancelled = false;
         host.publish();
         host.reserved_ = false;
         host_ = nullptr;
@@ -173,6 +176,8 @@ namespace CE::LivingWorld {
             if (record.action.key == action.key) {
                 if (record.action.body != action.body)
                     return std::unexpected(Error::Conflict);
+                if (record.cancelled)
+                    return std::unexpected(Error::InvalidBody);
                 return record.receipt;
             }
         }
@@ -186,8 +191,13 @@ namespace CE::LivingWorld {
             return std::unexpected(Error::WrongScope);
         if (fence != image_->fence)
             return std::unexpected(Error::StaleFence);
+        const auto existing = lookup(access, action);
+        if (existing)
+            return std::unexpected(Error::InvalidBody);
+        if (existing.error() != Error::Missing)
+            return std::unexpected(existing.error());
         if (!canonical(action.body) || action.body.caster != access.principal_ ||
-            !action.key.sequence || action.key.sequence > issued_ || action.key.sequence <= retired_)
+            !action.key.sequence || action.key.sequence > issued_)
             return std::unexpected(Error::InvalidBody);
         if (!live(action.body))
             return std::unexpected(Error::Stale);
@@ -198,11 +208,10 @@ namespace CE::LivingWorld {
         if (image_->revision > maximum - 2 || image_->tick == maximum)
             return std::unexpected(Error::Exhausted);
         auto prepared = std::make_unique<Detail::Image>(*image_);
-        prepared->records[prepared->record_count++] = {action, fence, {}};
+        prepared->records[prepared->record_count++] = {action, fence, {}, true};
         ++prepared->revision;
         staging_ = std::move(prepared);
         reserved_ = true;
-        retired_ = action.key.sequence;
         return Reservation(*this);
     }
 
