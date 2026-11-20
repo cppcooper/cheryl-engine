@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cheryl/story/coordinator.h>
+#include <type_traits>
+#include <utility>
 
 namespace CE::Story::Detail {
     struct ActorAccess {
@@ -16,6 +18,10 @@ namespace CE::Story::Detail {
             }
             return ref.local_ - 1;
         }
+        template<class Tag> static ActorRef<Tag> canonical(ActorRef<Tag> ref) {
+            if (ref) { ref.scope_ = 1; }
+            return ref;
+        }
         static std::shared_ptr<ActorState> lock(const ActorEndpoint& endpoint) { return endpoint.state_.lock(); }
         static ActorEndpoint endpoint(const std::shared_ptr<ActorState>& state) {
             ActorEndpoint result;
@@ -30,7 +36,7 @@ namespace CE::Story::Detail {
         ActorReceipt receipt{};
         std::optional<Request> request;
         std::optional<Result> result;
-        bool suspended{};
+        Error suspended{Error::None};
     };
     struct ActorState {
         const void* coordinator{};
@@ -58,6 +64,8 @@ namespace CE::Story::Detail {
         std::array<std::shared_ptr<ActorState>, 8> actors{};
         std::size_t actor_count{};
     };
+    static_assert(std::is_nothrow_copy_assignable_v<ActorEntry>);
+    static_assert(std::is_nothrow_copy_assignable_v<ActorState>);
     std::shared_ptr<ActorState> authenticate(CoordinatorState&, const ActorEndpoint&);
     Error project(Family&, ActorState&);
     bool valid(const ActorState&, const ActorIntent&);

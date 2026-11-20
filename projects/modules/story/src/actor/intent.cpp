@@ -87,7 +87,8 @@ namespace CE::Story::Detail {
             const auto operation = entry.choice.intent.kind;
             const bool unavailable = raw.error == Error::Life || raw.error == Error::Consent ||
                 raw.error == Error::NotHolder || raw.error == Error::NotContact;
-            if ((operation != IntentKind::Transfer && operation != IntentKind::Tell) || !unavailable) {
+            if ((operation != IntentKind::Transfer && operation != IntentKind::ConsentTransfer &&
+                operation != IntentKind::Tell) || !unavailable) {
                 return raw.error;
             }
             receipt.outcome = ActorOutcome::NotCompleted;

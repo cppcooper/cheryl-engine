@@ -45,7 +45,7 @@ TEST(Storycontract, alternate_recipient_does_not_fulfill_liora_promise) {
     EXPECT_EQ(owner->apply(owner->actor(liora), response).error, Story::Error::UnknownAccount);
 }
 
-TEST(Storycontract, private_noninterference) {
+TEST(Storycontract, unknown_account_refusal_is_private) {
     auto first = family();
     auto second = family();
     ASSERT_EQ(promise(*first), promise(*second));

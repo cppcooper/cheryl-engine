@@ -38,6 +38,8 @@ namespace CE::Story {
     }
     Family& ActorCoordinator::owner() { return *state_->family; }
     std::expected<ActorEndpoint, ServiceFault> ActorCoordinator::open(PersonId person) {
+        const auto boundary = owner().order_at(state_->now);
+        if (!boundary) { return fault(boundary.error()); }
         const auto self = owner().person(person);
         if (!self) { return fault(Error::Authority); }
         if (state_->actor_count == state_->actors.size()) { return fault(Error::Capacity); }
@@ -110,6 +112,8 @@ namespace CE::Story {
     std::expected<void, ServiceFault> ActorCoordinator::refresh(const ActorEndpoint& endpoint) {
         const auto actor = Detail::authenticate(*state_, endpoint);
         if (!actor) { return fault(Error::Authority); }
+        const auto boundary = owner().order_at(state_->now);
+        if (!boundary) { return fault(boundary.error()); }
         const auto error = Detail::project(owner(), *actor);
         actor->available = error == Error::None;
         if (error != Error::None) { return fault(error); }
@@ -137,7 +141,9 @@ namespace CE::Story {
             auto& entry = actor->entries[index];
             if (entry.receipt.outcome != ActorOutcome::Pending) { continue; }
             if (!entry.result) {
-                if (entry.suspended) { return fault(Error::Conflict); }
+                if (entry.suspended != Error::None) { return fault(entry.suspended); }
+                const auto order = owner().order_at(state_->now);
+                if (!order) { return fault(order.error()); }
                 for (std::size_t audience = 0; audience < state_->actor_count; ++audience) {
                     auto& recipient = *state_->actors[audience];
                     const auto error = Detail::project(owner(), recipient);
@@ -146,9 +152,7 @@ namespace CE::Story {
                     if (!room(recipient)) { return fault(Error::Capacity); }
                 }
                 const auto action = Detail::bind(owner(), *actor, entry.choice.intent);
-                if (!action) { entry.suspended = true; return fault(action.error()); }
-                const auto order = owner().order_at(state_->now);
-                if (!order) { return fault(order.error()); }
+                if (!action) { entry.suspended = action.error(); return fault(action.error()); }
                 const auto capability = owner().actor(actor->person);
                 const auto attempt = owner().allocate_attempt(capability);
                 if (!attempt) { return fault(attempt.error()); }
