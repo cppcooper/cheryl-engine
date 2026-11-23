@@ -6,6 +6,8 @@
 #include <new>
 
 namespace CE::Tools::Console {
+    Work::~Work() = default;
+
     namespace {
         Checked<void> fail(Code code) { return std::unexpected(Failure{code}); }
         bool name_valid(std::string_view name) {

@@ -18,6 +18,7 @@
   "windows_minimum_version": "@sdk_windows_minimum_version@",
   "public_template_dependencies": ["CTTI", "GLM", "CLI11 (when Startup is selected)", "selected UI toolkit headers"],
   "features": {
+    "console": "@sdk_console@",
     "startup": "@sdk_startup@",
     "startup_opengl": "@sdk_startup_opengl@",
     "workers": "@sdk_workers@",

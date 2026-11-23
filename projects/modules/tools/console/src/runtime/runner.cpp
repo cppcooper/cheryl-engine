@@ -4,6 +4,8 @@
 #include <algorithm>
 
 namespace CE::Tools::Console::Runtime {
+    Fixture::~Fixture() = default;
+
     namespace {
         std::string fixture_name(std::string_view source) {
             bool version = false;

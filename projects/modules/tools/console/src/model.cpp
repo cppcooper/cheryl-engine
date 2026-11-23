@@ -7,6 +7,8 @@
 #include <utility>
 
 namespace CE::Tools::Console::Presentation {
+    Connection::~Connection() = default;
+
     namespace {
         std::size_t prefix_size(std::string_view text, std::size_t bytes) {
             bytes = std::min(bytes, text.size());

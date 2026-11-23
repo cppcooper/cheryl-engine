@@ -93,6 +93,7 @@ set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
 set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
 set(CHERYL_BUILD_UI_RMLUI OFF)
+set(CHERYL_BUILD_CONSOLE OFF)
 set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
 set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
 set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
@@ -535,20 +536,28 @@ the bootstrap object. The definition does not change installation scope. See the
 
 ## Independent consumers and header probes
 
-### Optional Console consumers
+### Console consumers
 
-Select `CHERYL_BUILD_CONSOLE=ON` when producing an SDK that needs typed commands,
-settings, or `Cheryl::ConsoleModel`. Select `CHERYL_BUILD_CONSOLE_RUNTIME=ON` for
-`Cheryl::ConsoleRuntime`; select `CHERYL_BUILD_CONSOLE_RMLUI=ON` and RmlUi for
-`Cheryl::ConsoleRmlUi`. Console header presence alone does not imply that an
-optional target was built. These targets use the existing SDK export and
-relocation machinery, including Engine and toolkit linkage where required.
+The normal SDK includes one compiled `Cheryl::Console` library by default, with
+typed commands/settings, Model/View, and the script/report runtime. Link only
+`Cheryl::Console`; its Engine and RmlUi usage requirements are transitive. It
+follows the normal shared-library policy, export/import annotations, installation,
+and runtime relocation machinery. Demo, tests, Magic, Contact, Family, and World
+are not prerequisites. An explicitly selected static SDK retains the same target.
+
+For an existing producer cache, explicitly enable `CHERYL_BUILD_CONSOLE=ON` and
+`CHERYL_BUILD_UI_RMLUI=ON` if previously OFF; defaults do not overwrite caches.
+The old split runtime/view selections are removed. If Console is deliberately
+omitted, target existence, not header presence, establishes availability.
 
 The independently configurable `.github/ci/sdk-consumer/console` directory needs
 only `find_package(Cheryl 4 CONFIG REQUIRED)` and an installed prefix, not
 `CHERYL_REPOSITORY_ROOT`. It owns a non-Magic simulation, uses the same typed/text
 setting handlers, and checks successful and deliberately failing finalized jobs.
-Its `sdk-console` CTest is source-registered on POSIX and Windows. The Windows
+It links only `Cheryl::Console` and always compiles the graphical View consumer,
+alongside its script/report checks. Its `sdk-console` CTest is source-registered
+on POSIX and Windows; executing that test alone does not exercise graphical input.
+The Windows
 backend requires approved absolute drive paths; neither platform registration
 establishes execution or release qualification. See the [Console guide](../modules/console.md)
 for host lifetimes, examples, options, limits, and source-declared acceptance.

@@ -22,6 +22,10 @@ namespace CE::Tools::Console::Scenario {
     struct Channel { Context context; Session& session; };
     struct Channels { Channel gameplay; std::optional<Channel> diagnostic; };
 
+    class Plan;
+    CE_CONSOLE_API Checked<Plan> prepare(const Registry&, const Context&, std::string_view source);
+    CE_CONSOLE_API Checked<Plan> prepare(const Registry&, const Channels&, std::string_view source);
+
     /** Version 1: script.version 1, fixture.load name, command args -> name,
      * refuse command args -> name, error Owner command args -> name,
      * retry $name -> copy, await $name max_steps=N -> outcome,
@@ -31,17 +35,17 @@ namespace CE::Tools::Console::Scenario {
      * The caller retains the serialized registry/provider and issued contexts
      * from validation through execution. No handlers run during validation.
      */
-    class Plan {
+    class CE_TYPE_API Plan {
         std::shared_ptr<const Detail::PlanData> data_;
         explicit Plan(std::shared_ptr<const Detail::PlanData> data) : data_(std::move(data)) {}
         friend Checked<Plan> prepare(const Registry&, const Context&, std::string_view);
         friend Checked<Plan> prepare(const Registry&, const Channels&, std::string_view);
         friend class Run;
     public:
-        std::string_view fixture() const noexcept;
-        std::size_t assertions() const noexcept;
+        CE_CONSOLE_API std::string_view fixture() const noexcept;
+        CE_CONSOLE_API std::size_t assertions() const noexcept;
     };
-    Checked<Plan> prepare(const Registry&, const Context&, std::string_view source);
+    CE_CONSOLE_API Checked<Plan> prepare(const Registry&, const Context&, std::string_view source);
     /** Strict developer-test routing: ordinary commands use Gameplay only;
      * observe COMMAND, observe refuse COMMAND, and observe error Owner COMMAND
      * select the optional Query-only Diagnostic channel. No denial fallback.
@@ -52,7 +56,7 @@ namespace CE::Tools::Console::Scenario {
      * Live, accepting, matching, distinct, empty channels are checked twice.
      * The single-Context overload remains legacy and grants no gameplay guarantee.
      */
-    Checked<Plan> prepare(const Registry&, const Channels&, std::string_view source);
+    CE_CONSOLE_API Checked<Plan> prepare(const Registry&, const Channels&, std::string_view source);
     struct NamedResult {
         std::string name;
         std::size_t line = 0;
@@ -75,24 +79,24 @@ namespace CE::Tools::Console::Scenario {
      * finite entered-work policy and refreshes retained effects, never reissuing.
      * A terminal result is not a durable machine report; the host owns that sink.
      */
-    class Run {
+    class CE_TYPE_API Run {
         std::unique_ptr<Detail::RunData> data_;
     public:
-        Run(Plan, Registry&, Session&, std::chrono::milliseconds wall = max_wall_time);
+        CE_CONSOLE_API Run(Plan, Registry&, Session&, std::chrono::milliseconds wall = max_wall_time);
         /** Runs a strict Plan using exactly its retained borrowed Sessions.
          * Rechecks live/accepting/matching/empty channels; step pumps at most one selected
          * Session, and close refreshes and closes both without replay.
          */
-        Run(Plan, Registry&, std::chrono::milliseconds wall = max_wall_time);
+        CE_CONSOLE_API Run(Plan, Registry&, std::chrono::milliseconds wall = max_wall_time);
         Run(const Run&) = delete;
         Run& operator=(const Run&) = delete;
-        ~Run();
-        Disposition step() noexcept;
-        void close(Disposition reason = Disposition::Cancelled) noexcept;
-        Disposition disposition() const noexcept;
-        const Error& error() const noexcept;
-        std::span<const NamedResult> results() const noexcept;
-        std::span<const Assertion> assertions() const noexcept;
-        std::size_t steps() const noexcept; ///< Total Session::pump calls, bounded by max_steps.
+        CE_CONSOLE_API ~Run();
+        CE_CONSOLE_API Disposition step() noexcept;
+        CE_CONSOLE_API void close(Disposition reason = Disposition::Cancelled) noexcept;
+        CE_CONSOLE_API Disposition disposition() const noexcept;
+        CE_CONSOLE_API const Error& error() const noexcept;
+        CE_CONSOLE_API std::span<const NamedResult> results() const noexcept;
+        CE_CONSOLE_API std::span<const Assertion> assertions() const noexcept;
+        CE_CONSOLE_API std::size_t steps() const noexcept; ///< Total Session::pump calls, bounded by max_steps.
     };
 }

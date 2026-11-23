@@ -8,18 +8,33 @@ optional demo adapter, not the host model applications must implement.
 
 ## Select the surface
 
-| Producer option | Public source/SDK target | Public entry point | Responsibility |
-| --- | --- | --- | --- |
-| `CHERYL_BUILD_CONSOLE=ON` | `Cheryl::Console` | `cheryl/tools/console/registry.h`, `session.h`, `parser.h`, `scenario.h`, `setting.h` | Typed authority, retention, text binding, strict plans, and owner-backed settings. |
-| Same option | `Cheryl::ConsoleModel` | `cheryl/tools/console/model.h` | Host-neutral history, completion, help, and retained output. No toolkit or Engine dependency. |
-| `CHERYL_BUILD_CONSOLE_RUNTIME=ON` | `Cheryl::ConsoleRuntime` | `cheryl/tools/console/runtime/runner.h`, `command.h`, `diagnostics.h` | Owned isolated jobs, physical I/O/reporting, and safe Engine observations; links Engine. Defaults to the Console selection. |
-| `CHERYL_BUILD_CONSOLE_RMLUI=ON` and `CHERYL_BUILD_UI_RMLUI=ON` | `Cheryl::ConsoleRmlUi` | `cheryl/tools/console/view.h` | Real RmlUi document/listeners over Model; links the selected RmlUi adapter. |
+Link `Cheryl::Console` once for the complete console: typed commands, settings,
+history, help, completion, graphical presentation, script jobs, and reports.
+The normal SDK includes it by default (`CHERYL_BUILD_CONSOLE=ON`), independently
+of the demo and `CHERYL_BUILD_TESTS`. It is one compiled library, shared by default
+under `CHERYL_BUILD_SHARED_LIBS`, with public Engine and RmlUi dependencies supplied
+transitively. An explicitly selected static Cheryl build uses the same target.
 
-Console is off by default. Runtime can be disabled independently for typed/text
-and Model consumers. The RmlUi layer is independently selectable; demo Console
-selection defaults it on and requires Runtime, tests, the demo, and RmlUi.
-Optional target existence, not the mere presence of a header, establishes SDK
-availability. The SDK includes the Console header tree when Console is selected.
+```cmake
+find_package(Cheryl 4 CONFIG REQUIRED)
+target_link_libraries(my_game PRIVATE Cheryl::Console)
+```
+
+| Public entry point under `cheryl/tools/console/` | Responsibility in `Cheryl::Console` |
+| --- | --- |
+| `registry.h`, `session.h`, `parser.h`, `scenario.h`, `setting.h` | Typed authority, retention, text binding, strict plans, and owner-backed settings. |
+| `model.h` | History, completion, help, and retained output. |
+| `view.h` | Real RmlUi document and listeners over Model. |
+| `runtime/runner.h`, `runtime/command.h`, `runtime/diagnostics.h` | Owned isolated jobs, physical I/O/reporting, and safe Engine observations. |
+
+Existing caches retain explicit choices: enable `CHERYL_BUILD_CONSOLE=ON` and
+`CHERYL_BUILD_UI_RMLUI=ON` if either was cached OFF. The former runtime/view
+split switches and targets no longer select separate products. No cache deletion
+or FORCE is needed. Console requires RmlUi; intentionally omitting RmlUi also
+requires `CHERYL_BUILD_CONSOLE=OFF`. No graphical-versus-headless Console variant
+is distributed. Only the optional Contact demo requires its domain fixtures and
+test selection. The SDK installs the whole Console header tree and advertises
+one `CHERYL_HAS_CONSOLE` feature and a `console` component version.
 Use the [SDK guide](../development/consuming-engine.md) for producer, runtime-library,
 and relocation requirements; do not substitute private source include roots.
 
@@ -182,7 +197,8 @@ compatibility, publish a package, or qualify any platform.
 The released assets revision `768f741b48bcf990285ad1d54d548596343f165b` is selected
 to retain its menu documents and named Invaders clips. The console does not
 require the separate world-generation, language-practice, or offline Story
-applications. Console-off and toolkit-off remain separate supported compositions.
+applications. Console's graphical surface requires RmlUi; omitting that toolkit
+also omits Console rather than creating a separate console product.
 Development-branch availability is not a fully qualified release: graphical
 interaction, Windows, and installed/relocated SDK use retain their own checks.
 

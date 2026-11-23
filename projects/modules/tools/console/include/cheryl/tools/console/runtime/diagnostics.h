@@ -12,10 +12,10 @@ namespace CE::Tools::Console::Runtime {
      * Captures retain group/logger handles; the host retains the physical Pool.
      * All registration and progression remain on the Registry/Session owner.
      */
-    class EngineObservations {
+    class CE_TYPE_API EngineObservations {
         Registration group_, backend_, queue_;
     public:
-        EngineObservations(Registry&, std::string prefix, CE::Workers::Group,
+        CE_CONSOLE_API EngineObservations(Registry&, std::string prefix, CE::Workers::Group,
             std::shared_ptr<CE::Logging::LogHandle> logger, Rights read_rights);
         EngineObservations(const EngineObservations&) = delete;
         EngineObservations& operator=(const EngineObservations&) = delete;

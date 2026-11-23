@@ -7,7 +7,7 @@ if(NOT TARGET Cheryl::Cheryl)
 endif()
 include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
 enable_testing()
-if(TARGET Cheryl::ConsoleRuntime)
+if(TARGET Cheryl::Console)
     add_subdirectory(console)
 endif()
 

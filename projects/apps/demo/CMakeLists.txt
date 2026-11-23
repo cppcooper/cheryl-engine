@@ -23,7 +23,7 @@ target_compile_definitions(${TARGET_APP_DEMO} PRIVATE CHERYL_SOURCE_DIR="${CHERY
 target_link_libraries(${TARGET_APP_DEMO} PRIVATE ${LINKAGE_COMPOSITION_APP_DEMO_BASE})
 
 if(CHERYL_DEMO_CONSOLE)
-    foreach(required_target IN ITEMS Cheryl::UI::RmlUi Cheryl::Console Cheryl::ConsoleModel Cheryl::ConsoleRmlUi
+    foreach(required_target IN ITEMS Cheryl::Console
             Cheryl::LivingWorld::Host Cheryl::LivingWorld::Console Cheryl::LivingWorld::Scenarios)
         if(NOT TARGET ${required_target})
             message(FATAL_ERROR "CHERYL_DEMO_CONSOLE requires the actual target ${required_target}; select its explicit build options")
@@ -31,7 +31,7 @@ if(CHERYL_DEMO_CONSOLE)
     endforeach()
     add_library(cheryl_demo_console_model STATIC src/developer-console-model.cpp)
     target_include_directories(cheryl_demo_console_model PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    target_link_libraries(cheryl_demo_console_model PUBLIC Cheryl::LivingWorld::Scenarios Cheryl::ConsoleModel Cheryl::ConsoleRmlUi)
+    target_link_libraries(cheryl_demo_console_model PUBLIC Cheryl::LivingWorld::Scenarios Cheryl::Console)
     target_link_libraries(${TARGET_APP_DEMO} PRIVATE cheryl_demo_console_model)
     target_compile_definitions(${TARGET_APP_DEMO} PRIVATE
         CHERYL_DEMO_CONSOLE=1

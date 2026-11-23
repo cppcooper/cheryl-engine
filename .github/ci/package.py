@@ -135,7 +135,8 @@ def check_contents(stage, metadata=None):
             contents = config.read_text(encoding="utf-8")
             shared_targets = {entry[field] for entry in metadata.get("shared_runtime_dependencies", [])
                               for field in ("dependency", "sdk_target") if entry.get(field)}
-            component_targets = {"engine": "Cheryl::Engine", "startup": "Cheryl::Startup", "workers": "Cheryl::Workers",
+            component_targets = {"engine": "Cheryl::Engine", "console": "Cheryl::Console",
+                                 "startup": "Cheryl::Startup", "workers": "Cheryl::Workers",
                                  "native_glfw": "Cheryl::NativeGLFW", "opengl": "Cheryl::OpenGL",
                                  "ui_tgui": "Cheryl::UI::TGUI", "ui_rmlui": "Cheryl::UI::RmlUi",
                                  "audio_miniaudio": "Cheryl::Audio::Miniaudio"}

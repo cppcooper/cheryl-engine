@@ -14,7 +14,7 @@ namespace CE::Tools::Console {
         std::vector<Token> tokens;
         bool trailing_space = false;
     };
-    Checked<Parsed> parse(std::string_view line, bool partial = false);
-    Checked<BoundRequest> bind_text(const Registry&, const Context&, std::string_view line);
-    Checked<std::vector<std::string>> complete(const Registry&, const Context&, std::string_view line);
+    CE_CONSOLE_API Checked<Parsed> parse(std::string_view line, bool partial = false);
+    CE_CONSOLE_API Checked<BoundRequest> bind_text(const Registry&, const Context&, std::string_view line);
+    CE_CONSOLE_API Checked<std::vector<std::string>> complete(const Registry&, const Context&, std::string_view line);
 }

@@ -13,9 +13,9 @@ namespace CE::Tools::Console::Presentation {
      * It owns or retains the Registry, Context gate, and Session through close.
      * close must stop admission without waiting; retained results stay readable.
      */
-    class Connection {
+    class CE_CONSOLE_API Connection {
     public:
-        virtual ~Connection() = default;
+        virtual ~Connection();
         virtual Core::Registry& registry() noexcept = 0;
         virtual Core::Context context() const noexcept = 0;
         virtual Core::Session& session() noexcept = 0;
@@ -30,7 +30,7 @@ namespace CE::Tools::Console::Presentation {
         Core::Result result;
     };
 
-    class Model {
+    class CE_TYPE_API Model {
         std::shared_ptr<Connection> client_;
         std::vector<Entry> entries_;
         std::vector<std::string> history_;
@@ -51,19 +51,19 @@ namespace CE::Tools::Console::Presentation {
         static constexpr std::size_t output_bytes = 65536;
         static constexpr std::size_t suggestion_count = 12, suggestion_bytes = 4096;
 
-        explicit Model(std::shared_ptr<Connection> connection);
-        virtual ~Model();
+        CE_CONSOLE_API explicit Model(std::shared_ptr<Connection> connection);
+        CE_CONSOLE_API virtual ~Model();
         Model(const Model&) = delete;
         Model& operator=(const Model&) = delete;
-        bool submit(std::string_view line);
-        void pump();
-        void close() noexcept;
-        void help(std::string_view command = {});
-        std::vector<std::string> suggestions(std::string_view line);
-        std::string complete(std::string_view line);
-        std::string previous(std::string_view current);
-        std::string next();
-        std::string text() const;
+        CE_CONSOLE_API bool submit(std::string_view line);
+        CE_CONSOLE_API void pump();
+        CE_CONSOLE_API void close() noexcept;
+        CE_CONSOLE_API void help(std::string_view command = {});
+        CE_CONSOLE_API std::vector<std::string> suggestions(std::string_view line);
+        CE_CONSOLE_API std::string complete(std::string_view line);
+        CE_CONSOLE_API std::string previous(std::string_view current);
+        CE_CONSOLE_API std::string next();
+        CE_CONSOLE_API std::string text() const;
         std::string_view scope() const noexcept { return scope_; }
         std::span<const Entry> entries() const noexcept { return entries_; }
         std::span<const std::string> history() const noexcept { return history_; }
@@ -71,8 +71,8 @@ namespace CE::Tools::Console::Presentation {
         bool accepting() const noexcept { return !closed_ && client_->session().accepting(); }
     };
 
-    std::string escaped(std::string_view text);
-    std::string display_text(std::string_view text);
-    std::string_view stage_name(Core::Stage stage) noexcept;
-    std::string_view code_name(Core::Code code) noexcept;
+    CE_CONSOLE_API std::string escaped(std::string_view text);
+    CE_CONSOLE_API std::string display_text(std::string_view text);
+    CE_CONSOLE_API std::string_view stage_name(Core::Stage stage) noexcept;
+    CE_CONSOLE_API std::string_view code_name(Core::Code code) noexcept;
 }

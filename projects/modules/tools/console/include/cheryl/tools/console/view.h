@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cheryl/export.h>
 #include <cheryl/core/controls/input-record.h>
 
 #include <cstdint>
@@ -27,21 +28,21 @@ namespace CE::Tools::Console::Presentation {
      * Construction failure removes installed listeners and closes its document.
      * Input routing and gameplay quarantine remain the application's job.
      */
-    class View {
+    class CE_TYPE_API View {
         struct State;
         std::unique_ptr<State> state_;
 
     public:
-        View(CE::UI::RmlUi::Session& session, Model& model, ViewOptions options = {});
-        virtual ~View();
+        CE_CONSOLE_API View(CE::UI::RmlUi::Session& session, Model& model, ViewOptions options = {});
+        CE_CONSOLE_API virtual ~View();
         View(const View&) = delete;
         View& operator=(const View&) = delete;
-        void open();
-        void hide();
-        void update();
-        void select_input(bool selected) noexcept;
-        bool visible() const noexcept;
-        bool inside(const CE::Input::Events::Pointer& position) const;
-        std::uint64_t activity() const noexcept;
+        CE_CONSOLE_API void open();
+        CE_CONSOLE_API void hide();
+        CE_CONSOLE_API void update();
+        CE_CONSOLE_API void select_input(bool selected) noexcept;
+        CE_CONSOLE_API bool visible() const noexcept;
+        CE_CONSOLE_API bool inside(const CE::Input::Events::Pointer& position) const;
+        CE_CONSOLE_API std::uint64_t activity() const noexcept;
     };
 }

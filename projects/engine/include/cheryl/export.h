@@ -38,6 +38,14 @@
 #define CE_API CE_DETAIL_IMPORT
 #endif
 
+#if defined(CE_CONSOLE_STATIC)
+#define CE_CONSOLE_API
+#elif defined(CE_BUILDING_CONSOLE)
+#define CE_CONSOLE_API CE_DETAIL_EXPORT
+#else
+#define CE_CONSOLE_API CE_DETAIL_IMPORT
+#endif
+
 #if defined(CE_NATIVE_GLFW_STATIC)
 #define CE_NATIVE_GLFW_API
 #elif defined(CE_BUILDING_NATIVE_GLFW)

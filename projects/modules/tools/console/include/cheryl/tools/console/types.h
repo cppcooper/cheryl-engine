@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -91,7 +93,7 @@ namespace CE::Tools::Console {
         Schema result;
         bool operator==(const Descriptor&) const = default;
     };
-    class Context {
+    class CE_TYPE_API Context {
         struct Alias { std::string name; Handle handle; };
         std::shared_ptr<const Scope> scope_;
         Rights rights_ = 0;
@@ -101,12 +103,12 @@ namespace CE::Tools::Console {
         Context() = default;
         bool live() const noexcept { return scope_ && scope_->active; }
         bool permits(Rights rights) const noexcept { return live() && (rights_ & rights) == rights; }
-        bool owns(const Handle& handle, std::string_view domain) const noexcept;
-        Checked<Handle> resolve(std::string_view name, std::string_view domain) const;
-        std::vector<std::string> aliases(std::string_view domain) const;
+        CE_CONSOLE_API bool owns(const Handle& handle, std::string_view domain) const noexcept;
+        CE_CONSOLE_API Checked<Handle> resolve(std::string_view name, std::string_view domain) const;
+        CE_CONSOLE_API std::vector<std::string> aliases(std::string_view domain) const;
         bool same_scope(const Context& other) const noexcept { return scope_ == other.scope_ && rights_ == other.rights_; }
     };
-    class Authority {
+    class CE_TYPE_API Authority {
         std::shared_ptr<Scope> scope_ = std::make_shared<Scope>();
         std::uint64_t next_ = 0;
     public:
@@ -114,9 +116,9 @@ namespace CE::Tools::Console {
         Authority(const Authority&) = delete;
         Authority& operator=(const Authority&) = delete;
         ~Authority() { expire(); }
-        Context issue(Rights rights) const;
-        Checked<Handle> mint(std::string domain);
-        Checked<void> alias(Context&, std::string name, Handle) const;
+        CE_CONSOLE_API Context issue(Rights rights) const;
+        CE_CONSOLE_API Checked<Handle> mint(std::string domain);
+        CE_CONSOLE_API Checked<void> alias(Context&, std::string name, Handle) const;
         void expire() noexcept { scope_->active = false; }
     };
     struct Result {
@@ -124,15 +126,15 @@ namespace CE::Tools::Console {
         Failure failure;
         Value value;
     };
-    class Work {
+    class CE_CONSOLE_API Work {
     public:
         Result result;
-        virtual ~Work() = default;
+        virtual ~Work();
         virtual void step() noexcept = 0;
         virtual void close() noexcept = 0;
     };
-    bool terminal(Stage stage) noexcept;
-    bool valid_utf8(std::string_view text) noexcept;
-    Checked<void> validate_schema(const Schema& schema);
-    Checked<void> validate(const Value&, const Schema&, const Context&);
+    CE_CONSOLE_API bool terminal(Stage stage) noexcept;
+    CE_CONSOLE_API bool valid_utf8(std::string_view text) noexcept;
+    CE_CONSOLE_API Checked<void> validate_schema(const Schema& schema);
+    CE_CONSOLE_API Checked<void> validate(const Value&, const Schema&, const Context&);
 }

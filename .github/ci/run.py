@@ -50,6 +50,7 @@ def main(arguments=None):
                  f"-DCHERYL_BUILD_NATIVE_GLFW={flag(modules)}", f"-DCHERYL_BUILD_OPENGL={flag(modules)}",
                  "-DCHERYL_BUILD_STARTUP=ON", f"-DCHERYL_STARTUP_OPENGL={flag(modules)}",
                  f"-DCHERYL_BUILD_UI_TGUI={flag(modules)}", f"-DCHERYL_BUILD_UI_RMLUI={flag(modules)}",
+                 f"-DCHERYL_BUILD_CONSOLE={flag(modules)}",
                  f"-DCHERYL_BUILD_AUDIO_MINIAUDIO={flag(modules)}",
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC={args.hwloc}",
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_JSON={flag(testing)}", "-DGAINPUT_ENABLE_HID=OFF",

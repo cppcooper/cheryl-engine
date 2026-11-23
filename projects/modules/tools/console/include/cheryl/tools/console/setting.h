@@ -15,10 +15,10 @@ namespace CE::Tools::Console {
      * result exposes default/effective/minimum/maximum and OwnerImmediate timing.
      * Destroy/reset registrations before destroying any borrowed owner capture.
      */
-    class UnsignedSetting {
+    class CE_TYPE_API UnsignedSetting {
         Registration read_, write_;
     public:
-        UnsignedSetting(Registry&, std::string name, std::string help,
+        CE_CONSOLE_API UnsignedSetting(Registry&, std::string name, std::string help,
             std::uint64_t default_value, std::uint64_t maximum, UnsignedSettingOwner,
             Rights read_rights, Rights write_rights);
         UnsignedSetting(const UnsignedSetting&) = delete;

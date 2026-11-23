@@ -11,26 +11,26 @@
 namespace CE::Tools::Console {
     namespace Detail { struct Entry; struct RegistryState; }
     class Session;
-    class ResolvedCommand {
+    class CE_TYPE_API ResolvedCommand {
         std::shared_ptr<const Detail::Entry> entry_;
         std::weak_ptr<Detail::RegistryState> registry_;
         Context context_;
         friend class Registry;
     public:
-        const Descriptor* descriptor() const noexcept;
+        CE_CONSOLE_API const Descriptor* descriptor() const noexcept;
     };
-    class BoundRequest {
+    class CE_TYPE_API BoundRequest {
         std::shared_ptr<const Detail::Entry> entry_;
         Context context_;
         std::vector<Value> arguments_;
         friend class Registry;
         friend class Session;
     public:
-        const Descriptor& descriptor() const noexcept;
+        CE_CONSOLE_API const Descriptor& descriptor() const noexcept;
         std::span<const Value> arguments() const noexcept { return arguments_; }
-        bool same_body(const BoundRequest&) const noexcept;
+        CE_CONSOLE_API bool same_body(const BoundRequest&) const noexcept;
     };
-    class Registration {
+    class CE_TYPE_API Registration {
         std::shared_ptr<Detail::Entry> entry_;
         friend class Registry;
         explicit Registration(std::shared_ptr<Detail::Entry> entry) : entry_(std::move(entry)) {}
@@ -39,9 +39,9 @@ namespace CE::Tools::Console {
         Registration(const Registration&) = delete;
         Registration& operator=(const Registration&) = delete;
         Registration(Registration&&) noexcept = default;
-        Registration& operator=(Registration&&) noexcept;
-        ~Registration();
-        void reset() noexcept;
+        CE_CONSOLE_API Registration& operator=(Registration&&) noexcept;
+        CE_CONSOLE_API ~Registration();
+        CE_CONSOLE_API void reset() noexcept;
     };
     template<class ValueType> inline constexpr Type value_type = Type::Record;
     template<> inline constexpr Type value_type<bool> = Type::Boolean;
@@ -52,17 +52,17 @@ namespace CE::Tools::Console {
     template<> inline constexpr Type value_type<Enum> = Type::Enumeration;
     template<> inline constexpr Type value_type<Handle> = Type::Handle;
     // Registry, registrations, contexts, and sessions share one serialized owner.
-    class Registry {
+    class CE_TYPE_API Registry {
         std::shared_ptr<Detail::RegistryState> state_;
         std::function<bool(const Context&)> accepts_;
         using Handler = std::function<std::shared_ptr<Work>(const Context&, std::span<const Value>)>;
-        Checked<Registration> install(Descriptor, std::span<const Type>, Handler);
+        CE_CONSOLE_API Checked<Registration> install(Descriptor, std::span<const Type>, Handler);
     public:
         // A pure, non-reentrant owner gate rejects unrelated issuers before discovery.
-        explicit Registry(std::function<bool(const Context&)> accepts = {});
+        CE_CONSOLE_API explicit Registry(std::function<bool(const Context&)> accepts = {});
         Registry(const Registry&) = delete;
         Registry& operator=(const Registry&) = delete;
-        ~Registry();
+        CE_CONSOLE_API ~Registry();
         // Callbacks only prepare Work. Effects belong in step(), after retention.
         template<class... Args, class Callback>
         Checked<Registration> add(Descriptor descriptor, Callback callback) {
@@ -75,10 +75,10 @@ namespace CE::Tools::Console {
                     }(std::index_sequence_for<Args...>{});
                 });
         }
-        Checked<Descriptor> describe(std::string_view name, const Context&) const;
-        std::vector<Descriptor> commands(const Context&) const;
-        Checked<ResolvedCommand> resolve(std::string_view name, const Context&) const;
-        Checked<BoundRequest> bind(const ResolvedCommand&, std::vector<Value> arguments) const;
-        Checked<BoundRequest> bind(std::string_view name, std::vector<Value> arguments, const Context&) const;
+        CE_CONSOLE_API Checked<Descriptor> describe(std::string_view name, const Context&) const;
+        CE_CONSOLE_API std::vector<Descriptor> commands(const Context&) const;
+        CE_CONSOLE_API Checked<ResolvedCommand> resolve(std::string_view name, const Context&) const;
+        CE_CONSOLE_API Checked<BoundRequest> bind(const ResolvedCommand&, std::vector<Value> arguments) const;
+        CE_CONSOLE_API Checked<BoundRequest> bind(std::string_view name, std::vector<Value> arguments, const Context&) const;
     };
 }

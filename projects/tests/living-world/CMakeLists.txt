@@ -52,11 +52,8 @@ add_dependencies(tests-living-world tests-living-magic-authoring
     living-magic-authoring-consumer tests-living-magic-authoring-allocation)
 
 if(CHERYL_BUILD_CONSOLE)
-    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/modules/tools/console/tests" console-core-tests)
     add_subdirectory(tools/console)
     add_subdirectory(tests/console)
-    if(TARGET Cheryl::ConsoleRuntime)
-        add_subdirectory(tools/scenarios)
-        add_subdirectory(tests/scenarios)
-    endif()
+    add_subdirectory(tools/scenarios)
+    add_subdirectory(tests/scenarios)
 endif()

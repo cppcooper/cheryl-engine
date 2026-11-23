@@ -9,9 +9,9 @@ namespace CE::Tools::Console::Runtime {
      * leading comma, or empty. Never interpolate unescaped user input, reserved
      * report keys, or arbitrary script text; use Runtime::quote for strings.
      */
-    class Fixture {
+    class CE_CONSOLE_API Fixture {
     public:
-        virtual ~Fixture() = default;
+        virtual ~Fixture();
         virtual Core::Registry& registry() noexcept = 0;
         virtual Script::Channels channels() noexcept = 0;
         virtual std::string report_fields() const { return {}; }
@@ -32,7 +32,7 @@ namespace CE::Tools::Console::Runtime {
      * progression uses those Sessions; close never waits for physical I/O.
      * The host retains IoService and its external Pool through settle().
      */
-    class Job {
+    class CE_TYPE_API Job {
         Config config_;
         std::string source_, source_id_, fixture_, asset_id_, diagnostic_;
         IoHandle io_;
@@ -50,19 +50,19 @@ namespace CE::Tools::Console::Runtime {
         void persist(bool final);
         void sink_failure() noexcept;
     public:
-        explicit Job(Config);
+        CE_CONSOLE_API explicit Job(Config);
         Job(const Job&) = delete;
         Job& operator=(const Job&) = delete;
-        ~Job();
-        Script::Disposition step() noexcept;
-        void close() noexcept;
+        CE_CONSOLE_API ~Job();
+        CE_CONSOLE_API Script::Disposition step() noexcept;
+        CE_CONSOLE_API void close() noexcept;
         Script::Disposition disposition() const noexcept { return disposition_; }
         bool durable() const noexcept { return durable_; }
-        int batch_exit() const noexcept;
+        CE_CONSOLE_API int batch_exit() const noexcept;
         std::string_view diagnostic() const noexcept { return diagnostic_; }
         std::string_view source_id() const noexcept { return source_id_; }
         const Fixture* fixture() const noexcept { return host_.get(); }
-        std::span<const Script::NamedResult> results() const noexcept;
-        std::span<const Script::Assertion> assertions() const noexcept;
+        CE_CONSOLE_API std::span<const Script::NamedResult> results() const noexcept;
+        CE_CONSOLE_API std::span<const Script::Assertion> assertions() const noexcept;
     };
 }

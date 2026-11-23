@@ -32,7 +32,7 @@ application-owned integrations.
 
 | Capability | Owner guide | What it adds |
 | --- | --- | --- |
-| Developer console and scripts | [Console reference](console.md) | Typed host commands/settings, reusable graphical presentation, isolated script jobs, and finalized reports. |
+| Developer console and scripts | [Console reference](console.md) | Default SDK component `Cheryl::Console`: typed host commands/settings, graphical presentation, isolated script jobs, and finalized reports in one compiled library. |
 | Application bootstrap | [Application startup reference](startup.md) | Command-line configuration, configured module integration and standard context creation. |
 | Worker configuration/topology | [Worker configuration and topology](workers.md) | Optional JSON settings and native topology over Engine-owned pools. |
 | Native display and input | [Native GLFW platform reference](native-glfw.md) | Window/monitor operations, input collection and native lifetime management. |
