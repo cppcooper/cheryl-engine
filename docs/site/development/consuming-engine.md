@@ -556,6 +556,10 @@ only `find_package(Cheryl 4 CONFIG REQUIRED)` and an installed prefix, not
 setting handlers, and checks successful and deliberately failing finalized jobs.
 It links only `Cheryl::Console` and calls a bounded CPU-side RmlUi Session and
 Console Model/View check alongside its script/report checks. Routed committed
+input uses `Presentation::Input`'s default GraveAccent/Shift toggle, with repeat,
+release, attributed-text, pasted-text, mixed-batch, held-release recovery,
+override/disable, preemption, and retirement checks through the public SDK. The
+host obeys whole-batch gameplay admission and retains its own pause policy. Routed
 text and Enter submit a real setting, and the native document presents its
 retained result across hide/reopen before owner-ordered teardown. This needs no
 window, display, or graphics context; it does not establish live rendering or

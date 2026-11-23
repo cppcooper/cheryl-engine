@@ -93,7 +93,7 @@ TEST(DemoConsoleInput, OpeningClosingAndHeldKeysQuarantineTheWholeBatch) {
     input.begin(false);
     input.observe(key(KeyboardKey::W));
     EXPECT_TRUE(input.gameplay_allowed());
-    input.observe(key(KeyboardKey::F8));
+    input.observe(key(KeyboardKey::GraveAccent));
     input.suppress();
     input.observe(key(KeyboardKey::Q));
     input.suppress();
@@ -129,7 +129,7 @@ TEST(DemoConsoleInput, OneNativeSessionKeepsEpochAndOwnedUnicodeSubmission) {
     routed.route({key(KeyboardKey::F4).data});
     ASSERT_TRUE(routed.session.owns_keyboard_focus());
     auto committed = routed.input.capture(Capture::Channel::Text);
-    EXPECT_FALSE(routed.route({key(KeyboardKey::F8).data, Events::Text{U'q'}}));
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent).data, Events::Text{U'q'}}));
     ASSERT_TRUE(routed.view->visible());
     auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
     ASSERT_NE(field, nullptr);
@@ -153,6 +153,32 @@ TEST(DemoConsoleInput, OneNativeSessionKeepsEpochAndOwnedUnicodeSubmission) {
     routed.model.close();
 }
 
+TEST(DemoConsoleInput, SharedDefaultShiftToggleSeparatesAssociatedAndPastedText) {
+    RoutedConsole routed;
+    auto shifted = std::get<Events::Button>(key(KeyboardKey::GraveAccent).data);
+    shifted.modifiers = Modifiers::Shift;
+    EXPECT_FALSE(routed.route({shifted}));
+    ASSERT_TRUE(routed.view->visible());
+    auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
+    ASSERT_NE(field, nullptr);
+    field->SetValue({});
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent, Events::ButtonPhase::Repeat).data,
+        Events::Text{U'~', KeyboardKey::GraveAccent}, key(KeyboardKey::GraveAccent, Events::ButtonPhase::Release).data}));
+    EXPECT_TRUE(routed.view->visible());
+    EXPECT_TRUE(field->GetValue().empty());
+    routed.route({Events::Text{U'`'}, Events::Text{U'~'}});
+    EXPECT_EQ(field->GetValue(), "`~");
+    field->SetValue("get practice.heal_price");
+    EXPECT_FALSE(routed.route({key(KeyboardKey::Enter).data, shifted,
+        Events::Text{U'~', KeyboardKey::GraveAccent}}));
+    EXPECT_FALSE(routed.view->visible());
+    EXPECT_TRUE(routed.model.entries().empty());
+    EXPECT_FALSE(routed.route({shifted}));
+    ASSERT_TRUE(routed.view->visible());
+    routed.route({key(KeyboardKey::Enter).data});
+    EXPECT_EQ(routed.model.entries().size(), 1u);
+}
+
 TEST(DemoConsoleInput, ProductionRouteCancelsResetBeforeAndAfterConsoleToggle) {
     RoutedConsole routed;
     const auto position = routed.reset_point();
@@ -161,17 +187,17 @@ TEST(DemoConsoleInput, ProductionRouteCancelsResetBeforeAndAfterConsoleToggle) {
     routed.route({press, release});
     ASSERT_TRUE(routed.reset_effect());
     EXPECT_FALSE(routed.reset_effect());
-    EXPECT_FALSE(routed.route({key(KeyboardKey::F8).data, press, release}));
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent).data, press, release}));
     EXPECT_TRUE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
-    EXPECT_FALSE(routed.route({key(KeyboardKey::F8).data, press, release}));
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent).data, press, release}));
     EXPECT_FALSE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
     routed.route({});
     EXPECT_FALSE(routed.reset_effect());
     routed.route({press, release});
     ASSERT_TRUE(routed.reset_effect());
-    EXPECT_FALSE(routed.route({press, release, key(KeyboardKey::F8).data}));
+    EXPECT_FALSE(routed.route({press, release, key(KeyboardKey::GraveAccent).data}));
     EXPECT_TRUE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
     routed.route({key(KeyboardKey::Escape).data});
@@ -188,7 +214,7 @@ TEST(DemoConsoleInput, ProductionCloseOutsideEscapeAndRepeatedTogglesOwnTheBatch
     const auto release = pointer_button(position, Events::ButtonPhase::Release);
     routed.route({press, release});
     ASSERT_TRUE(routed.reset_effect());
-    routed.route({key(KeyboardKey::F8).data});
+    routed.route({key(KeyboardKey::GraveAccent).data});
     ASSERT_TRUE(routed.view->visible());
     const auto close = routed.point(*routed.console->GetElementById("console-close"));
     auto* hit = routed.session.context().GetElementAtPoint({static_cast<float>(close.x), static_cast<float>(close.y)});
@@ -201,18 +227,18 @@ TEST(DemoConsoleInput, ProductionCloseOutsideEscapeAndRepeatedTogglesOwnTheBatch
     EXPECT_EQ(routed.view->activity(), close_activity + 2);
     EXPECT_FALSE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
-    routed.route({key(KeyboardKey::F8).data});
+    routed.route({key(KeyboardKey::GraveAccent).data});
     ASSERT_FALSE(routed.view->inside(position));
     EXPECT_FALSE(routed.route({press, release, press, release}));
     EXPECT_FALSE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
-    routed.route({key(KeyboardKey::F8).data});
+    routed.route({key(KeyboardKey::GraveAccent).data});
     EXPECT_FALSE(routed.route({key(KeyboardKey::Escape).data, press, release}));
     EXPECT_FALSE(routed.reset_effect());
-    EXPECT_FALSE(routed.route({key(KeyboardKey::F8).data, key(KeyboardKey::F8).data, press, release}));
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent).data, key(KeyboardKey::GraveAccent).data, press, release}));
     EXPECT_FALSE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
-    EXPECT_FALSE(routed.route({key(KeyboardKey::F8).data, key(KeyboardKey::F8).data, key(KeyboardKey::F8).data, press, release}));
+    EXPECT_FALSE(routed.route({key(KeyboardKey::GraveAccent).data, key(KeyboardKey::GraveAccent).data, key(KeyboardKey::GraveAccent).data, press, release}));
     EXPECT_TRUE(routed.view->visible());
     EXPECT_FALSE(routed.reset_effect());
     routed.route({key(KeyboardKey::Escape).data});
@@ -231,7 +257,7 @@ TEST(DemoConsoleInput, OriginalPressCannotCompleteAfterAConsoleTransition) {
     ASSERT_TRUE(routed.reset_effect());
     routed.route({press});
     EXPECT_FALSE(routed.reset_effect());
-    routed.route({key(KeyboardKey::F8).data, key(KeyboardKey::Escape).data});
+    routed.route({key(KeyboardKey::GraveAccent).data, key(KeyboardKey::Escape).data});
     EXPECT_FALSE(routed.view->visible());
     EXPECT_FALSE(routed.route({release}));
     EXPECT_FALSE(routed.reset_effect());
@@ -253,7 +279,7 @@ TEST(DemoConsoleInput, OrdinaryFieldResetImageAndVisibilityControlsRemainIntenti
     routed.click(image);
     EXPECT_EQ(picture->GetAttribute<Rml::String>("src", ""), "../textures/ui/quadrants-alt.png");
     routed.route({pointer_button(image, Events::ButtonPhase::Press), pointer_button(image, Events::ButtonPhase::Release),
-                  key(KeyboardKey::F8).data});
+                  key(KeyboardKey::GraveAccent).data});
     EXPECT_TRUE(routed.view->visible());
     EXPECT_EQ(picture->GetAttribute<Rml::String>("src", ""), "../textures/ui/quadrants-alt.png");
     const auto position = routed.reset_point();
@@ -278,7 +304,7 @@ TEST(DemoConsoleInput, ProductionPreemptionAndZeroDrawabilityCancelEffectsAndQua
     RoutedConsole routed;
     routed.click(routed.reset_point());
     ASSERT_TRUE(routed.reset_effect());
-    routed.route({key(KeyboardKey::F8).data, key(KeyboardKey::W).data});
+    routed.route({key(KeyboardKey::GraveAccent).data, key(KeyboardKey::W).data});
     ASSERT_TRUE(routed.view->visible());
     auto successor = routed.input.routing().focus(99);
     const auto position = routed.reset_point();
@@ -293,7 +319,7 @@ TEST(DemoConsoleInput, ProductionPreemptionAndZeroDrawabilityCancelEffectsAndQua
     routed.click(position);
     EXPECT_TRUE(routed.reset_effect());
     for (bool zero_logical : {true, false}) {
-        routed.route({key(KeyboardKey::F8).data, key(KeyboardKey::S).data});
+        routed.route({key(KeyboardKey::GraveAccent).data, key(KeyboardKey::S).data});
         ASSERT_TRUE(routed.view->visible());
         routed.set_view(zero_logical ? CE::Platform::Dimensions<int>{0, 0} : CE::Platform::Dimensions<int>{1000, 800},
                         zero_logical ? CE::Platform::FramebufferSize{1000, 800} : CE::Platform::FramebufferSize{0, 0});
@@ -321,7 +347,7 @@ TEST(DemoConsoleInput, RecentResultsAndNoticesReachNativeViewAndLatest) {
     ASSERT_TRUE(routed.model.submit("set practice.heal_price 6789"));
     routed.model.pump();
     ASSERT_EQ(routed.practice.host->price(), 6789u);
-    routed.route({key(KeyboardKey::F8).data});
+    routed.route({key(KeyboardKey::GraveAccent).data});
     auto* output = routed.console->GetElementById("console-output");
     ASSERT_NE(output, nullptr);
     EXPECT_NE(output->GetInnerRML().find("#17 &gt; set practice.heal_price 6789"), Rml::String::npos);

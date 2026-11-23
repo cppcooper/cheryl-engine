@@ -460,6 +460,8 @@ namespace CE::UI::RmlUi {
             if (button && (record.device_kind == CE::Input::DeviceKind::Keyboard || record.device_kind == CE::Input::DeviceKind::Mouse))
                 state.modifier_state = button->modifiers;
             const bool keyboard = record.is_text() || record.device_kind == CE::Input::DeviceKind::Keyboard;
+            if (record.ui_consumed && (!button || button->phase != CE::Input::Events::ButtonPhase::Release))
+                continue;
             if (keyboard) {
                 if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;

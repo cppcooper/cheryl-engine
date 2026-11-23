@@ -28,5 +28,6 @@ namespace DemoConsole {
         bool handle_input(std::span<const CE::Input::Events::Record> records, bool drawable, DemoTguiControls* tgui = nullptr);
         bool consume_reset() noexcept;
         bool original_visible() const noexcept;
+        void retire();
     };
 }

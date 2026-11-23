@@ -26,7 +26,8 @@ namespace CE::Tools::Console::Presentation {
     /** Borrows Model and the RmlUi Session on their common owner thread.
      * Both outlive View; destroy View before closing/destroying the UI Session.
      * Construction failure removes installed listeners and closes its document.
-     * Input routing and gameplay quarantine remain the application's job.
+     * Install one Presentation::Input for ordinary toggle/batch integration.
+     * The application retains gameplay effect consumption and pause policy.
      */
     class CE_TYPE_API View {
         struct State;

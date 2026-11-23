@@ -169,13 +169,13 @@ TEST(DemoConsoleCoexistence, ActualOriginalControlsAndNullConsoleRemainUsable) {
     ASSERT_NO_FATAL_FAILURE(routed.prove_controls());
     EXPECT_EQ(routed.view, nullptr);
     const auto reset = routed.point(routed.tgui_reset());
-    routed.route({native_key(KeyboardKey::F8), native_left(reset, press), native_left(reset, release)});
+    routed.route({native_key(KeyboardKey::GraveAccent), native_left(reset, press), native_left(reset, release)});
     EXPECT_TRUE(routed.controls->consume_reset());
     EXPECT_FALSE(routed.rml.owns_keyboard_focus());
     EXPECT_TRUE(routed.tgui.owns_keyboard_focus());
 }
 
-TEST(DemoConsoleCoexistence, F8CancelsEarlierAndLaterNativeEffectsInBothToolkits) {
+TEST(DemoConsoleCoexistence, DefaultToggleCancelsEarlierAndLaterNativeEffectsInBothToolkits) {
     DualConsole routed;
     ASSERT_NO_FATAL_FAILURE(routed.prove_controls());
     const auto rml_reset = routed.rml_reset();
@@ -185,12 +185,12 @@ TEST(DemoConsoleCoexistence, F8CancelsEarlierAndLaterNativeEffectsInBothToolkits
     const auto source = routed.image_source();
     EXPECT_FALSE(routed.route({native_left(rml_reset, press), native_left(rml_reset, release),
         native_left(tgui_reset, press), native_left(tgui_reset, release), native_left(rml_image, press), native_left(rml_image, release),
-        native_left(tgui_image, press), native_left(tgui_image, release), native_key(KeyboardKey::F8)}));
+        native_left(tgui_image, press), native_left(tgui_image, release), native_key(KeyboardKey::GraveAccent)}));
     ASSERT_TRUE(routed.view->visible());
     routed.expect_no_resets();
     EXPECT_EQ(routed.image_source(), source);
     EXPECT_TRUE(routed.controls->alternate_image());
-    EXPECT_FALSE(routed.route({native_key(KeyboardKey::F8), native_left(tgui_reset, press), native_left(tgui_reset, release),
+    EXPECT_FALSE(routed.route({native_key(KeyboardKey::GraveAccent), native_left(tgui_reset, press), native_left(tgui_reset, release),
         native_left(rml_reset, press), native_left(rml_reset, release), native_left(tgui_image, press), native_left(tgui_image, release),
         native_left(rml_image, press), native_left(rml_image, release)}));
     EXPECT_FALSE(routed.view->visible());
@@ -209,7 +209,7 @@ TEST(DemoConsoleCoexistence, HotkeyOrderDrainsOldEpochWithoutFeedingNewFields) {
     routed.route({native_key(KeyboardKey::F2)});
     const auto old = routed.input.routing().current();
     const auto batch = routed.input.emit({Events::Text{U'p'}, native_key(KeyboardKey::F4), Events::Text{U'x'},
-        native_key(KeyboardKey::F8), Events::Text{U'y'}, native_key(KeyboardKey::F2), Events::Text{U'z'}});
+        native_key(KeyboardKey::GraveAccent), Events::Text{U'y'}, native_key(KeyboardKey::F2), Events::Text{U'z'}});
     ASSERT_EQ(batch->records.size(), 7u);
     for (const auto& record : batch->records) {
         ASSERT_EQ(record.target, 2u);
@@ -227,7 +227,7 @@ TEST(DemoConsoleCoexistence, HotkeyOrderDrainsOldEpochWithoutFeedingNewFields) {
     EXPECT_EQ(routed.tgui_field()->getText(), "apn");
     routed.route({native_key(KeyboardKey::F4)});
     routed.route({Events::Text{U'b'}, native_key(KeyboardKey::F2), Events::Text{U'x'}, native_key(KeyboardKey::F4),
-                  Events::Text{U'y'}, native_key(KeyboardKey::F8), Events::Text{U'z'}});
+                  Events::Text{U'y'}, native_key(KeyboardKey::GraveAccent), Events::Text{U'z'}});
     EXPECT_EQ(routed.rml_field().GetValue(), "rb");
     EXPECT_EQ(routed.tgui_field()->getText(), "apn");
     ASSERT_TRUE(routed.view->visible());
@@ -321,7 +321,7 @@ TEST(DemoConsoleCoexistence, HandoffsCancelBothEffectDirectionsWithoutDisablingF
     const auto tgui_reset = routed.point(routed.tgui_reset());
     const auto rml_image = routed.rml_image();
     const auto tgui_image = routed.point(routed.tgui_image());
-    for (const auto hotkey : {KeyboardKey::F2, KeyboardKey::F4, KeyboardKey::F8}) {
+    for (const auto hotkey : {KeyboardKey::F2, KeyboardKey::F4, KeyboardKey::GraveAccent}) {
         SCOPED_TRACE(static_cast<int>(hotkey));
         routed.route({native_key(KeyboardKey::Escape)});
         const auto image = routed.image_source();
@@ -351,7 +351,7 @@ TEST(DemoConsoleCoexistence, HeldKeysModifiersAndOldLeftGesturesObserveRealRelea
     routed.route({native_key(KeyboardKey::W), native_key(KeyboardKey::LeftShift, press, Modifiers::Shift), shifted_press});
     EXPECT_TRUE(routed.tgui.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
     routed.expect_no_resets();
-    routed.route({native_key(KeyboardKey::F8), native_key(KeyboardKey::Escape)});
+    routed.route({native_key(KeyboardKey::GraveAccent), native_key(KeyboardKey::Escape)});
     EXPECT_FALSE(routed.route({native_left(tgui_reset, release), native_key(KeyboardKey::LeftShift, release)}));
     routed.expect_no_resets();
     EXPECT_FALSE(routed.tgui.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
@@ -374,13 +374,13 @@ TEST(DemoConsoleCoexistence, HeldKeysModifiersAndOldLeftGesturesObserveRealRelea
 TEST(DemoConsoleCoexistence, HeldConsoleButtonCannotSubmitAfterCloseAndReopen) {
     DualConsole routed;
     ASSERT_NO_FATAL_FAILURE(routed.prove_controls());
-    routed.route({native_key(KeyboardKey::F8)});
+    routed.route({native_key(KeyboardKey::GraveAccent)});
     routed.console_field().SetValue("set practice.heal_price 99");
     const auto submit = routed.point(*routed.console->GetElementById("console-submit"));
     const auto price = routed.practice.host->price();
     routed.route({native_left(submit, press)});
     ASSERT_TRUE(routed.model.entries().empty());
-    routed.route({native_key(KeyboardKey::F8), native_key(KeyboardKey::F8)});
+    routed.route({native_key(KeyboardKey::GraveAccent), native_key(KeyboardKey::GraveAccent)});
     ASSERT_TRUE(routed.view->visible());
     EXPECT_FALSE(routed.route({native_left(submit, release)}));
     routed.model.pump();
@@ -400,7 +400,7 @@ TEST(DemoConsoleCoexistence, NativeCloseOutsideAndEscapeCancelUnderlyingEffects)
     for (int mode = 0; mode < 3; ++mode) {
         SCOPED_TRACE(mode);
         routed.route({native_key(KeyboardKey::Escape)});
-        routed.route({native_key(KeyboardKey::F8)});
+        routed.route({native_key(KeyboardKey::GraveAccent)});
         ASSERT_TRUE(routed.view->visible());
         if (mode == 0) {
             auto* close = routed.console->GetElementById("console-close");
@@ -433,7 +433,7 @@ TEST(DemoConsoleCoexistence, NativeCloseOutsideAndEscapeCancelUnderlyingEffects)
 TEST(DemoConsoleCoexistence, PreemptionAndIndependentZeroExtentsCancelWithoutReplay) {
     DualConsole routed;
     ASSERT_NO_FATAL_FAILURE(routed.prove_controls());
-    routed.route({native_key(KeyboardKey::F8), native_key(KeyboardKey::W)});
+    routed.route({native_key(KeyboardKey::GraveAccent), native_key(KeyboardKey::W)});
     const auto old = routed.input.emit({Events::Text{U'x'}});
     auto successor = routed.input.routing().focus(99);
     EXPECT_FALSE(routed.drain(*old));
@@ -453,7 +453,7 @@ TEST(DemoConsoleCoexistence, PreemptionAndIndependentZeroExtentsCancelWithoutRep
     const auto rml_reset = routed.rml_reset();
     const auto tgui_reset = routed.point(routed.tgui_reset());
     for (const auto& [logical, framebuffer] : extents) {
-        routed.route({native_key(KeyboardKey::F8), native_key(KeyboardKey::S)});
+        routed.route({native_key(KeyboardKey::GraveAccent), native_key(KeyboardKey::S)});
         ASSERT_TRUE(routed.view->visible());
         routed.set_view(logical, framebuffer);
         ASSERT_FALSE(DemoUiRouting::drawable(logical, framebuffer));
@@ -476,7 +476,7 @@ TEST(DemoConsoleCoexistence, PreemptionAndIndependentZeroExtentsCancelWithoutRep
 TEST(DemoConsoleCoexistence, NativeOwnersDetachWhileSessionsAndOwnedResultsRemainLive) {
     DualConsole routed;
     ASSERT_NO_FATAL_FAILURE(routed.prove_controls());
-    routed.route({native_key(KeyboardKey::F8)});
+    routed.route({native_key(KeyboardKey::GraveAccent)});
     routed.console_field().SetValue("set practice.heal_price 27");
     routed.route({native_key(KeyboardKey::Enter)});
     routed.model.pump();
@@ -579,6 +579,8 @@ TEST(DemoConsoleCoexistence, SimulationRetirementSurvivesJoinedPlatformShutdown)
                 };
                 exercise();
                 routed->controls->retire();
+                routed->routing->retire();
+                routed->routing->retire();
                 routed->routing.reset();
                 if (routed->view) {
                     routed->view->hide();

@@ -2,6 +2,7 @@
 #include "developer-console.h"
 #include "developer-console-model.h"
 #include "ui-routing.h"
+#include <cheryl/tools/console/input.h>
 
 #ifdef CHERYL_DEMO_TGUI
 #include "tgui-controls.h"
@@ -44,6 +45,7 @@ namespace DemoConsole {
         CE::UI::RmlUi::Session& session;
         Rml::ElementDocument& document;
         View* console;
+        std::unique_ptr<CE::Tools::Console::Presentation::Input> console_input;
         Rml::Element& panel;
         Rml::ElementFormControlInput& field;
         Rml::Element& reset;
@@ -62,6 +64,8 @@ namespace DemoConsole {
         : session(selected_session), document(original), console(selected_console), panel(required(original, "panel")),
           field(dynamic_cast<Rml::ElementFormControlInput&>(required(original, "field"))), reset(required(original, "reset")),
           image(required(original, "change-image")), picture(required(original, "image")) {
+            if (console)
+                console_input = std::make_unique<CE::Tools::Console::Presentation::Input>(session, *console);
             reset.AddEventListener("click", this);
             try {
                 image.AddEventListener("click", this);
@@ -94,6 +98,16 @@ namespace DemoConsole {
         }
 
         bool handle_input(std::span<const CE::Input::Events::Record> records, bool drawable, DemoTguiControls* tgui) {
+            if (!console_input)
+                return drain_input(records, drawable, tgui);
+            bool allowed = false;
+            const bool console_allowed = console_input->handle_input(records, drawable, [&](auto batch) {
+                allowed = drain_input(batch, drawable, tgui);
+            });
+            return console_allowed && allowed;
+        }
+
+        bool drain_input(std::span<const CE::Input::Events::Record> records, bool drawable, DemoTguiControls* tgui) {
             using namespace CE::Input;
             bool tgui_owned = false;
             bool tgui_visible = false;
@@ -109,7 +123,7 @@ namespace DemoConsole {
                 ? (console_visible() ? Focus::Console : session.context().GetFocusElement() == &field ? Focus::RmlField : Focus::RmlPointer)
                 : tgui_owned ? Focus::TguiPointer : Focus::None;
             input.begin(session.owns_keyboard_focus() || tgui_owned || console_visible());
-            bool blocked = console_visible() || !drawable;
+            bool blocked = console_visible() || !drawable || (console_input && console_input->transitioned());
             effects.begin(!blocked);
 #ifdef CHERYL_DEMO_TGUI
             if (tgui)
@@ -133,6 +147,8 @@ namespace DemoConsole {
                 input.suppress();
             };
             const auto handoff = [&](Focus next) {
+                if (console_input && next != Focus::Console)
+                    console_input->cancel_pending_open();
                 transition();
                 retire_rml();
                 release_tgui = true;
@@ -165,6 +181,7 @@ namespace DemoConsole {
             session.handle_input(records, false, [&](const Events::Record& record) {
                 synchronize();
                 input.observe(record);
+                const auto toggle = console_input ? console_input->route_toggle(record) : std::nullopt;
                 const auto* button = std::get_if<Events::Button>(&record.data);
                 const bool keyboard = record.is_text() || record.device_kind == DeviceKind::Keyboard;
                 const bool left = button && record.device_kind == DeviceKind::Mouse && button->mouse_button == MouseButton::Left;
@@ -176,9 +193,8 @@ namespace DemoConsole {
                 if (release)
                     left_down = false;
                 if (button && record.device_kind == DeviceKind::Keyboard && button->phase == Events::ButtonPhase::Press) {
-                    if (button->key == KeyboardKey::F8 && console) {
-                        const bool opening = desired != Focus::Console;
-                        handoff(opening && drawable ? Focus::Console : Focus::None);
+                    if (toggle) {
+                        handoff(*toggle && drawable ? Focus::Console : Focus::None);
                         console->hide();
                     } else if (button->key == KeyboardKey::F4 && visible && drawable) {
                         const bool opening = desired != Focus::RmlField;
@@ -219,7 +235,7 @@ namespace DemoConsole {
                 if (const auto* scroll = std::get_if<Events::Scroll>(&record.data); scroll && scroll->position)
                     position = &*scroll->position;
                 Pointer selected = Pointer::None;
-                if (drawable && record.device_kind == DeviceKind::Mouse) {
+                if (drawable && (!record.ui_consumed || release) && record.device_kind == DeviceKind::Mouse) {
                     if (console_visible()) {
                         if (position && console->inside(*position))
                             selected = Pointer::Console;
@@ -270,12 +286,13 @@ namespace DemoConsole {
                 }
                 if (selected != Pointer::None || stale_release || left_quarantined)
                     input.suppress();
-                const bool ordinary_effect = drawable && !blocked && !stale_release && !left_quarantined;
+                const bool ordinary_effect = drawable && !record.ui_consumed && !blocked && !stale_release && !left_quarantined;
                 effects.select(ordinary_effect && (keyboard || selected == Pointer::Original));
                 if (keyboard && rml_retired)
                     session.release_keyboard_focus();
                 if (console)
-                    console->select_input(!stale_release && !left_quarantined &&
+                    console->select_input(!(console_input && console_input->transitioned()) &&
+                                          !record.ui_consumed && !stale_release && !left_quarantined &&
                                           ((keyboard && !rml_retired) || selected == Pointer::Console));
                 observed_visible = console_visible();
                 const bool retire_tgui = std::exchange(release_tgui, false) || (keyboard && tgui_retired);
@@ -349,4 +366,9 @@ namespace DemoConsole {
     }
     bool Routing::consume_reset() noexcept { return state_->effects.consume_reset(); }
     bool Routing::original_visible() const noexcept { return state_->visible; }
+    void Routing::retire() {
+        if (state_->console_input)
+            state_->console_input->retire();
+        state_->effects.cancel();
+    }
 }

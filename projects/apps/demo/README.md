@@ -580,3 +580,10 @@ The [canonical Console guide](../../../docs/site/modules/console.md) owns host
 construction, handler registration, script success/failure, SDK options,
 nonblocking interactive retirement, external I/O settlement, and acceptance.
 Console applications do not need this demo or its fixed Contact fixture.
+
+The selected production `Presentation::Input` supplies the default physical
+GraveAccent (backtick/tilde, including Shift) open/close binding, not a demo F8
+switch. Demo routing uses its advanced drain for RmlUi/TGUI arbitration and keeps
+its existing held-input quarantine, same-batch effect cancellation, and host pause
+policy. The ordinary single-Console integration and override/disable options are
+documented in the canonical Console guide.

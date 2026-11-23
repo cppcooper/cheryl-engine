@@ -22,7 +22,7 @@ button:hover { background-color: #f7ecd4; }
 </style></head><body id="developer-console">
 <h1>CONTACT / developer console</h1>
 <p id="console-scope"></p>
-<p class="hint">This is a separate real practice Host, not the rendered player. F8 toggles; Escape or an outside click releases input.</p>
+<p class="hint">This is a separate real practice Host, not the rendered player. Backtick/tilde toggles; Escape or an outside click releases input.</p>
 <div id="console-output"></div>
 <input id="console-command" type="text" maxlength="4096" value="get practice.heal_price" />
 <div id="console-suggestions"></div>

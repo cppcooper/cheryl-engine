@@ -218,6 +218,8 @@ void DemoRmlUi::init_simulation() {
 
 void DemoRmlUi::stop_console() noexcept {
 #ifdef CHERYL_DEMO_CONSOLE
+    if (rmlui_state_->console_routing)
+        rmlui_state_->console_routing->retire();
     if (rmlui_state_->console_model)
         rmlui_state_->console_model->close();
     if (rmlui_state_->console)

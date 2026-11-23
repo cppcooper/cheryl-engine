@@ -5,7 +5,7 @@ endif()
 add_library(${TARGET_LIB_MODULE_CONSOLE} ${CHERYL_LIBRARY_TYPE}
     src/registry.cpp src/parser.cpp src/session.cpp
     src/scenario.cpp src/scenario-parser.cpp src/setting.cpp
-    src/model.cpp src/view.cpp
+    src/model.cpp src/view.cpp src/input.cpp
     src/runtime/runner.cpp src/runtime/report.cpp src/runtime/io.cpp
     src/runtime/command.cpp src/runtime/diagnostics.cpp)
 add_library(Cheryl::Console ALIAS ${TARGET_LIB_MODULE_CONSOLE})

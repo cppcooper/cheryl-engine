@@ -166,6 +166,9 @@ namespace CE::UI::RmlUi {
  */
 
 /** @fn void CE::UI::RmlUi::Session::handle_input(std::span<const CE::Input::Events::Record> records, bool pointer_selected)
+ * ui_consumed vetoes new input, but selected button releases still retire native
+ * gestures. Routing callbacks and modifier observation always run. Hosts must
+ * cancel effects for consumed releases; focus/epoch and pointer selection still apply.
  * Deliver one complete ordered tick batch on the UI owner without consuming/modifying shared records. Keyboard/Text delivery requires matching target and entry focus epoch; observe modifier releases even when not selected. pointer_selected explicitly admits mouse records, whose recorded positions are authoritative. Missing/invalid positions or text reject; unavailable clipboard shortcuts do not delete selected text.
  * @see [Batch routing](cheryl-guide:development/ui-adapters#routing-and-unavailable-services)
  */

@@ -25,6 +25,7 @@ target_link_libraries(my_game PRIVATE Cheryl::Console)
 | `registry.h`, `session.h`, `parser.h`, `scenario.h`, `setting.h` | Typed authority, retention, text binding, strict plans, and owner-backed settings. |
 | `model.h` | History, completion, help, and retained output. |
 | `view.h` | Real RmlUi document and listeners over Model. |
+| `input.h` | Selected default GraveAccent/Shift toggle, batch admission, and deferred focus. |
 | `runtime/runner.h`, `runtime/command.h`, `runtime/diagnostics.h` | Owned isolated jobs, physical I/O/reporting, and safe Engine observations. |
 
 Existing caches retain explicit choices: enable `CHERYL_BUILD_CONSOLE=ON` and
@@ -111,6 +112,59 @@ The real demo now wraps these production Model/View classes with a Contact
 Connection, its existing custom document, and optional Magic buttons. Its
 same-batch focus handoff, keyboard quarantine, WASD controls, and TGUI coexistence
 remain application-owned. The reusable View does not silently steal global input.
+
+## Input ownership
+
+Install one selected `Presentation::Input` on the View/Session's UI owner. Views
+start hidden; linking the library or constructing other Views adds no shortcut
+capture. The normal integration needs no hotkey callback:
+
+```cpp
+namespace Presentation = CE::Tools::Console::Presentation;
+Presentation::View view(ui_session, model);
+Presentation::Input console_input(ui_session, view);
+const bool gameplay_allowed = console_input.handle_input(tick_records, drawable);
+if (!gameplay_allowed)
+    discard_queued_gameplay_and_menu_effects();
+```
+
+Call once for the complete ordered poll, before consuming gameplay effects.
+Physical `KeyboardKey::GraveAccent` Press opens/focuses, and the next Press closes
+and releases. Shift works; Repeat and Release never toggle. The return value
+vetoes the **whole** batch, including actions queued before the toggle. It is not
+a simulation-pause policy: the host continues to own pausing. The default drain
+calls RmlUi once, quarantines held controls until release, and defers new focus
+until the batch finishes. It closes a preempted or non-drawable View without
+erasing a successor's focus. Never drain the same Session again for that poll.
+
+Pass `{CE::Input::KeyboardKey::F10}` as the third constructor argument for an
+override, or `{std::nullopt}` to disable the binding (explicit View opening still
+works). Before View/Session destruction or joining their owner, call
+`console_input.retire()` on that owner. Retirement is idempotent, and destruction
+afterward only frees bookkeeping; it does not call a departed toolkit owner.
+
+Mixed-toolkit hosts can use the optional synchronous drain callback. Drain each
+participating Session once with the supplied records, call `route_toggle(record)`
+in the first Session's per-record callback, and call `cancel_pending_open()` when
+another control selects focus. `transitioned()` is available before drain so the
+host cancels queued effects on **both** toolkits before delivery. Preserve the
+host's existing held-key/pointer quarantine in this advanced path; it replaces
+the ordinary drain's generic quarantine. `ui_consumed` vetoes new toolkit input,
+not modifier observation or routing callbacks. Selected releases still clean up
+old native gestures, with effects disabled by the host. The demo implements this
+advanced path, retaining its original pointer ownership and gameplay controls.
+
+`Events::Text::source_key` distinguishes associated shortcut text from arbitrary
+backticks in pasted/scripted commands. Native GLFW attributes only the first
+character after a known Press/Repeat within the same poll, clearing the candidate
+at the next key, pointer, mouse-button, or scroll callback, or poll boundary. For
+GraveAccent, only backtick/tilde characters qualify. This is a bounded callback
+association, not an OS/IME guarantee: composition, layouts producing other
+characters, multiple-character commits, and cross-poll association are not
+promised. Other sources leave the field empty unless they know the association.
+The toggle and its attributed text are consumed, and keyboard/text after a
+transition is quarantined for that batch; unrelated text in ordinary batches,
+including literal backticks and tildes, remains editable.
 
 ## Run an isolated test file
 
