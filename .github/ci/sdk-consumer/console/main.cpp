@@ -1,4 +1,5 @@
 #include "host.h"
+#include <cheryl/core/logging/process-lifetime.h>
 #include <cheryl/tools/console/runtime/diagnostics.h>
 
 #include <chrono>
@@ -109,9 +110,12 @@ namespace {
 }
 
 int main(int argc, char** argv) {
+    CE::Logging::ProcessLifetime logging_lifetime;
     try {
         require(argc == 3, "usage: sdk-console FIXTURES OUTPUT_ROOT");
         same_handlers();
+        Independent::exercise_view();
+        std::cout << "CPU-side Console Model/View lifecycle passed without a window or graphics context\n";
         const auto unique = "independent-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
         const auto output = std::filesystem::absolute(argv[2]) / unique;
         std::filesystem::create_directories(output);

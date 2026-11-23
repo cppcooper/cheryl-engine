@@ -238,6 +238,10 @@ declaration alone is not a passing result for a particular checkout or platform.
   `^sdk-console$`. It owns non-Magic host state and checks typed/text equivalence,
   real advancement/pause, retained retry, positive/failing/empty/invalid scripts,
   diagnostic mutation refusal, missing input, and missing output root.
+  It also calls the real RmlUi Session and Console Model/View with routed text
+  input, retained result presentation, open/hide/reopen, and ordered teardown.
+  This is CPU-side toolkit interaction without a window or graphics context,
+  not live graphical rendering or physical-input acceptance.
 - Graphical: `tests-demo-console-controller`, CTest `demo_console` with
   `DemoConsole.*:DemoConsoleInput.*`, plus `demo_console_coexistence` when TGUI
   exists. Observe real display/input, partial construction, both runtime modes,

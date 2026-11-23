@@ -12,6 +12,8 @@ namespace Independent {
     namespace Script = Core::Scenario;
     namespace Runtime = Core::Runtime;
 
+    void exercise_view();
+
     struct Simulation {
         std::uint64_t step_limit = 4, steps = 0, writes = 0;
         bool set_limit(std::uint64_t value) noexcept {

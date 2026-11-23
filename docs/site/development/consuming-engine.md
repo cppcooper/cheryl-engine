@@ -554,9 +554,12 @@ The independently configurable `.github/ci/sdk-consumer/console` directory needs
 only `find_package(Cheryl 4 CONFIG REQUIRED)` and an installed prefix, not
 `CHERYL_REPOSITORY_ROOT`. It owns a non-Magic simulation, uses the same typed/text
 setting handlers, and checks successful and deliberately failing finalized jobs.
-It links only `Cheryl::Console` and always compiles the graphical View consumer,
-alongside its script/report checks. Its `sdk-console` CTest is source-registered
-on POSIX and Windows; executing that test alone does not exercise graphical input.
+It links only `Cheryl::Console` and calls a bounded CPU-side RmlUi Session and
+Console Model/View check alongside its script/report checks. Routed committed
+text and Enter submit a real setting, and the native document presents its
+retained result across hide/reopen before owner-ordered teardown. This needs no
+window, display, or graphics context; it does not establish live rendering or
+physical input. Its `sdk-console` CTest is source-registered on POSIX and Windows.
 The Windows
 backend requires approved absolute drive paths; neither platform registration
 establishes execution or release qualification. See the [Console guide](../modules/console.md)

@@ -40,6 +40,31 @@ endif()
 ''')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_console_module_bootstrap(self):
+        result = self.configure(f'''
+include("{ROOT.as_posix()}/cmake/CherylModules.cmake")
+cheryl_configure_root_options()
+set(CHERYL_REPOSITORY_ROOT "${{CMAKE_BINARY_DIR}}/source-root")
+file(MAKE_DIRECTORY "${{CHERYL_REPOSITORY_ROOT}}")
+file(WRITE "${{CHERYL_REPOSITORY_ROOT}}/CMakeLists.txt" [=[
+cheryl_configure_root_options()
+if(CHERYL_BUILD_CONSOLE OR CHERYL_BUILD_UI_RMLUI OR CHERYL_BUILD_TESTS)
+  message(FATAL_ERROR "Module bootstrap selected unrelated Console, UI, or tests")
+endif()
+add_library(engine INTERFACE)
+add_library(Cheryl::Engine ALIAS engine)
+]=])
+cheryl_prepare_module()
+if(NOT TARGET Cheryl::Engine OR TARGET Cheryl::Console)
+  message(FATAL_ERROR "Module bootstrap did not supply only Engine")
+endif()
+if(NOT CHERYL_BUILD_CONSOLE OR NOT CHERYL_BUILD_UI_RMLUI OR
+    NOT "$CACHE{{CHERYL_BUILD_CONSOLE}}" OR NOT "$CACHE{{CHERYL_BUILD_UI_RMLUI}}")
+  message(FATAL_ERROR "Module bootstrap leaked its omissions into the host selections")
+endif()
+''')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_console_composition(self):
         for kind in ("SHARED", "STATIC"):
             with self.subTest(kind=kind):
