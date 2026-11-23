@@ -11,6 +11,8 @@
 #include <vector>
 
 namespace CE::Tools::Console::Presentation {
+    namespace Events = CE::Input::Events;
+
     struct Input::State {
         struct Held {
             bool gameplay = false;

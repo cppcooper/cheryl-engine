@@ -16,6 +16,7 @@
 namespace CE::Tools::Console {
     namespace {
         using namespace CE::Input;
+        namespace Events = CE::Input::Events;
         constexpr auto press = Events::ButtonPhase::Press;
         constexpr auto release = Events::ButtonPhase::Release;
 
