@@ -1,0 +1,5 @@
+script.version 1
+fixture.load independent-v1
+simulation.advance -> tick
+expect $tick == 999
+finish

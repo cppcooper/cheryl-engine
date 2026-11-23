@@ -1,0 +1,5 @@
+script.version 1
+fixture.load independent-v1
+observe simulation.step_limit.set 6 -> forbidden
+expect $forbidden.effective == 6
+finish

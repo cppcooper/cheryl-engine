@@ -1,7 +1,7 @@
 # Reload declarations into the caller's scope, including standalone entry points.
 
 # Cheryl
-set(VERSION_PROJECT_CHERYL 4.0.0)
+set(VERSION_PROJECT_CHERYL 4.1.0)
 
 # Engine
 set(VERSION_PROJECT_ENGINE 4.0.0)

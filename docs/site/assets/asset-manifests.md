@@ -256,9 +256,12 @@ source ordering and pixel rectangles. Invaders has eleven sections containing
 nineteen frames; Rover uses four separate entries because its frame sizes differ.
 HyperMaze has five columns and six rows; Tileset has four cells. All are indexed.
 
-The legacy formats provide no animation timing, so the conversions define no
-timed clips. Invaders' `0.42` is draw scale, not a frame duration; apply it at
-submission. Its alpha is one and placement offsets are zero. Centered sprite and
+The legacy formats provide no animation timing. The released Invaders definitions
+add later authored, looping `default` clips: `enemy_1` through `enemy_7` use two
+cells at 2,000 ms each; `enemy_8` (the UFO) uses one cell at 2,000 ms. These timings
+are not recovered original metadata. Select `default` explicitly; there is no
+automatic clip selection. Invaders' `0.42` is draw scale, not a frame duration;
+apply it at submission. Its alpha is one and placement offsets are zero. Centered sprite and
 bottom-left tile pivots follow the recovered v2 loader conventions; Rover and
 Tileset descriptions identify where their sources supplied no explicit anchor.
 Duplicate `donotuse.dat` and the annotated, conflicting Rover draft do not create

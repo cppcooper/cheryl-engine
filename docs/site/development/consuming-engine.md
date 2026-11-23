@@ -535,6 +535,26 @@ the bootstrap object. The definition does not change installation scope. See the
 
 ## Independent consumers and header probes
 
+### Optional Console consumers
+
+Select `CHERYL_BUILD_CONSOLE=ON` when producing an SDK that needs typed commands,
+settings, or `Cheryl::ConsoleModel`. Select `CHERYL_BUILD_CONSOLE_RUNTIME=ON` for
+`Cheryl::ConsoleRuntime`; select `CHERYL_BUILD_CONSOLE_RMLUI=ON` and RmlUi for
+`Cheryl::ConsoleRmlUi`. Console header presence alone does not imply that an
+optional target was built. These targets use the existing SDK export and
+relocation machinery, including Engine and toolkit linkage where required.
+
+The independently configurable `.github/ci/sdk-consumer/console` directory needs
+only `find_package(Cheryl 4 CONFIG REQUIRED)` and an installed prefix, not
+`CHERYL_REPOSITORY_ROOT`. It owns a non-Magic simulation, uses the same typed/text
+setting handlers, and checks successful and deliberately failing finalized jobs.
+Its `sdk-console` CTest is source-registered on POSIX and Windows. The Windows
+backend requires approved absolute drive paths; neither platform registration
+establishes execution or release qualification. See the [Console guide](../modules/console.md)
+for host lifetimes, examples, options, limits, and source-declared acceptance.
+
+### Other independent consumers
+
 The maintainer procedure is in
 [Independent consumers and header probes](architecture-validation.md#independent-consumers-and-header-probes),
 including standalone Engine/native/OpenGL consumers and their coverage limits.

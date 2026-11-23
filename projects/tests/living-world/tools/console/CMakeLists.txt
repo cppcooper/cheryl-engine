@@ -1,0 +1,5 @@
+add_library(cheryl-living-console STATIC adapter.cpp fixture.cpp)
+add_library(Cheryl::LivingWorld::Console ALIAS cheryl-living-console)
+target_compile_features(cheryl-living-console PUBLIC cxx_std_23)
+target_compile_definitions(cheryl-living-console PRIVATE LIVING_WORLD_S1="${magic_source}/fixtures/S1.verse")
+target_link_libraries(cheryl-living-console PUBLIC Cheryl::Console Cheryl::LivingWorld::MagicAuthoring)

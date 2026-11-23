@@ -566,3 +566,15 @@ and the final launch exits after five updates.
   or hangs. Native alpha/image orientation, resize/hit positions and retained scenes
   must still satisfy the demo sequence. These observations do not reproduce the
   unmodified upstream defect or replace the investigation's sanitizer evidence.
+
+## Reusable developer-console composition
+
+When `CHERYL_DEMO_CONSOLE=ON`, this demo uses the production
+`Cheryl::ConsoleModel`, `Cheryl::ConsoleRmlUi`, and `Cheryl::ConsoleRuntime`
+targets. Its Contact Connection, Magic buttons, keyboard quarantine, and UI
+routing remain thin application adapters. `console.io.group` observes the real
+dedicated physical I/O group; it is not a runtime completion barrier.
+The [canonical Console guide](../../../docs/site/modules/console.md) owns host
+construction, handler registration, script success/failure, SDK options,
+nonblocking interactive retirement, external I/O settlement, and acceptance.
+Console-core applications do not need this demo or its fixed Contact fixture.

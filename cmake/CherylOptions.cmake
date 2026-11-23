@@ -226,9 +226,19 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_TUTORIAL_GAME
             "Build the Player/Enemy/HUD and How-to teaching game" OFF
             REQUIRES CHERYL_BUILD_STARTUP CHERYL_STARTUP_OPENGL CHERYL_BUILD_UI_TGUI CHERYL_NATIVE_INPUT)
-
+    cheryl_option(CHERYL_BUILD_CONSOLE
+            "Build the typed developer console and host-neutral model" OFF)
+    cheryl_option(CHERYL_BUILD_CONSOLE_RUNTIME
+            "Build host-neutral script jobs and physical report I/O" "${CHERYL_BUILD_CONSOLE}"
+            REQUIRES CHERYL_BUILD_CONSOLE)
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)
+    cheryl_option(CHERYL_DEMO_CONSOLE
+            "Add the real Contact practice developer console to the RmlUi demo" OFF
+            REQUIRES CHERYL_BUILD_DEMO CHERYL_BUILD_UI_RMLUI CHERYL_BUILD_CONSOLE CHERYL_BUILD_CONSOLE_RUNTIME CHERYL_BUILD_TESTS)
+    cheryl_option(CHERYL_BUILD_CONSOLE_RMLUI
+            "Build the reusable RmlUi console view" "${CHERYL_DEMO_CONSOLE}"
+            REQUIRES CHERYL_BUILD_CONSOLE CHERYL_BUILD_UI_RMLUI)
     cheryl_option(CHERYL_BUILD_ALL_TESTS
             "Include owner and cross-project aggregate test runners in the default build" OFF
             REQUIRES CHERYL_BUILD_TESTS)

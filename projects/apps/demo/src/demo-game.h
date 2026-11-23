@@ -14,6 +14,9 @@
 namespace CE::Runtime {
     class Context;
 }
+namespace DemoConsole {
+    class Application;
+}
 
 // The engine-facing application object. main.cpp owns startup and runtime;
 // this class owns the game lifecycle that the runtime drives.
@@ -29,7 +32,8 @@ public:
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
-        bool text_runs
+        bool text_runs,
+        DemoConsole::Application* console = nullptr
     );
     ~DemoGame() override;
     DemoGame(const DemoGame&) = delete;
@@ -40,6 +44,8 @@ public:
 
     void init_platform() override;
     void init_simulation() override;
+    void deinit_simulation() override;
+    void quiesce() override;
     void deinit_platform() override;
     void update(const CE::Game::TickContext& tick) override;
     void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override;

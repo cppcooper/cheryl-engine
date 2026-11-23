@@ -1,0 +1,17 @@
+# Fixed isolated Contact/S1 world. Expected facts are independent literals.
+script.version 1
+fixture.load contact-heal-v1
+observe actor.read marin -> before
+expect $before.health == 12
+magic.cast S1 target=marin -> attempt
+retry $attempt -> duplicate
+await $attempt max_steps=4 -> outcome
+expect $outcome.status == "Applied"
+expect $outcome.gain == 8
+operation.read $attempt.operation -> exact
+expect $exact.gain == 8
+observe actor.read marin -> after
+expect $after.health == 20
+observe actor.read mage -> caster
+expect $caster.reserve == 7
+finish

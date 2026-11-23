@@ -45,6 +45,10 @@ endif()
 
 add_subdirectory(projects/engine)
 
+if(CHERYL_BUILD_CONSOLE)
+    add_subdirectory(projects/modules/tools/console)
+endif()
+
 if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
     add_subdirectory(projects/modules/platform/debug-terminal-linux)
     if(NOT TARGET Cheryl::DebugTerminal)
@@ -78,6 +82,11 @@ if(CHERYL_BUILD_STARTUP)
 endif()
 
 cheryl_select_public_component(Cheryl::Engine)
+foreach(component IN ITEMS Console ConsoleModel ConsoleRuntime ConsoleRmlUi)
+    if(TARGET Cheryl::${component})
+        cheryl_select_public_component(Cheryl::${component})
+    endif()
+endforeach()
 if(CHERYL_BUILD_STARTUP)
     cheryl_select_public_component(Cheryl::Startup)
     if(CHERYL_STARTUP_OPENGL)

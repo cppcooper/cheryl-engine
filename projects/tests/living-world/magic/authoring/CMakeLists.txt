@@ -1,0 +1,7 @@
+if(NOT TARGET Cheryl::LivingWorld::Host)
+    message(FATAL_ERROR "Add the existing living-world Host before authoring")
+endif()
+add_library(living-world-magic-authoring STATIC authoring.cpp)
+add_library(Cheryl::LivingWorld::MagicAuthoring ALIAS living-world-magic-authoring)
+target_compile_features(living-world-magic-authoring PUBLIC cxx_std_23)
+target_link_libraries(living-world-magic-authoring PUBLIC Cheryl::LivingWorld::Host)

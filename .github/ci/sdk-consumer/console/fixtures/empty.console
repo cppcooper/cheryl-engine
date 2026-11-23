@@ -1,0 +1,3 @@
+script.version 1
+fixture.load independent-v1
+finish
