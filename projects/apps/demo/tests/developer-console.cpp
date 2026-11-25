@@ -135,7 +135,7 @@ TEST(DemoConsole, SaturatedRenderingKeepsLatestHostResultAndCurrentNotice) {
     }
     ASSERT_TRUE(model.submit("set practice.heal_price 123456789"));
     const auto queued = model.text();
-    EXPECT_NE(queued.find("#17 > set practice.heal_price 123456789\nTransport: queued"), std::string::npos);
+    EXPECT_NE(queued.find("] set practice.heal_price 123456789\n[queued]"), std::string::npos);
     model.pump();
     ASSERT_EQ(practice.host->price(), 123456789u);
     ASSERT_EQ(model.entries().back().result.stage, Core::Stage::Succeeded);
@@ -145,10 +145,11 @@ TEST(DemoConsole, SaturatedRenderingKeepsLatestHostResultAndCurrentNotice) {
         EXPECT_LE(output.size(), DemoConsole::Model::output_bytes);
         EXPECT_TRUE(Core::valid_utf8(output));
         EXPECT_NE(output.find("output truncated: showing recent entries"), std::string::npos);
-        const auto latest = output.find("#17 > set practice.heal_price 123456789\nTransport: succeeded");
+        const auto latest = output.find("] set practice.heal_price 123456789\n{");
         EXPECT_NE(latest, std::string::npos);
         EXPECT_NE(output.find("effective: 123456789", latest), std::string::npos);
-        EXPECT_LT(output.find("#16 >"), latest);
+        EXPECT_LT(output.rfind("] " + padded), latest);
+        EXPECT_EQ(output.find("Transport:"), std::string::npos);
         return output;
     };
     expect_current();
@@ -157,7 +158,7 @@ TEST(DemoConsole, SaturatedRenderingKeepsLatestHostResultAndCurrentNotice) {
     const std::string unicode = "\xe6\xb0\xb4\xf0\x9f\x8c\xb1";
     EXPECT_FALSE(model.submit("missing.command \"<" + unicode + ">\""));
     const auto refused = expect_current();
-    EXPECT_NE(refused.find("Refused: unknown command"), std::string::npos);
+    EXPECT_NE(refused.find("Error: unknown command"), std::string::npos);
     EXPECT_NE(refused.find(unicode), std::string::npos);
     EXPECT_NE(DemoConsole::escaped(refused).find("&lt;" + unicode + "&gt;"), std::string::npos);
     ASSERT_EQ(model.entries().size(), 17u);
@@ -169,11 +170,137 @@ TEST(DemoConsole, SaturatedRenderingKeepsLatestHostResultAndCurrentNotice) {
     EXPECT_EQ(model.entries().back().id, 17u);
 }
 
+TEST(DemoConsole, FamiliarCommandsPreserveOutputAndLiteralText) {
+    auto practice = Contact::practice();
+    DemoConsole::Model model(practice);
+    ASSERT_TRUE(model.submit("echo Hello world"));
+    ASSERT_TRUE(model.submit("echo \"<b>literal</b> and \\\"quotes\\\"\""));
+    ASSERT_TRUE(model.submit("echo a=b=c"));
+    EXPECT_NE(model.text().find("] echo Hello world\nHello world\n"), std::string::npos);
+    EXPECT_NE(model.text().find("\n<b>literal</b> and \"quotes\"\n"), std::string::npos);
+    EXPECT_NE(model.text().find("\na=b=c\n"), std::string::npos);
+    EXPECT_NE(DemoConsole::escaped(model.text()).find("&lt;b&gt;literal&lt;/b&gt;"), std::string::npos);
+    EXPECT_TRUE(model.entries().empty());
+    ASSERT_TRUE(model.submit("get practice.heal_price"));
+    model.pump();
+    ASSERT_TRUE(model.submit("echo last"));
+    EXPECT_LT(model.text().find("Hello world"), model.text().find("] get practice.heal_price"));
+    EXPECT_LT(model.text().find("] get practice.heal_price"), model.text().find("] echo last"));
+    EXPECT_FALSE(model.submit("echo \"unfinished"));
+    EXPECT_EQ(model.failure()->code, Core::Code::Syntax);
+    const auto before = model.history().size();
+    EXPECT_TRUE(model.submit("   "));
+    EXPECT_EQ(model.history().size(), before);
+}
+
+TEST(DemoConsole, ClearKeepsPendingRequestsAndIds) {
+    auto practice = Contact::practice();
+    DemoConsole::Model model(practice);
+    ASSERT_TRUE(model.submit("magic.cast S1 marin"));
+    model.pump();
+    ASSERT_EQ(model.entries()[0].result.stage, Core::Stage::Pending);
+    ASSERT_TRUE(model.submit("clear"));
+    EXPECT_TRUE(model.text().empty());
+    ASSERT_EQ(model.entries().size(), 1u);
+    EXPECT_EQ(model.entries()[0].id, 1u);
+    model.pump();
+    EXPECT_EQ(model.entries()[0].result.stage, Core::Stage::Succeeded);
+    EXPECT_TRUE(model.text().empty());
+    EXPECT_EQ(practice.host->actor(practice.access, practice.host->entity(2))->health, 20u);
+    ASSERT_TRUE(model.submit("get practice.heal_price"));
+    EXPECT_EQ(model.entries()[1].id, 2u);
+    EXPECT_EQ(model.previous("draft"), "get practice.heal_price");
+    EXPECT_EQ(model.previous("ignored"), "clear");
+}
+
+TEST(DemoConsole, HelpFindAndCompletionExposeFriendlyCommands) {
+    auto practice = Contact::practice();
+    DemoConsole::Model model(practice);
+    ASSERT_TRUE(model.submit("help echo"));
+    EXPECT_NE(model.text().find("echo <text>"), std::string::npos);
+    ASSERT_TRUE(model.submit("find PRICE"));
+    EXPECT_NE(model.text().find("get -"), std::string::npos);
+    EXPECT_NE(model.text().find("set -"), std::string::npos);
+    ASSERT_TRUE(model.submit("find nothing_matches_this"));
+    EXPECT_NE(model.text().find("No matching commands."), std::string::npos);
+    const auto candidates = model.suggestions("e");
+    EXPECT_NE(std::ranges::find(candidates, "echo"), candidates.end());
+    EXPECT_NE(std::ranges::find(candidates, "exit"), candidates.end());
+    EXPECT_EQ(model.complete("e", "exit"), "exit ");
+    EXPECT_EQ(model.complete("e", "missing"), "e");
+    EXPECT_EQ(model.complete("help ec", "echo"), "help echo ");
+    model.help("set");
+    const auto help = model.text();
+    EXPECT_LE(model.suggestions("").size(), DemoConsole::Model::suggestion_count);
+    EXPECT_EQ(model.text(), help);
+    EXPECT_FALSE(model.submit("help echo extra"));
+    EXPECT_EQ(model.failure()->code, Core::Code::Arguments);
+    EXPECT_FALSE(model.submit("find"));
+    EXPECT_FALSE(model.submit("clear extra"));
+}
+
+TEST(DemoConsole, EchoOutputIsBoundedWithoutConsumingRequestCapacity) {
+    auto practice = Contact::practice();
+    DemoConsole::Model model(practice);
+    std::string words = "echo";
+    for (std::size_t index = 0; index < Core::max_tokens + 10; ++index)
+        words += " word";
+    ASSERT_TRUE(model.submit(words));
+    const std::string unicode = "\xe6\xb0\xb4\xf0\x9f\x8c\xb1";
+    for (unsigned index = 0; index < 100; ++index)
+        ASSERT_TRUE(model.submit("echo " + std::to_string(index) + " " + std::string(1024, 'x') + unicode));
+    EXPECT_LE(model.text().size(), DemoConsole::Model::output_bytes);
+    EXPECT_TRUE(Core::valid_utf8(model.text()));
+    EXPECT_NE(model.text().find("] echo 99 "), std::string::npos);
+    EXPECT_NE(model.text().find(unicode), std::string::npos);
+    EXPECT_TRUE(model.entries().empty());
+    ASSERT_TRUE(model.submit("clear"));
+    for (std::size_t index = 0; index < Core::max_requests; ++index) {
+        ASSERT_TRUE(model.submit("get practice.heal_price"));
+        model.pump();
+    }
+    ASSERT_TRUE(model.submit("clear"));
+    ASSERT_TRUE(model.submit("echo still available"));
+    EXPECT_EQ(model.entries().size(), Core::max_requests);
+    EXPECT_FALSE(model.submit("get practice.heal_price"));
+    EXPECT_EQ(model.failure()->code, Core::Code::Capacity);
+}
+
+TEST(DemoConsole, QuitUsesTheOwnerAndClosedModelsRejectBuiltins) {
+    auto practice = Contact::practice();
+    unsigned quits = 0;
+    DemoConsole::Model model(practice, {}, [&quits] { ++quits; });
+    ASSERT_TRUE(model.submit("quit"));
+    ASSERT_TRUE(model.submit("exit"));
+    EXPECT_EQ(quits, 2u);
+    EXPECT_TRUE(model.entries().empty());
+    model.close();
+    EXPECT_FALSE(model.submit("quit"));
+    EXPECT_FALSE(model.submit("clear"));
+    EXPECT_FALSE(model.submit("echo closed"));
+    EXPECT_FALSE(model.submit("help"));
+    EXPECT_EQ(quits, 2u);
+    EXPECT_EQ(model.failure()->code, Core::Code::Expired);
+    EXPECT_TRUE(model.suggestions("e").empty());
+    auto other_practice = Contact::practice();
+    DemoConsole::Model without_owner(other_practice);
+    EXPECT_FALSE(without_owner.submit("quit"));
+    EXPECT_EQ(without_owner.failure()->code, Core::Code::Unsupported);
+    DemoConsole::Application application({});
+    EXPECT_FALSE(application.quit_requested());
+    ASSERT_TRUE(application.model().submit("quit"));
+    EXPECT_TRUE(application.quit_requested());
+    application.finish();
+}
+
 TEST(DemoConsole, ByteBoundsAndQueuedClose) {
     auto practice = Contact::practice();
     DemoConsole::Model model(practice);
     EXPECT_FALSE(model.submit(std::string(DemoConsole::Model::command_bytes + 1, 'x')));
     EXPECT_EQ(model.failure()->code, Core::Code::Limit);
+    EXPECT_FALSE(model.submit(std::string(DemoConsole::Model::command_bytes, '\t')));
+    EXPECT_EQ(model.failure()->code, Core::Code::Encoding);
+    EXPECT_NE(model.text().find("Error: encoding/control character"), std::string::npos);
     EXPECT_TRUE(model.history().empty());
     for (std::size_t index = 0; index < Core::max_requests; ++index) {
         ASSERT_TRUE(model.submit("magic.edit \"" + std::string(Core::max_text, '<') + "\""));

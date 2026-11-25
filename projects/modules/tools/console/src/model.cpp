@@ -1,6 +1,7 @@
 #include <cheryl/tools/console/model.h>
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <limits>
 #include <stdexcept>
@@ -8,8 +9,59 @@
 
 namespace CE::Tools::Console::Presentation {
     Connection::~Connection() = default;
+    bool Connection::request_quit() { return false; }
 
     namespace {
+        constexpr std::array builtins = {
+            std::pair<std::string_view, std::string_view>{"clear", "Clear the console output."},
+            std::pair<std::string_view, std::string_view>{"echo", "echo <text> - Print text to the console."},
+            std::pair<std::string_view, std::string_view>{"exit", "Close the application."},
+            std::pair<std::string_view, std::string_view>{"find", "find <text> - Search command names and descriptions."},
+            std::pair<std::string_view, std::string_view>{"help", "help [command] - List commands or show command usage."},
+            std::pair<std::string_view, std::string_view>{"quit", "Close the application."}
+        };
+
+        bool builtin(std::string_view name) {
+            return std::ranges::any_of(builtins, [name](const auto& command) { return command.first == name; });
+        }
+
+        std::string_view trimmed(std::string_view line) {
+            const auto first = line.find_first_not_of(" \t");
+            if (first == std::string_view::npos)
+                return {};
+            const auto last = line.find_last_not_of(" \t");
+            return line.substr(first, last - first + 1);
+        }
+
+        bool contains(std::string_view text, std::string_view search) {
+            const auto lower = [](unsigned char byte) { return byte >= 'A' && byte <= 'Z' ? byte + ('a' - 'A') : byte; };
+            return std::ranges::search(text, search, [lower](char left, char right) {
+                return lower(static_cast<unsigned char>(left)) == lower(static_cast<unsigned char>(right));
+            }).begin() != text.end();
+        }
+
+        Core::Checked<std::string> echo_text(std::string_view text, std::size_t offset) {
+            std::string result;
+            bool quoted = false, escaping = false;
+            for (std::size_t index = 0; index < text.size(); ++index) {
+                const char byte = text[index];
+                if (escaping) {
+                    if (byte != '"' && byte != '\\')
+                        return std::unexpected(Core::Failure{Core::Code::Syntax, offset + index, 1});
+                    result += byte;
+                    escaping = false;
+                } else if (quoted && byte == '\\')
+                    escaping = true;
+                else if (byte == '"')
+                    quoted = !quoted;
+                else
+                    result += byte;
+            }
+            if (quoted || escaping)
+                return std::unexpected(Core::Failure{Core::Code::Syntax, offset, text.size()});
+            return result;
+        }
+
         std::size_t prefix_size(std::string_view text, std::size_t bytes) {
             bytes = std::min(bytes, text.size());
             while (bytes && bytes < text.size() && (static_cast<unsigned char>(text[bytes]) & 0xc0) == 0x80)
@@ -135,7 +187,7 @@ namespace CE::Tools::Console::Presentation {
         if (!client_) throw std::invalid_argument("Console Model requires an owned connection");
         entries_.reserve(Core::max_requests);
         scope_ = client_->scope();
-        help();
+        notice_ = "Type help for a list of commands.\n";
     }
     Model::~Model() { close(); }
 
@@ -155,11 +207,28 @@ namespace CE::Tools::Console::Presentation {
 
     void Model::refuse(std::string_view line, Core::Failure failure) {
         failure_ = failure;
-        notice_ = std::format("Refused: {} at UTF-8 bytes [{}, {})\n", code_name(failure.code), failure.offset,
-                              failure.offset + failure.length);
-        append(notice_, display_text(line.substr(0, prefix_size(line, command_bytes))), 8192);
+        notice_.clear();
+        std::string message;
+        if (!line.empty()) {
+            message = "] ";
+            append(message, display_text(line.substr(0, prefix_size(line, command_bytes))), 8192 - 256);
+            message += '\n';
+        }
+        append(message, std::format("Error: {} at UTF-8 bytes [{}, {})\n", code_name(failure.code), failure.offset,
+                                   failure.offset + failure.length), 8192);
         if (line.size() > command_bytes)
-            append(notice_, "\n[command exceeds capacity]", 8192);
+            append(message, "[command exceeds capacity]\n", 8192);
+        write(std::move(message));
+    }
+
+    void Model::write(std::string text, std::uint64_t request) {
+        while (!display_.empty() && (display_.size() >= 512 || display_bytes_ + text.size() > output_bytes)) {
+            display_bytes_ -= display_.front().text.size();
+            display_.erase(display_.begin());
+            output_trimmed_ = true;
+        }
+        display_bytes_ += text.size();
+        display_.push_back({request, std::move(text)});
     }
 
     bool Model::submit(std::string_view line) {
@@ -171,7 +240,76 @@ namespace CE::Tools::Console::Presentation {
             refuse(line, {Core::Code::Expired});
             return false;
         }
+        const auto command_line = trimmed(line);
+        if (command_line.empty())
+            return true;
         remember(line);
+        const auto separator = command_line.find_first_of(" \t");
+        const auto command = command_line.substr(0, separator);
+        const auto arguments = separator == std::string_view::npos ? std::string_view{} : trimmed(command_line.substr(separator));
+        if (builtin(command)) {
+            failure_.reset();
+            notice_.clear();
+            if (command == "echo") {
+                const auto text = echo_text(arguments, arguments.empty() ? line.size() : static_cast<std::size_t>(arguments.data() - line.data()));
+                if (!text) {
+                    refuse(line, text.error());
+                    return false;
+                }
+                write("] " + std::string{line} + '\n' + *text + '\n');
+                return true;
+            }
+            const auto parsed = Core::parse(line);
+            if (!parsed) {
+                refuse(line, parsed.error());
+                return false;
+            }
+            const auto count = parsed->tokens.size();
+            if ((command == "help" && count > 2) || (command == "find" && count != 2) ||
+                ((command == "clear" || command == "quit" || command == "exit") && count != 1)) {
+                refuse(line, {Core::Code::Arguments, line.size(), 0});
+                return false;
+            }
+            if (command == "clear") {
+                display_.clear();
+                display_bytes_ = 0;
+                output_trimmed_ = history_trimmed_ = false;
+                return true;
+            }
+            if (command == "help") {
+                help(count == 2 ? parsed->tokens[1].text : std::string_view{});
+                write("] " + std::string{line} + '\n' + notice_);
+                notice_.clear();
+                return true;
+            }
+            if (command == "find") {
+                const auto& search = parsed->tokens[1].text;
+                std::string result;
+                for (const auto& [name, description] : builtins)
+                    if (contains(name, search) || contains(description, search))
+                        append(result, std::string{name} + " - " + std::string{description} + '\n', 16384);
+                for (const auto& descriptor : client_->registry().commands(client_->context()))
+                    if (!builtin(descriptor.name) && (contains(descriptor.name, search) || contains(descriptor.help, search)))
+                        append(result, descriptor.name + " - " + display_text(descriptor.help) + '\n', 16384);
+                if (result.empty())
+                    result = "No matching commands.\n";
+                write("] " + std::string{line} + '\n' + result);
+                return true;
+            }
+            bool requested = false;
+            try {
+                requested = client_->request_quit();
+            } catch (...) {
+                refuse(line, {Core::Code::Owner});
+                return false;
+            }
+            if (!requested) {
+                refuse(line, {Core::Code::Unsupported});
+                return false;
+            }
+            write("] " + std::string{line} + "\nClosing application...\n");
+            return true;
+        }
         auto bound = Core::bind_text(client_->registry(), client_->context(), line);
         if (!bound) {
             refuse(line, bound.error());
@@ -179,7 +317,7 @@ namespace CE::Tools::Console::Presentation {
         }
         if (entries_.size() >= Core::max_requests || next_id_ == std::numeric_limits<std::uint64_t>::max()) {
             refuse(line, {Core::Code::Capacity});
-            notice_ += "\nRequest capacity reached; retained IDs are never evicted. Create a new Model for a fresh session.";
+            write("Request capacity reached; retained IDs are never evicted. Create a new Model for a fresh session.\n");
             return false;
         }
         entries_.push_back({next_id_, std::string{line}, bound->descriptor().result, {}});
@@ -191,6 +329,7 @@ namespace CE::Tools::Console::Presentation {
         }
         ++next_id_;
         entries_.back().result = **submitted;
+        write(std::string{line}, entries_.back().id);
         failure_.reset();
         notice_.clear();
         return true;
@@ -221,16 +360,19 @@ namespace CE::Tools::Console::Presentation {
     void Model::help(std::string_view command) {
         notice_.clear();
         failure_.reset();
+        for (const auto& [name, description] : builtins)
+            if (command.empty() || command == name)
+                append(notice_, std::string{name} + " - " + std::string{description} + '\n', 16384);
         const auto descriptors = client_->registry().commands(client_->context());
         for (const auto& descriptor : descriptors) {
-            if (!command.empty() && descriptor.name != command)
+            if (builtin(descriptor.name) || (!command.empty() && descriptor.name != command))
                 continue;
             append(notice_, descriptor.name + " - " + display_text(descriptor.help) + "\n", 16384);
             for (const auto& argument : descriptor.arguments)
                 append(notice_, "  " + argument.name + ": " + type_text(argument.schema) + "\n", 16384);
         }
         if (notice_.empty())
-            notice_ = "No permitted descriptor for this command.";
+            notice_ = "No matching command.\n";
         if (notice_.size() >= 16384 - 64) {
             notice_.resize(prefix_size(notice_, 16384 - 64));
             notice_ += "\n[help truncated at byte limit]\n";
@@ -238,22 +380,49 @@ namespace CE::Tools::Console::Presentation {
     }
 
     std::vector<std::string> Model::suggestions(std::string_view line) {
+        if (!accepting())
+            return {};
         if (const auto failure = input_failure(line)) {
             refuse(line, *failure);
             return {};
         }
-        const auto completion = Core::complete(client_->registry(), client_->context(), line);
+        const auto command_line = trimmed(line);
+        if (const auto separator = command_line.find_first_of(" \t"); separator != std::string_view::npos &&
+            command_line.substr(0, separator) == "echo")
+            return {};
+        auto completion = Core::complete(client_->registry(), client_->context(), line);
         if (!completion) {
             refuse(line, completion.error());
             return {};
         }
+        const auto parsed = Core::parse(line, true);
+        if (parsed && (parsed->tokens.empty() || (parsed->tokens.size() == 1 && !parsed->trailing_space))) {
+            const auto prefix = parsed->tokens.empty() ? std::string_view{} : std::string_view{parsed->tokens.front().text};
+            for (const auto& [name, description] : builtins) {
+                static_cast<void>(description);
+                if (name.starts_with(prefix))
+                    completion->emplace_back(name);
+            }
+        } else if (parsed && parsed->tokens.front().text == "help" &&
+                   ((parsed->tokens.size() == 1 && parsed->trailing_space) ||
+                    (parsed->tokens.size() == 2 && !parsed->trailing_space))) {
+            const auto prefix = parsed->tokens.size() == 1 ? std::string_view{} : std::string_view{parsed->tokens.back().text};
+            for (const auto& [name, description] : builtins) {
+                static_cast<void>(description);
+                if (name.starts_with(prefix))
+                    completion->emplace_back(name);
+            }
+            for (const auto& descriptor : client_->registry().commands(client_->context()))
+                if (descriptor.name.starts_with(prefix))
+                    completion->push_back(descriptor.name);
+        }
+        std::ranges::sort(*completion);
+        completion->erase(std::unique(completion->begin(), completion->end()), completion->end());
         std::vector<std::string> result;
         std::size_t bytes = 0;
         for (const auto& candidate : *completion) {
-            if (result.size() == suggestion_count || bytes + candidate.size() > suggestion_bytes) {
-                notice_ = "[completion suggestions truncated; refine the prefix]";
+            if (result.size() == suggestion_count || bytes + candidate.size() > suggestion_bytes)
                 break;
-            }
             bytes += candidate.size();
             result.push_back(candidate);
         }
@@ -262,8 +431,15 @@ namespace CE::Tools::Console::Presentation {
 
     std::string Model::complete(std::string_view line) {
         const auto candidates = suggestions(line);
+        if (candidates.empty())
+            return std::string{line.substr(0, prefix_size(line, command_bytes))};
+        return complete(line, candidates.front());
+    }
+
+    std::string Model::complete(std::string_view line, std::string_view candidate) {
+        const auto candidates = suggestions(line);
         const auto parsed = Core::parse(line, true);
-        if (candidates.empty() || !parsed)
+        if (!parsed || std::ranges::find(candidates, candidate) == candidates.end())
             return std::string{line.substr(0, prefix_size(line, command_bytes))};
         std::string completed{line};
         if (!parsed->tokens.empty() && !parsed->trailing_space) {
@@ -272,7 +448,7 @@ namespace CE::Tools::Console::Presentation {
             if (token.equals)
                 completed += token.text.substr(0, *token.equals + 1);
         }
-        completed += quote(candidates.front());
+        completed += quote(candidate);
         if (!completed.ends_with('='))
             completed += ' ';
         if (completed.size() > command_bytes) {
@@ -304,21 +480,25 @@ namespace CE::Tools::Console::Presentation {
         const std::size_t available = output_bytes - history.size() - notice_.size() - omitted.size();
         std::vector<std::string> recent;
         std::size_t used = 0;
-        for (auto iterator = entries_.rbegin(); iterator != entries_.rend(); ++iterator) {
-            const auto& entry = *iterator;
-            auto rendered = std::format("#{} > {}\nTransport: {}\n", entry.id, display_text(entry.line), stage_name(entry.result.stage));
-            if (entry.result.failure.code != Core::Code::None)
-                rendered += std::format("{} at UTF-8 bytes [{}, {})\n", code_name(entry.result.failure.code),
-                                        entry.result.failure.offset, entry.result.failure.offset + entry.result.failure.length);
-            if (entry.result.stage != Core::Stage::Queued) {
-                std::string value;
-                if (!value_text(value, entry.result.value, entry.schema, Core::max_output)) {
-                    value.resize(prefix_size(value, Core::max_output - value_omitted.size()));
-                    value += value_omitted;
+        for (auto iterator = display_.rbegin(); iterator != display_.rend(); ++iterator) {
+            auto rendered = iterator->text;
+            if (iterator->request) {
+                const auto& entry = entries_[iterator->request - 1];
+                rendered = "] " + display_text(entry.line) + '\n';
+                if (entry.result.stage != Core::Stage::Succeeded)
+                    rendered += std::format("[{}]\n", stage_name(entry.result.stage));
+                if (entry.result.failure.code != Core::Code::None)
+                    rendered += std::format("Error: {} at UTF-8 bytes [{}, {})\n", code_name(entry.result.failure.code),
+                                            entry.result.failure.offset, entry.result.failure.offset + entry.result.failure.length);
+                if (entry.result.stage != Core::Stage::Queued) {
+                    std::string value;
+                    if (!value_text(value, entry.result.value, entry.schema, Core::max_output)) {
+                        value.resize(prefix_size(value, Core::max_output - value_omitted.size()));
+                        value += value_omitted;
+                    }
+                    rendered += value + "\n";
                 }
-                rendered += value + "\n";
             }
-            rendered += '\n';
             if (rendered.size() > available - used)
                 break;
             used += rendered.size();
@@ -327,7 +507,7 @@ namespace CE::Tools::Console::Presentation {
         std::string output;
         output.reserve(history.size() + omitted.size() + used + notice_.size());
         output += history;
-        if (recent.size() != entries_.size())
+        if (output_trimmed_ || recent.size() != display_.size())
             output += omitted;
         for (auto iterator = recent.rbegin(); iterator != recent.rend(); ++iterator)
             output += *iterator;

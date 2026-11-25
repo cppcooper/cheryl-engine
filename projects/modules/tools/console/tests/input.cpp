@@ -12,6 +12,8 @@
 #include <exception>
 #include <stdexcept>
 #include <thread>
+#include <utility>
+#include <vector>
 
 namespace CE::Tools::Console {
     namespace {
@@ -71,7 +73,8 @@ namespace CE::Tools::Console {
             Presentation::View view{session, model};
             Presentation::Input input;
 
-            explicit Fixture(Presentation::InputOptions options = {}) : input(session, view, options) {
+            explicit Fixture(Presentation::InputOptions options = {}, Presentation::ViewOptions view_options = {})
+                : view(session, model, std::move(view_options)), input(session, view, options) {
                 session.set_view({1000, 800}, {1000, 800});
             }
             ~Fixture() { input.retire(); }
@@ -105,6 +108,93 @@ namespace CE::Tools::Console {
         EXPECT_TRUE(fixture.send({}));
         EXPECT_FALSE(fixture.send({key(KeyboardKey::GraveAccent, press, Modifiers::Shift)}));
         EXPECT_TRUE(fixture.view.visible());
+    }
+
+    TEST(ConsoleInput, CustomDocumentNeedsOnlyOutputPromptAndSuggestions) {
+        Presentation::ViewOptions options;
+        options.document = R"rml(<rml><head><style>
+            body { width: 600px; height: 400px; }
+            #console-output { height: 300px; }
+            #console-command { width: 550px; height: 25px; }
+            </style></head><body><div id="console-output"></div>
+            <input id="console-command" type="text" /><div id="console-suggestions"></div>
+            </body></rml>)rml";
+        Fixture fixture({}, std::move(options));
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::GraveAccent)}));
+        ASSERT_TRUE(fixture.view.visible());
+        EXPECT_TRUE(fixture.session.owns_keyboard_focus());
+        EXPECT_TRUE(fixture.field().GetValue().empty());
+        EXPECT_FALSE(fixture.send({Events::Text{U'e'}, Events::Text{U'c'}, Events::Text{U'h'}, Events::Text{U'o'}}));
+        EXPECT_EQ(fixture.field().GetValue(), "echo");
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::Escape)}));
+        EXPECT_FALSE(fixture.view.visible());
+        EXPECT_FALSE(fixture.session.owns_keyboard_focus());
+    }
+
+    TEST(ConsoleInput, ResizeCapturesPointerMovesOutsideConsole) {
+        Fixture fixture;
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::GraveAccent)}));
+        ASSERT_TRUE(fixture.session.context().Update());
+        auto* document = fixture.session.context().GetDocument(0);
+        auto* resize = document->GetElementById("console-resize");
+        ASSERT_NE(resize, nullptr);
+        const auto initial_width = document->GetBox().GetSize(Rml::BoxArea::Border).x;
+        const auto corner = resize->GetAbsoluteOffset() + Rml::Vector2f{3, 3};
+        const Events::Pointer start{corner.x, corner.y};
+        const Events::Pointer outside{corner.x + 60, corner.y + 40};
+        ASSERT_FALSE(fixture.view.inside(outside));
+        const Events::Button down{control_id(MouseButton::Left), press, Modifiers::None,
+            -1, -1, KeyboardKey::Unknown, MouseButton::Left, start};
+        EXPECT_FALSE(fixture.send({down}));
+        EXPECT_FALSE(fixture.send({outside}));
+        ASSERT_TRUE(fixture.session.context().Update());
+        EXPECT_GT(document->GetBox().GetSize(Rml::BoxArea::Border).x, initial_width);
+        auto up = down;
+        up.phase = release;
+        up.position = outside;
+        EXPECT_FALSE(fixture.send({up}));
+    }
+
+    TEST(ConsoleInput, EscapeVetoesBatchAndFollowingEnter) {
+        Fixture fixture;
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::GraveAccent)}));
+        fixture.field().SetValue("echo preserved");
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::Enter), key(KeyboardKey::Escape), key(KeyboardKey::Enter)}));
+        EXPECT_FALSE(fixture.view.visible());
+        EXPECT_FALSE(fixture.session.owns_keyboard_focus());
+        EXPECT_TRUE(fixture.model.history().empty());
+        EXPECT_EQ(fixture.field().GetValue(), "echo preserved");
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::Escape, release), key(KeyboardKey::Enter, release)}));
+        EXPECT_TRUE(fixture.send({}));
+    }
+
+    TEST(ConsoleInput, EscapeClosesPendingOpenInAdvancedDrain) {
+        Fixture fixture;
+        const auto batch = fixture.source.emit({key(KeyboardKey::GraveAccent), key(KeyboardKey::Escape), key(KeyboardKey::Enter)});
+        std::vector<bool> selections;
+        EXPECT_FALSE(fixture.input.handle_input(batch->records, true, [&](auto filtered) {
+            for (const auto& record : filtered) {
+                EXPECT_FALSE(record.to_gameplay);
+                if (const auto selected = fixture.input.route_toggle(record))
+                    selections.push_back(*selected);
+            }
+            fixture.session.handle_input(filtered, false);
+        }));
+        ASSERT_EQ(selections.size(), 2);
+        EXPECT_TRUE(selections[0]);
+        EXPECT_FALSE(selections[1]);
+        EXPECT_FALSE(fixture.view.visible());
+        EXPECT_FALSE(fixture.session.owns_keyboard_focus());
+        EXPECT_TRUE(fixture.model.history().empty());
+    }
+
+    TEST(ConsoleInput, EscapePreservesOtherFocusOwner) {
+        Fixture fixture;
+        fixture.session.request_keyboard_focus();
+        EXPECT_FALSE(fixture.send({key(KeyboardKey::Escape)}));
+        EXPECT_FALSE(fixture.input.transitioned());
+        EXPECT_TRUE(fixture.session.owns_keyboard_focus());
+        EXPECT_FALSE(fixture.view.visible());
     }
 
     TEST(ConsoleInput, TransitionVetoesWholeBatchAndQuarantinesHeldControls) {

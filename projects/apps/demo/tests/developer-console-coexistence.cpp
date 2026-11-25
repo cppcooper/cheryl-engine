@@ -218,7 +218,7 @@ TEST(DemoConsoleCoexistence, HotkeyOrderDrainsOldEpochWithoutFeedingNewFields) {
     EXPECT_FALSE(routed.drain(*batch));
     EXPECT_EQ(routed.tgui_field()->getText(), "ap");
     EXPECT_EQ(routed.rml_field().GetValue(), "r");
-    EXPECT_EQ(routed.console_field().GetValue(), "get practice.heal_price");
+    EXPECT_TRUE(routed.console_field().GetValue().empty());
     EXPECT_TRUE(routed.tgui.owns_keyboard_focus());
     EXPECT_GT(routed.input.routing().current()->epoch, old->epoch);
     EXPECT_EQ(batch->records.back().target, 2u);
@@ -231,7 +231,7 @@ TEST(DemoConsoleCoexistence, HotkeyOrderDrainsOldEpochWithoutFeedingNewFields) {
     EXPECT_EQ(routed.rml_field().GetValue(), "rb");
     EXPECT_EQ(routed.tgui_field()->getText(), "apn");
     ASSERT_TRUE(routed.view->visible());
-    EXPECT_EQ(routed.console_field().GetValue(), "get practice.heal_price");
+    EXPECT_TRUE(routed.console_field().GetValue().empty());
     routed.console_field().SetValue({});
     routed.route({Events::Text{0x6c34}, Events::Text{0x1f331}});
     EXPECT_EQ(routed.console_field().GetValue(), "\xe6\xb0\xb4\xf0\x9f\x8c\xb1");
@@ -439,7 +439,7 @@ TEST(DemoConsoleCoexistence, PreemptionAndIndependentZeroExtentsCancelWithoutRep
     EXPECT_FALSE(routed.drain(*old));
     EXPECT_TRUE(successor.owns_focus());
     EXPECT_FALSE(routed.view->visible());
-    EXPECT_EQ(routed.console_field().GetValue(), "get practice.heal_price");
+    EXPECT_TRUE(routed.console_field().GetValue().empty());
     routed.expect_no_resets();
     successor.reset();
     routed.route({native_key(KeyboardKey::W, release)});

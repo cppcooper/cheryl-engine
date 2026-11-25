@@ -10,9 +10,10 @@ namespace DemoConsole {
         std::shared_ptr<Contact::Client> client_;
         std::unique_ptr<Scenarios::Commands> scenarios_;
         std::string scope_;
+        std::function<void()> quit_;
     public:
-        ContactConnection(Contact::Practice& practice, Scenarios::Config config)
-            : adapter_(practice.console), client_(adapter_->open(Contact::Mode::PracticeObserver)) {
+        ContactConnection(Contact::Practice& practice, Scenarios::Config config, std::function<void()> quit)
+            : adapter_(practice.console), client_(adapter_->open(Contact::Mode::PracticeObserver)), quit_(std::move(quit)) {
             if (config.io) scenarios_ = std::make_unique<Scenarios::Commands>(adapter_->registry(), std::move(config));
             const auto scope = practice.host->entity(1).scope;
             scope_ = std::format("Contact practice world | world {} / branch {} | PracticeObserver", scope.world, scope.branch);
@@ -21,13 +22,19 @@ namespace DemoConsole {
         Core::Context context() const noexcept override { return client_->context(); }
         Core::Session& session() noexcept override { return client_->session(); }
         std::string scope() const override { return scope_; }
+        bool request_quit() override {
+            if (!quit_)
+                return false;
+            quit_();
+            return true;
+        }
         void close() noexcept override {
             if (scenarios_) scenarios_->close();
             client_->close();
         }
     };
-    Model::Model(Contact::Practice& practice, Scenarios::Config config)
-        : Presentation::Model(std::make_shared<ContactConnection>(practice, std::move(config))) {}
+    Model::Model(Contact::Practice& practice, Scenarios::Config config, std::function<void()> quit)
+        : Presentation::Model(std::make_shared<ContactConnection>(practice, std::move(config), std::move(quit))) {}
 
     struct Application::State {
         Contact::Practice practice = Contact::practice();
@@ -38,10 +45,11 @@ namespace DemoConsole {
         Scenarios::Config config;
         std::unique_ptr<Model> model;
         bool finished = false;
+        bool quit_requested = false;
 
         explicit State(Scenarios::Config value) : config(std::move(value)) {
             config.io = io;
-            model = std::make_unique<Model>(practice, config);
+            model = std::make_unique<Model>(practice, config, [this] { quit_requested = true; });
         }
         ~State() { io->shutdown(); }
     };
@@ -57,6 +65,7 @@ namespace DemoConsole {
     Contact::Practice& Application::practice() noexcept { return state_->practice; }
     const Scenarios::Config& Application::config() const noexcept { return state_->config; }
     Model& Application::model() noexcept { return *state_->model; }
+    bool Application::quit_requested() const noexcept { return state_->quit_requested; }
     void Application::stop() noexcept {
         state_->model->close();
         state_->io->close_admission();

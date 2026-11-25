@@ -5,6 +5,7 @@
 #include <tools/console/fixture.h>
 #include <tools/scenarios/command.h>
 #include <array>
+#include <functional>
 
 namespace DemoConsole {
     namespace Core = CE::Tools::Console;
@@ -29,13 +30,14 @@ namespace DemoConsole {
         Contact::Practice& practice() noexcept;
         const Scenarios::Config& config() const noexcept;
         Model& model() noexcept;
+        bool quit_requested() const noexcept;
         void stop() noexcept;
         void finish();
     };
 
     class Model final : public Presentation::Model {
     public:
-        explicit Model(Contact::Practice& practice, Scenarios::Config config = {});
+        explicit Model(Contact::Practice& practice, Scenarios::Config config = {}, std::function<void()> quit = {});
     };
 
     class Input final {

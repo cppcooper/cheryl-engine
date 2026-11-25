@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <map>
-#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <vector>
@@ -23,13 +22,14 @@ namespace CE::Tools::Console::Presentation {
         View& view;
         InputOptions options;
         std::map<Control, Held> held;
-        std::set<Control> pointer_buttons;
+        std::map<Control, bool> pointer_buttons;
         bool visible = false;
         bool transition = false;
         bool handling = false;
         bool retired = false;
         bool pending_open = false;
         std::vector<std::uint64_t> toggles;
+        std::vector<std::uint64_t> escapes;
 
         State(CE::UI::RmlUi::Session& selected, View& console, InputOptions configured)
             : session(selected), view(console), options(configured), visible(console.visible()) {
@@ -43,6 +43,8 @@ namespace CE::Tools::Console::Presentation {
                 status.gameplay = true;
                 status.ui = true;
             }
+            for (auto& [control, selected] : pointer_buttons)
+                selected = false;
         }
 
         bool handle(std::span<const CE::Input::Events::Record> records, bool drawable,
@@ -65,11 +67,20 @@ namespace CE::Tools::Console::Presentation {
             }
             const bool external_transition = transition;
             toggles.clear();
+            escapes.clear();
+            bool console_selected = pending_open;
             for (const auto& record : records) {
                 const auto* button = std::get_if<Events::Button>(&record.data);
-                if (!record.ui_consumed && options.toggle_key && button && record.device_kind == DeviceKind::Keyboard &&
-                    button->key == *options.toggle_key && button->phase == Events::ButtonPhase::Press) {
+                if (record.ui_consumed || !button || record.device_kind != DeviceKind::Keyboard ||
+                    button->phase != Events::ButtonPhase::Press)
+                    continue;
+                if (options.toggle_key && button->key == *options.toggle_key) {
                     toggles.push_back(record.sequence);
+                    console_selected = !console_selected;
+                    transition = true;
+                } else if (button->key == KeyboardKey::Escape && console_selected) {
+                    escapes.push_back(record.sequence);
+                    console_selected = false;
                     transition = true;
                 }
             }
@@ -92,8 +103,9 @@ namespace CE::Tools::Console::Presentation {
                 const bool toggle = options.toggle_key &&
                     ((button && record.device_kind == DeviceKind::Keyboard && button->key == *options.toggle_key) ||
                      (text && text->source_key == options.toggle_key));
-                if (button && options.toggle_key && record.device_kind == DeviceKind::Keyboard &&
-                    button->key == *options.toggle_key && button->phase == Events::ButtonPhase::Press && !record.ui_consumed)
+                const bool escape = std::ranges::find(escapes, record.sequence) != escapes.end();
+                if (button && record.device_kind == DeviceKind::Keyboard && button->phase == Events::ButtonPhase::Press &&
+                    !record.ui_consumed && (escape || (options.toggle_key && button->key == *options.toggle_key)))
                     keyboard_retired = true;
                 const bool keyboard = record.is_text() || record.device_kind == DeviceKind::Keyboard;
                 record.ui_consumed = record.ui_consumed || (keyboard ? keyboard_retired : transition) || !drawable || toggle;
@@ -141,6 +153,16 @@ namespace CE::Tools::Console::Presentation {
                             return true;
                         if (record.ui_consumed)
                             return false;
+                        if (std::holds_alternative<Events::Pointer>(record.data)) {
+                            bool captured = false, selected = false;
+                            for (const auto& [pressed, active] : pointer_buttons)
+                                if (std::get<0>(pressed) == record.device) {
+                                    captured = true;
+                                    selected = selected || active;
+                                }
+                            if (captured)
+                                return view.visible() && selected;
+                        }
                         const Events::Pointer* position = std::get_if<Events::Pointer>(&record.data);
                         if (button && button->position)
                             position = &*button->position;
@@ -148,7 +170,7 @@ namespace CE::Tools::Console::Presentation {
                             position = &*scroll->position;
                         const bool selected = position && view.inside(*position);
                         if (selected && mouse && button->phase == Events::ButtonPhase::Press)
-                            pointer_buttons.insert(control);
+                            pointer_buttons[control] = true;
                         return selected;
                     });
                     view.select_input(true);
@@ -175,6 +197,16 @@ namespace CE::Tools::Console::Presentation {
         std::optional<bool> route_toggle(const CE::Input::Events::Record& record) {
             if (!handling)
                 throw std::logic_error("Console toggle routing requires an active drain");
+            const auto escape = std::ranges::find(escapes, record.sequence);
+            if (escape != escapes.end()) {
+                escapes.erase(escape);
+                if (!pending_open)
+                    return std::nullopt;
+                pending_open = false;
+                view.hide();
+                session.release_keyboard_focus();
+                return false;
+            }
             const auto found = std::ranges::find(toggles, record.sequence);
             if (found == toggles.end())
                 return std::nullopt;

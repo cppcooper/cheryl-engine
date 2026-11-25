@@ -20,6 +20,7 @@ namespace CE::Tools::Console::Presentation {
         virtual Core::Context context() const noexcept = 0;
         virtual Core::Session& session() noexcept = 0;
         virtual std::string scope() const = 0;
+        virtual bool request_quit();
         virtual void close() noexcept = 0;
     };
 
@@ -31,17 +32,24 @@ namespace CE::Tools::Console::Presentation {
     };
 
     class CE_TYPE_API Model {
+        struct DisplayEntry {
+            std::uint64_t request;
+            std::string text;
+        };
         std::shared_ptr<Connection> client_;
         std::vector<Entry> entries_;
+        std::vector<DisplayEntry> display_;
         std::vector<std::string> history_;
+        std::size_t display_bytes_ = 0;
         std::size_t history_bytes_ = 0;
         std::size_t history_cursor_ = 0;
         std::string draft_, notice_, scope_;
         std::optional<Core::Failure> failure_;
         std::uint64_t next_id_ = 1;
-        bool closed_ = false, history_trimmed_ = false;
+        bool closed_ = false, history_trimmed_ = false, output_trimmed_ = false;
 
         void remember(std::string_view line);
+        void write(std::string text, std::uint64_t request = 0);
         void refuse(std::string_view line, Core::Failure failure);
         void refresh();
 
@@ -61,6 +69,7 @@ namespace CE::Tools::Console::Presentation {
         CE_CONSOLE_API void help(std::string_view command = {});
         CE_CONSOLE_API std::vector<std::string> suggestions(std::string_view line);
         CE_CONSOLE_API std::string complete(std::string_view line);
+        CE_CONSOLE_API std::string complete(std::string_view line, std::string_view candidate);
         CE_CONSOLE_API std::string previous(std::string_view current);
         CE_CONSOLE_API std::string next();
         CE_CONSOLE_API std::string text() const;

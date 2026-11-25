@@ -275,6 +275,10 @@ public:
         if (gameplay_allowed && tick.input.button(DemoActions::QuitGame).held()) {
             tick.request_stop();
         }
+#ifdef CHERYL_DEMO_CONSOLE
+        if (console_ && console_->quit_requested())
+            tick.request_stop();
+#endif
         if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
             try {
                 auto materials = pending_shader_.get();

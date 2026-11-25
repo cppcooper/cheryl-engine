@@ -13,8 +13,9 @@ namespace {
     using namespace CE::Input;
     using namespace DemoConsoleTests;
 
-    Events::Record key(KeyboardKey selected, Events::ButtonPhase phase = Events::ButtonPhase::Press) {
-        return {1, {}, 1, DeviceKind::Keyboard, Events::Button{800, phase, Modifiers::None, -1, -1, selected}};
+    Events::Record key(KeyboardKey selected, Events::ButtonPhase phase = Events::ButtonPhase::Press,
+                       Modifiers modifiers = Modifiers::None) {
+        return {1, {}, 1, DeviceKind::Keyboard, Events::Button{800, phase, modifiers, -1, -1, selected}};
     }
 
     using InputSource = NativeInputSource;
@@ -133,7 +134,7 @@ TEST(DemoConsoleInput, OneNativeSessionKeepsEpochAndOwnedUnicodeSubmission) {
     ASSERT_TRUE(routed.view->visible());
     auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
     ASSERT_NE(field, nullptr);
-    EXPECT_EQ(field->GetValue(), "get practice.heal_price");
+    EXPECT_TRUE(field->GetValue().empty());
     EXPECT_EQ(dynamic_cast<Rml::ElementFormControlInput*>(routed.original->GetElementById("field"))->GetValue(), "");
     field->SetValue({});
     routed.route({Events::Text{0x6c34}, Events::Text{0x1f331}});
@@ -336,7 +337,143 @@ TEST(DemoConsoleInput, ProductionPreemptionAndZeroDrawabilityCancelEffectsAndQua
     }
 }
 
-TEST(DemoConsoleInput, RecentResultsAndNoticesReachNativeViewAndLatest) {
+TEST(DemoConsoleInput, CompletionCyclingAndMouseSelection) {
+    RoutedConsole routed;
+    routed.route({key(KeyboardKey::GraveAccent).data});
+    auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
+    ASSERT_NE(field, nullptr);
+    EXPECT_TRUE(field->GetValue().empty());
+    routed.route({Events::Text{U'm'}, Events::Text{U'a'}, Events::Text{U'g'}, Events::Text{U'i'},
+                  Events::Text{U'c'}, Events::Text{U'.'}, Events::Text{U'd'}});
+    auto* suggestions = routed.console->GetElementById("console-suggestions");
+    ASSERT_NE(suggestions, nullptr);
+    ASSERT_EQ(suggestions->GetNumChildren(), 2);
+    EXPECT_EQ(field->GetValue(), "magic.d");
+    EXPECT_TRUE(routed.model.entries().empty());
+    routed.route({key(KeyboardKey::Tab).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft ");
+    EXPECT_TRUE(suggestions->GetChild(0)->IsClassSet("selected"));
+    routed.route({key(KeyboardKey::Tab).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft.cast ");
+    EXPECT_TRUE(suggestions->GetChild(1)->IsClassSet("selected"));
+    routed.route({key(KeyboardKey::Tab, Events::ButtonPhase::Press, Modifiers::Shift).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft ");
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    EXPECT_TRUE(routed.model.entries().empty());
+
+    routed.click(routed.point(*suggestions->GetChild(0)));
+    EXPECT_EQ(field->GetValue(), "magic.draft ");
+    EXPECT_TRUE(routed.model.entries().empty());
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    EXPECT_TRUE(routed.view->visible());
+    EXPECT_FALSE(routed.reset_effect());
+    routed.route({key(KeyboardKey::Enter).data});
+    ASSERT_EQ(routed.model.entries().size(), 1u);
+    EXPECT_EQ(routed.model.entries().front().line, "magic.draft ");
+}
+
+TEST(DemoConsoleInput, SuggestionArrowsAndHistory) {
+    RoutedConsole routed;
+    ASSERT_TRUE(routed.model.submit("get practice.heal_price"));
+    routed.model.pump();
+    ASSERT_TRUE(routed.model.submit("set practice.heal_price 7"));
+    routed.model.pump();
+    routed.route({key(KeyboardKey::GraveAccent).data});
+    auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
+    ASSERT_NE(field, nullptr);
+    routed.route({key(KeyboardKey::Up).data});
+    EXPECT_EQ(field->GetValue(), "set practice.heal_price 7");
+    routed.route({key(KeyboardKey::Up).data});
+    EXPECT_EQ(field->GetValue(), "get practice.heal_price");
+    routed.route({key(KeyboardKey::Down).data});
+    EXPECT_EQ(field->GetValue(), "set practice.heal_price 7");
+    routed.route({key(KeyboardKey::Down).data});
+    EXPECT_TRUE(field->GetValue().empty());
+
+    routed.route({Events::Text{U'm'}, Events::Text{U'a'}, Events::Text{U'g'}, Events::Text{U'i'},
+                  Events::Text{U'c'}, Events::Text{U'.'}, Events::Text{U'd'}});
+    routed.route({key(KeyboardKey::Down).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft ");
+    routed.route({key(KeyboardKey::Down).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft.cast ");
+    routed.route({key(KeyboardKey::Up).data});
+    EXPECT_EQ(field->GetValue(), "magic.draft ");
+    EXPECT_EQ(routed.model.entries().size(), 2u);
+    EXPECT_EQ(routed.practice.host->price(), 7u);
+}
+
+TEST(DemoConsoleInput, ScrollbackAndTitleKeepPromptFocus) {
+    RoutedConsole routed;
+    routed.route({key(KeyboardKey::GraveAccent).data});
+    auto* field = dynamic_cast<Rml::ElementFormControlInput*>(routed.console->GetElementById("console-command"));
+    auto* output = routed.console->GetElementById("console-output");
+    auto* title = routed.console->GetElementById("console-move");
+    ASSERT_NE(field, nullptr);
+    ASSERT_NE(output, nullptr);
+    ASSERT_NE(title, nullptr);
+    routed.click(routed.point(*output));
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    routed.route({Events::Text{U'e'}});
+    EXPECT_EQ(field->GetValue(), "e");
+    routed.click(routed.point(*title));
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    routed.route({Events::Text{U'c'}});
+    EXPECT_EQ(field->GetValue(), "ec");
+    EXPECT_TRUE(routed.view->visible());
+    EXPECT_TRUE(routed.session.owns_keyboard_focus());
+    EXPECT_TRUE(routed.model.entries().empty());
+    EXPECT_FALSE(routed.reset_effect());
+}
+
+TEST(DemoConsoleInput, TitleDragRestoresPromptFocus) {
+    RoutedConsole routed;
+    routed.route({key(KeyboardKey::GraveAccent).data});
+    auto* title = routed.console->GetElementById("console-move");
+    auto* field = routed.console->GetElementById("console-command");
+    ASSERT_NE(title, nullptr);
+    ASSERT_NE(field, nullptr);
+    const auto original = routed.console->GetAbsoluteOffset();
+    const auto start = routed.point(*title);
+    const Events::Pointer moved{start.x + 45, start.y + 35};
+    EXPECT_FALSE(routed.route({pointer_button(start, Events::ButtonPhase::Press)}));
+    EXPECT_FALSE(routed.route({moved}));
+    EXPECT_FALSE(routed.route({pointer_button(moved, Events::ButtonPhase::Release)}));
+    EXPECT_GT(routed.console->GetAbsoluteOffset().x, original.x);
+    EXPECT_GT(routed.console->GetAbsoluteOffset().y, original.y);
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    EXPECT_TRUE(routed.view->visible());
+    EXPECT_FALSE(routed.reset_effect());
+}
+
+TEST(DemoConsoleInput, SuggestionsFlipAboveBottomPrompt) {
+    RoutedConsole routed;
+    routed.route({key(KeyboardKey::GraveAccent).data});
+    ASSERT_TRUE(routed.console->SetProperty("top", "610px"));
+    ASSERT_TRUE(routed.console->SetProperty("height", "180px"));
+    routed.route({});
+    routed.route({});
+    auto* field = routed.console->GetElementById("console-command");
+    auto* suggestions = routed.console->GetElementById("console-suggestions");
+    ASSERT_NE(field, nullptr);
+    ASSERT_NE(suggestions, nullptr);
+    ASSERT_GT(field->GetAbsoluteOffset().y, 720);
+    routed.route({Events::Text{U'm'}, Events::Text{U'a'}, Events::Text{U'g'}, Events::Text{U'i'},
+                  Events::Text{U'c'}, Events::Text{U'.'}});
+    routed.route({});
+    routed.route({});
+    ASSERT_GE(suggestions->GetNumChildren(), 3);
+    const auto position = suggestions->GetAbsoluteOffset();
+    EXPECT_GT(suggestions->GetOffsetHeight(), 0);
+    EXPECT_GE(position.x, 0);
+    EXPECT_GE(position.y, 0);
+    EXPECT_LE(position.x + suggestions->GetOffsetWidth(), routed.logical.width);
+    EXPECT_LE(position.y + suggestions->GetOffsetHeight(), field->GetAbsoluteOffset().y);
+    EXPECT_LE(position.y + suggestions->GetOffsetHeight(), routed.logical.height);
+    EXPECT_EQ(routed.session.context().GetFocusElement(), field);
+    EXPECT_TRUE(routed.model.entries().empty());
+}
+
+TEST(DemoConsoleInput, ScrolledOutputAndFollowLatest) {
     RoutedConsole routed;
     const std::string query = "get practice.heal_price";
     const auto padded = std::string(DemoConsole::Model::command_bytes - query.size(), ' ') + query;
@@ -350,7 +487,7 @@ TEST(DemoConsoleInput, RecentResultsAndNoticesReachNativeViewAndLatest) {
     routed.route({key(KeyboardKey::GraveAccent).data});
     auto* output = routed.console->GetElementById("console-output");
     ASSERT_NE(output, nullptr);
-    EXPECT_NE(output->GetInnerRML().find("#17 &gt; set practice.heal_price 6789"), Rml::String::npos);
+    EXPECT_NE(output->GetInnerRML().find("] set practice.heal_price 6789"), Rml::String::npos);
     EXPECT_NE(output->GetInnerRML().find("effective: 6789"), Rml::String::npos);
     routed.model.help("set");
     routed.route({});
@@ -358,21 +495,41 @@ TEST(DemoConsoleInput, RecentResultsAndNoticesReachNativeViewAndLatest) {
     EXPECT_FALSE(routed.model.submit("missing.command \"<\xe6\xb0\xb4\xf0\x9f\x8c\xb1>\""));
     routed.route({});
     const auto rendered = output->GetInnerRML();
-    EXPECT_NE(rendered.find("Refused: unknown command"), Rml::String::npos);
+    EXPECT_NE(rendered.find("Error: unknown command"), Rml::String::npos);
     EXPECT_NE(rendered.find("&lt;\xe6\xb0\xb4\xf0\x9f\x8c\xb1&gt;"), Rml::String::npos);
     routed.route({});
     ASSERT_GT(output->GetScrollHeight(), output->GetClientHeight());
     output->SetScrollTop(0);
     routed.route({});
     ASSERT_EQ(output->GetScrollTop(), 0);
-    const auto latest_activity = routed.view->activity();
-    routed.click(routed.point(*routed.console->GetElementById("console-latest")));
-    EXPECT_EQ(routed.view->activity(), latest_activity + 1);
+    ASSERT_TRUE(routed.model.submit("set practice.heal_price 6790"));
+    routed.model.pump();
+    routed.route({});
+    routed.route({});
+    EXPECT_EQ(output->GetScrollTop(), 0);
+    EXPECT_NE(output->GetInnerRML().find("effective: 6790"), Rml::String::npos);
+    routed.route({key(KeyboardKey::End, Events::ButtonPhase::Press, Modifiers::Control).data});
     routed.route({});
     routed.route({});
     EXPECT_GT(output->GetScrollTop(), 0);
     EXPECT_GE(output->GetScrollTop() + output->GetClientHeight(), output->GetScrollHeight() - 2);
-    EXPECT_EQ(output->GetInnerRML(), rendered);
-    EXPECT_EQ(routed.model.entries().size(), 17u);
+    routed.route({key(KeyboardKey::PageUp).data});
+    EXPECT_LT(output->GetScrollTop() + output->GetClientHeight(), output->GetScrollHeight() - 2);
+    routed.route({key(KeyboardKey::End, Events::ButtonPhase::Press, Modifiers::Control).data});
+    routed.route({});
+    routed.route({});
+    ASSERT_TRUE(routed.model.submit("set practice.heal_price 6791"));
+    routed.model.pump();
+    routed.route({});
+    routed.route({});
+    routed.route({});
+    EXPECT_GE(output->GetScrollTop() + output->GetClientHeight(), output->GetScrollHeight() - 2);
+    EXPECT_NE(output->GetInnerRML().find("effective: 6791"), Rml::String::npos);
+    for (unsigned index = 0; index < 4; ++index) {
+        ASSERT_TRUE(routed.model.submit("echo live output " + std::to_string(index)));
+        routed.route({});
+        EXPECT_GE(output->GetScrollTop() + output->GetClientHeight(), output->GetScrollHeight() - 2);
+    }
+    EXPECT_EQ(routed.model.entries().size(), 19u);
     EXPECT_EQ(routed.model.entries().front().id, 1u);
 }
