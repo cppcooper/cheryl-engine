@@ -3,18 +3,78 @@
 
 #include <algorithm>
 #include <format>
+#include <new>
+#include <stdexcept>
 
 namespace DemoConsole {
+    namespace {
+        struct QuitOwner {
+            std::function<void()> callback;
+            bool active = true;
+        };
+
+        class QuitWork final : public Core::Work {
+            std::shared_ptr<QuitOwner> owner_;
+        public:
+            explicit QuitWork(std::shared_ptr<QuitOwner> owner) : owner_(std::move(owner)) {
+                result.value = Core::Value::boolean(false);
+            }
+            void step() noexcept override {
+                if (Core::terminal(result.stage))
+                    return;
+                if (!owner_->active) {
+                    close();
+                    return;
+                }
+                try {
+                    owner_->callback();
+                    result.value = Core::Value::boolean(true);
+                    result.stage = Core::Stage::Succeeded;
+                } catch (const std::bad_alloc&) {
+                    result.stage = Core::Stage::Failed;
+                    result.failure = {Core::Code::Allocation};
+                } catch (...) {
+                    result.stage = Core::Stage::Failed;
+                    result.failure = {Core::Code::Owner};
+                }
+            }
+            void close() noexcept override {
+                if (!Core::terminal(result.stage)) {
+                    result.stage = Core::Stage::Cancelled;
+                    result.failure = {Core::Code::Cancelled};
+                }
+            }
+        };
+    }
+
     class ContactConnection final : public Presentation::Connection {
         std::shared_ptr<Contact::Adapter> adapter_;
         std::shared_ptr<Contact::Client> client_;
         std::unique_ptr<Scenarios::Commands> scenarios_;
+        std::shared_ptr<QuitOwner> quit_owner_;
+        Core::Registration quit_registration_;
         std::string scope_;
-        std::function<void()> quit_;
     public:
         ContactConnection(Contact::Practice& practice, Scenarios::Config config, std::function<void()> quit)
-            : adapter_(practice.console), client_(adapter_->open(Contact::Mode::PracticeObserver)), quit_(std::move(quit)) {
+            : adapter_(practice.console), client_(adapter_->open(Contact::Mode::PracticeObserver)) {
             if (config.io) scenarios_ = std::make_unique<Scenarios::Commands>(adapter_->registry(), std::move(config));
+            if (quit) {
+                quit_owner_ = std::make_shared<QuitOwner>(QuitOwner{std::move(quit)});
+                Core::Schema boolean;
+                boolean.type = Core::Type::Boolean;
+                Core::Descriptor descriptor;
+                descriptor.name = "app.quit";
+                descriptor.help = "Closes the application on its owner thread.";
+                descriptor.domain = "app";
+                descriptor.kind = Core::Kind::Action;
+                descriptor.rights = 4;
+                descriptor.result = std::move(boolean);
+                auto installed = adapter_->registry().add<>(std::move(descriptor),
+                    [owner = quit_owner_](const Core::Context&) { return std::make_shared<QuitWork>(owner); });
+                if (!installed)
+                    throw std::runtime_error("Cannot register app.quit");
+                quit_registration_ = std::move(*installed);
+            }
             const auto scope = practice.host->entity(1).scope;
             scope_ = std::format("Contact practice world | world {} / branch {} | PracticeObserver", scope.world, scope.branch);
         }
@@ -22,13 +82,10 @@ namespace DemoConsole {
         Core::Context context() const noexcept override { return client_->context(); }
         Core::Session& session() noexcept override { return client_->session(); }
         std::string scope() const override { return scope_; }
-        bool request_quit() override {
-            if (!quit_)
-                return false;
-            quit_();
-            return true;
-        }
         void close() noexcept override {
+            quit_registration_.reset();
+            if (quit_owner_)
+                quit_owner_->active = false;
             if (scenarios_) scenarios_->close();
             client_->close();
         }

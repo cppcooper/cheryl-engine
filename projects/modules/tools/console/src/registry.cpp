@@ -229,6 +229,12 @@ namespace CE::Tools::Console {
             return Registration(std::move(entry));
         } catch (const std::bad_alloc&) { return std::unexpected(Failure{Code::Allocation}); }
     }
+    bool Registry::registered(std::string_view name) const noexcept {
+        for (const auto& weak : state_->entries)
+            if (auto entry = weak.lock(); entry && entry->active && entry->descriptor.name == name)
+                return true;
+        return false;
+    }
     Checked<Descriptor> Registry::describe(std::string_view name, const Context& context) const {
         if (!context.live()) return std::unexpected(Failure{Code::Expired});
         if (accepts_ && !accepts_(context)) return std::unexpected(Failure{Code::Unauthorized});

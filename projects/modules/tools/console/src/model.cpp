@@ -9,7 +9,6 @@
 
 namespace CE::Tools::Console::Presentation {
     Connection::~Connection() = default;
-    bool Connection::request_quit() { return false; }
 
     namespace {
         constexpr std::array builtins = {
@@ -31,6 +30,20 @@ namespace CE::Tools::Console::Presentation {
                 return {};
             const auto last = line.find_last_not_of(" \t");
             return line.substr(first, last - first + 1);
+        }
+
+        Core::Failure original_failure(Core::Failure failure, std::size_t offset, std::size_t command_size, std::size_t target_size) {
+            const auto position = [&](std::size_t byte) {
+                if (byte <= offset)
+                    return byte;
+                if (byte >= offset + target_size)
+                    return byte - target_size + command_size;
+                return offset + std::min(byte - offset, command_size);
+            };
+            const auto end = position(failure.offset + failure.length);
+            failure.offset = position(failure.offset);
+            failure.length = end - failure.offset;
+            return failure;
         }
 
         bool contains(std::string_view text, std::string_view search) {
@@ -191,6 +204,42 @@ namespace CE::Tools::Console::Presentation {
     }
     Model::~Model() { close(); }
 
+    std::string_view Model::command_target(std::string_view command) const noexcept {
+        auto& registry = client_->registry();
+        if (registry.registered(command))
+            return command;
+        if ((command == "quit" || command == "exit") && registry.registered("app.quit"))
+            return "app.quit";
+        if (command == "exit" && registry.registered("quit"))
+            return "quit";
+        if (command == "echo" && registry.registered("app.echo"))
+            return "app.echo";
+        return command;
+    }
+
+    std::vector<Core::Descriptor> Model::commands() const {
+        auto& registry = client_->registry();
+        const auto context = client_->context();
+        auto descriptors = registry.commands(context);
+        for (const auto& [name, description] : builtins) {
+            const auto target = command_target(name);
+            if (registry.registered(target)) {
+                if (target != name)
+                    if (auto descriptor = registry.describe(target, context)) {
+                        descriptor->name = name;
+                        descriptors.push_back(std::move(*descriptor));
+                    }
+            } else if (name != "quit" && name != "exit") {
+                Core::Descriptor descriptor;
+                descriptor.name = name;
+                descriptor.help = description;
+                descriptors.push_back(std::move(descriptor));
+            }
+        }
+        std::ranges::sort(descriptors, {}, &Core::Descriptor::name);
+        return descriptors;
+    }
+
     void Model::remember(std::string_view line) {
         if (history_.empty() || history_.back() != line) {
             while (!history_.empty() && (history_.size() >= history_count || history_bytes_ + line.size() > history_bytes)) {
@@ -247,7 +296,12 @@ namespace CE::Tools::Console::Presentation {
         const auto separator = command_line.find_first_of(" \t");
         const auto command = command_line.substr(0, separator);
         const auto arguments = separator == std::string_view::npos ? std::string_view{} : trimmed(command_line.substr(separator));
-        if (builtin(command)) {
+        auto& registry = client_->registry();
+        const auto context = client_->context();
+        const auto target = command_target(command);
+        // Hidden registrations must still bind through their authority gate.
+        const bool registered = registry.registered(target);
+        if (builtin(command) && !registered) {
             failure_.reset();
             notice_.clear();
             if (command == "echo") {
@@ -285,32 +339,41 @@ namespace CE::Tools::Console::Presentation {
             if (command == "find") {
                 const auto& search = parsed->tokens[1].text;
                 std::string result;
-                for (const auto& [name, description] : builtins)
-                    if (contains(name, search) || contains(description, search))
-                        append(result, std::string{name} + " - " + std::string{description} + '\n', 16384);
-                for (const auto& descriptor : client_->registry().commands(client_->context()))
-                    if (!builtin(descriptor.name) && (contains(descriptor.name, search) || contains(descriptor.help, search)))
+                for (const auto& descriptor : commands())
+                    if (contains(descriptor.name, search) || contains(descriptor.help, search))
                         append(result, descriptor.name + " - " + display_text(descriptor.help) + '\n', 16384);
                 if (result.empty())
                     result = "No matching commands.\n";
                 write("] " + std::string{line} + '\n' + result);
                 return true;
             }
-            bool requested = false;
-            try {
-                requested = client_->request_quit();
-            } catch (...) {
-                refuse(line, {Core::Code::Owner});
-                return false;
-            }
-            if (!requested) {
-                refuse(line, {Core::Code::Unsupported});
-                return false;
-            }
-            write("] " + std::string{line} + "\nClosing application...\n");
-            return true;
+            refuse(line, {Core::Code::Unsupported});
+            return false;
         }
-        auto bound = Core::bind_text(client_->registry(), client_->context(), line);
+        const auto bind = [&]() -> Core::Checked<Core::BoundRequest> {
+            if (command == "echo") {
+                const auto descriptor = registry.describe(target, context);
+                if (!descriptor)
+                    return std::unexpected(descriptor.error());
+                if (descriptor->arguments.size() == 1 && descriptor->arguments[0].schema.type == Core::Type::Text &&
+                    !arguments.starts_with(descriptor->arguments[0].name + '=')) {
+                    const auto text = echo_text(arguments, arguments.empty() ? line.size() : static_cast<std::size_t>(arguments.data() - line.data()));
+                    if (!text)
+                        return std::unexpected(text.error());
+                    return registry.bind(target, {Core::Value::text(*text)}, context);
+                }
+            }
+            if (target == command)
+                return Core::bind_text(registry, context, line);
+            const auto offset = static_cast<std::size_t>(command.data() - line.data());
+            std::string translated{line};
+            translated.replace(offset, command.size(), target);
+            auto bound = Core::bind_text(registry, context, translated);
+            if (!bound)
+                return std::unexpected(original_failure(bound.error(), offset, command.size(), target.size()));
+            return bound;
+        };
+        auto bound = bind();
         if (!bound) {
             refuse(line, bound.error());
             return false;
@@ -360,12 +423,9 @@ namespace CE::Tools::Console::Presentation {
     void Model::help(std::string_view command) {
         notice_.clear();
         failure_.reset();
-        for (const auto& [name, description] : builtins)
-            if (command.empty() || command == name)
-                append(notice_, std::string{name} + " - " + std::string{description} + '\n', 16384);
-        const auto descriptors = client_->registry().commands(client_->context());
+        const auto descriptors = commands();
         for (const auto& descriptor : descriptors) {
-            if (builtin(descriptor.name) || (!command.empty() && descriptor.name != command))
+            if (!command.empty() && descriptor.name != command)
                 continue;
             append(notice_, descriptor.name + " - " + display_text(descriptor.help) + "\n", 16384);
             for (const auto& argument : descriptor.arguments)
@@ -387,32 +447,38 @@ namespace CE::Tools::Console::Presentation {
             return {};
         }
         const auto command_line = trimmed(line);
-        if (const auto separator = command_line.find_first_of(" \t"); separator != std::string_view::npos &&
-            command_line.substr(0, separator) == "echo")
-            return {};
-        auto completion = Core::complete(client_->registry(), client_->context(), line);
+        const auto separator = command_line.find_first_of(" \t");
+        const auto command = command_line.substr(0, separator);
+        const auto target = command_target(command);
+        if (command == "echo" && separator != std::string_view::npos) {
+            const auto descriptor = client_->registry().describe(target, client_->context());
+            if (!descriptor || (descriptor->arguments.size() == 1 && descriptor->arguments[0].schema.type == Core::Type::Text))
+                return {};
+        }
+        std::string completion_line{line};
+        if (target != command && separator != std::string_view::npos)
+            completion_line.replace(static_cast<std::size_t>(command.data() - line.data()), command.size(), target);
+        auto completion = Core::complete(client_->registry(), client_->context(), completion_line);
         if (!completion) {
-            refuse(line, completion.error());
+            const auto failure = target != command && separator != std::string_view::npos
+                ? original_failure(completion.error(), static_cast<std::size_t>(command.data() - line.data()), command.size(), target.size())
+                : completion.error();
+            refuse(line, failure);
             return {};
         }
         const auto parsed = Core::parse(line, true);
         if (parsed && (parsed->tokens.empty() || (parsed->tokens.size() == 1 && !parsed->trailing_space))) {
             const auto prefix = parsed->tokens.empty() ? std::string_view{} : std::string_view{parsed->tokens.front().text};
-            for (const auto& [name, description] : builtins) {
-                static_cast<void>(description);
-                if (name.starts_with(prefix))
-                    completion->emplace_back(name);
+            for (const auto& descriptor : commands()) {
+                if (descriptor.name.starts_with(prefix))
+                    completion->push_back(descriptor.name);
             }
         } else if (parsed && parsed->tokens.front().text == "help" &&
+                   !client_->registry().registered("help") &&
                    ((parsed->tokens.size() == 1 && parsed->trailing_space) ||
                     (parsed->tokens.size() == 2 && !parsed->trailing_space))) {
             const auto prefix = parsed->tokens.size() == 1 ? std::string_view{} : std::string_view{parsed->tokens.back().text};
-            for (const auto& [name, description] : builtins) {
-                static_cast<void>(description);
-                if (name.starts_with(prefix))
-                    completion->emplace_back(name);
-            }
-            for (const auto& descriptor : client_->registry().commands(client_->context()))
+            for (const auto& descriptor : commands())
                 if (descriptor.name.starts_with(prefix))
                     completion->push_back(descriptor.name);
         }

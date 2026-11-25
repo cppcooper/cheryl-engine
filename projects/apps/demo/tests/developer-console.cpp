@@ -225,8 +225,8 @@ TEST(DemoConsole, HelpFindAndCompletionExposeFriendlyCommands) {
     EXPECT_NE(model.text().find("No matching commands."), std::string::npos);
     const auto candidates = model.suggestions("e");
     EXPECT_NE(std::ranges::find(candidates, "echo"), candidates.end());
-    EXPECT_NE(std::ranges::find(candidates, "exit"), candidates.end());
-    EXPECT_EQ(model.complete("e", "exit"), "exit ");
+    EXPECT_EQ(std::ranges::find(candidates, "exit"), candidates.end());
+    EXPECT_EQ(model.complete("e", "exit"), "e");
     EXPECT_EQ(model.complete("e", "missing"), "e");
     EXPECT_EQ(model.complete("help ec", "echo"), "help echo ");
     model.help("set");
@@ -270,16 +270,31 @@ TEST(DemoConsole, QuitUsesTheOwnerAndClosedModelsRejectBuiltins) {
     auto practice = Contact::practice();
     unsigned quits = 0;
     DemoConsole::Model model(practice, {}, [&quits] { ++quits; });
+    const auto gameplay = practice.console->open(Contact::Mode::Gameplay);
+    const auto denied = practice.console->registry().bind("app.quit", {}, gameplay->context());
+    ASSERT_FALSE(denied);
+    EXPECT_EQ(denied.error().code, Core::Code::Unauthorized);
     ASSERT_TRUE(model.submit("quit"));
     ASSERT_TRUE(model.submit("exit"));
-    EXPECT_EQ(quits, 2u);
-    EXPECT_TRUE(model.entries().empty());
+    ASSERT_TRUE(model.submit("app.quit"));
+    EXPECT_EQ(quits, 0u);
+    ASSERT_EQ(model.entries().size(), 3u);
+    for (const auto& entry : model.entries())
+        EXPECT_EQ(entry.result.stage, Core::Stage::Queued);
+    model.pump();
+    EXPECT_EQ(quits, 3u);
+    for (const auto& entry : model.entries()) {
+        EXPECT_EQ(entry.result.stage, Core::Stage::Succeeded);
+        EXPECT_TRUE(std::get<bool>(entry.result.value.data));
+    }
+    model.pump();
+    EXPECT_EQ(quits, 3u);
     model.close();
     EXPECT_FALSE(model.submit("quit"));
     EXPECT_FALSE(model.submit("clear"));
     EXPECT_FALSE(model.submit("echo closed"));
     EXPECT_FALSE(model.submit("help"));
-    EXPECT_EQ(quits, 2u);
+    EXPECT_EQ(quits, 3u);
     EXPECT_EQ(model.failure()->code, Core::Code::Expired);
     EXPECT_TRUE(model.suggestions("e").empty());
     auto other_practice = Contact::practice();
@@ -289,8 +304,28 @@ TEST(DemoConsole, QuitUsesTheOwnerAndClosedModelsRejectBuiltins) {
     DemoConsole::Application application({});
     EXPECT_FALSE(application.quit_requested());
     ASSERT_TRUE(application.model().submit("quit"));
+    EXPECT_FALSE(application.quit_requested());
+    application.model().pump();
     EXPECT_TRUE(application.quit_requested());
     application.finish();
+}
+
+TEST(DemoConsole, QueuedQuitCancelsOnClose) {
+    auto practice = Contact::practice();
+    unsigned quits = 0;
+    DemoConsole::Model model(practice, {}, [&quits] { ++quits; });
+    ASSERT_TRUE(model.submit("quit"));
+    ASSERT_EQ(model.entries().size(), 1u);
+    ASSERT_EQ(model.entries()[0].result.stage, Core::Stage::Queued);
+    EXPECT_EQ(quits, 0u);
+    model.close();
+    model.pump();
+    EXPECT_EQ(quits, 0u);
+    EXPECT_EQ(model.entries()[0].result.stage, Core::Stage::Cancelled);
+    EXPECT_EQ(model.entries()[0].result.failure.code, Core::Code::Cancelled);
+    model.close();
+    model.pump();
+    EXPECT_EQ(quits, 0u);
 }
 
 TEST(DemoConsole, ByteBoundsAndQueuedClose) {

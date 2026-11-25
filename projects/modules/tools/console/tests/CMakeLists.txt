@@ -1,7 +1,7 @@
 cheryl_add_test_aggregate(tests-console OWNER)
 set(CHERYL_TEST_AGGREGATE tests-console)
 cheryl_add_test_suite(tests-console-core
-    SOURCES core.cpp lifetime.cpp setting.cpp input.cpp
+    SOURCES core.cpp lifetime.cpp setting.cpp input.cpp model.cpp
     LIBRARIES Cheryl::Console)
 cheryl_add_test_suite(tests-console-scenarios
     SOURCES scenario.cpp scenario-authority.cpp
@@ -9,7 +9,7 @@ cheryl_add_test_suite(tests-console-scenarios
 add_test(NAME console_scenarios COMMAND tests-console-scenarios "--gtest_filter=ConsoleScenario.*:ConsoleScenarioAuthority.*")
 set_tests_properties(console_scenarios PROPERTIES TIMEOUT 30 LABELS "console;scenario")
 add_test(NAME console_core COMMAND tests-console-core
-    "--gtest_filter=ConsoleCore.*:ConsoleLifetime.*:ConsoleInput.*")
+    "--gtest_filter=ConsoleCore.*:ConsoleLifetime.*:ConsoleInput.*:ConsoleModel.*")
 add_executable(tests-console-allocation allocation.cpp
     ../src/registry.cpp ../src/parser.cpp ../src/session.cpp
     ../src/scenario.cpp ../src/scenario-parser.cpp)

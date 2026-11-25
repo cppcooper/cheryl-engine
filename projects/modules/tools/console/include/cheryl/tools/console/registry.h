@@ -10,6 +10,7 @@
 
 namespace CE::Tools::Console {
     namespace Detail { struct Entry; struct RegistryState; }
+    namespace Presentation { class Model; }
     class Session;
     class CE_TYPE_API ResolvedCommand {
         std::shared_ptr<const Detail::Entry> entry_;
@@ -57,6 +58,8 @@ namespace CE::Tools::Console {
         std::function<bool(const Context&)> accepts_;
         using Handler = std::function<std::shared_ptr<Work>(const Context&, std::span<const Value>)>;
         CE_CONSOLE_API Checked<Registration> install(Descriptor, std::span<const Type>, Handler);
+        friend class Presentation::Model;
+        CE_CONSOLE_API bool registered(std::string_view name) const noexcept;
     public:
         // A pure, non-reentrant owner gate rejects unrelated issuers before discovery.
         CE_CONSOLE_API explicit Registry(std::function<bool(const Context&)> accepts = {});

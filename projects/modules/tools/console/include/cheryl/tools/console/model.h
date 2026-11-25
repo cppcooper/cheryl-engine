@@ -20,7 +20,6 @@ namespace CE::Tools::Console::Presentation {
         virtual Core::Context context() const noexcept = 0;
         virtual Core::Session& session() noexcept = 0;
         virtual std::string scope() const = 0;
-        virtual bool request_quit();
         virtual void close() noexcept = 0;
     };
 
@@ -52,6 +51,8 @@ namespace CE::Tools::Console::Presentation {
         void write(std::string text, std::uint64_t request = 0);
         void refuse(std::string_view line, Core::Failure failure);
         void refresh();
+        std::string_view command_target(std::string_view command) const noexcept;
+        std::vector<Core::Descriptor> commands() const;
 
     public:
         static constexpr std::size_t command_bytes = Core::max_line;
