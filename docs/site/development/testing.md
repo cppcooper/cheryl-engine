@@ -23,6 +23,7 @@ Desktop and controller checks <native-desktop-checks>
 | Integration implementation | Its module's focused runner. | Coexistence checks when another owner participates; native/device observations for the actual backend. |
 | Public header, target or dependency boundary | The owner's consumer and first-include probes. | Standalone/supplied-target checks when composition changes. |
 | SDK installation or deployment | [Installed SDK consumers](architecture-validation.md#installed-sdk-consumers). | Static/shared and platform variants affected by the packaging change. |
+| Console, scripts, or settings | [Console acceptance inputs](../modules/console.md#verification-targets). | Core authority first, isolated jobs next, installed non-Magic consumer, then graphical/input lifecycle. Source declarations do not prove execution. |
 | Logging failure or lifetime policy | [Logging checks](logging-acceptance.md). | The affected compile-profile rows and isolated failure drivers. |
 | Visible desktop/controller behavior | [Desktop and controller checks](native-desktop-checks.md). | The relevant automated adapter/native regressions; neither substitutes for the other. |
 

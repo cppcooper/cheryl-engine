@@ -220,6 +220,7 @@ namespace CE::Platform::GLFW {
         std::vector<float> pad_axes_;
         std::vector<bool> pad_buttons_;
         std::exception_ptr callback_failure_;
+        std::optional<CE::Input::KeyboardKey> text_key_;
         const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
         bool observed_gamepad_available_ = false;
         bool observed_window_focus_ = false;
@@ -471,6 +472,7 @@ namespace CE::Platform::GLFW {
     void InputSystem::begin_poll() {
         if (!state_->window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before beginning a poll");
+        state_->text_key_.reset();
         begin_input_poll();
         // Wheel buttons are one-poll State pulses; actual scroll records
         // and relative offsets retain all delivered movement independently.
@@ -531,6 +533,8 @@ namespace CE::Platform::GLFW {
                                    : action == GLFW_PRESS ? CE::Input::Events::ButtonPhase::Press
                                                           : CE::Input::Events::ButtonPhase::Release;
                 const auto identity = Detail::keyboard_key(key);
+                input->state_->text_key_ = action == GLFW_RELEASE || identity == CE::Input::KeyboardKey::Unknown
+                    ? std::nullopt : std::optional{identity};
                 const auto button = CE::Input::control_id(identity);
                 // Preserve delivered callbacks before State ignores repeats or condenses transitions.
                 input->capture_buffer().record(
@@ -547,6 +551,7 @@ namespace CE::Platform::GLFW {
     void InputSystem::on_mouse_button(GLFWwindow* handle, const int button, const int action, const int modifiers) noexcept {
         if (auto* input = attached(handle))
             input->state_->receive([&] {
+                input->state_->text_key_.reset();
                 const auto identity = Detail::mouse_button(button);
                 const auto control = CE::Input::control_id(identity);
                 double x = 0.0;
@@ -567,6 +572,7 @@ namespace CE::Platform::GLFW {
     void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) noexcept {
         if (auto* input = attached(handle))
             input->state_->receive([&] {
+                input->state_->text_key_.reset();
                 double pointer_x = 0.0;
                 double pointer_y = 0.0;
                 glfwGetCursorPos(handle, &pointer_x, &pointer_y);
@@ -587,8 +593,12 @@ namespace CE::Platform::GLFW {
     void InputSystem::on_character(GLFWwindow* handle, const unsigned int codepoint) noexcept {
         if (auto* input = attached(handle))
             input->state_->receive([&] {
+                auto source = std::exchange(input->state_->text_key_, std::nullopt);
+                if (source == CE::Input::KeyboardKey::GraveAccent && codepoint != '`' && codepoint != '~')
+                    source.reset();
                 input->capture_buffer().record(
-                    input->state_->keyboard_id_, CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{static_cast<char32_t>(codepoint)}
+                    input->state_->keyboard_id_, CE::Input::DeviceKind::Keyboard,
+                    CE::Input::Events::Text{static_cast<char32_t>(codepoint), source}
                 );
             });
     }
@@ -596,6 +606,7 @@ namespace CE::Platform::GLFW {
     void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) noexcept {
         if (auto* input = attached(handle))
             input->state_->receive([&] {
+                input->state_->text_key_.reset();
                 input->capture_buffer().record(input->state_->mouse_id_, CE::Input::DeviceKind::Mouse, CE::Input::Events::Pointer{x, y});
                 input->state_->bindings_.on_delta(
                     {input->state_->mouse_id_, CE::Input::MouseControl::DeltaX}, static_cast<float>(x - input->state_->cursor_x_)

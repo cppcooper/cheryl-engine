@@ -93,6 +93,7 @@ set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
 set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
 set(CHERYL_BUILD_UI_RMLUI OFF)
+set(CHERYL_BUILD_CONSOLE OFF)
 set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
 set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
 set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
@@ -534,6 +535,41 @@ the bootstrap object. The definition does not change installation scope. See the
 [signal procedure](architecture-validation.md#manual-acceptance-drivers).
 
 ## Independent consumers and header probes
+
+### Console consumers
+
+The normal SDK includes one compiled `Cheryl::Console` library by default, with
+typed commands/settings, Model/View, and the script/report runtime. Link only
+`Cheryl::Console`; its Engine and RmlUi usage requirements are transitive. It
+follows the normal shared-library policy, export/import annotations, installation,
+and runtime relocation machinery. Demo, tests, Magic, Contact, Family, and World
+are not prerequisites. An explicitly selected static SDK retains the same target.
+
+For an existing producer cache, explicitly enable `CHERYL_BUILD_CONSOLE=ON` and
+`CHERYL_BUILD_UI_RMLUI=ON` if previously OFF; defaults do not overwrite caches.
+The old split runtime/view selections are removed. If Console is deliberately
+omitted, target existence, not header presence, establishes availability.
+
+The independently configurable `.github/ci/sdk-consumer/console` directory needs
+only `find_package(Cheryl 4 CONFIG REQUIRED)` and an installed prefix, not
+`CHERYL_REPOSITORY_ROOT`. It owns a non-Magic simulation, uses the same typed/text
+setting handlers, and checks successful and deliberately failing finalized jobs.
+It links only `Cheryl::Console` and calls a bounded CPU-side RmlUi Session and
+Console Model/View check alongside its script/report checks. Routed committed
+input uses `Presentation::Input`'s default GraveAccent/Shift toggle, with repeat,
+release, attributed-text, pasted-text, mixed-batch, held-release recovery,
+override/disable, preemption, and retirement checks through the public SDK. The
+host obeys whole-batch gameplay admission and retains its own pause policy. Routed
+text and Enter submit a real setting, and the native document presents its
+retained result across hide/reopen before owner-ordered teardown. This needs no
+window, display, or graphics context; it does not establish live rendering or
+physical input. Its `sdk-console` CTest is source-registered on POSIX and Windows.
+The Windows
+backend requires approved absolute drive paths; neither platform registration
+establishes execution or release qualification. See the [Console guide](../modules/console.md)
+for host lifetimes, examples, options, limits, and source-declared acceptance.
+
+### Other independent consumers
 
 The maintainer procedure is in
 [Independent consumers and header probes](architecture-validation.md#independent-consumers-and-header-probes),

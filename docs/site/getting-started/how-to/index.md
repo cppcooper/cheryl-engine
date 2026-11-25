@@ -161,6 +161,7 @@ references by subject, use [Guides by topic](../../guides/index.md).
 
 | Task | Guide |
 | --- | --- |
+| Add an in-game console and script assertions | [Advanced developer console tutorial](../create-a/developer-console.md); [Console reference](../../modules/console.md). |
 | Configure/troubleshoot logging | [Logging setup](../../runtime/logging.md#enable-useful-output); [missing/delayed records](../../runtime/logging.md#investigate-missing-or-delayed-records). |
 | Inspect subsystem activity | [Investigate a runtime symptom](../../runtime/subsystem-diagnostics.md#investigate-a-runtime-symptom). |
 | Trace retained graphics resources | [Trace retained resource owners](../../runtime/subsystem-diagnostics.md#trace-retained-resource-owners). |

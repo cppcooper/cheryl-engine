@@ -24,6 +24,9 @@
 #ifdef CHERYL_DEMO_RMLUI
 #include "rmlui-demo.h"
 #endif
+#ifdef CHERYL_DEMO_CONSOLE
+#include "developer-console-model.h"
+#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -77,6 +80,7 @@ class GameImpl : public CE::Game::AbstractGame {
     std::size_t caret_ = 0;
 #endif
     CE::Runtime::Context& engine_;
+    [[maybe_unused]] DemoConsole::Application* console_;
     CE::Rendering::Camera2D camera_;
     DemoAssets assets_;
     DemoAudio audio_;
@@ -112,9 +116,11 @@ public:
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         bool unicode_preview,
-        bool text_runs
+        bool text_runs,
+        DemoConsole::Application* console
     )
     : engine_(engine),
+      console_(console),
       camera_(),
       assets_(),
       audio_(engine),
@@ -198,7 +204,7 @@ public:
         ui_ = std::make_unique<DemoUi>(engine_);
 #endif
 #ifdef CHERYL_DEMO_RMLUI
-        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_);
+        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_, console_);
 #endif
         hud_text_.emplace(
             engine_,
@@ -217,12 +223,29 @@ public:
 #endif
     }
 
+    void deinit_simulation() override {
+#ifdef CHERYL_DEMO_TGUI
+        if (ui_)
+            ui_->deinit_simulation();
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+        if (rml_ui_)
+            rml_ui_->stop_console();
+#endif
+#ifdef CHERYL_DEMO_CONSOLE
+        if (console_)
+            console_->stop();
+#endif
+    }
+
+    void quiesce() override { deinit_simulation(); }
+
     void deinit_platform() override {
 #ifdef CHERYL_DEMO_RMLUI
         rml_ui_.reset();
 #endif
 #ifdef CHERYL_DEMO_TGUI
-        ui_.reset(); // Runtime has joined simulation; widgets die before its backend.
+        ui_.reset(); // Runtime has joined simulation; controls are already retired.
 #endif
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
         focus_.reset();
@@ -240,9 +263,22 @@ public:
     }
 
     void update(const CE::Game::TickContext& tick) override {
-        if (tick.input.button(DemoActions::QuitGame).held()) {
+#ifdef CHERYL_DEMO_RMLUI
+#if defined(CHERYL_DEMO_CONSOLE) && defined(CHERYL_DEMO_TGUI)
+        const bool gameplay_allowed = rml_ui_->process_input(tick, &ui_->controls());
+#else
+        const bool gameplay_allowed = rml_ui_->process_input(tick);
+#endif
+#else
+        constexpr bool gameplay_allowed = true;
+#endif
+        if (gameplay_allowed && tick.input.button(DemoActions::QuitGame).held()) {
             tick.request_stop();
         }
+#ifdef CHERYL_DEMO_CONSOLE
+        if (console_ && console_->quit_requested())
+            tick.request_stop();
+#endif
         if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
             try {
                 auto materials = pending_shader_.get();
@@ -255,31 +291,34 @@ public:
         }
         const auto& actions = tick.input;
         camera_.set_framebuffer_size(tick.framebuffer_size);
-        if (actions.button(DemoActions::Reset).pressed()) {
+        if (gameplay_allowed && actions.button(DemoActions::Reset).pressed()) {
             pan_ = {0.0f, 0.0f};
             camera_.set_view_matrix(glm::mat4(1.0f));
         }
-        if (actions.button(DemoActions::ToggleSamples).pressed())
+        if (gameplay_allowed && actions.button(DemoActions::ToggleSamples).pressed())
             assets_.toggle_visible();
-        if (actions.button(DemoActions::PauseAnimations).pressed())
+        if (gameplay_allowed && actions.button(DemoActions::PauseAnimations).pressed())
             assets_.toggle_pause();
-        if (actions.button(DemoActions::ReplayAttack).pressed())
+        if (gameplay_allowed && actions.button(DemoActions::ReplayAttack).pressed())
             assets_.replay_attack();
         assets_.advance(std::chrono::duration<double>{tick.delta_seconds});
         audio_.update();
         mouse_x_ = actions.axis(DemoActions::MouseX).current;
         mouse_y_ = actions.axis(DemoActions::MouseY).current;
-        clicks_ += actions.button(DemoActions::Click).press_count;
-        if (actions.button(DemoActions::Click).pressed())
+        if (gameplay_allowed)
+            clicks_ += actions.button(DemoActions::Click).press_count;
+        if (gameplay_allowed && actions.button(DemoActions::Click).pressed())
             audio_.play_click();
-        wheel_ += actions.axis(DemoActions::WheelY).delta();
-        gamepad_presses_ += actions.button(DemoActions::GamepadA).press_count;
+        if (gameplay_allowed) {
+            wheel_ += actions.axis(DemoActions::WheelY).delta();
+            gamepad_presses_ += actions.button(DemoActions::GamepadA).press_count;
+        }
 
         // Records carry the owner selected when they were collected, including
         // those still pending when this update requests a focus transfer.
         for (const auto& record : actions.records()) {
             const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
-            if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button &&
+            if (gameplay_allowed && record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button &&
                 button->key == CE::Input::KeyboardKey::F5 && button->phase == CE::Input::Events::ButtonPhase::Press &&
                 !pending_shader_.valid()) {
                 pending_shader_ = engine_.platform_dispatcher().submit([root = asset_root_](CE::Runtime::Context& platform) {
@@ -343,14 +382,19 @@ public:
             static_cast<float>(tick.button_simulation_seconds(DemoActions::Right) - tick.button_simulation_seconds(DemoActions::Left)),
             static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) - tick.button_simulation_seconds(DemoActions::Down))
         };
-        if (glm::length(movement) > 0.0f) {
+        if (gameplay_allowed && glm::length(movement) > 0.0f) {
             // Scale the observed down-time fraction by this update's simulation
             // delta. A completed observed tap still contributes after release.
             pan_ += movement * 240.0f;
             camera_.set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-pan_, 0.0f)));
         }
 #ifdef CHERYL_DEMO_TGUI
-        if (ui_->update(tick, {updates_ + 1, clicks_, gamepad_presses_, wheel_, pan_.x, pan_.y})) {
+#ifdef CHERYL_DEMO_CONSOLE
+        constexpr bool coordinated_ui = true;
+#else
+        constexpr bool coordinated_ui = false;
+#endif
+        if (ui_->update(tick, {updates_ + 1, clicks_, gamepad_presses_, wheel_, pan_.x, pan_.y}, coordinated_ui)) {
             pan_ = {0.0f, 0.0f};
             camera_.set_view_matrix(glm::mat4(1.0f));
         }
@@ -416,6 +460,9 @@ private:
 #endif
 #ifdef CHERYL_DEMO_RMLUI
         hud += std::format("\nF4: RmlUi text focus  F6: hide/show RmlUi\nRmlUi: {}", std::string{rml_ui_->error()});
+#endif
+#ifdef CHERYL_DEMO_CONSOLE
+        hud += "\nF8: Contact practice developer console";
 #endif
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
         hud += std::format(
@@ -530,9 +577,10 @@ struct DemoGame::GameState {
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
         const bool unicode_preview,
-        const bool text_runs
+        const bool text_runs,
+        DemoConsole::Application* console
     )
-    : game(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs) {}
+    : game(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs, console) {}
 };
 
 DemoGame::DemoGame(
@@ -542,11 +590,12 @@ DemoGame::DemoGame(
     CE::Text::FontSelection fonts,
     CE::Text::LayoutOptions text_options,
     const bool unicode_preview,
-    const bool text_runs
+    const bool text_runs,
+    DemoConsole::Application* console
 )
 : game_state_(
       std::make_unique<
-          GameState>(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs)
+          GameState>(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs, console)
   ) {}
 
 DemoGame::~DemoGame() = default;
@@ -565,6 +614,14 @@ void DemoGame::init_platform() {
 
 void DemoGame::init_simulation() {
     game_state_->game.init_simulation();
+}
+
+void DemoGame::deinit_simulation() {
+    game_state_->game.deinit_simulation();
+}
+
+void DemoGame::quiesce() {
+    game_state_->game.quiesce();
 }
 
 void DemoGame::deinit_platform() {

@@ -437,6 +437,9 @@ namespace CE::UI::TGUI {
                 button && (record.device_kind == CE::Input::DeviceKind::Keyboard || record.device_kind == CE::Input::DeviceKind::Mouse))
                 state.gui.set_modifiers(button->modifiers);
             const bool keyboard = record.is_text() || record.device_kind == CE::Input::DeviceKind::Keyboard;
+            const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+            if (record.ui_consumed && (!button || button->phase != CE::Input::Events::ButtonPhase::Release))
+                continue;
             if (keyboard) {
                 if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;

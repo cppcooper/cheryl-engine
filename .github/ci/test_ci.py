@@ -87,6 +87,7 @@ class RunnerTests(unittest.TestCase):
                     self.assertIn(f"-DCHERYL_BUILD_SHARED_LIBS={'ON' if linkage == 'shared' else 'OFF'}", configure[0])
                     self.assertIn(f"-DCHERYL_BUILD_SDK={'ON' if sdk else 'OFF'}", configure[0])
                     self.assertIn(f"-DCHERYL_BUILD_TESTS={'OFF' if profile == 'consumer' else 'ON'}", configure[0])
+                    self.assertIn(f"-DCHERYL_BUILD_CONSOLE={'ON' if profile == 'modules' else 'OFF'}", configure[0])
                     self.assertIn(f"-DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC={hwloc}", configure[0])
                     self.assertIn(f"-DCMAKE_BUILD_TYPE={configuration}", configure[0])
                     self.assertEqual(configure[0][2:8],
@@ -513,12 +514,13 @@ class PackageTests(unittest.TestCase):
             package.check_contents(self.stage, metadata)
 
     def test_shared_runtime_hints(self):
-        metadata = {**self.metadata, "linkage": "shared", "component_versions": {"engine": "4.0.0", "opengl": "2.0.0"},
+        metadata = {**self.metadata, "linkage": "shared", "component_versions": {
+            "engine": "4.0.0", "console": "4.1.0", "opengl": "2.0.0"},
                     "shared_runtime_dependencies": [
             {"dependency": "harfbuzz::harfbuzz", "deployment": "system"},
             {"dependency": "glfw", "sdk_target": "Cheryl::Dependency_glfw", "deployment": "system"}]}
         exports = self.stage / "lib/cmake/Cheryl/CherylTargets-release.cmake"
-        exports.write_text('  IMPORTED_LINK_DEPENDENT_LIBRARIES_RELEASE "harfbuzz::harfbuzz;Cheryl::Dependency_glfw;Cheryl::OpenGL"\n',
+        exports.write_text('  IMPORTED_LINK_DEPENDENT_LIBRARIES_RELEASE "harfbuzz::harfbuzz;Cheryl::Dependency_glfw;Cheryl::OpenGL;Cheryl::Console"\n',
                            encoding="utf-8")
         package.check_contents(self.stage, metadata)
         for target in ("ICU::uc", "spdlog::spdlog", "undeclared_runtime", "Cheryl::Workers"):

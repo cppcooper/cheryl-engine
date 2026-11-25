@@ -1,0 +1,13 @@
+script.version 1
+fixture.load contact-reserve-v1
+observe actor.read mage -> before
+expect $before.reserve == 2
+refuse magic.cast S1 target=marin -> attempt
+await $attempt max_steps=4 -> outcome
+expect $outcome.status == "Refused"
+expect $outcome.reason == "Resources"
+observe actor.read marin -> target
+expect $target.health == 12
+observe actor.read mage -> caster
+expect $caster.reserve == 2
+finish

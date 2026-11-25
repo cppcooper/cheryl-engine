@@ -73,6 +73,7 @@ dependency-source settings may appear only when their component is selected.
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
 | `CHERYL_BUILD_UI_RMLUI` | `ON` | Selects RmlUi independently; can coexist with TGUI. |
+| `CHERYL_BUILD_CONSOLE` | `ON` | Selects one complete `Cheryl::Console` library with graphical UI, scripts, and reports; requires RmlUi, not the demo or tests. Existing cached OFF values remain OFF. |
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `ON` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `OFF` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
@@ -165,7 +166,7 @@ its text dependencies:
     -DCHERYL_BUILD_STARTUP=OFF -DCHERYL_STARTUP_OPENGL=OFF -DCHERYL_BUILD_WORKERS=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
-    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF -DCHERYL_BUILD_CONSOLE=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
     -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF \

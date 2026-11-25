@@ -6,7 +6,7 @@ Choose the entry point for your work:
 | --- | --- |
 | Look up a declaration | [C++ API](site/api/index.md) |
 | Set up a game project | [Project setup](site/getting-started/project-setup.md) |
-| Follow a complete example | [Tutorials](site/getting-started/create-a/index.md): First Game, actor/player/AI controllers, Character, and shared UIController/HUD |
+| Follow a complete example | [Tutorials](site/getting-started/create-a/index.md): First Game, actor/player/AI controllers, Character, shared UIController/HUD, and the advanced developer console |
 | Find an operation | [Task index](site/getting-started/how-to/index.md) |
 | Browse a subject | [Guides by topic](site/guides/index.md) |
 | Understand system responsibilities and public types | [Engine Systems](site/engine-systems/index.md) |
@@ -40,6 +40,9 @@ then covers actor commands, Player/AI controllers, a Character, and a shared TGU
 UIController/HUD. The optional final discussion considers abstract interfaces. The
 [maintained tutorial application](../projects/apps/tutorial-game/README.md)
 implements the class-based lessons.
+
+The [advanced developer console tutorial](site/getting-started/create-a/developer-console.md)
+extends First Game with a command host, graphical input, and bounded assertions.
 
 The [Task index](site/getting-started/how-to/index.md) links to instructions directly.
 Browse the same procedures and references by subject through:

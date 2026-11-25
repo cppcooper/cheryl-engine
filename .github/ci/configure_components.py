@@ -21,7 +21,7 @@ MODULES = {
 
 def fixture(source, destination, *, supplied):
     destination.mkdir(parents=True)
-    selections = ("STARTUP", "WORKERS", "NATIVE_GLFW", "OPENGL", "UI_TGUI", "UI_RMLUI", "AUDIO_MINIAUDIO",
+    selections = ("CONSOLE", "STARTUP", "WORKERS", "NATIVE_GLFW", "OPENGL", "UI_TGUI", "UI_RMLUI", "AUDIO_MINIAUDIO",
                   "DEBUG_TERMINAL_LINUX", "DEMO", "FIRST_GAME", "TUTORIAL_GAME", "SDK", "DOCS", "ALL_TESTS", "ACCEPTANCE_TESTS")
     lines = ['cmake_minimum_required(VERSION 3.28)', 'project(component_host LANGUAGES C CXX)',
              'set(BUILD_SHARED_LIBS ON)', 'set(CMAKE_POSITION_INDEPENDENT_CODE OFF)']

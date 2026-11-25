@@ -1,0 +1,30 @@
+script.version 1
+fixture.load contact-heal-v1
+magic.edit "spoken release via contact after 0 ms { bind hand = willing touched actor at release ; together ordered { on hand bridge Mend@1 { sela 5 hp tava-a } ; } }" -> draft
+expect $draft.state == "Accepted"
+magic.draft -> inspected
+expect $inspected.id == 1
+magic.quote marin -> quoted
+expect $quoted.price == 3
+magic.draft.cast marin -> attempt
+retry $attempt -> duplicate
+magic.edit "spoken release via contact after 0 ms { bind hand = willing touched actor at release ; together ordered { on hand bridge Mend@1 { sela 12 hp tava-a } ; } }" -> later
+expect $later.state == "Accepted"
+await $attempt max_steps=4 -> outcome
+expect $outcome.status == "Applied"
+expect $outcome.gain == 5
+operation.read $attempt.operation -> exact
+expect $exact.gain == 5
+observe actor.read marin -> target
+expect $target.health == 17
+observe actor.read mage -> caster
+expect $caster.reserve == 7
+magic.edit "cercle de feu" -> invalid
+expect $invalid.state == "Invalid"
+error Owner magic.draft.cast marin -> invalid_cast
+magic.edit "spoken release via ray after 0 ms { bind hand = willing touched actor at release ; together ordered { on hand bridge Mend@1 { sela 5 hp tava-a } ; } }" -> unsupported
+expect $unsupported.state == "Unsupported"
+error Owner magic.draft.cast marin -> unsupported_cast
+operation.read $attempt.operation -> retained
+expect $retained.gain == 5
+finish

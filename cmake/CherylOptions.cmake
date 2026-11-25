@@ -226,9 +226,14 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_TUTORIAL_GAME
             "Build the Player/Enemy/HUD and How-to teaching game" OFF
             REQUIRES CHERYL_BUILD_STARTUP CHERYL_STARTUP_OPENGL CHERYL_BUILD_UI_TGUI CHERYL_NATIVE_INPUT)
-
+    cheryl_option(CHERYL_BUILD_CONSOLE
+            "Build the complete graphical developer console, script jobs, and reports" ON
+            REQUIRES CHERYL_BUILD_UI_RMLUI)
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)
+    cheryl_option(CHERYL_DEMO_CONSOLE
+            "Add the real Contact practice developer console to the RmlUi demo" OFF
+            REQUIRES CHERYL_BUILD_DEMO CHERYL_BUILD_UI_RMLUI CHERYL_BUILD_CONSOLE CHERYL_BUILD_TESTS)
     cheryl_option(CHERYL_BUILD_ALL_TESTS
             "Include owner and cross-project aggregate test runners in the default build" OFF
             REQUIRES CHERYL_BUILD_TESTS)

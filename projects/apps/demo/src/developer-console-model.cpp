@@ -1,0 +1,168 @@
+#include "developer-console-model.h"
+#include <cheryl/tools/console/runtime/diagnostics.h>
+
+#include <algorithm>
+#include <format>
+#include <new>
+#include <stdexcept>
+
+namespace DemoConsole {
+    namespace {
+        struct QuitOwner {
+            std::function<void()> callback;
+            bool active = true;
+        };
+
+        class QuitWork final : public Core::Work {
+            std::shared_ptr<QuitOwner> owner_;
+        public:
+            explicit QuitWork(std::shared_ptr<QuitOwner> owner) : owner_(std::move(owner)) {
+                result.value = Core::Value::boolean(false);
+            }
+            void step() noexcept override {
+                if (Core::terminal(result.stage))
+                    return;
+                if (!owner_->active) {
+                    close();
+                    return;
+                }
+                try {
+                    owner_->callback();
+                    result.value = Core::Value::boolean(true);
+                    result.stage = Core::Stage::Succeeded;
+                } catch (const std::bad_alloc&) {
+                    result.stage = Core::Stage::Failed;
+                    result.failure = {Core::Code::Allocation};
+                } catch (...) {
+                    result.stage = Core::Stage::Failed;
+                    result.failure = {Core::Code::Owner};
+                }
+            }
+            void close() noexcept override {
+                if (!Core::terminal(result.stage)) {
+                    result.stage = Core::Stage::Cancelled;
+                    result.failure = {Core::Code::Cancelled};
+                }
+            }
+        };
+    }
+
+    class ContactConnection final : public Presentation::Connection {
+        std::shared_ptr<Contact::Adapter> adapter_;
+        std::shared_ptr<Contact::Client> client_;
+        std::unique_ptr<Scenarios::Commands> scenarios_;
+        std::shared_ptr<QuitOwner> quit_owner_;
+        Core::Registration quit_registration_;
+        std::string scope_;
+    public:
+        ContactConnection(Contact::Practice& practice, Scenarios::Config config, std::function<void()> quit)
+            : adapter_(practice.console), client_(adapter_->open(Contact::Mode::PracticeObserver)) {
+            if (config.io) scenarios_ = std::make_unique<Scenarios::Commands>(adapter_->registry(), std::move(config));
+            if (quit) {
+                quit_owner_ = std::make_shared<QuitOwner>(QuitOwner{std::move(quit)});
+                Core::Schema boolean;
+                boolean.type = Core::Type::Boolean;
+                Core::Descriptor descriptor;
+                descriptor.name = "app.quit";
+                descriptor.help = "Closes the application on its owner thread.";
+                descriptor.domain = "app";
+                descriptor.kind = Core::Kind::Action;
+                descriptor.rights = 4;
+                descriptor.result = std::move(boolean);
+                auto installed = adapter_->registry().add<>(std::move(descriptor),
+                    [owner = quit_owner_](const Core::Context&) { return std::make_shared<QuitWork>(owner); });
+                if (!installed)
+                    throw std::runtime_error("Cannot register app.quit");
+                quit_registration_ = std::move(*installed);
+            }
+            const auto scope = practice.host->entity(1).scope;
+            scope_ = std::format("Contact practice world | world {} / branch {} | PracticeObserver", scope.world, scope.branch);
+        }
+        Core::Registry& registry() noexcept override { return adapter_->registry(); }
+        Core::Context context() const noexcept override { return client_->context(); }
+        Core::Session& session() noexcept override { return client_->session(); }
+        std::string scope() const override { return scope_; }
+        void close() noexcept override {
+            quit_registration_.reset();
+            if (quit_owner_)
+                quit_owner_->active = false;
+            if (scenarios_) scenarios_->close();
+            client_->close();
+        }
+    };
+    Model::Model(Contact::Practice& practice, Scenarios::Config config, std::function<void()> quit)
+        : Presentation::Model(std::make_shared<ContactConnection>(practice, std::move(config), std::move(quit))) {}
+
+    struct Application::State {
+        Contact::Practice practice = Contact::practice();
+        CE::Workers::Pool pool{1};
+        CE::Workers::Group io_group = pool.make_group();
+        std::shared_ptr<Scenarios::IoService> io = std::make_shared<Scenarios::IoService>(io_group);
+        Core::Runtime::EngineObservations observations{practice.console->registry(), "console.io", io_group, {}, 2};
+        Scenarios::Config config;
+        std::unique_ptr<Model> model;
+        bool finished = false;
+        bool quit_requested = false;
+
+        explicit State(Scenarios::Config value) : config(std::move(value)) {
+            config.io = io;
+            model = std::make_unique<Model>(practice, config, [this] { quit_requested = true; });
+        }
+        ~State() { io->shutdown(); }
+    };
+
+    Application::Application(Scenarios::Config config) : state_(std::make_unique<State>(std::move(config))) {}
+    Application::~Application() {
+        stop();
+        try {
+            finish();
+        } catch (...) {
+        }
+    }
+    Contact::Practice& Application::practice() noexcept { return state_->practice; }
+    const Scenarios::Config& Application::config() const noexcept { return state_->config; }
+    Model& Application::model() noexcept { return *state_->model; }
+    bool Application::quit_requested() const noexcept { return state_->quit_requested; }
+    void Application::stop() noexcept {
+        state_->model->close();
+        state_->io->close_admission();
+        state_->io->shutdown();
+    }
+    void Application::finish() {
+        if (!state_->finished) {
+            stop();
+            state_->io->settle();
+            state_->pool.shutdown();
+            state_->model->pump();
+            state_->finished = true;
+        }
+    }
+
+    void Input::begin(bool keyboard_owned) noexcept {
+        blocked_ = keyboard_owned || std::ranges::any_of(quarantined_, [](bool held) { return held; });
+        if (blocked_)
+            suppress();
+    }
+    void Input::observe(const CE::Input::Events::Record& record) noexcept {
+        if (record.device_kind != CE::Input::DeviceKind::Keyboard)
+            return;
+        const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+        if (!button)
+            return;
+        const auto found = std::ranges::find(keys_, button->key);
+        if (found == keys_.end())
+            return;
+        const auto index = static_cast<std::size_t>(found - keys_.begin());
+        down_[index] = button->phase != CE::Input::Events::ButtonPhase::Release;
+        if (!down_[index])
+            quarantined_[index] = false;
+        else if (blocked_)
+            quarantined_[index] = true;
+    }
+    void Input::suppress() noexcept {
+        blocked_ = true;
+        for (std::size_t index = 0; index < keys_.size(); ++index)
+            quarantined_[index] = quarantined_[index] || down_[index];
+    }
+
+}

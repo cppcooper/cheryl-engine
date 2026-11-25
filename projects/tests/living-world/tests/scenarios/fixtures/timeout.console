@@ -1,0 +1,6 @@
+script.version 1
+fixture.load contact-held-v1
+magic.cast S1 target=marin -> attempt
+await $attempt max_steps=1 -> outcome
+expect $outcome.gain == 8
+finish

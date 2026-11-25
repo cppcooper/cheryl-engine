@@ -1,0 +1,6 @@
+script.version 1
+fixture.load independent-v1
+simulation.step_limit.set 6 -> setting
+simulation.step_limit.set 17 -> invalid
+expect $setting.effective == 6
+finish

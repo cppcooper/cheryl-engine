@@ -140,6 +140,7 @@ class NavigationTests(unittest.TestCase):
             "getting-started/create-a/ai-controller", "getting-started/create-a/ui-controller",
             "getting-started/create-a/hud", "getting-started/create-a/event",
             "getting-started/create-a/abstract-controller",
+            "getting-started/create-a/developer-console",
         ])
 
     def test_engine_sections(self):
@@ -172,7 +173,7 @@ class NavigationTests(unittest.TestCase):
             "audio/index": ["modules/miniaudio"],
             "runtime/index": ["modules/startup", "modules/workers", "modules/native-glfw",
                               "architecture/ownership-cleanup", "architecture/threads-data-flow"],
-            "diagnostics/index": ["modules/debug-terminal-linux"],
+            "diagnostics/index": ["modules/console", "modules/debug-terminal-linux"],
             "development/contributing": ["development/code-style"],
             "development/modules": ["architecture/interfaces-adapters", "development/ui-adapters"],
             "development/testing": ["development/architecture-validation", "development/logging-acceptance",

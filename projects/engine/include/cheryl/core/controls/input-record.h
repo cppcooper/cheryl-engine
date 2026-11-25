@@ -63,6 +63,7 @@ namespace CE::Input {
         /** One committed Unicode scalar from the OS; no IME composition or key-to-character synthesis. */
     struct Text {
             char32_t codepoint; ///< Valid scalar value; capture rejects surrogates and values above U+10FFFF.
+            std::optional<CE::Input::KeyboardKey> source_key = std::nullopt; ///< Optional adapter-attributed physical key; absent for unassociated/scripted text. Never infer from codepoint alone.
         }; // A committed Unicode scalar from the OS.
 
         /** Owned physical observation or committed scalar, preserving their common record ordering. */
@@ -83,6 +84,7 @@ namespace CE::Input {
             CE::Input::Routing::TargetId target = 0; ///< Poll-latched keyboard/Text focus target;0 means no owner.
             std::uint64_t focus_epoch = 0; ///< Poll-latched focus request identity;0 means none.
             bool to_gameplay = true; ///< Gameplay admission; PassThrough permits focused keyboard records as well.
+            bool ui_consumed = false; ///< Host arbitration veto for new toolkit input, independent of poll-latched target/epoch. Sessions still invoke routing callbacks, observe modifiers, and deliver selected releases to retire old gestures; the host must disable their effects.
 
             [[nodiscard]] bool is_text() const { return std::holds_alternative<Text>(data); }
         };

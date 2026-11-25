@@ -1,0 +1,21 @@
+script.version 1
+fixture.load independent-v1
+observe simulation.step_limit.read -> initial
+expect $initial.default == 4
+expect $initial.effective == 4
+expect $initial.minimum == 0
+expect $initial.maximum == 16
+expect $initial.timing == "OwnerImmediate"
+simulation.step_limit.set 6 -> setting
+expect $setting.effective == 6
+retry $setting -> duplicate
+expect $duplicate.effective == 6
+simulation.advance -> tick
+expect $tick == 6
+observe simulation.steps -> observed
+expect $observed == 6
+simulation.step_limit.set 0 -> paused
+expect $paused.effective == 0
+simulation.advance -> still
+expect $still == 6
+finish
