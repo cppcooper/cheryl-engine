@@ -10,7 +10,7 @@ Use the task guides and generated reference as you add features.
 | Connect a new game to the engine | [Project setup](getting-started/project-setup.md). |
 | Learn by building a working example | [Tutorials](getting-started/create-a/index.md), beginning with First game. |
 | Complete a specific operation | [Task index](getting-started/how-to/index.md). |
-| Register game-owned console commands and script assertions | [Developer console and bounded scripts](modules/console.md). |
+| Add game-owned console commands and script assertions | [Advanced developer console tutorial](getting-started/create-a/developer-console.md), then the [Console reference](modules/console.md). |
 | Understand a feature's contracts and design choices | [Guides by topic](guides/index.md). |
 | Find a subsystem's public types or exact declaration | [Engine Systems](engine-systems/index.md), then the [C++ API](api/index.md). |
 | Change the engine or an integration | [Contributing](development/contributing.md) and its owner-specific checks. |

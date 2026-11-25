@@ -6,6 +6,11 @@ graphical console, or a bounded test file. The core, graphical model, and script
 runtime have no LivingWorld, Family, or Magic dependency. Contact remains an
 optional demo adapter, not the host model applications must implement.
 
+For a staged game integration, follow the advanced
+[developer console tutorial](../getting-started/create-a/developer-console.md).
+It starts with First Game and covers an application-owned command host, the
+default graphical input path, cleanup, and script assertions.
+
 ## Select the surface
 
 Link `Cheryl::Console` once for the complete console: typed commands, settings,

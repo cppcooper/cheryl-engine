@@ -31,6 +31,23 @@ identify whether the game needs a shared invocation contract.
 [Create an event](event.md) is an independent example of a typed game notification,
 from its payload and channel to listeners, publication and cleanup.
 
+## Advanced tutorials
+
+These lessons extend a working game with features that cross input, UI,
+application ownership, and testing boundaries. Each names its starting scaffold.
+
+```{toctree}
+:maxdepth: 1
+:titlesonly:
+
+Developer console <developer-console>
+```
+
+[Add a developer console](developer-console.md) starts from First Game and adds
+typed commands, owner-backed settings, the default graphical input integration,
+and bounded script assertions. It also explains the separate file-job/report
+layer and composition with other interfaces.
+
 Share immutable assets between instances while keeping action contexts, positions,
 behavior state, and UI component state independent. The
 [interactive GUI task](../how-to/create-gui.md) teaches RmlUi document authoring.
