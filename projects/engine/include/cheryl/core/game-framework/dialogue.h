@@ -109,7 +109,7 @@ namespace CE::Dialogue {
 
     [[nodiscard]] CE_API CompileResult compile(const Draft& draft, const OperationKeys& operations);
 
-    /** Validated immutable CPU definition, constructible only by successful compile().
+    /** Validated immutable CPU definition, constructible only by successful @ref CE::Dialogue::compile "compile()".
      * Observations borrow this object's lifetime; copy the handle to retain them.
      * Stable reads can run concurrently. No mutable draft storage is adopted.
      */

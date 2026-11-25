@@ -16,6 +16,7 @@ it does not replace the log files or saved failure report.
 Configure logging and investigate missing records <../runtime/logging>
 Investigate runtime and resource symptoms <../runtime/subsystem-diagnostics>
 Handle native and cleanup failures <../runtime/failure-reporting>
+Developer console and scripts <../modules/console>
 Linux output viewer <../modules/debug-terminal-linux>
 ```
 

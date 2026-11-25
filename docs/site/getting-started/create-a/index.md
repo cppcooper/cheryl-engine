@@ -21,6 +21,14 @@ Event <event>
 Abstract controller interfaces <abstract-controller>
 ```
 
+```{toctree}
+:maxdepth: 1
+:titlesonly:
+:caption: Advanced tutorials
+
+Developer console <developer-console>
+```
+
 The actor-controller lesson establishes a command contract. Player and AI
 controllers produce that command from different observations; the Character
 applies it and prepares its appearance. The UIController owns the shared TGUI
@@ -35,13 +43,6 @@ from its payload and channel to listeners, publication and cleanup.
 
 These lessons extend a working game with features that cross input, UI,
 application ownership, and testing boundaries. Each names its starting scaffold.
-
-```{toctree}
-:maxdepth: 1
-:titlesonly:
-
-Developer console <developer-console>
-```
 
 [Add a developer console](developer-console.md) starts from First Game and adds
 typed commands, owner-backed settings, the default graphical input integration,

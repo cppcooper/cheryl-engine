@@ -46,7 +46,7 @@ ENABLE_PREPROCESSING   = YES
 # Visibility decorators do not belong to the documented C++ declarations.
 # Expand only these definitions so other public macros retain their spelling.
 PREDEFINED            = CHERYL_NATIVE_INPUT=1 \
-                         CE_DETAIL_EXPORT= CE_DETAIL_IMPORT= CE_TYPE_API= CE_API= \
+                         CE_DETAIL_EXPORT= CE_DETAIL_IMPORT= CE_TYPE_API= CE_API= CE_CONSOLE_API= \
                          CE_NATIVE_GLFW_API= CE_OPENGL_API= \
                          CE_UI_TGUI_API= CE_UI_RMLUI_API= CE_AUDIO_MINIAUDIO_API= \
                          CE_STARTUP_API= CE_OPENGL_STARTUP_API= CE_DEBUG_TERMINAL_API= \
